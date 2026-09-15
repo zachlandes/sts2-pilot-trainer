@@ -1,5 +1,5 @@
 {
-  "manifest_version": 5,
+  "manifest_version": 7,
   "run_id": "synthetic-v0111-screen-at-boundary",
   "environment": {
     "build_version": {
@@ -722,7 +722,8 @@
       "digest": {
         "Value": "sha256:95134bffcf2641592f274d0f222f4c6972c789570a1b93331daa24f3f23b3b3c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -731,7 +732,8 @@
       "digest": {
         "Value": "sha256:95134bffcf2641592f274d0f222f4c6972c789570a1b93331daa24f3f23b3b3c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -741,7 +743,8 @@
       "digest": {
         "Value": "sha256:95134bffcf2641592f274d0f222f4c6972c789570a1b93331daa24f3f23b3b3c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -751,7 +754,8 @@
       "digest": {
         "Value": "sha256:1255f5d4fb50c888aa62610950d648611f4d075791e6fca4e4a2a5360abda464",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -761,7 +765,8 @@
       "digest": {
         "Value": "sha256:61a3bdf9c62184a3dad803aa398ebe83de155cee9c0cd44e2a907ba1352a3e63",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -770,7 +775,8 @@
       "digest": {
         "Value": "sha256:bd302d08eb6cb817f9277065d436ce6d7b13a81ff8eb307a2e4c9267bf295477",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -779,7 +785,8 @@
       "digest": {
         "Value": "sha256:bd302d08eb6cb817f9277065d436ce6d7b13a81ff8eb307a2e4c9267bf295477",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -789,7 +796,8 @@
       "digest": {
         "Value": "sha256:bd302d08eb6cb817f9277065d436ce6d7b13a81ff8eb307a2e4c9267bf295477",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -799,7 +807,8 @@
       "digest": {
         "Value": "sha256:802507f6809af85cf99d2401517a7584c8233df442c26e14e6a175596be30c00",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -809,7 +818,8 @@
       "digest": {
         "Value": "sha256:7624d35a0a8d5458c8ce4eafa42b3fe666c1dff9d1cbdd442ef006216e5fcaa5",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -818,7 +828,8 @@
       "digest": {
         "Value": "sha256:42bfc907da324566f35136ff3608945b3794e25ec7e9c95cb4edf09888672ff4",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -827,7 +838,8 @@
       "digest": {
         "Value": "sha256:42bfc907da324566f35136ff3608945b3794e25ec7e9c95cb4edf09888672ff4",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -837,7 +849,8 @@
       "digest": {
         "Value": "sha256:42bfc907da324566f35136ff3608945b3794e25ec7e9c95cb4edf09888672ff4",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -847,7 +860,8 @@
       "digest": {
         "Value": "sha256:6a7156140099176c612ec24e3aaa8e853fb0468a668e11db24fec531ab040a20",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -857,7 +871,8 @@
       "digest": {
         "Value": "sha256:5f8e0f7744dbcad6bf23cdde694f1d965193fcfa1663b2e2f24bf0e978f96253",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -867,7 +882,8 @@
       "digest": {
         "Value": "sha256:d3e7c9d26787f8c6eb1bbe12ccd24a9c67fb97422e3098870b8750ed2b11d802",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     }
   ]
 }

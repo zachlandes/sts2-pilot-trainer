@@ -1,5 +1,5 @@
 {
-  "manifest_version": 5,
+  "manifest_version": 7,
   "run_id": "synthetic-v0111-pilot-trainer",
   "environment": {
     "build_version": {
@@ -216,6 +216,14 @@
       "after_seq": 1,
       "kind": "synthetic-engine",
       "expect": {
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Engine"
+        },
+        "run.map_coord": {
+          "Value": "r1c3",
+          "Source": "Engine"
+        },
         "combat.turn": {
           "Value": "1",
           "Source": "Engine"
@@ -332,16 +340,8 @@
           "Value": "false",
           "Source": "Engine"
         },
-        "combat.turn": {
-          "Value": "5",
-          "Source": "Engine"
-        },
         "player.hp": {
           "Value": "64",
-          "Source": "Engine"
-        },
-        "combat.enemy_count": {
-          "Value": "0",
           "Source": "Engine"
         },
         "run.act_floor": {
@@ -359,7 +359,8 @@
       "digest": {
         "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -368,7 +369,8 @@
       "digest": {
         "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -378,7 +380,8 @@
       "digest": {
         "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -388,7 +391,8 @@
       "digest": {
         "Value": "sha256:3ff15e03be2d1e102f7ad7f1325495f23c7bf7d5bf0897f487f19c4e3ab36059",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -398,7 +402,8 @@
       "digest": {
         "Value": "sha256:fdaaa813ffc94eca5e825bfb15f4512bd2af9d3cd8b3fccf248492698f5a3cc9",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -408,7 +413,8 @@
       "digest": {
         "Value": "sha256:19b2b66d8a9e0b09b386ac5dfea4792285a5988c997f36f3b5425909497e3317",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -418,7 +424,8 @@
       "digest": {
         "Value": "sha256:ebfb16e1b6ac3961776698d6b3d80e597e74047b2b7bc2c2c07741579781b145",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     }
   ]
 }

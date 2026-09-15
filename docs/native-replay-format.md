@@ -145,22 +145,25 @@ agreed in all 16.
 `floor-snapshot` reproduces the same split on its own.
 Over all 16 floor arrivals of `synthetic-v0111-whole-act`, the 9 with a live fight were
 each restored in a fresh process and cached, and the 7 without one were refused, every
-refusal reading `combat.in_progress=false, combat.outcome=victory`.
+refusal reading `combat.in_progress=false` (with `combat.outcome=victory` under format 6,
+and `none` under format 7, whose projection leaves a finished fight behind with its room).
 
-The 17 fields are the *previous* fight's finished `PlayerCombatState`, still attached to
-the live run and absent from the restored one.
-`CanonicalStateProjection.ProjectCombat` emits the whole block whenever that state is
+The 17 fields were the *previous* fight's finished `PlayerCombatState`, still attached to
+the live run and absent from the restored one: through manifest format 6,
+`CanonicalStateProjection.ProjectCombat` emitted the whole block whenever that state was
 non-null, whatever its outcome.
-So an arrival with a won fight behind it is the same run in every respect the run itself
-has, and a different canonical state - which is the most convincing shape a wrong answer
-takes, and the reason the rule is a rule.
-`FloorEntrySnapshotEligibility` owns it and is pure, so it is tested where there is no game.
-
-Making the ineligible arrivals pass by dropping a finished fight from the projection would be
-defensible on its own terms and is a **different change with its own migration**: it
-moves every boundary digest in every committed recording, including the ones a recorder
-captured inside a player's own client.
-It must not happen as a side effect of wanting a cache to hit.
+Format 7 projects nothing of a fight outside a live one, so a restored non-fight arrival
+now reads exactly as the live run does there - which is what let a Save and Quit outside
+combat pass publication at all, and what moved every committed boundary digest at such an
+arrival (`FinishedFightResidue` in `Sts2PilotTrainer.Replay` owns the difference and
+`migrate-manifest --derive-boundaries` re-derives exactly those digests).
+Which projection a digest is a claim in is written on the boundary itself, as `projection`: the reader marks every boundary of an older file with the version that file declared, a derive stamps every boundary the replay verified with `CanonicalState.Projection`, and `FinishedFightResidue.PredatesThisProjection` reads that and nothing the file says about itself.
+A file rewritten in the current format without a replay therefore still names the older digests it carries, and a native recording's `migrated_from_version` - which outlives every replay - no longer excuses a disagreement at a digest the replay already verified.
+The rule stays as measured: the floor-snapshot measurement covered arrivals with a live
+fight and nothing else, and a cache is written only for a boundary the measurement covered.
+An arrival without a live fight is still refused by `FloorEntrySnapshotEligibility` - pure,
+tested where there is no game - until a measurement over the format-7 projection says
+those restore field for field as well, which is its own change.
 
 ### What makes it a derived cache rather than a stored answer
 

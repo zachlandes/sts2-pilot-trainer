@@ -1,5 +1,5 @@
 {
-  "manifest_version": 5,
+  "manifest_version": 7,
   "run_id": "synthetic-v0111-whole-act",
   "environment": {
     "build_version": {
@@ -1718,10 +1718,9 @@
     },
     {
       "seq": 188,
-      "verb": "PlayCard",
+      "verb": "ConfirmCardScreen",
       "args": {
-        "card_id": "CARD.HEMOKINESIS",
-        "hand_index": "1"
+        "count": "1"
       },
       "source": "Declared"
     },
@@ -1729,7 +1728,7 @@
       "seq": 189,
       "verb": "PlayCard",
       "args": {
-        "card_id": "CARD.BULLY",
+        "card_id": "CARD.HEMOKINESIS",
         "hand_index": "1"
       },
       "source": "Declared"
@@ -1738,13 +1737,22 @@
       "seq": 190,
       "verb": "PlayCard",
       "args": {
+        "card_id": "CARD.BULLY",
+        "hand_index": "1"
+      },
+      "source": "Declared"
+    },
+    {
+      "seq": 191,
+      "verb": "PlayCard",
+      "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "2"
       },
       "source": "Declared"
     },
     {
-      "seq": 191,
+      "seq": 192,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.INFLAME",
@@ -1753,7 +1761,7 @@
       "source": "Declared"
     },
     {
-      "seq": 192,
+      "seq": 193,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.INFERNO",
@@ -1762,25 +1770,16 @@
       "source": "Declared"
     },
     {
-      "seq": 193,
+      "seq": 194,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared"
-    },
-    {
-      "seq": 194,
-      "verb": "PlayCard",
-      "args": {
-        "card_id": "CARD.STRIKE_IRONCLAD",
-        "hand_index": "0"
-      },
       "source": "Declared"
     },
     {
       "seq": 195,
       "verb": "PlayCard",
       "args": {
-        "card_id": "CARD.ANGER",
+        "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
       "source": "Declared"
@@ -1789,13 +1788,22 @@
       "seq": 196,
       "verb": "PlayCard",
       "args": {
+        "card_id": "CARD.ANGER",
+        "hand_index": "0"
+      },
+      "source": "Declared"
+    },
+    {
+      "seq": 197,
+      "verb": "PlayCard",
+      "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "1"
       },
       "source": "Declared"
     },
     {
-      "seq": 197,
+      "seq": 198,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.FEEL_NO_PAIN",
@@ -1804,13 +1812,13 @@
       "source": "Declared"
     },
     {
-      "seq": 198,
+      "seq": 199,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 199,
+      "seq": 200,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
@@ -1819,7 +1827,7 @@
       "source": "Declared"
     },
     {
-      "seq": 200,
+      "seq": 201,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.BASH",
@@ -1828,13 +1836,13 @@
       "source": "Declared"
     },
     {
-      "seq": 201,
+      "seq": 202,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 202,
+      "seq": 203,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEADBUTT",
@@ -1843,7 +1851,7 @@
       "source": "Declared"
     },
     {
-      "seq": 203,
+      "seq": 204,
       "verb": "SelectCardFromScreen",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1852,7 +1860,7 @@
       "source": "Declared"
     },
     {
-      "seq": 204,
+      "seq": 205,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.MOLTEN_FIST",
@@ -1861,7 +1869,7 @@
       "source": "Declared"
     },
     {
-      "seq": 205,
+      "seq": 206,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.EVIL_EYE",
@@ -1870,7 +1878,7 @@
       "source": "Declared"
     },
     {
-      "seq": 206,
+      "seq": 207,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.BLOODLETTING",
@@ -1879,7 +1887,7 @@
       "source": "Declared"
     },
     {
-      "seq": 207,
+      "seq": 208,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.DEFEND_IRONCLAD",
@@ -1888,13 +1896,13 @@
       "source": "Declared"
     },
     {
-      "seq": 208,
+      "seq": 209,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 209,
+      "seq": 210,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1903,7 +1911,7 @@
       "source": "Declared"
     },
     {
-      "seq": 210,
+      "seq": 211,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
@@ -1912,7 +1920,7 @@
       "source": "Declared"
     },
     {
-      "seq": 211,
+      "seq": 212,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.ANGER",
@@ -1921,7 +1929,7 @@
       "source": "Declared"
     },
     {
-      "seq": 212,
+      "seq": 213,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.DEFEND_IRONCLAD",
@@ -1930,13 +1938,13 @@
       "source": "Declared"
     },
     {
-      "seq": 213,
+      "seq": 214,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 214,
+      "seq": 215,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEADBUTT",
@@ -1945,7 +1953,7 @@
       "source": "Declared"
     },
     {
-      "seq": 215,
+      "seq": 216,
       "verb": "SelectCardFromScreen",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1954,7 +1962,7 @@
       "source": "Declared"
     },
     {
-      "seq": 216,
+      "seq": 217,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.FLAME_BARRIER",
@@ -1963,13 +1971,13 @@
       "source": "Declared"
     },
     {
-      "seq": 217,
+      "seq": 218,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 218,
+      "seq": 219,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1978,7 +1986,7 @@
       "source": "Declared"
     },
     {
-      "seq": 219,
+      "seq": 220,
       "verb": "ClaimReward",
       "args": {
         "reward_type": "gold"
@@ -1986,7 +1994,7 @@
       "source": "Declared"
     },
     {
-      "seq": 220,
+      "seq": 221,
       "verb": "TakeCard",
       "args": {
         "card_id": "CARD.IMPERVIOUS",
@@ -1995,7 +2003,7 @@
       "source": "Declared"
     },
     {
-      "seq": 221,
+      "seq": 222,
       "verb": "ProceedToNextAct",
       "args": {},
       "source": "Declared"
@@ -2949,8 +2957,8 @@
       }
     },
     {
-      "id": "boss-218-combat-end",
-      "after_seq": 218,
+      "id": "boss-219-combat-end",
+      "after_seq": 219,
       "kind": "synthetic-engine",
       "expect": {
         "combat.outcome": {
@@ -2973,7 +2981,7 @@
     },
     {
       "id": "act-two-entry",
-      "after_seq": 221,
+      "after_seq": 222,
       "kind": "synthetic-engine",
       "expect": {
         "run.act_index": {
@@ -3007,7 +3015,8 @@
       "digest": {
         "Value": "sha256:39de91b3cc68e8094ac328e8b8b5355a2b147cca8d9e54142bcf114f06f65a59",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3016,7 +3025,8 @@
       "digest": {
         "Value": "sha256:39de91b3cc68e8094ac328e8b8b5355a2b147cca8d9e54142bcf114f06f65a59",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3026,7 +3036,8 @@
       "digest": {
         "Value": "sha256:39de91b3cc68e8094ac328e8b8b5355a2b147cca8d9e54142bcf114f06f65a59",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3036,7 +3047,8 @@
       "digest": {
         "Value": "sha256:88a45d40f740dcbda0cd6c740a53355e5578973d0d5729c845036830d04b7d0c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3046,7 +3058,8 @@
       "digest": {
         "Value": "sha256:f7f26a207d32d1e5cf0a17725b94d7802d502239b11455bf8c93fc8998186193",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3055,7 +3068,8 @@
       "digest": {
         "Value": "sha256:6c642e3ebf1deeaf25050502da7d4fbcfb257151e5a7794021472005b41925f0",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3064,7 +3078,8 @@
       "digest": {
         "Value": "sha256:6c642e3ebf1deeaf25050502da7d4fbcfb257151e5a7794021472005b41925f0",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3074,7 +3089,8 @@
       "digest": {
         "Value": "sha256:6c642e3ebf1deeaf25050502da7d4fbcfb257151e5a7794021472005b41925f0",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3084,7 +3100,8 @@
       "digest": {
         "Value": "sha256:786f8659fdabf07d7e589ff7534cc541b251568418145aac411c53b139632e7f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3094,16 +3111,18 @@
       "digest": {
         "Value": "sha256:18708fb559560545a82c6fe00b58e87b650279112faafb02a162f501413058af",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 28,
       "floor": 4,
       "digest": {
-        "Value": "sha256:fd68b29f3f8215c8e4cd1c6bcf467c26b768b49fe22822d271a5cdb306f8d9bd",
+        "Value": "sha256:a843cb5919ea5d2fae0370a68e74d769e63862b6a1a1b22c61b87c7a3b12f1a5",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3112,7 +3131,8 @@
       "digest": {
         "Value": "sha256:89e7c44afed3e1815d0d9ca30641267228cd8aa2ae6c1579fed08303a3046f4b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3121,7 +3141,8 @@
       "digest": {
         "Value": "sha256:89e7c44afed3e1815d0d9ca30641267228cd8aa2ae6c1579fed08303a3046f4b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3131,7 +3152,8 @@
       "digest": {
         "Value": "sha256:89e7c44afed3e1815d0d9ca30641267228cd8aa2ae6c1579fed08303a3046f4b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3141,7 +3163,8 @@
       "digest": {
         "Value": "sha256:236a1b3ee0636b8b4cc753843a91b119f1109fd9c93f12fb18509fd65cac2bc1",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3151,7 +3174,8 @@
       "digest": {
         "Value": "sha256:5b98bfd9a16e5ff51718e215cd4060f248eb26ec21976c7689046e61b41260c1",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3161,7 +3185,8 @@
       "digest": {
         "Value": "sha256:8da944063accf187a2dfdae825d3224a2800c98ee08d95f7653ae04ff093e56d",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3170,7 +3195,8 @@
       "digest": {
         "Value": "sha256:983da690332babda58c28b6bb898955e4fa83b91098be98554818a14f2bf9f0f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3179,7 +3205,8 @@
       "digest": {
         "Value": "sha256:983da690332babda58c28b6bb898955e4fa83b91098be98554818a14f2bf9f0f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3189,7 +3216,8 @@
       "digest": {
         "Value": "sha256:983da690332babda58c28b6bb898955e4fa83b91098be98554818a14f2bf9f0f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3199,7 +3227,8 @@
       "digest": {
         "Value": "sha256:5752b7febdf25f67177ca769f3aab0361766118d28ce7aac3d0d2e44d8382b9e",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3209,7 +3238,8 @@
       "digest": {
         "Value": "sha256:8992616ee0349b960b42e0e92304de31fc79b4648ad70c6a6f891b335fb5d84c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3219,7 +3249,8 @@
       "digest": {
         "Value": "sha256:62e16266e4f4938f969917bb15fc094237cbe3c552dde36eb0d3bc526fcd4f3f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3229,16 +3260,18 @@
       "digest": {
         "Value": "sha256:9fb082830c19ead4a05bbcf8754140423df67b3b3d3d252569477e6fdd051e6f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 72,
       "floor": 7,
       "digest": {
-        "Value": "sha256:aab912017dc235497cedcdb8908eb283fa3d22d845f7fb63431df61bbac72a89",
+        "Value": "sha256:3ef02cebc98094f4b51c2aa88fad3a92c65acf328d0901c3ae2e87d83d757ce4",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3247,7 +3280,8 @@
       "digest": {
         "Value": "sha256:27ac93cf832c796cf31955ab6d75d66d6bfda8227d50cad040de570873882660",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3256,7 +3290,8 @@
       "digest": {
         "Value": "sha256:27ac93cf832c796cf31955ab6d75d66d6bfda8227d50cad040de570873882660",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3266,7 +3301,8 @@
       "digest": {
         "Value": "sha256:27ac93cf832c796cf31955ab6d75d66d6bfda8227d50cad040de570873882660",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3276,7 +3312,8 @@
       "digest": {
         "Value": "sha256:cdd996aa3948781d96e079262ab780f2be5703b1c3ecffdc9a3a0637a310c2a1",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3286,7 +3323,8 @@
       "digest": {
         "Value": "sha256:3121735ba6b37aa879e4759535277a672d7c3b9a204e6afcb581935bfbebc0b2",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3296,7 +3334,8 @@
       "digest": {
         "Value": "sha256:c71951015cb7872101a0adc01ae81e3bb14d5466574de70f40a8afec276d9ff9",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3305,7 +3344,8 @@
       "digest": {
         "Value": "sha256:636aab74a95f24a18859c58315e92b5319a9095542774d6dcd350edbe7454425",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3314,7 +3354,8 @@
       "digest": {
         "Value": "sha256:636aab74a95f24a18859c58315e92b5319a9095542774d6dcd350edbe7454425",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3324,7 +3365,8 @@
       "digest": {
         "Value": "sha256:636aab74a95f24a18859c58315e92b5319a9095542774d6dcd350edbe7454425",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3334,7 +3376,8 @@
       "digest": {
         "Value": "sha256:21b30fc0e0a62c6dc780e95297bc1f4cb34bc97c93e7317db19929aae076721a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3344,7 +3387,8 @@
       "digest": {
         "Value": "sha256:3246ad46d2950abffe764a4e70759556ba0cf7a0c2bca7426594a59699543e90",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3354,7 +3398,8 @@
       "digest": {
         "Value": "sha256:690f3d888d0aadefc4f8c42d8d485a15352c108690a750c92fecd5b99adf649f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3364,7 +3409,8 @@
       "digest": {
         "Value": "sha256:b6bb2f95a2179cf4cbb7e68039d05c2d5e7123b5476f1c864ae574ab9a4e8251",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3374,7 +3420,8 @@
       "digest": {
         "Value": "sha256:0e565896011b29174d6a5a7f42538104d33068c61d096632c17c33edd37dc54d",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3384,25 +3431,28 @@
       "digest": {
         "Value": "sha256:3000f3a9eaf73cdab1bbec246eb981d452c8a8ce185300ef51abe132591ce7f8",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 130,
       "floor": 10,
       "digest": {
-        "Value": "sha256:b82298e7bbc2ce819c06e6baae448b0d1e8e566afad1c146555b52ed3ea8b8a1",
+        "Value": "sha256:168e5c06a80c5b19c681fd9deb6b8aedae467ac301c27ce41960c7609cf5a595",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 132,
       "floor": 11,
       "digest": {
-        "Value": "sha256:b683cbfd1bc3a6dbfad1e63d5d34d677bbbacb62dbf3c8ea0c53546e4a5c21f5",
+        "Value": "sha256:1c42f9e4b12199e0839e93fd6c3330a5e529bfded882d7d921ae9e496019b890",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3411,7 +3461,8 @@
       "digest": {
         "Value": "sha256:dbb297ecb454a047729da74291c8594e49b9d644125d48e25f5308ab28ebb4ea",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3420,7 +3471,8 @@
       "digest": {
         "Value": "sha256:dbb297ecb454a047729da74291c8594e49b9d644125d48e25f5308ab28ebb4ea",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3430,7 +3482,8 @@
       "digest": {
         "Value": "sha256:dbb297ecb454a047729da74291c8594e49b9d644125d48e25f5308ab28ebb4ea",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3440,7 +3493,8 @@
       "digest": {
         "Value": "sha256:fcc7a729269c32c8ee0726d89fcc1451c26cd19b346798c1d32d0a1eaff7c50b",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3450,7 +3504,8 @@
       "digest": {
         "Value": "sha256:bf243c6e94774da94b93ae4423975695a6dcd0e9b4d0e39aabb8312f551b7ed2",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3460,25 +3515,28 @@
       "digest": {
         "Value": "sha256:43e216eeaec98f79fea6995105ae878338db59d15cbdb1b2f4ba0050dbd6704a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 152,
       "floor": 13,
       "digest": {
-        "Value": "sha256:2c068e103437e157680257d8d6b945c60d85f1bdad2aaccaee062b1604823801",
+        "Value": "sha256:037ddb2969fbbd499fa51ef05b0a76237444186f38b781741d6daec57b40fd6a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 154,
       "floor": 14,
       "digest": {
-        "Value": "sha256:2c872b7bbbef5d2b379d9d2f055fde63383746706f946117060d289fce8bb2e2",
+        "Value": "sha256:118d0f09ee7fd0b93c7062f2a5524465ec87cf941e6ad31c467181b0f0dd0e5c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3487,7 +3545,8 @@
       "digest": {
         "Value": "sha256:4b73dfc3c9e90c879f4f0a809f7016b4953e1702ff646f61a20b8f8c03145899",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3496,7 +3555,8 @@
       "digest": {
         "Value": "sha256:4b73dfc3c9e90c879f4f0a809f7016b4953e1702ff646f61a20b8f8c03145899",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3506,7 +3566,8 @@
       "digest": {
         "Value": "sha256:4b73dfc3c9e90c879f4f0a809f7016b4953e1702ff646f61a20b8f8c03145899",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3516,7 +3577,8 @@
       "digest": {
         "Value": "sha256:713dcca206739279938a7f4e7f858198dd267f62bf98dbe2037aa1eed9728c9f",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3526,7 +3588,8 @@
       "digest": {
         "Value": "sha256:5afcd6ad2876524fb38b0d2920c2168972cf17e438e667ddf286e839d6d7e001",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3536,16 +3599,18 @@
       "digest": {
         "Value": "sha256:fabf01dc89ad6bd6228034a3fe6c466b38790c9b7adea3f9f961474e87e3c29a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 180,
       "floor": 16,
       "digest": {
-        "Value": "sha256:dfea17880334c86658f0b4ffbab3273e7623d626683701f07281f214f5ebc8ef",
+        "Value": "sha256:a20ab709287135506fa21c9af687bffe88ddf8feb36eec9eb20f280245c89f8c",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -3554,7 +3619,8 @@
       "digest": {
         "Value": "sha256:4d14735989afdafa81089249253c3cb8bd827d916329a6c91ec73465bc53d97a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -3563,7 +3629,8 @@
       "digest": {
         "Value": "sha256:4d14735989afdafa81089249253c3cb8bd827d916329a6c91ec73465bc53d97a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -3573,67 +3640,74 @@
       "digest": {
         "Value": "sha256:4d14735989afdafa81089249253c3cb8bd827d916329a6c91ec73465bc53d97a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 193,
+      "after_seq": 194,
       "fight": 9,
       "turn": 2,
       "digest": {
         "Value": "sha256:075866e1a21aa6a06b8a8b5c0019a750c9f81e277c5af54441d962b029ea5c49",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 198,
+      "after_seq": 199,
       "fight": 9,
       "turn": 3,
       "digest": {
         "Value": "sha256:ca03679a3c424f06217380a78d67697b86381387ec54a8fe53e90696cc00a5f5",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 201,
+      "after_seq": 202,
       "fight": 9,
       "turn": 4,
       "digest": {
         "Value": "sha256:5afc832d55d80740f41f7f8a2338e3a95733f3b03c296fb85acdcf593c827804",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 208,
+      "after_seq": 209,
       "fight": 9,
       "turn": 5,
       "digest": {
         "Value": "sha256:b6d2a7da6e9cccd5cf0721042a26eb5187ca390694e1d211040e92f7be626eef",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 213,
+      "after_seq": 214,
       "fight": 9,
       "turn": 6,
       "digest": {
         "Value": "sha256:eec5d32ae16787b1161994d0ed3445ed9137b8d371b11830074125d7473c7b44",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
-      "after_seq": 217,
+      "after_seq": 218,
       "fight": 9,
       "turn": 7,
       "digest": {
         "Value": "sha256:c6231f87fb636b76ce7bded2e5fb9b2a38fa0758472601e2226222fd45e9e3b5",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     }
   ]
 }

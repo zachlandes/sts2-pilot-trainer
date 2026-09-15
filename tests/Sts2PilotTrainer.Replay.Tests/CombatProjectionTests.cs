@@ -208,6 +208,124 @@ public class CombatProjectionTests
         Assert.Equal(40, projection.Turns.Sum(turn => turn.EnemyHealthLost));
     }
 
+    /// <summary>
+    /// The step the fight is lost on samples nothing of the enemy afterwards, so what
+    /// it took off the enemy is not in the trace: the turn it fell in carries no
+    /// number, every turn before it keeps its own, and the summary says the fight
+    /// was lost at the health it was lost at. Read as a full clear, a lost fight
+    /// would credit the enemy's whole remaining health as damage dealt.
+    /// </summary>
+    [Fact]
+    public void ADefeatLeavesItsTurnsEnemyHealthLostUnavailableAndTheEarlierTurnsKnown()
+    {
+        var start = InCombat(1, 12, 50);
+        var struck = InCombat(1, 12, 44);
+        var secondTurn = InCombat(2, 12, 44);
+        var dead = Outside();
+        dead["combat.outcome"] = "defeat";
+        dead["player.hp"] = "0";
+
+        var projection = Project("lost", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck),
+            Step(1, "EndTurn", struck, secondTurn),
+            Step(2, "EndTurn", secondTurn, dead)));
+
+        Assert.Equal("defeat", projection.Summary.Outcome);
+        Assert.Equal(0, projection.Summary.FinalHealth);
+        Assert.Equal([1, 2], projection.Turns.Select(turn => turn.Turn));
+        Assert.Equal(6, projection.Turns[0].EnemyHealthLost);
+        Assert.Null(projection.Turns[1].EnemyHealthLost);
+        Assert.Equal(12, projection.Turns[1].HealthLost);
+    }
+
+    /// <summary>
+    /// The engine ends a fight once no primary enemy is alive, and a secondary one -
+    /// a minion - may still be standing when it does. The step that ended the fight
+    /// samples nothing of the finished roster, so whether that minion survived is not
+    /// in the trace, and its remaining health is not damage anyone can be credited
+    /// with. Under the older projection the survivor was still sampled and the step
+    /// was refused as a re-indexed roster; it is refused now for the reason that is
+    /// true now, rather than read as a full clear.
+    /// </summary>
+    [Fact]
+    public void RefusesToCreditASecondaryEnemyThatMayHaveOutlivedTheFight()
+    {
+        var before = InCombat(1, 80, 10);
+        before["combat.enemy_count"] = "2";
+        before["combat.enemy.1.model"] = "MONSTER.HATCHLING";
+        before["combat.enemy.1.hp"] = "20";
+        before["combat.enemy.1.powers"] = $"{CombatProjection.SecondaryEnemyPowers[0]}:1";
+
+        var end = Outside();
+        end["combat.outcome"] = "victory";
+        end["player.hp"] = "80";
+
+        var thrown = Assert.Throws<ManifestException>(() => Project("minion", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "PlayCard", before, end))));
+
+        Assert.Contains("secondary enemy", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("MONSTER.HATCHLING", thrown.Message, StringComparison.Ordinal);
+
+        // A primary enemy's powers say nothing about survival: with every enemy
+        // primary, the fight's end is the whole roster's, and each one's remaining
+        // health is what the step dealt.
+        before["combat.enemy.1.powers"] = "POWER.THORNS_POWER:2";
+        end[CombatProjection.EndedOnSideField] = "player";
+        var projection = Project("clear", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "PlayCard", before, end)));
+        Assert.Equal(30, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+    }
+
+    /// <summary>
+    /// A fight-ending step samples no roster afterwards, so what it took off the
+    /// enemy is read from the side the sample says the fight ended on, never from
+    /// the verb. Ended on the player's side, every enemy standing before it was
+    /// killed and is credited, whatever it had telegraphed - a Thieving Hopper
+    /// announcing its flight and struck down first, or an enemy taken by the player's
+    /// own end-of-turn effects. Ended on the enemy's side - an ordinary end of turn,
+    /// or a card such as Void Form that ends the turn inside its own play - the enemy
+    /// may have been killed or may have fled, so the turn carries no number; nor does
+    /// one whose sample names no side at all. The earlier turn keeps its number and
+    /// the fight still projects.
+    /// </summary>
+    [Theory]
+    [InlineData("PlayCard", "player", 12)]
+    [InlineData("EndTurn", "player", 12)]
+    [InlineData("PlayCard", "enemy", null)]
+    [InlineData("EndTurn", "enemy", null)]
+    [InlineData("PlayCard", null, null)]
+    public void ReadsAFightEndingStepsEnemyHealthLostOffTheSideItEndedOn(string verb, string? endedOnSide, int? expected)
+    {
+        var start = InCombat(1, 80, 20);
+        start["combat.enemy.0.intent"] = "Escape";
+        var struck = InCombat(1, 80, 12);
+        struck["combat.enemy.0.intent"] = "Escape";
+        var end = Outside();
+        end["combat.outcome"] = "victory";
+        end["player.hp"] = "80";
+        if (endedOnSide is not null) end[CombatProjection.EndedOnSideField] = endedOnSide;
+
+        var projection = Project("fight-end", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
+            Step(1, verb, struck, end, ("card_id", "CARD.VOID_FORM"))));
+
+        Assert.Equal("victory", projection.Summary.Outcome);
+        Assert.Equal(expected is { } dealt ? 8 + dealt : null, projection.Turns.Single().EnemyHealthLost);
+
+        var secondTurn = InCombat(2, 80, 12);
+        var twoTurns = Project("fight-end-later", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
+            Step(1, "EndTurn", struck, secondTurn),
+            Step(2, verb, secondTurn, end, ("card_id", "CARD.VOID_FORM"))));
+        Assert.Equal(8, twoTurns.Turns[0].EnemyHealthLost);
+        Assert.Equal(expected, twoTurns.Turns[1].EnemyHealthLost);
+    }
+
     [Fact]
     public void EnemyHealthLostExcludesDamageAbsorbedByBlock()
     {
@@ -218,6 +336,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "80";
+        victory[CombatProjection.EndedOnSideField] = "player";
 
         var projection = Project("blocked", Trace(
             Step(-1, "run_start", Outside(), start),
@@ -341,6 +460,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "71";
+        victory[CombatProjection.EndedOnSideField] = "player";
         victory["player.potions"] = "empty|empty|empty";
 
         return Trace(
@@ -359,6 +479,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "80";
+        victory[CombatProjection.EndedOnSideField] = "player";
 
         return Trace(
             Step(-1, "run_start", Outside(), Outside()),

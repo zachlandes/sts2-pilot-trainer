@@ -15,10 +15,23 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 6;
+    public const int CurrentManifestVersion = 7;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
+
+    /// <summary>
+    /// The oldest format this manifest was written in: what a native recording
+    /// records of itself in <c>source.native.migrated_from_version</c> across every
+    /// migration on disk, or else the format this manifest is in. What a rule about an
+    /// older format's captured readings asks - a discarded branch's samples were taken
+    /// once and are never re-derived, and only a native recording carries one. Which
+    /// projection a boundary digest is a claim in is the boundary's own
+    /// <see cref="ReplayBoundary.Projection"/>, because a replay can re-derive that
+    /// and this note would go on saying what the file began as.
+    /// </summary>
+    [JsonIgnore]
+    public int WrittenIn => Source.Native?.MigratedFromVersion ?? ManifestVersion;
 
     /// <summary>Stable identifier for this reconstruction. Never derived from a
     /// video title: this creator A/B-tests titles, so a title is not an identifier.</summary>
@@ -262,9 +275,9 @@ public sealed record NativeSource
 
     public static readonly string[] Integrities = [CompleteIntegrity, UnmappedIntegrity, NonStandardIntegrity];
 
-    /// <summary>The one older format a migrated file may declare it was written in.
+    /// <summary>The older formats a migrated file may declare it was written in.
     /// A later format widens this when it adds a migration of its own.</summary>
-    public static readonly int[] MigratableVersions = [5];
+    public static readonly int[] MigratableVersions = [5, 6];
 
     /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
     /// over, the history is whole, and the fights in it were really played.</summary>

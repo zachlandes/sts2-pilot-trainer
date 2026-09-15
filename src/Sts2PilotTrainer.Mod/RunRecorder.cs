@@ -422,14 +422,14 @@ internal sealed class RunRecorder : IDisposable
         var startedUtc = LiveRun.RunStartedUtc();
         var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
         var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
-        var (sample, digest, saveRepresentable) = LiveRun.Read();
+        var (sample, digest) = LiveRun.Read();
         var clock = LiveRun.RunClockMs();
 
         RunCapture capture;
         if (RunmobileStore.Read(journalPath) is { } existing)
         {
             var journal = RunJournal.Parse(existing);
-            capture = RunCapture.Resume(journal, sample, digest, saveRepresentable);
+            capture = RunCapture.Resume(journal, sample, digest);
             var resumeRefusals = capture.Refusals.Count;
 
             // Before anything is appended, because an append onto a fragment a
@@ -505,7 +505,6 @@ internal sealed class RunRecorder : IDisposable
                 Identity = LiveRun.ReadIdentity(run),
                 State = sample,
                 Digest = digest,
-                SaveRepresentableDigest = saveRepresentable,
                 RunClockMs = clock,
             });
             RunmobileStore.Write(journalPath, capture.Journal.Render());
@@ -646,9 +645,8 @@ internal sealed class RunRecorder : IDisposable
 
         try
         {
-            var (sample, digest, saveRepresentable) = LiveRun.Read();
-            return new TakenReading(
-                sample, digest, LiveRun.RunClockMs(), saveRepresentable, recorder.OpenTicket());
+            var (sample, digest) = LiveRun.Read();
+            return new TakenReading(sample, digest, LiveRun.RunClockMs(), recorder.OpenTicket());
         }
         catch (Exception ex)
         {
@@ -677,8 +675,8 @@ internal sealed class RunRecorder : IDisposable
         TakenReading reading;
         try
         {
-            var (sample, digest, saveRepresentable) = LiveRun.Read();
-            reading = new TakenReading(sample, digest, LiveRun.RunClockMs(), saveRepresentable);
+            var (sample, digest) = LiveRun.Read();
+            reading = new TakenReading(sample, digest, LiveRun.RunClockMs());
         }
         catch (Exception ex)
         {
@@ -1584,10 +1582,7 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample)
     {
-        var projection = LiveRun.Project();
-        return new TakenReading(
-            sample, projection.Digest(), LiveRun.RunClockMs(), ReplayTrace.SaveRepresentableDigest(projection.Fields),
-            OpenTicket());
+        return new TakenReading(sample, LiveRun.Project().Digest(), LiveRun.RunClockMs(), OpenTicket());
     }
 
     /// <summary>How many decisions are read and not yet dealt with.</summary>
@@ -1706,9 +1701,7 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            var projection = LiveRun.Project();
-            var digest = projection.Digest();
-            var saveRepresentable = ReplayTrace.SaveRepresentableDigest(projection.Fields);
+            var digest = LiveRun.Project().Digest();
             var clock = LiveRun.RunClockMs();
 
             List<ScreenAnswer> answers;
@@ -1726,7 +1719,7 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            var reading = new StateReading(after, digest, saveRepresentable);
+            var reading = new StateReading(after, digest);
             Write(_capture.Record(parsed, args, before.AsStateReading(), reading, clock));
             WriteAnswers(answers, reading, clock);
 
@@ -2395,10 +2388,9 @@ internal sealed class RunRecorder : IDisposable
     /// which time the run is somewhere else entirely.
     /// </summary>
     internal sealed record TakenReading(
-        IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs,
-        string? SaveRepresentableDigest = null, long Ticket = 0)
+        IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs, long Ticket = 0)
     {
-        internal StateReading AsStateReading() => new(Sample, Digest, SaveRepresentableDigest);
+        internal StateReading AsStateReading() => new(Sample, Digest);
     }
 
     /// <summary>A decision read in a prefix and announced in the postfix beside it,

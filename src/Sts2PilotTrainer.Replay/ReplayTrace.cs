@@ -39,6 +39,7 @@ public sealed record ReplayTrace
     [
         "combat.in_progress",
         "combat.outcome",
+        EndedOnSideField,
         "combat.turn",
         "combat.round",
         "combat.encounter",
@@ -66,6 +67,22 @@ public sealed record ReplayTrace
     /// <summary>Per-enemy fields are numbered, so they are selected by prefix.</summary>
     public const string EnemyFieldPrefix = "combat.enemy.";
 
+    /// <summary>
+    /// Which side's turn a finished fight ended in, <c>player</c> or <c>enemy</c>: the
+    /// one reading of a finished fight a trace keeps, and the one sampled field the
+    /// digest does not hash. The game's save carries no combat state, so a run
+    /// continued onto the loot screen has no such reading where the run that was
+    /// never quit does; a comparison that holds two hosts to one state therefore
+    /// leaves it out, as <see cref="HeldToTheDigest"/> says, and the step that ends a
+    /// fight reads it to tell a kill from a flight.
+    /// </summary>
+    public const string EndedOnSideField = "combat.ended_on_side";
+
+    /// <summary>Whether a sampled field is one two hosts have to agree on: every
+    /// field but the ones the projection keeps outside the digest.</summary>
+    public static bool HeldToTheDigest(string field) =>
+        !string.Equals(field, EndedOnSideField, StringComparison.Ordinal);
+
     /// <summary>Whether a canonical field belongs in a trace sample.</summary>
     public static bool IsSampled(string field) =>
         SampledFields.Contains(field, StringComparer.Ordinal) ||
@@ -86,74 +103,6 @@ public sealed record ReplayTrace
             StringComparer.Ordinal);
 
     /// <summary>
-    /// The part of a sample the game's own save can carry.
-    ///
-    /// A finished fight stays on the player until the next fight replaces it, and
-    /// <c>CanonicalStateProjection</c> keeps projecting it, so every reading taken at
-    /// a shop, a rest site, an event or a loot screen after a fight carries that
-    /// fight's residue. <c>SerializableRun</c> has no combat member, so a run
-    /// continued from the game's save comes back without it, and a live fight is the
-    /// one combat state the save has an answer for: it is rolled back to the room's
-    /// entry, where the fight opens again. So every <c>combat.</c> field is dropped
-    /// unless the fight is in progress, and nothing else is: what a save carries of
-    /// the run - floor, coordinate, health, gold, deck, relics, potions - is kept
-    /// whole. Two samples are compared through <see cref="SameSample"/>; the same
-    /// filter over the complete canonical fields is digested by
-    /// <see cref="SaveRepresentableDigest"/>, under its own prefix so it cannot be
-    /// mistaken for the complete digest a boundary is identified by.
-    /// </summary>
-    public static IReadOnlyDictionary<string, string> SaveRepresentable(IReadOnlyDictionary<string, string> sample)
-    {
-        var inProgress = string.Equals(
-            sample.GetValueOrDefault("combat.outcome"), "in_progress", StringComparison.Ordinal);
-        return new SortedDictionary<string, string>(
-            sample
-                .Where(field => inProgress || !field.Key.StartsWith("combat.", StringComparison.Ordinal))
-                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
-            StringComparer.Ordinal);
-    }
-
-    /// <summary>What a save-representable digest begins with, so no reader can take
-    /// one for a complete digest.</summary>
-    public const string SaveRepresentableDigestPrefix = "sha256-sr:";
-
-    /// <summary>
-    /// The digest of everything in a complete canonical state the game's own save
-    /// can carry: the same filter as <see cref="SaveRepresentable"/>, over every
-    /// projected field rather than the sampled ones, rendered and hashed the way
-    /// <see cref="CanonicalState"/> renders and hashes.
-    ///
-    /// A sample cannot see a random stream's position or the draw order, so two
-    /// readings whose samples agree can still be two moments - an event page turned,
-    /// a stream consumed - and a resume that compared samples alone would read the
-    /// game's rollback of the page as nothing having happened. This is what a
-    /// recorder writes beside each decision so the resume after it can ask the exact
-    /// question: the same state, but for a finished fight's residue.
-    /// </summary>
-    public static string SaveRepresentableDigest(IReadOnlyDictionary<string, string> fields)
-    {
-        var rendering = new System.Text.StringBuilder();
-        foreach (var (key, value) in SaveRepresentable(fields))
-        {
-            rendering.Append(key).Append('=').Append(value).Append('\n');
-        }
-
-        var bytes = System.Text.Encoding.UTF8.GetBytes(rendering.ToString());
-        return SaveRepresentableDigestPrefix +
-               Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
-    }
-
-    /// <summary>
-    /// Whether a sample carries a finished fight: a combat outcome that is neither a
-    /// fight in progress nor the projection's "none" for a run with no combat state
-    /// at all. This is the residue <see cref="SaveRepresentable"/> takes away.
-    /// </summary>
-    public static bool CarriesFinishedCombat(IReadOnlyDictionary<string, string> sample) =>
-        sample.TryGetValue("combat.outcome", out var outcome) &&
-        !string.Equals(outcome, "in_progress", StringComparison.Ordinal) &&
-        !string.Equals(outcome, "none", StringComparison.Ordinal);
-
-    /// <summary>
     /// The fields in which two samples differ, one line each as
     /// <c>field: left -> right</c>, ordered by field; an absent field reads as
     /// <c>absent</c>. For a log line or a failure message, never for a comparison.
@@ -170,13 +119,16 @@ public sealed record ReplayTrace
                 $"{(right.TryGetValue(field, out var r) ? r : "absent")}")
             .ToList();
 
-    /// <summary>Whether two samples carry the same fields with the same values.</summary>
+    /// <summary>Whether two samples read the same state: the same fields with the
+    /// same values, over the fields two hosts have to agree on.</summary>
     public static bool SameSample(
-        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>
-        left.Count == right.Count &&
-        left.All(field =>
-            right.TryGetValue(field.Key, out var value) &&
-            string.Equals(field.Value, value, StringComparison.Ordinal));
+        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
+    {
+        var held = left.Keys.Union(right.Keys, StringComparer.Ordinal).Where(HeldToTheDigest);
+        return held.All(field =>
+            left.TryGetValue(field, out var l) && right.TryGetValue(field, out var r) &&
+            string.Equals(l, r, StringComparison.Ordinal));
+    }
 
     [JsonPropertyName("steps")]
     public required IReadOnlyList<ReplayStep> Steps { get; init; }

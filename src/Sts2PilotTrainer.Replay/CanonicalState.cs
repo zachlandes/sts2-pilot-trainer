@@ -18,10 +18,31 @@ namespace Sts2PilotTrainer.Replay;
 public sealed class CanonicalState
 {
     private readonly SortedDictionary<string, string> _fields;
+    private readonly IReadOnlySet<string> _outsideTheDigest;
 
-    private CanonicalState(SortedDictionary<string, string> fields) => _fields = fields;
+    private CanonicalState(SortedDictionary<string, string> fields, IReadOnlySet<string> outsideTheDigest)
+    {
+        _fields = fields;
+        _outsideTheDigest = outsideTheDigest;
+    }
 
+    /// <summary>Every projected field, the ones the digest leaves out included.</summary>
     public IReadOnlyDictionary<string, string> Fields => _fields;
+
+    /// <summary>
+    /// The fields a trace samples and the digest does not hash.
+    ///
+    /// A digest identifies a state two hosts have to agree on, and a reading of a
+    /// finished fight is not one: the game's own save carries no combat, so a run
+    /// continued from a save and the run that was never quit differ in it. A trace is
+    /// not compared that way - it is read to say what a fight's steps did - and one
+    /// reading of a finished fight is needed there: which side's turn the fight ended
+    /// in, without which the step that ended it cannot say whether the enemy it left
+    /// behind was killed or fled. The projection names such a field through
+    /// <see cref="Builder.AddOutsideTheDigest"/>, and it is this set that keeps the
+    /// rendering the digest hashes exactly what the digest means.
+    /// </summary>
+    public IReadOnlySet<string> OutsideTheDigest => _outsideTheDigest;
 
     /// <summary>
     /// State that is deliberately never part of the canonical form, and why.
@@ -61,6 +82,16 @@ public sealed class CanonicalState
             "Animation progress, tween state, sound cues, UI focus, camera.",
             "The headless host has no presentation layer at all, so including any of " +
             "this would compare nothing against nothing and look like agreement."),
+
+        new("finished_fight",
+            "A fight that has ended: its last turn, energy, empty piles, encounter and " +
+            "enemy roster, which the engine keeps on the player until the next fight.",
+            "The game's own save carries no combat, so a run continued from a save stands " +
+            "at the same place with a fresh combat state or none where the run that was " +
+            "never quit carries the fight as it was fought - the same run, and a " +
+            "different digest at every shop, rest, event and loot screen after a fight. " +
+            "Outside a live fight the canonical form carries only that none is live and, " +
+            "off the room the run stands in, how the last one ended."),
     ];
 
     public static Builder Build() => new();
@@ -86,6 +117,7 @@ public sealed class CanonicalState
         var sb = new StringBuilder();
         foreach (var (key, value) in _fields)
         {
+            if (_outsideTheDigest.Contains(key)) continue;
             sb.Append(key).Append('=').Append(value).Append('\n');
         }
         return sb.ToString();
@@ -121,9 +153,31 @@ public sealed class CanonicalState
     /// </summary>
     public const char SequenceSeparator = '|';
 
+    /// <summary>
+    /// The manifest format that introduced the canonical form this build projects.
+    ///
+    /// A digest is a hash of the whole projected state, so it means what the
+    /// projection meant when it was taken; every boundary digest names this in
+    /// <see cref="ReplayBoundary.Projection"/> so a reader can tell one this build can
+    /// reproduce from one an older projection produced. Moved with the projection and
+    /// never with the manifest format alone: format 7 changed what a finished fight
+    /// contributes, so that is where the current form began.
+    /// </summary>
+    public const int Projection = 7;
+
     public sealed class Builder
     {
         private readonly SortedDictionary<string, string> _fields = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _outsideTheDigest = new(StringComparer.Ordinal);
+
+        /// <summary>Adds a field a trace samples and the digest leaves out; see
+        /// <see cref="CanonicalState.OutsideTheDigest"/> for what qualifies.</summary>
+        public Builder AddOutsideTheDigest(string field, string value)
+        {
+            Add(field, value);
+            _outsideTheDigest.Add(field);
+            return this;
+        }
 
         /// <summary>Adds one allowlisted field. Adding the same field twice is a bug in
         /// the projection, not a last-write-wins convenience, so it throws.</summary>
@@ -147,7 +201,7 @@ public sealed class CanonicalState
         public Builder AddSequence(string field, IEnumerable<string> values) =>
             Add(field, string.Join(SequenceSeparator, values));
 
-        public CanonicalState ToState() => new(_fields);
+        public CanonicalState ToState() => new(_fields, _outsideTheDigest);
     }
 
     public sealed record ExcludedField(string Category, string What, string Why);

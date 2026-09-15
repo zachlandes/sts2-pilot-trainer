@@ -1,5 +1,5 @@
 {
-  "manifest_version": 6,
+  "manifest_version": 7,
   "run_id": "native-9F8CY60C5BK7-20260906-005737",
   "environment": {
     "build_version": {
@@ -3572,72 +3572,8 @@
       "after_seq": 28,
       "kind": "floor_entry",
       "expect": {
-        "combat.block": {
-          "Value": "0",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.enemy_count": {
-          "Value": "0",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.energy": {
-          "Value": "2",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.hand": {
-          "Value": "",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
         "combat.in_progress": {
           "Value": "false",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.outcome": {
-          "Value": "victory",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.player_hp": {
-          "Value": "54",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.player_powers": {
-          "Value": "",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.turn": {
-          "Value": "4",
           "Source": "Captured",
           "Evidence": {
             "action_ordinal": 28,
@@ -6354,7 +6290,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6367,7 +6304,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6381,7 +6319,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6395,7 +6334,8 @@
           "action_ordinal": 5,
           "run_clock_ms": 116000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6409,7 +6349,8 @@
           "action_ordinal": 8,
           "run_clock_ms": 149000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -6422,7 +6363,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6435,7 +6377,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6449,7 +6392,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6463,7 +6407,8 @@
           "action_ordinal": 18,
           "run_clock_ms": 266000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6477,7 +6422,8 @@
           "action_ordinal": 21,
           "run_clock_ms": 297000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6491,20 +6437,18 @@
           "action_ordinal": 24,
           "run_clock_ms": 362000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
       "after_seq": 28,
       "floor": 4,
       "digest": {
-        "Value": "sha256:dd0eebd906b01e7e96a897f30a7f25935e505b109fa50fc55ad1c2f2cb407336",
-        "Source": "Captured",
-        "Evidence": {
-          "action_ordinal": 28,
-          "run_clock_ms": 435000
-        }
-      }
+        "Value": "sha256:1a62071ea5b7dac6e84f455e36b278697869dba174b8f29b26d6edbeae1b1d9a",
+        "Source": "Engine"
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -6517,7 +6461,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6530,7 +6475,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6544,7 +6490,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6558,7 +6505,8 @@
           "action_ordinal": 35,
           "run_clock_ms": 630000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6572,7 +6520,8 @@
           "action_ordinal": 39,
           "run_clock_ms": 664000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6586,7 +6535,8 @@
           "action_ordinal": 42,
           "run_clock_ms": 697000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6599,7 +6549,8 @@
           "action_ordinal": 46,
           "run_clock_ms": 759000
         }
-      }
+      },
+      "projection": 7
     }
   ]
 }

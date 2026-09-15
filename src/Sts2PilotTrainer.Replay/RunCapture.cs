@@ -23,18 +23,12 @@ public enum RunCaptureState
 }
 
 /// <summary>
-/// One reading of the run: the sampled canonical state and the complete digest of
+/// One reading of the run: the projected canonical fields and the complete digest of
 /// the same instant. Handed over as a pair because the two answer different
 /// questions about one moment, and a sample paired with another moment's digest
 /// would be a reading nobody took.
 /// </summary>
-/// <summary>
-/// One reading of the run: the projected fields, their complete digest, and the
-/// digest of what a save can carry of them - the last optional, for a host that has
-/// only the first two.
-/// </summary>
-public sealed record StateReading(
-    IReadOnlyDictionary<string, string> State, string Digest, string? SaveRepresentableDigest = null);
+public sealed record StateReading(IReadOnlyDictionary<string, string> State, string Digest);
 
 /// <summary>
 /// A run somebody is playing, recorded decision by decision into a native manifest.
@@ -219,12 +213,6 @@ public sealed class RunCapture
     /// journal holds them. See <see cref="MarkSavePoint"/>.</summary>
     public IReadOnlyList<JournalSavePoint> SavePoints => _savePoints;
 
-    /// <summary>Whether this recording's journal promises every save the game asked
-    /// for is on the file, which is the schema it was opened under: a recording
-    /// begun by this build does, and one resumed from a journal an earlier build
-    /// opened keeps that build's promise and that build's rollback rule.</summary>
-    public bool RecordsSavePoints => string.Equals(_schemaId, RunJournal.Schema, StringComparison.Ordinal);
-
     /// <summary>The rollback line a caller must append while attaching, if any.</summary>
     public string? ResumptionRecord { get; private set; }
 
@@ -346,7 +334,6 @@ public sealed class RunCapture
             Verb = RunStartVerb,
             State = sample,
             Digest = start.Digest,
-            SaveRepresentableDigest = start.SaveRepresentableDigest,
             RunClockMs = start.RunClockMs,
         };
 
@@ -359,38 +346,32 @@ public sealed class RunCapture
     /// <summary>
     /// Picks a run back up from the journal a previous session left behind.
     ///
-    /// The game saves a run when a room is entered, so a session continued from the
-    /// game's own save resumes at the last such point. Whether that is where this
-    /// recorder stopped watching is the question: the journal's last entry carries the
-    /// complete state digest of the moment it was written, and the live game carries
-    /// the digest of the moment it resumed into. Equal means nothing happened in
-    /// between that the recorder missed. Equal in everything the game's own save can
-    /// carry means the same: a finished fight's residue stays on the run until the
-    /// next fight and no save carries it, so a reading taken at a shop, a rest site,
-    /// an event or a loot screen after a fight can never match the restored run
-    /// digest for digest, and <see cref="ReplayTrace.SaveRepresentable"/> is what is
-    /// compared once the complete digests have disagreed - the complete digest is
-    /// still asked first, and still what a boundary is identified by. A return to
-    /// the state the game's latest save holds is the game's own return to that save,
-    /// so the decisions made after it are marked discarded and the replayable history
-    /// resumes there: a quit on the loot screen, in a shop, at a rest site or on an
-    /// event page comes back to the last of those saves with what was done since
-    /// re-offered, and that is the game working as designed rather than a hole in
-    /// the watch. A return to any other decision the journal holds is a reload of an
-    /// older save that rewound the run, handled the same way and marked rewound.
-    /// Anything else is marked broken rather than repaired.
+    /// The game saves a run at every map-point arrival, every fight won and every
+    /// ancient event finished, and a session continued from a save resumes at the
+    /// last of them. Whether that is where this recorder stopped watching is the
+    /// question: the journal's last entry carries the complete state digest of the
+    /// moment it was written, and the live game carries the digest of the moment it
+    /// resumed into. Equal means nothing happened in between that the recorder
+    /// missed. The one entry matched through a different reading is the decision
+    /// that won a fight, whose restored loot screen is the state the next decision
+    /// began from rather than the state the killing play settled into - see
+    /// <see cref="MatchesTheRestoredLootScreen"/>. A return to the state the game's
+    /// latest save holds is the game's own return to that save, so the decisions
+    /// made after it are marked discarded and the replayable history resumes there:
+    /// a quit on the loot screen, in a shop, at a rest site or on an event page
+    /// comes back to the last of those saves with what was done since re-offered,
+    /// and that is the game working as designed rather than a hole in the watch. A
+    /// return to any other decision the journal holds is a reload of an older save
+    /// that rewound the run, handled the same way and marked rewound. Anything else
+    /// is marked broken rather than repaired.
     /// </summary>
     /// <param name="journal">What the previous session wrote.</param>
     /// <param name="liveSample">The sampled canonical state of the run the game has
     /// just resumed into, read at the same instant as <paramref name="liveDigest"/>.</param>
     /// <param name="liveDigest">The complete canonical state digest of the run the
     /// game has just resumed into.</param>
-    /// <param name="liveSaveRepresentableDigest">The digest of what a save can carry
-    /// of that same reading, where the host computes one; the residue comparison is
-    /// exact where both sides carry it and as wide as a sample where either does not.</param>
     public static RunCapture Resume(
-        RunJournal journal, IReadOnlyDictionary<string, string> liveSample, string liveDigest,
-        string? liveSaveRepresentableDigest = null)
+        RunJournal journal, IReadOnlyDictionary<string, string> liveSample, string liveDigest)
     {
         journal.RequireReadable();
         Require(
@@ -401,7 +382,7 @@ public sealed class RunCapture
         {
             throw new ManifestException(
                 "Continuing a recording needs the sampled state of the run the game resumed into, read at the " +
-                "same instant as its digest, or a finished fight's residue would refuse every honest Continue.");
+                "same instant as its digest, or a quit on the loot screen could never be placed.");
         }
 
         var start = new RunRecordingStart
@@ -411,7 +392,6 @@ public sealed class RunCapture
             Identity = journal.Identity,
             State = journal.Opening.State,
             Digest = journal.Opening.Digest,
-            SaveRepresentableDigest = journal.Opening.SaveRepresentableDigest,
             RunClockMs = journal.Opening.RunClockMs,
         };
 
@@ -451,17 +431,15 @@ public sealed class RunCapture
         var entries = capture.Journal.Entries;
         var last = entries[^1];
         if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal) &&
-            !SameButForWhatNoSaveCarries(last, null, liveSample, liveSaveRepresentableDigest))
+            !MatchesTheRestoredLootScreen(last, null, liveSample, liveDigest))
         {
-            // The complete digest first; only where no entry carries it, the part of
-            // each entry's reading a save can carry, so a finished fight's residue in
-            // the journal cannot hide the entry the game came back to.
+            // The complete digest first; only where no entry carries it, the one
+            // reading a fight-won save comes back at.
             var rolledBackTo = entries
                 .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal))
                 ?? entries
                     .Select((entry, index) => (Entry: entry, Next: index + 1 < entries.Count ? entries[index + 1] : null))
-                    .LastOrDefault(pair =>
-                        SameButForWhatNoSaveCarries(pair.Entry, pair.Next, liveSample, liveSaveRepresentableDigest))
+                    .LastOrDefault(pair => MatchesTheRestoredLootScreen(pair.Entry, pair.Next, liveSample, liveDigest))
                     .Entry;
             if (rolledBackTo is not null && capture.IsTheGamesOwnRollback(rolledBackTo))
             {
@@ -522,55 +500,31 @@ public sealed class RunCapture
     }
 
     /// <summary>
-    /// Whether an entry's reading and the live one agree in everything the game's
-    /// own save carries, and disagree only because one of them carries what it
-    /// cannot. See <see cref="ReplayTrace.SaveRepresentable"/>.
+    /// Whether the live run is the loot screen the game restored from the fight-won
+    /// save this entry took.
     ///
-    /// Asked only where there was residue to take away, which is what keeps this
-    /// from accepting too much: two readings that agree in what a save carries while
-    /// their complete digests do not, with no residue on either side, differ in
-    /// something else, and that is a moment the journal never saw. Where both sides
-    /// carry a save-representable digest the question is exact - every projected
-    /// field but the residue, a random stream's position and the draw order
-    /// included, so an event page the game rolled back cannot pass as nothing
-    /// having happened. Where either side is a reading an earlier recorder took, the
-    /// sample is all there is to compare, and it is compared.
-    ///
-    /// The decision that won a fight is the one moment the exact question has to be
-    /// asked of a different reading. The retail client rolls the rewards on its own
-    /// clock, after the engine has settled and the fight-won save has been taken,
-    /// and the game's restore of that save rolls them again as it re-enters the
-    /// room: so the run comes back at the state the <em>next</em> decision began
-    /// from - the claim, the skip - and never at the state the killing play settled
-    /// into. That entry is matched through its successor's before-reading where it
-    /// has one, and, where the player quit before deciding anything on the loot
-    /// screen, through the sample, which is everything the journal holds of that
-    /// moment. Headlessly the rewards are rolled before the engine settles and the
-    /// killing play's own reading matches as well.
+    /// The decision that won a fight is the one entry the complete digest cannot
+    /// place. The retail client rolls the rewards on its own clock, after the engine
+    /// has settled and the fight-won save has been taken, and the game's restore of
+    /// that save rolls them again as it re-enters the room: so the run comes back at
+    /// the state the <em>next</em> decision began from - the claim, the skip - and
+    /// never at the state the killing play settled into. That entry is matched
+    /// through its successor's before-digest where it has one, exact to the draw
+    /// order and every random stream, and, where the player quit before deciding
+    /// anything on the loot screen, through the sample, which is everything the
+    /// journal holds of that moment. Asked of no other entry, which is what keeps
+    /// this from accepting too much. Headlessly the rewards are rolled before the
+    /// engine settles and the killing play's own digest matches as well.
     /// </summary>
-    private static bool SameButForWhatNoSaveCarries(
+    private static bool MatchesTheRestoredLootScreen(
         RunJournalEntry entry, RunJournalEntry? next, IReadOnlyDictionary<string, string> liveSample,
-        string? liveSaveRepresentableDigest)
+        string liveDigest)
     {
-        if (!ReplayTrace.CarriesFinishedCombat(entry.State) && !ReplayTrace.CarriesFinishedCombat(liveSample))
-        {
-            return false;
-        }
-
-        var sameSample = ReplayTrace.SameSample(
-            ReplayTrace.SaveRepresentable(entry.State),
-            ReplayTrace.SaveRepresentable(liveSample));
-        if (entry.SaveRepresentableDigest is not { } recorded || liveSaveRepresentableDigest is not { } live)
-        {
-            return sameSample;
-        }
-
-        if (string.Equals(recorded, live, StringComparison.Ordinal)) return true;
         if (!EndedAFight(entry)) return false;
 
-        return next is { BeforeSaveRepresentableDigest: { } rolled }
-            ? string.Equals(rolled, live, StringComparison.Ordinal)
-            : sameSample;
+        return next is { BeforeDigest: { } rolled }
+            ? string.Equals(rolled, liveDigest, StringComparison.Ordinal)
+            : ReplayTrace.SameSample(entry.State, liveSample);
     }
 
     /// <summary>Whether a decision began inside a fight and settled with it over:
@@ -581,29 +535,20 @@ public sealed class RunCapture
     /// <summary>
     /// Whether a return to <paramref name="target"/> is the game's own rollback: its
     /// restore of the latest save it took, which is the one the Continue button
-    /// reads. Where this journal records save points that is the decision the last
-    /// of them named, or the opening reading where none has landed; a journal from
-    /// before save points were recorded can recognise only the shape its recorder
-    /// could, a live fight's return to its room entry.
+    /// reads - the decision the last recorded save point named, or the opening
+    /// reading where none has landed.
     /// </summary>
-    private bool IsTheGamesOwnRollback(RunJournalEntry target)
-    {
-        if (!_entries.Any(entry => entry.Seq > target.Seq)) return false;
-        return RecordsSavePoints
-            ? target.Seq == LatestSavePointSeq
-            : RunJournal.IsTheReturnOfALiveFightToItsRoomEntry(_entries, target.Seq);
-    }
+    private bool IsTheGamesOwnRollback(RunJournalEntry target) =>
+        _entries.Any(entry => entry.Seq > target.Seq) && target.Seq == LatestSavePointSeq;
 
     /// <summary>The seq of the latest save on the continued history, or -1 for the
     /// run-start save. See <see cref="RunJournal.LatestSavePointSeq"/>.</summary>
     public int LatestSavePointSeq => _savePoints.Count == 0 ? -1 : _savePoints.Max(point => point.AfterSeq);
 
     private string LatestSaveDescription() =>
-        !RecordsSavePoints
-            ? "the room entry of the fight the recording holds open"
-            : LatestSavePointSeq == -1
-                ? "the run-start save"
-                : $"after decision {LatestSavePointSeq.ToString(CultureInfo.InvariantCulture)}";
+        LatestSavePointSeq == -1
+            ? "the run-start save"
+            : $"after decision {LatestSavePointSeq.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// The game saved the run, and the save holds the state after the decision
@@ -616,18 +561,14 @@ public sealed class RunCapture
     /// save was asked inside a decision the engine was still making - the map move
     /// that saved on arrival, the card play that ended the fight - or after the last
     /// one settled.
-    ///
-    /// Written only into a journal that promises save points complete; a recording
-    /// resumed from an older journal keeps that journal's rule and takes no line, so
-    /// the file stays what its schema says it is.
     /// </summary>
-    /// <returns>The journal line to append, or null where this recording writes
-    /// none.</returns>
+    /// <returns>The journal line to append, or null where this recording is finished
+    /// or stopped and writes none.</returns>
     /// <exception cref="ManifestException">When the decision named is not one this
     /// history holds.</exception>
     public string? MarkSavePoint(int afterSeq)
     {
-        if (!RecordsSavePoints || State == RunCaptureState.Finished || _stop is not null) return null;
+        if (State == RunCaptureState.Finished || _stop is not null) return null;
         if (afterSeq < -1 || afterSeq >= NextSeq)
         {
             throw new ManifestException(
@@ -670,7 +611,6 @@ public sealed class RunCapture
                 Identity = Identity,
                 State = Opening.State,
                 Digest = Opening.Digest,
-                SaveRepresentableDigest = Opening.SaveRepresentableDigest,
                 RunClockMs = Opening.RunClockMs,
             },
             WitnessedRunStart,
@@ -802,10 +742,8 @@ public sealed class RunCapture
             Args = Sorted(args),
             Before = ReplayTrace.Sample(before.State),
             BeforeDigest = before.Digest,
-            BeforeSaveRepresentableDigest = before.SaveRepresentableDigest,
             State = ReplayTrace.Sample(after.State),
             Digest = after.Digest,
-            SaveRepresentableDigest = after.SaveRepresentableDigest,
             RunClockMs = runClockMs,
         };
 
@@ -1069,15 +1007,12 @@ public sealed class RunCapture
     }
 
     /// <summary>Where the game saved, as captured facts, in history order; an empty
-    /// list where it saved only at run start, and none where this recording's
-    /// journal made no promise about them.</summary>
-    private IReadOnlyList<SavePoint>? SavePointFacts() =>
-        !RecordsSavePoints
-            ? null
-            : _savePoints
-                .OrderBy(point => point.AfterSeq)
-                .Select(SavePointFact)
-                .ToList();
+    /// list where it saved only at run start.</summary>
+    private IReadOnlyList<SavePoint> SavePointFacts() =>
+        _savePoints
+            .OrderBy(point => point.AfterSeq)
+            .Select(SavePointFact)
+            .ToList();
 
     private static SavePoint SavePointFact(JournalSavePoint point) => new()
     {
@@ -1369,10 +1304,6 @@ public sealed record RunRecordingStart
 
     /// <summary>The complete canonical state digest at that same moment.</summary>
     public required string Digest { get; init; }
-
-    /// <summary>The digest of what a save can carry of that same reading, where the
-    /// host computes one. See <see cref="ReplayTrace.SaveRepresentableDigest"/>.</summary>
-    public string? SaveRepresentableDigest { get; init; }
 
     public int? RunClockMs { get; init; }
 }

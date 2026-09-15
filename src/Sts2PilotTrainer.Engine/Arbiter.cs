@@ -30,14 +30,11 @@ public static class Arbiter
     /// moment, whichever room it was taken in - and the branch's final state has to
     /// be what the engine produces from it. Both are compared as samples, the way
     /// every reproduction here is; a floor arrival's complete digest is held by the
-    /// validator against the verified boundary there.
-    ///
-    /// Where either side carries a finished fight, the comparison is of what a save
-    /// carries - <see cref="ReplayTrace.SaveRepresentable"/> - for the reason the
-    /// recorder's resume compares that way: a branch played after a Continue was
-    /// recorded on a run the game restored, and a restored run carries none of the
-    /// last fight's residue, or a fresh one in its place, where the engine carries
-    /// the fight as it was fought. The residue is not what a branch is evidence of.
+    /// validator against the verified boundary there. A branch played after a
+    /// Continue was recorded on a run the game restored, which carries none of the
+    /// last fight or a fresh combat state in its place where the engine carries the
+    /// fight as it was fought; the projection carries nothing of a fight outside a
+    /// live one, so the two read the same and the comparison is exact.
     /// </summary>
     public static ArbiterOutcome RunDiscardedBranch(
         ReplayManifest manifest, int branchIndex, PlayerProgress? progress = null)
@@ -50,7 +47,7 @@ public static class Arbiter
 
         var branch = DiscardedBranchAt(manifest, branchIndex);
         var outcome = RunCore(DiscardedBranchManifest(manifest, branch), null, progress, null, null, validate: false);
-        return JudgeDiscardedBranch(branch, outcome);
+        return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
     /// <summary>The same, on a run a caller has already started and stood past the
@@ -60,7 +57,7 @@ public static class Arbiter
     {
         var branch = DiscardedBranchAt(manifest, branchIndex);
         var outcome = ReplayStartedRun(session, DiscardedBranchManifest(manifest, branch), preflight, null, null);
-        return JudgeDiscardedBranch(branch, outcome);
+        return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
     private static DiscardedBranch DiscardedBranchAt(ReplayManifest manifest, int branchIndex)
@@ -93,15 +90,22 @@ public static class Arbiter
             Verification = null,
         };
 
-    private static ArbiterOutcome JudgeDiscardedBranch(DiscardedBranch branch, ArbiterOutcome outcome)
+    private static ArbiterOutcome JudgeDiscardedBranch(
+        ReplayManifest manifest, DiscardedBranch branch, ArbiterOutcome outcome)
     {
+        // A branch a format-6 recorder captured carries the finished fight in every
+        // reading taken outside a live one, which this projection never produces; a
+        // reading taken inside a fight is the same projection then as now, and every
+        // reading is held exactly on everything else, which is everything a branch is
+        // evidence of.
+        var residue = manifest.WrittenIn < FinishedFightResidue.FirstFormatWithout;
         var diagnostics = new List<string>();
         var capturedOrigin = branch.Trace.Steps.SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
         var replayedOrigin = outcome.Report.Trace?.Steps
             .SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
         var originDifferences = capturedOrigin is null
             ? ["the branch carries no reading of the state it left from"]
-            : ExactSampleDifferences(capturedOrigin, replayedOrigin);
+            : ExactSampleDifferences(capturedOrigin, replayedOrigin, residue);
         if (originDifferences.Count > 0)
         {
             diagnostics.Add(
@@ -113,7 +117,7 @@ public static class Arbiter
         var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
         var replayedFinalState = outcome.Report.Trace?.Steps
             .SingleOrDefault(step => step.Seq == finalAction.Seq)?.After;
-        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState);
+        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState, residue);
         if (differences.Count > 0)
         {
             diagnostics.Add($"discarded branch final state differs: {string.Join(", ", differences)}");
@@ -132,18 +136,16 @@ public static class Arbiter
     }
 
     private static IReadOnlyList<string> ExactSampleDifferences(
-        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
+        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual,
+        bool ignoreFinishedFightResidue)
     {
         if (actual is null) return ["the replay produced no final sample"];
 
-        if (ReplayTrace.CarriesFinishedCombat(expected) || ReplayTrace.CarriesFinishedCombat(actual))
-        {
-            expected = ReplayTrace.SaveRepresentable(expected);
-            actual = ReplayTrace.SaveRepresentable(actual);
-        }
-
+        var residue = ignoreFinishedFightResidue && FinishedFightResidue.TakenOutsideALiveFight(expected);
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)
+            .Where(ReplayTrace.HeldToTheDigest)
+            .Where(field => !residue || !FinishedFightResidue.IsResidueField(field))
             .OrderBy(field => field, StringComparer.Ordinal)
             .Where(field => !expected.TryGetValue(field, out var expectedValue) ||
                             !actual.TryGetValue(field, out var actualValue) ||

@@ -26,7 +26,12 @@ internal static partial class Commands
     /// With it, the run is replayed through the real engine and every boundary the
     /// history passes is written in with the digest that replay produced. Still a
     /// moment a person chose, and still not a reader: it needs the game, it takes
-    /// minutes, and it rewrites somebody's evidence.
+    /// minutes, and it rewrites somebody's evidence. It is also the one repair for a
+    /// boundary a format-6 recorder captured with a finished fight in it, which
+    /// <see cref="FinishedFightResidue"/> names off the boundary's own projection:
+    /// those are re-derived rather than held to a digest this projection never
+    /// produces, whether the file reaches this command as the format-6 file it was
+    /// or as one this command already rewrote without replaying.
     /// </summary>
     internal static int MigrateManifest(string[] args)
     {
@@ -107,6 +112,7 @@ internal static partial class Commands
                 "actually reached.\n" + string.Join("\n", report.Diagnostics.Select(line => "  - " + line)));
         }
 
+        var predating = new List<ReplayBoundary>();
         foreach (var declared in manifest.Boundaries)
         {
             var derived = Matching(report.Boundaries, declared);
@@ -116,6 +122,17 @@ internal static partial class Commands
                 throw new EngineException(
                     $"This manifest declares {declared.Describe()} and replaying it here reaches no such " +
                     "boundary. Rewriting the list would delete a claim rather than check it.");
+            }
+
+            // A digest captured under a projection that carried a finished fight is a
+            // claim in the older unit: this build cannot reproduce it and its
+            // disagreeing says nothing about the run. It is re-derived, at the action
+            // it was declared at, from the replay that just verified everything else
+            // the recording holds - and only that class of boundary is.
+            if (derived.AfterSeq == declared.AfterSeq && FinishedFightResidue.PredatesThisProjection(manifest, declared))
+            {
+                predating.Add(declared);
+                continue;
             }
 
             if (derived.Digest.Value != declared.Digest.Value || derived.AfterSeq != declared.AfterSeq)
@@ -136,20 +153,55 @@ internal static partial class Commands
         // agree about the digest and say different things about where it came from: a
         // digest captured from a live game names the coordinates somebody would
         // re-check it by, and a derived one is stamped Engine and carries none. Only a
-        // boundary this manifest did not have is taken from the replay.
+        // boundary this manifest did not have is taken from the replay. Every one of
+        // them is now a claim in this projection - the replay reproduced the kept ones
+        // under it - so a later disagreement at any of them is the finding again and
+        // not a digest to re-derive.
         var boundaries = report.Boundaries
-            .Select(derived => Matching(manifest.Boundaries, derived) ?? derived)
+            .Select(derived => Matching(manifest.Boundaries, derived) is { } declared && !predating.Contains(declared)
+                ? declared with { Projection = CanonicalState.Projection }
+                : derived)
             .ToList();
 
         Console.WriteLine(
             $"derived  : {report.Boundaries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
             $"boundaries from a verified replay");
+        foreach (var boundary in predating)
+        {
+            var moved = Matching(report.Boundaries, boundary)!.Digest.Value != boundary.Digest.Value;
+            Console.WriteLine(
+                $"rederived: {boundary.Describe()} was produced under format " +
+                $"{boundary.Projection.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
+                "which could carry the finished fight before it; " +
+                (moved ? "its digest is now the verified replay's" : "the verified replay reproduces it unchanged"));
+        }
+
+        // A branch that left from a re-derived arrival identified that arrival by the
+        // same older digest, and identifies it by the new one now, so the validator's
+        // cross-check between the two keeps meaning what it meant.
+        var rederived = predating.ToDictionary(
+            boundary => boundary.Digest.Value,
+            boundary => Matching(report.Boundaries, boundary)!.Digest.Value,
+            StringComparer.Ordinal);
+        var source = manifest.Source.Native is { Discarded: { } branches } native && rederived.Count > 0
+            ? manifest.Source with
+            {
+                Native = native with
+                {
+                    Discarded = branches
+                        .Select(branch => rederived.TryGetValue(branch.RollbackToDigest, out var digest)
+                            ? branch with { RollbackToDigest = digest }
+                            : branch)
+                        .ToList(),
+                },
+            }
+            : manifest.Source;
 
         // A floor entry with no arrival checkpoint is one the validator refuses and a
         // host aborts on, so the deriver writes the arrival beside every floor entry it
         // derives - through the same owner the validator re-derives through, rather
         // than a second copy of the rule.
-        return FloorArrival.WithArrivalCheckpoints(manifest with { Boundaries = boundaries });
+        return FloorArrival.WithArrivalCheckpoints(manifest with { Boundaries = boundaries, Source = source });
     }
 
     /// <summary>The boundary in a list naming the same place as this one, or null where

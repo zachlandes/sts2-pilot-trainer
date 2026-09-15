@@ -265,8 +265,9 @@ public sealed class RecorderContinueTests : IDisposable
 
     /// <summary>
     /// Arrive at a shop straight after a won fight, quit, continue: the recorder's
-    /// reading at the arrival carries the finished fight and the restored run does
-    /// not, and nothing else differs, so nothing happened that the recorder missed.
+    /// reading at the arrival carries nothing of the finished fight, and neither does
+    /// the restored run, so the two are the same state digest for digest and the
+    /// resume needs no comparison of what a save can carry to place it.
     /// </summary>
     [GameFact]
     public void AnHonestContinueAtAShopArrivalAfterAWonFightResumesContinuously()
@@ -306,7 +307,7 @@ public sealed class RecorderContinueTests : IDisposable
             Assert.Empty(capture.Refusals);
             lastDigest = capture.LastDigest;
             lastReading = capture.Trace.Steps[^1].After;
-            Assert.True(ReplayTrace.CarriesFinishedCombat(lastReading), "the arrival reading carries no finished fight");
+            Assert.Equal("none", lastReading["combat.outcome"]);
             runId = capture.RunId;
             seq = capture.NextSeq;
 
@@ -322,12 +323,13 @@ public sealed class RecorderContinueTests : IDisposable
         continued.RestoreSavedRun(arrival.Json);
         Pump.Drain();
 
+        // The restored run is the recorded state, digest for digest: the game's
+        // save carries no combat and the projection now carries none of a finished
+        // one, so there is nothing left to differ in.
         Assert.True(RunRecorder.HasEnteredItsRoom());
         var (live, liveDigest) = LiveRun.Read();
-        Assert.NotEqual(lastDigest, liveDigest);
-        Assert.False(ReplayTrace.CarriesFinishedCombat(live));
-        Assert.All(ReplayTrace.Differences(lastReading, live),
-            difference => Assert.StartsWith("combat.", difference, StringComparison.Ordinal));
+        Assert.Empty(ReplayTrace.Differences(lastReading, live));
+        Assert.Equal(lastDigest, liveDigest);
 
         Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
         var resumed = RunRecorder.Active!.Capture;
@@ -546,6 +548,66 @@ public sealed class RecorderContinueTests : IDisposable
 
         Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native!.Continuity);
         Assert.NotEmpty(manifest.Source.Native.SavePoints!);
+        lab.ReplayEveryBranch(manifest);
+    }
+
+    /// <summary>
+    /// A run continued outside a fight after a won one is publishable evidence: the
+    /// whole continued history reproduces through the engine at every checkpoint and
+    /// every declared boundary, and its discarded branch replays from the save it left.
+    ///
+    /// This is the captain's retail run headlessly: a fight won, the gold claimed,
+    /// Save and Quit on the map, Continue, the loot taken again, and the next floor
+    /// walked to without a fight on it. The game's fight-won save carries no combat,
+    /// so the restored client stands on the loot screen with a fresh
+    /// <c>PlayerCombatState</c> at turn 1, while the engine replaying the same history
+    /// carries the fight as it was fought. While the projection emitted that finished
+    /// fight into every reading until the next one, the arrival after the Continue
+    /// disagreed in exactly the residue fields - <c>combat.turn observed '1', engine
+    /// produced '2'</c> at the floor-3 entry, in the retail run of 2026-09-15 - and
+    /// nothing else. Outside a live fight the two hosts now project the same state, so
+    /// the arrival's checkpoint and boundary digest hold.
+    /// </summary>
+    [GameFact]
+    public void ARunContinuedOutsideAFightAfterAWonOneReproducesWholeAtEveryBoundary()
+    {
+        var lab = new Lab(this);
+        ReplayManifest manifest;
+        int killingPlay;
+        using (lab.Recording())
+        {
+            lab.Neow();
+            killingPlay = lab.WalkToTheFightBefore(MapPointType.Shop);
+            lab.TakeGoldAndSkipTheRest();
+
+            lab.QuitAndContinue(lab.Saves.Last());
+
+            var resumed = lab.Capture;
+            Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+            Assert.Equal(killingPlay, Assert.Single(resumed.Discarded).RollbackToSeq);
+
+            // The restored loot screen is the finished fight's, and no fight is live.
+            Assert.Equal("false", lab.Field("combat.in_progress"));
+
+            lab.TakeGoldAndSkipTheRest();
+            lab.MoveTo(MapPointType.Shop);
+            var arrival = lab.Capture.NextSeq - 1;
+            Assert.Equal("false", lab.Field("combat.in_progress"));
+            Assert.Equal("none", lab.Field("combat.outcome"));
+            Assert.Equal(arrival, lab.Capture.LatestSavePointSeq);
+
+            manifest = lab.Abandon();
+        }
+
+        var native = manifest.Source.Native!;
+        Assert.Equal(NativeSource.ContinuousContinuity, native.Continuity);
+        Assert.Equal(NativeSource.CompleteIntegrity, native.Integrity);
+        Assert.False(native.IsRewound);
+        Assert.Contains(manifest.Boundaries, boundary =>
+            boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq > killingPlay);
+
+        var replay = lab.ReplayTheWholeHistory(manifest);
+        Assert.True(CombatProjection.CoverageOf(replay.Trace!).IsCompletedFight);
         lab.ReplayEveryBranch(manifest);
     }
 
@@ -997,6 +1059,26 @@ public sealed class RecorderContinueTests : IDisposable
             }
         }
 
+        /// <summary>Walks the cheapest route to the nearest node of the given type
+        /// through ordinary fights only, playing every room on the way to its end
+        /// except the last one, a fight left won on its loot screen with nothing
+        /// claimed; returns the play that won it. The target node is not entered.</summary>
+        internal int WalkToTheFightBefore(MapPointType type)
+        {
+            var route = RouteTo(_session!, type);
+            Assert.True(route.Count >= 2 && route[^2].PointType == MapPointType.Monster,
+                "the route to that node does not end in an ordinary fight on this seed");
+            foreach (var node in route.Take(route.Count - 1))
+            {
+                Move(_driver!, _actions, _session!, node);
+                PlayToVictory();
+                if (node == route[^2]) return Capture.NextSeq - 1;
+                TakeGoldAndSkipTheRest();
+            }
+
+            throw new InvalidOperationException("unreachable");
+        }
+
         /// <summary>Walks into ? nodes until one resolves to an ordinary event room,
         /// playing every room on the way.</summary>
         internal void WalkToAnEvent()
@@ -1136,6 +1218,46 @@ public sealed class RecorderContinueTests : IDisposable
             var validation = ManifestValidator.Validate(manifest);
             Assert.True(validation.IsValid, validation.Describe());
             return manifest;
+        }
+
+        /// <summary>The continued history replayed through the engine from run start,
+        /// past the retail preflight a headless recording's own patch roster rightly
+        /// fails: every checkpoint the recorder wrote holds, and every boundary it
+        /// declares reproduces at its own coordinate with the digest it captured.</summary>
+        internal VerificationReport ReplayTheWholeHistory(ReplayManifest manifest)
+        {
+            if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+            var session = new GameSession();
+            session.StartRun(
+                manifest.Environment.Seed.Value, manifest.Environment.Character.Value,
+                manifest.Environment.Ascension.Value, manifest.Environment.GameMode.Value,
+                manifest.Environment.Acts.Value, RecordedFightEntry.SuppliedProgressFor(manifest));
+            try
+            {
+                var identity = Preflight.EvaluateStartedRun(manifest.Environment);
+                Assert.True(identity.Matches);
+                var outcome = Engine.Arbiter.ReplayStartedRun(session, manifest, identity, null, null);
+                Assert.True(
+                    outcome.Report.Status == VerificationStatus.Verified,
+                    $"{outcome.Report.Status}; {string.Join(" / ", outcome.Report.Diagnostics)}");
+
+                foreach (var declared in manifest.Boundaries)
+                {
+                    var derived = outcome.Report.Boundaries.SingleOrDefault(candidate =>
+                        candidate.Kind == declared.Kind && candidate.Fight == declared.Fight &&
+                        candidate.Floor == declared.Floor && candidate.Turn == declared.Turn);
+                    Assert.True(derived is not null, $"the replay did not reach {declared.Describe()}");
+                    Assert.True(
+                        declared.Digest.Value == derived!.Digest.Value,
+                        $"{declared.Describe()}: recorded {declared.Digest.Value}, replayed {derived.Digest.Value}");
+                }
+
+                return outcome.Report;
+            }
+            finally
+            {
+                if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            }
         }
 
         /// <summary>Every discarded branch replayed through the engine from the

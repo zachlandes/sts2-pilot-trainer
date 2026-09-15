@@ -207,7 +207,7 @@ public sealed record FightResultTurn(int Turn, FightResultTurnSide? Yours, Fight
 public sealed record FightResultTurnSide(
     IReadOnlyList<string> CardModelIds,
     IReadOnlyList<string> PotionModelIds,
-    int EnemyHealthLost,
+    int? EnemyHealthLost,
     int HealthLost)
 {
     /// <summary>

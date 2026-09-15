@@ -107,7 +107,7 @@ internal static partial class Commands
 
     private static string Describe(CombatTurn? turn) => turn is null
         ? "(this line's fight was already over)"
-        : $"enemy hp lost {turn.EnemyHealthLost,3}  player hp lost {turn.HealthLost,3}  " +
+        : $"enemy hp lost {turn.EnemyHealthLost?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "n/a",3}  player hp lost {turn.HealthLost,3}  " +
           $"consumables {(turn.ConsumablesUsed.Count == 0 ? "none" : string.Join(",", turn.ConsumablesUsed))}  " +
           $"actions {string.Join(" ", turn.Actions.Select(Describe))}";
 

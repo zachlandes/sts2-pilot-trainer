@@ -243,7 +243,7 @@ public sealed class RunCaptureTests
     public void AReturnToTheLatestSaveInAShopIsTheGamesOwnRollback()
     {
         var capture = AtTheShop();
-        var bought = new Dictionary<string, string>(ShopAfter(Won(3, hp: 58)), StringComparer.Ordinal)
+        var bought = new Dictionary<string, string>(Shop(3, hp: 58), StringComparer.Ordinal)
         {
             ["player.gold"] = "63",
         };
@@ -251,8 +251,7 @@ public sealed class RunCaptureTests
             ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
             bought, Digest(6));
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))), "sha256:" + new string('e', 64));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Shop(3, hp: 58), Digest(5));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Empty(resumed.Refusals);
@@ -285,8 +284,7 @@ public sealed class RunCaptureTests
     {
         var capture = AtTheShop();
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), Digest(4));
 
         Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
         Assert.Contains("latest save (after decision 5)", resumed.Refusal!, StringComparison.Ordinal);
@@ -348,40 +346,29 @@ public sealed class RunCaptureTests
         Assert.True(validation.IsValid, validation.Describe());
     }
 
-    /// <summary>A journal written before save points were recorded made no promise
-    /// about them, so it keeps the rule it was written under: a live fight's return
-    /// to its room entry is the game's own, and everything else is a reload. It takes
-    /// no save-point line and its manifest lists none.</summary>
-    [Fact]
-    public void AnOlderJournalKeepsTheFightOnlyRuleAndTakesNoSavePoints()
+    /// <summary>
+    /// A journal an earlier build wrote is refused on resume, whatever it holds.
+    ///
+    /// Every reading a version-4 journal took after a fight carried that fight until
+    /// the next one, and every complete digest on those lines hashes it; the
+    /// projection now carries nothing of a fight outside a live one. A recording
+    /// continued from such a journal would be two projections in one file, so the
+    /// resume path refuses it the way it always refused a schema it does not read,
+    /// and the run is simply not continued as a recording.
+    /// </summary>
+    [Theory]
+    [InlineData("sts2-pilot-trainer/run-journal/v4")]
+    [InlineData("sts2-pilot-trainer/run-journal/v3")]
+    [InlineData("sts2-pilot-trainer/run-journal/v2")]
+    [InlineData("sts2-pilot-trainer/run-journal/v1")]
+    public void AJournalAnEarlierBuildWroteIsRefusedOnResume(string schema)
     {
-        var capture = RunCapture.Begin(Start());
-        capture.Record(
-            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
-            Floor(1), Digest(0));
-        capture.Record(
-            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
-            InFight(2, turn: 1), Digest(1));
-        capture.Record(
-            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
-            InFight(2, turn: 1, enemyHp: 30), Digest(2));
-        var older = RunJournal.Parse(
-            capture.Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal));
-        Assert.False(older.RecordsSavePoints);
+        var text = Played().Journal.Render().Replace(RunJournal.Schema, schema, StringComparison.Ordinal);
 
-        var midFight = Resume(older, Digest(1));
-        Assert.Equal(NativeSource.ContinuousContinuity, midFight.Continuity);
-        Assert.False(midFight.RecordsSavePoints);
-        Assert.Null(midFight.MarkSavePoint(1));
-        Assert.Empty(midFight.SavePoints);
-        Assert.DoesNotContain("save_point", midFight.Journal.Render(), StringComparison.Ordinal);
+        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
 
-        var behindTheFight = Resume(older, Digest(0));
-        Assert.Equal(NativeSource.RewoundContinuity, behindTheFight.Continuity);
-        Assert.Contains("the room entry of the fight", behindTheFight.Refusal!, StringComparison.Ordinal);
-
-        midFight.Finish("abandoned");
-        Assert.Null(midFight.ToManifest().Source.Native!.SavePoints);
+        Assert.Contains($"declares schema '{schema}'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(RunJournal.Schema, refusal.Message, StringComparison.Ordinal);
     }
 
     /// <summary>The save-point line survives a quit and comes back where it was; a
@@ -395,7 +382,7 @@ public sealed class RunCaptureTests
         Assert.Equal([0, 1, 4, 5], read.SavePoints.Select(point => point.AfterSeq));
         Assert.Equal(812_340, read.SavePoints[2].RunClockMs);
 
-        var rewound = RunCapture.Resume(read, Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+        var rewound = RunCapture.Resume(read, Won(2, hp: 58), Digest(4));
         Assert.Equal([0, 1, 4], rewound.SavePoints.Select(point => point.AfterSeq));
 
         var again = RunJournal.Parse(rewound.Journal.Render());
@@ -519,7 +506,7 @@ public sealed class RunCaptureTests
     public void AReloadBehindAnEarlierOwnRollbackLeavesARewoundRecordingTheValidatorTakes()
     {
         var capture = AtTheShop();
-        var bought = new Dictionary<string, string>(ShopAfter(Won(3, hp: 58)), StringComparer.Ordinal)
+        var bought = new Dictionary<string, string>(Shop(3, hp: 58), StringComparer.Ordinal)
         {
             ["player.gold"] = "63",
         };
@@ -527,8 +514,7 @@ public sealed class RunCaptureTests
             ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
             bought, Digest(6));
 
-        var continued = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))), "sha256:" + new string('e', 64));
+        var continued = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Shop(3, hp: 58), Digest(5));
         Assert.Equal(NativeSource.ContinuousContinuity, continued.Continuity);
         var own = Assert.Single(continued.Discarded);
         Assert.Equal(5, own.SavePoint?.AfterSeq);
@@ -575,32 +561,33 @@ public sealed class RunCaptureTests
         var capture = Played();
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
-            ShopAfter(Won(3, hp: 58)), Digest(5));
+            Shop(3, hp: 58), Digest(5));
         Saved(capture);
         return capture;
     }
 
-    // ── What the game's save cannot carry ──────────────────────────────────────
+    // ── The loot screen the game restores ──────────────────────────────────────
     //
-    // A finished fight stays on the player until the next fight replaces it, and the
-    // projection keeps emitting it, so every reading taken after a won fight carries
-    // that fight's residue. The game's save has no combat member, so a run continued
-    // from it comes back without it. These hold the resume to comparing what a save
-    // can carry once the complete digests have disagreed, and to nothing looser.
+    // The projection carries nothing of a fight outside a live one, so a run the game
+    // restored from a save reads exactly as the recorder read the moment the save was
+    // taken, and the complete digest places every honest Continue but one: the
+    // fight-won save. The retail client rolls the rewards after the killing play has
+    // settled and the save has been taken, and the restore rolls them again, so the
+    // run comes back at the state the next decision began from. These hold the
+    // resume to that one latitude and to nothing looser.
 
-    /// <summary>The recorder's reading at a shop or rest site arrival after a won
-    /// fight carries the fight; the restored run does not. Nothing else differs, so
-    /// nothing happened that the recorder missed.</summary>
+    /// <summary>The recorder's reading at a shop arrival after a won fight and the
+    /// restored run's are the same state, digest for digest, and the resume places
+    /// it without discarding anything.</summary>
     [Fact]
-    public void AnArrivalAfterAWonFightResumesContinuouslyWithoutTheFightsResidue()
+    public void AnArrivalAfterAWonFightResumesContinuouslyOnItsOwnDigest()
     {
         var capture = Played();
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
-            ShopAfter(Won(3, hp: 58)), Digest(5));
+            Shop(3, hp: 58), Digest(5));
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(3, hp: 58)), "sha256:" + new string('e', 64));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Shop(3, hp: 58), Digest(5));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -609,29 +596,28 @@ public sealed class RunCaptureTests
         Assert.Equal(6, resumed.NextSeq);
     }
 
-    /// <summary>A reading that differs in something a save does carry - here a point
-    /// of health - is a moment the journal never saw, residue or no residue.</summary>
+    /// <summary>A reading that differs in anything at all - here a point of health,
+    /// and with it the digest - is a moment the journal never saw.</summary>
     [Fact]
-    public void AnArrivalThatDiffersBeyondTheResidueIsStillBroken()
+    public void AnArrivalThatDiffersInAPointOfHealthIsBroken()
     {
         var capture = Played();
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
-            ShopAfter(Won(3, hp: 58)), Digest(5));
+            Shop(3, hp: 58), Digest(5));
 
-        var live = new Dictionary<string, string>(Restored(Won(3, hp: 58)), StringComparer.Ordinal) { ["player.hp"] = "57" };
         var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), live, "sha256:" + new string('e', 64));
+            RunJournal.Parse(capture.Journal.Render()), Shop(3, hp: 57), "sha256:" + new string('e', 64));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Broken, resumed.State);
     }
 
-    /// <summary>The fight-won save comes back to the loot screen with nothing claimed
-    /// and no combat state, so a claim made before the quit was rolled back by the
-    /// game. The match is the killing play, which is where the game saved, so this is
-    /// the game's own return to its latest save: continuous, with the claim kept as
-    /// the branch the restore discarded.</summary>
+    /// <summary>The fight-won save comes back to the loot screen with nothing claimed,
+    /// at the state the killing play settled into, so a claim made before the quit
+    /// was rolled back by the game. The match is the killing play, which is where
+    /// the game saved, so this is the game's own return to its latest save:
+    /// continuous, with the claim kept as the branch the restore discarded.</summary>
     [Fact]
     public void ALootScreenQuitAfterAClaimResumesContinuouslyAtTheFightWonSave()
     {
@@ -639,8 +625,7 @@ public sealed class RunCaptureTests
         var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
         capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), claimed, Digest(5));
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), Digest(4));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Empty(resumed.Refusals);
@@ -654,12 +639,12 @@ public sealed class RunCaptureTests
 
     /// <summary>
     /// The loot screen as the retail client records it. The client rolls the rewards
-    /// on its own clock, after the killing play has settled, so the play's own
-    /// save-representable digest is of a state before the roll, and the claim after
-    /// it begins from the state after; the game's restore of the fight-won save rolls
-    /// the rewards again, so the run comes back at the claim's before-reading and
-    /// never at the play's. That entry is matched through its successor, and the
-    /// recording is continuous with the claim as the branch.
+    /// on its own clock, after the killing play has settled, so the play's own digest
+    /// is of a state before the roll, and the claim after it begins from the state
+    /// after; the game's restore of the fight-won save rolls the rewards again, so the
+    /// run comes back at the claim's before-reading and never at the play's. That
+    /// entry is matched through its successor's before-digest, and the recording is
+    /// continuous with the claim as the branch.
     /// </summary>
     [Fact]
     public void ALootScreenQuitInTheClientIsMatchedThroughTheClaimsBeforeReading()
@@ -675,18 +660,16 @@ public sealed class RunCaptureTests
         Saved(capture);
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
-            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3), "sha256-sr:before-the-blow"),
-            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:before-the-rewards-rolled"));
+            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3)),
+            new StateReading(Won(2, hp: 58), Digest(4)));
         Saved(capture);
         var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
         capture.Record(
             ActionVerb.ClaimReward, Args(("reward_type", "gold")),
-            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:after-the-rewards-rolled"),
-            new StateReading(claimed, Digest(5), "sha256-sr:after-the-claim"));
+            new StateReading(Won(2, hp: 58), Digest(6)),
+            new StateReading(claimed, Digest(5)));
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
-            "sha256:" + new string('e', 64), "sha256-sr:after-the-rewards-rolled");
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), Digest(6));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Equal(3, resumed.NextSeq);
@@ -697,8 +680,7 @@ public sealed class RunCaptureTests
         // A state that is none of those readings, however alike its sample, is not
         // the loot screen the journal knows.
         var elsewhere = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
-            "sha256:" + new string('e', 64), "sha256-sr:somewhere-else");
+            RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), "sha256:" + new string('e', 64));
         Assert.Equal(NativeSource.BrokenContinuity, elsewhere.Continuity);
     }
 
@@ -719,43 +701,44 @@ public sealed class RunCaptureTests
         Saved(capture);
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
-            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3), "sha256-sr:before-the-blow"),
-            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:before-the-rewards-rolled"));
+            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3)),
+            new StateReading(Won(2, hp: 58), Digest(4)));
         Saved(capture);
 
         var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
-            "sha256:" + new string('e', 64), "sha256-sr:after-the-rewards-rolled");
+            RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), "sha256:" + new string('e', 64));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Empty(resumed.Discarded);
         Assert.Equal(3, resumed.NextSeq);
 
         // An entry that did not end a fight gets no such latitude: its settled
-        // reading is exact, and an event page the game rolled back differs there.
+        // reading is exact, and an event page the game rolled back differs there
+        // in a random stream the sample cannot see. The arrival's own digest places
+        // the return; a digest nothing holds is a moment the journal never saw.
         var atAnEvent = RunCapture.Begin(Start());
         atAnEvent.Record(
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));
         atAnEvent.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
-            new StateReading(Floor(1), Digest(0), "sha256-sr:neow"),
-            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(5), "sha256-sr:the-arrival"));
+            Shop(3, hp: 58), Digest(5));
         Saved(atAnEvent);
         atAnEvent.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.PAGE")),
-            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(5), "sha256-sr:the-arrival"),
-            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(6), "sha256-sr:the-page-turned"));
+            Shop(3, hp: 58), Digest(6));
 
         var pageRolledBack = RunCapture.Resume(
-            RunJournal.Parse(atAnEvent.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))),
-            "sha256:" + new string('e', 64), "sha256-sr:the-arrival");
-
+            RunJournal.Parse(atAnEvent.Journal.Render()), Shop(3, hp: 58), Digest(5));
         Assert.Equal(NativeSource.ContinuousContinuity, pageRolledBack.Continuity);
         var page = Assert.Single(pageRolledBack.Discarded);
         Assert.Equal(1, page.RollbackToSeq);
         Assert.Equal(ActionVerb.ChooseEventOption, Assert.Single(page.Actions).Verb);
+
+        var pageSomewhereElse = RunCapture.Resume(
+            RunJournal.Parse(atAnEvent.Journal.Render()), Shop(3, hp: 58), "sha256:" + new string('e', 64));
+        Assert.Equal(NativeSource.BrokenContinuity, pageSomewhereElse.Continuity);
     }
 
     /// <summary>The same quit where the fight-won save never landed on the disk - the
@@ -780,8 +763,7 @@ public sealed class RunCaptureTests
         var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
         capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), claimed, Digest(5));
 
-        var resumed = RunCapture.Resume(
-            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Won(2, hp: 58), Digest(4));
 
         Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -792,11 +774,10 @@ public sealed class RunCaptureTests
     }
 
     /// <summary>Two readings that agree in every sampled field while their complete
-    /// digests disagree, with no finished fight on either side, differ in something
-    /// the sample does not carry; that is not residue and is not accepted as
-    /// equal.</summary>
+    /// digests disagree differ in something the sample does not carry - a random
+    /// stream's position, the draw order - and are not the same moment.</summary>
     [Fact]
-    public void AgreeingSamplesWithoutResidueDoNotPassAsTheSameMoment()
+    public void AgreeingSamplesDoNotPassAsTheSameMoment()
     {
         var resumed = RunCapture.Resume(Played().Journal, Floor(1), "sha256:" + new string('e', 64));
 
@@ -804,34 +785,12 @@ public sealed class RunCaptureTests
     }
 
     [Fact]
-    public void SaveRepresentableDropsAFinishedFightAndKeepsALiveOne()
-    {
-        var finished = ReplayTrace.SaveRepresentable(Won(2, hp: 58));
-        Assert.DoesNotContain(finished.Keys, key => key.StartsWith("combat.", StringComparison.Ordinal));
-        Assert.Equal("58", finished["player.hp"]);
-        Assert.True(ReplayTrace.CarriesFinishedCombat(Won(2, hp: 58)));
-
-        var live = ReplayTrace.SaveRepresentable(InFight(2, turn: 2, enemyHp: 30, hp: 58));
-        Assert.Equal(InFight(2, turn: 2, enemyHp: 30, hp: 58).Count, live.Count);
-        Assert.False(ReplayTrace.CarriesFinishedCombat(InFight(2)));
-        Assert.False(ReplayTrace.CarriesFinishedCombat(Floor(1)));
-
-        Assert.True(ReplayTrace.SameSample(
-            ReplayTrace.SaveRepresentable(Won(2, hp: 58)),
-            ReplayTrace.SaveRepresentable(Restored(Won(2, hp: 58)))));
-        Assert.False(ReplayTrace.SameSample(
-            ReplayTrace.SaveRepresentable(Won(2, hp: 58)),
-            ReplayTrace.SaveRepresentable(Won(2, hp: 57))));
-    }
-
-    [Fact]
     public void DifferencesNameEachFieldOnceInOrder()
     {
-        var differences = ReplayTrace.Differences(Won(2, hp: 58), Restored(Won(2, hp: 57)));
+        var differences = ReplayTrace.Differences(Won(2, hp: 58), Shop(2, hp: 57));
 
         Assert.Equal(
-            ["combat.encounter: ENCOUNTER.TEST -> absent", "combat.enemy_count: 0 -> absent",
-             "combat.outcome: victory -> none", "combat.turn: 2 -> absent", "player.hp: 58 -> 57"],
+            ["combat.outcome: victory -> none", "player.hp: 58 -> 57", "run.map_coord: r2c3 -> r2c1"],
             differences);
     }
 
@@ -1763,21 +1722,6 @@ public sealed class RunCaptureTests
         Assert.True(capture.MovedOnFromLastFight);
     }
 
-    /// <summary>Every version-2 line is a version-3 line, so the journal a player's
-    /// run in progress was written in under the build before this one is read as-is
-    /// rather than costing them the recording.</summary>
-    [Fact]
-    public void AVersionTwoJournalIsReadAsIs()
-    {
-        var text = Played().Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal);
-
-        var read = RunJournal.Parse(text);
-
-        Assert.Equal(RunJournal.PreviousSchema, read.SchemaId);
-        Assert.Equal(5, read.Decisions.Count());
-        Assert.Empty(read.Bookmarks);
-    }
-
     private static RunCapture Ended()
     {
         var capture = Played();
@@ -1911,14 +1855,13 @@ public sealed class RunCaptureTests
             ["player.max_hp"] = "68",
         };
 
+    /// <summary>The loot screen of a fight just won: no fight is live, and the room
+    /// says how the last one ended. Nothing else of the fight, on purpose.</summary>
     private static IReadOnlyDictionary<string, string> Won(int floor, int hp) => new Dictionary<string, string>(
         StringComparer.Ordinal)
     {
         ["combat.in_progress"] = "false",
         ["combat.outcome"] = "victory",
-        ["combat.turn"] = "2",
-        ["combat.encounter"] = "ENCOUNTER.TEST",
-        ["combat.enemy_count"] = "0",
         ["run.total_floor"] = floor.ToString(CultureInfo.InvariantCulture),
         ["run.map_coord"] = $"r{floor.ToString(CultureInfo.InvariantCulture)}c3",
         ["run.act_floor"] = floor.ToString(CultureInfo.InvariantCulture),
@@ -1947,24 +1890,18 @@ public sealed class RunCaptureTests
                 ?? new Dictionary<string, string>(StringComparer.Ordinal) { ["run.total_floor"] = "unseen" },
             digest);
 
-    /// <summary>The reading at a shop entered straight after the fight in
-    /// <paramref name="won"/>: the next floor, the fight's residue still on the
-    /// player, exactly as the projection reads it there.</summary>
-    private static IReadOnlyDictionary<string, string> ShopAfter(IReadOnlyDictionary<string, string> won) =>
-        new Dictionary<string, string>(won, StringComparer.Ordinal);
-
-    /// <summary>The same moment as <paramref name="reading"/> read off a run the game
-    /// restored from its save: no combat state at all, everything else the same.</summary>
-    private static IReadOnlyDictionary<string, string> Restored(IReadOnlyDictionary<string, string> reading)
+    /// <summary>The reading at a shop or any other room entered after a fight: the
+    /// fight's room left behind, so nothing of it in the reading, exactly as the
+    /// projection reads it there and as a run restored there reads.</summary>
+    private static IReadOnlyDictionary<string, string> Shop(int floor, int hp) => new Dictionary<string, string>(
+        StringComparer.Ordinal)
     {
-        var restored = new Dictionary<string, string>(
-            reading.Where(field => !field.Key.StartsWith("combat.", StringComparison.Ordinal))
-                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
-            StringComparer.Ordinal)
-        {
-            ["combat.in_progress"] = "false",
-            ["combat.outcome"] = "none",
-        };
-        return restored;
-    }
+        ["combat.in_progress"] = "false",
+        ["combat.outcome"] = "none",
+        ["run.total_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+        ["run.map_coord"] = $"r{floor.ToString(CultureInfo.InvariantCulture)}c1",
+        ["run.act_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+        ["player.hp"] = hp.ToString(CultureInfo.InvariantCulture),
+        ["player.max_hp"] = "68",
+    };
 }

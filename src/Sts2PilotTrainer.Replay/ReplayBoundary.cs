@@ -78,6 +78,21 @@ public sealed record ReplayBoundary
     [JsonPropertyName("digest")]
     public required Fact<string> Digest { get; init; }
 
+    /// <summary>
+    /// The manifest format whose canonical projection <see cref="Digest"/> was hashed
+    /// under - <see cref="CanonicalState.Projection"/> for one this build produced or
+    /// verified, and the format an older file declared for one read out of it.
+    ///
+    /// On the boundary and not on the file, because the two come apart: a file
+    /// migrated on disk without a replay carries its older digests into the current
+    /// format, and one re-derived through a replay carries current digests beside a
+    /// note that the file began in an older one. Which projection a digest is a claim
+    /// in is a fact about that digest, and <see cref="FinishedFightResidue"/> reads
+    /// it here rather than off anything the file says about itself.
+    /// </summary>
+    [JsonPropertyName("projection")]
+    public int Projection { get; init; } = CanonicalState.Projection;
+
     [JsonIgnore]
     public bool IsCombatStart => string.Equals(Kind, CombatStartKind, StringComparison.Ordinal);
 

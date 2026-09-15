@@ -25,7 +25,9 @@ public class CombatComparisonTests
 
         Assert.Equal("victory", completion.Expect["combat.outcome"].Value);
         Assert.Equal("false", completion.Expect["combat.in_progress"].Value);
-        Assert.Equal("0", completion.Expect["combat.enemy_count"].Value);
+        // Nothing of the fight itself once it is over: the state carries only that
+        // none is live and how the last one ended.
+        Assert.DoesNotContain(completion.Expect.Keys, key => key.StartsWith("combat.enemy", StringComparison.Ordinal));
 
         // Pinned by replaying it, not by reading the file: the checkpoint is only
         // evidence because the engine reproduces it.

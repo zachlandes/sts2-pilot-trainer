@@ -115,14 +115,17 @@ public sealed record FightResultSeries(
 /// One turn of one line: what it took off the enemy, what it cost, and the potions
 /// it spent.
 ///
-/// Both measurements are null together, and only when this side's fight was already
-/// over by this turn. Everything else is a number the trace sampled either side of
-/// an action.
+/// Both measurements are null when this side's fight was already over by this turn.
+/// The enemy measurement alone is null on the turn this side's fight ended during the
+/// enemy's own turn - lost to its attack, or won there, where a kill and a flight
+/// read the same - because that step left nothing of the enemy in the reading after
+/// it. Everything else is a number the trace sampled either side of an action.
 /// </summary>
 public sealed record FightResultPoint(
     int Turn,
     /// <summary>Enemy health that actually came off this turn, or null where this
-    /// side did not reach the turn. Damage a block absorbed is not counted.</summary>
+    /// side did not reach the turn or its fight ended during the enemy's turn. Damage
+    /// a block absorbed is not counted.</summary>
     int? EnemyHealthLost,
     /// <summary>Health that actually came off this side this turn, or null where this
     /// side did not reach the turn.</summary>
@@ -132,5 +135,5 @@ public sealed record FightResultPoint(
     IReadOnlyList<string> PotionModelIds)
 {
     /// <summary>Whether this side fought this turn at all.</summary>
-    public bool Reached => EnemyHealthLost is not null;
+    public bool Reached => HealthLost is not null;
 }
