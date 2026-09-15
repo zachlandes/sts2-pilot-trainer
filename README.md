@@ -308,6 +308,7 @@ retail's branch under this host. `validate` and
 reading somebody's evidence never edits it.
 It rewrites the manifest in place, or writes to `--out <path>`, which is written even when the input was already in this format, so a script that migrates and then reads its output never meets a missing file.
 `--derive-boundaries` additionally replays the run through the real engine and writes in every boundary the history passes - each fight's start, each floor's arrival and each turn - with the digest that replay produced, refusing if the history does not reproduce.
+It is also the one repair for a boundary a format-6 recorder captured with a finished fight in its digest, which `gate` names as such; a plain migration keeps the older digest and marks it, so only the replay moves it (see [docs/native-replay-format.md](docs/native-replay-format.md)).
 It also writes the arrival checkpoint each floor entry needs, derived from the map move
 that boundary names, and does so before the replay as well as after - which is the one
 repair a recording written before the recorder sampled the coordinate has.

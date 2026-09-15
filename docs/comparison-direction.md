@@ -128,7 +128,10 @@ If the interface needs firm attribution, that is a new thing to capture, not som
 Enemy health lost has the mirror problem, and the contract refuses rather than guesses.
 The engine takes a dead enemy out of the combat state instead of leaving it at zero health, so a step that kills one of several enemies re-indexes the survivors, and a hit-point delta taken by index across that step is a number about two different creatures.
 `CombatProjection` refuses such a step by name.
-A fight that ends with every enemy dead is the one case the sampled state still resolves exactly, because each one's remaining health is what that step dealt.
+A fight ended by the player's own action is the one case the sampled state still resolves exactly, because the projection carries nothing of a fight once it is over and every enemy's remaining health is what that step dealt.
+A fight that ends inside an end of turn is not that case: the enemy side acts there and an enemy can leave alive rather than dead, nothing after the step says which, so that step's enemy health lost is null - a gap, never a zero - and every turn before it keeps its number.
+A fight ended around a secondary enemy, one the engine does not count towards the fight being over, is refused rather than credited with a survivor's health.
+`CombatProjection.EnemyHealthLost` owns the rule, `CombatProjection.SecondaryEnemyPowers` is the duplicated game knowledge it rests on, and `FinishedFightProjectionTests` holds both to the game assembly.
 
 Damage absorbed by block is not included in either health-loss measurement.
 Enemy health lost is the decrease in enemy hit points, so enemy block depletion is not counted.
