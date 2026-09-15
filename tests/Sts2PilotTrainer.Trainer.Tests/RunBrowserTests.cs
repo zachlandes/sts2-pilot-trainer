@@ -457,6 +457,7 @@ public sealed class RunBrowserTests
         Assert.True(pane.Plate[1].Enabled);
         Assert.True(pane.OpenEnabled);
         Assert.Equal(LibraryCopy.PlateRewound, pane.PlateReason);
+        Assert.Equal("Continued from an older save; this run can't be shared.", pane.PlateReason);
         Assert.Null(RunBrowser.For(
             LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build, submitAvailable: true).Pane!.PlateReason);
     }
