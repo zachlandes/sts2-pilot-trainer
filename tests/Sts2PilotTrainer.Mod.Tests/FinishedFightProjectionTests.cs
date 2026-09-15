@@ -125,6 +125,40 @@ public sealed class FinishedFightProjectionTests
         });
     }
 
+    /// <summary>
+    /// A fight that ends during the enemy's own turn samples <c>enemy</c> as the side
+    /// it ended on, read off the real engine: the manager checks the win condition
+    /// before it switches sides, so a fight the enemy's action ended - here the player
+    /// killed on an end of turn, the same instant a flight or a kill by the enemy's
+    /// own effects ends one - is still the enemy's turn when the projection reads it.
+    /// That is what lets the comparison leave such a step without a number rather
+    /// than crediting a flight as a kill.
+    /// </summary>
+    [GameFact]
+    public void AFightEndedDuringTheEnemyTurnReadsAsEndedOnTheEnemySide()
+    {
+        WithARun(session =>
+        {
+            using var driver = new RunDriver(session);
+            driver.ImproviseUnrecordedCardSelections();
+            EnterTheFirstFight(driver, session);
+
+            var creature = session.RunState.Players[0].Creature!;
+            typeof(Creature).GetProperty(nameof(Creature.CurrentHp))!.SetValue(creature, 1);
+
+            var seq = 2;
+            for (var turn = 0; turn < 10 && Field(session, "combat.outcome") == "in_progress"; turn++)
+            {
+                driver.Apply(Record(seq++, ActionVerb.EndTurn));
+            }
+
+            var fields = CanonicalStateProjection.Project(session.RunState).Fields;
+            Assert.Equal("false", fields["combat.in_progress"]);
+            Assert.Equal("defeat", fields["combat.outcome"]);
+            Assert.Equal("enemy", fields[CanonicalStateProjection.EndedOnSideField]);
+        });
+    }
+
     /// <summary>A player who is dead reads as a defeat off the player, whatever the
     /// room says: no save carries a dead run and no restore produces one, so it is
     /// the run's own fact and outranks the room's finished mark.</summary>

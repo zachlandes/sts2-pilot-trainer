@@ -128,8 +128,10 @@ If the interface needs firm attribution, that is a new thing to capture, not som
 Enemy health lost has the mirror problem, and the contract refuses rather than guesses.
 The engine takes a dead enemy out of the combat state instead of leaving it at zero health, so a step that kills one of several enemies re-indexes the survivors, and a hit-point delta taken by index across that step is a number about two different creatures.
 `CombatProjection` refuses such a step by name.
-A fight ended by the player's own action is the one case the sampled state still resolves exactly, because the projection carries nothing of a fight once it is over and every enemy's remaining health is what that step dealt.
-A fight that ends inside an end of turn is not that case: the enemy side acts there and an enemy can leave alive rather than dead, nothing after the step says which, so that step's enemy health lost is null - a gap, never a zero - and every turn before it keeps its number.
+The step that ends a fight samples no roster afterwards, because the projection carries nothing of a fight once it is over, so which side's turn the fight ended in is the one reading of a finished fight the trace keeps - `combat.ended_on_side`, sampled beside the digest and never hashed into it, because the game's own save carries no combat and a run continued onto the loot screen has no such reading.
+A fight that ended on the player's side was ended by a kill, and every primary enemy's remaining health is what that step dealt.
+A fight that ended on the enemy's side - an ordinary end of turn, or a card that ended the turn inside its own play - is not that case: an enemy leaves a fight alive only during its own side's turn, nothing after the step says whether it was killed or fled, so that step's enemy health lost is null - a gap, never a zero - as it is where the sample names no side, and every turn before it keeps its number.
+The verb of the step decides nothing, because the enemy side can act inside a played card.
 A fight ended around a secondary enemy, one the engine does not count towards the fight being over, is refused rather than credited with a survivor's health.
 `CombatProjection.EnemyHealthLost` owns the rule, `CombatProjection.SecondaryEnemyPowers` is the duplicated game knowledge it rests on, and `FinishedFightProjectionTests` holds both to the game assembly.
 
