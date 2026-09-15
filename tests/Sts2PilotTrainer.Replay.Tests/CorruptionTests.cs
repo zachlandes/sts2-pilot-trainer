@@ -170,6 +170,52 @@ public class CorruptionTests
     }
 
     /// <summary>
+    /// What a native recording says about its own history - where the game saved,
+    /// what a rollback discarded - moves back past the omitted play the way a
+    /// boundary does, and what stood on the play goes with it. Left alone, the
+    /// validator refuses the corrupted file and the control never reaches the
+    /// engine; the first Save-and-Quit recording gated in the client failed its
+    /// rejection condition on exactly that.
+    /// </summary>
+    [Fact]
+    public void OmitPlayCarriesTheGamesSavesAndRollbacksBackWithTheHistory()
+    {
+        var capture = RecordedRun.Captured();
+        Assert.NotNull(capture.MarkSavePoint(7));
+        Assert.NotNull(capture.MarkSavePoint(8));
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), capture.Trace.Steps.Single(step => step.Seq == 8).After,
+            capture.Journal.Entries.Single(entry => entry.Seq == 8).Digest);
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.Equal(8, branch.RollbackToSeq);
+        resumed.Record(
+            ActionVerb.MapMove, RecordedRun.Args(("act", "0"), ("row", "2"), ("column", "3")),
+            RecordedRun.Floor(3), RecordedRun.Digest(20));
+        Assert.NotNull(resumed.MarkSavePoint(9));
+        resumed.Finish("abandoned");
+        var recording = resumed.ToManifest();
+        Assert.True(ManifestValidator.Validate(recording).IsValid);
+        Assert.Equal([7, 8, 9], recording.Source.Native!.SavePoints!.Select(point => point.AfterSeq));
+
+        var omitted = Corruption.All.Single(corruption => corruption.Name == "omit-play").Apply(recording);
+
+        // The killing play at 7 is the one omitted; the save taken on it goes, the
+        // later ones and the rollback move back one, and the branch still describes
+        // its own boundary and decision.
+        var native = omitted.Source.Native!;
+        Assert.Equal([7, 8], native.SavePoints!.Select(point => point.AfterSeq));
+        Assert.All(native.SavePoints!, point => Assert.Equal(point.AfterSeq, point.Saved.Evidence?.ActionOrdinal));
+        var moved = Assert.Single(native.Discarded!);
+        Assert.Equal(7, moved.RollbackToSeq);
+        Assert.Equal(7, moved.SavePoint?.AfterSeq);
+        Assert.Equal([8], moved.Actions.Select(action => action.Seq));
+        Assert.Equal([7, 8], moved.Trace.Steps.Select(step => step.Seq));
+        var result = ManifestValidator.Validate(omitted);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>
     /// A boundary after the omitted play names the same action it named before, so a
     /// host entering the corrupted recording is refused by the engine replaying it
     /// rather than by a coordinate the control moved out from under.

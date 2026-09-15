@@ -47,7 +47,7 @@ public static class Arbiter
 
         var branch = DiscardedBranchAt(manifest, branchIndex);
         var outcome = RunCore(DiscardedBranchManifest(manifest, branch), null, progress, null, null, validate: false);
-        return JudgeDiscardedBranch(branch, outcome);
+        return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
     /// <summary>The same, on a run a caller has already started and stood past the
@@ -57,7 +57,7 @@ public static class Arbiter
     {
         var branch = DiscardedBranchAt(manifest, branchIndex);
         var outcome = ReplayStartedRun(session, DiscardedBranchManifest(manifest, branch), preflight, null, null);
-        return JudgeDiscardedBranch(branch, outcome);
+        return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
     private static DiscardedBranch DiscardedBranchAt(ReplayManifest manifest, int branchIndex)
@@ -90,15 +90,20 @@ public static class Arbiter
             Verification = null,
         };
 
-    private static ArbiterOutcome JudgeDiscardedBranch(DiscardedBranch branch, ArbiterOutcome outcome)
+    private static ArbiterOutcome JudgeDiscardedBranch(
+        ReplayManifest manifest, DiscardedBranch branch, ArbiterOutcome outcome)
     {
+        // A branch a format-6 recorder captured carries the finished fight in every
+        // reading after one, which this projection never produces; it is held exactly
+        // on everything else, which is everything a branch is evidence of.
+        var residue = manifest.WrittenIn < FinishedFightResidue.FirstFormatWithout;
         var diagnostics = new List<string>();
         var capturedOrigin = branch.Trace.Steps.SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
         var replayedOrigin = outcome.Report.Trace?.Steps
             .SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
         var originDifferences = capturedOrigin is null
             ? ["the branch carries no reading of the state it left from"]
-            : ExactSampleDifferences(capturedOrigin, replayedOrigin);
+            : ExactSampleDifferences(capturedOrigin, replayedOrigin, residue);
         if (originDifferences.Count > 0)
         {
             diagnostics.Add(
@@ -110,7 +115,7 @@ public static class Arbiter
         var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
         var replayedFinalState = outcome.Report.Trace?.Steps
             .SingleOrDefault(step => step.Seq == finalAction.Seq)?.After;
-        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState);
+        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState, residue);
         if (differences.Count > 0)
         {
             diagnostics.Add($"discarded branch final state differs: {string.Join(", ", differences)}");
@@ -129,12 +134,14 @@ public static class Arbiter
     }
 
     private static IReadOnlyList<string> ExactSampleDifferences(
-        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
+        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual,
+        bool ignoreFinishedFightResidue)
     {
         if (actual is null) return ["the replay produced no final sample"];
 
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)
+            .Where(field => !ignoreFinishedFightResidue || !FinishedFightResidue.IsResidueField(field))
             .OrderBy(field => field, StringComparer.Ordinal)
             .Where(field => !expected.TryGetValue(field, out var expectedValue) ||
                             !actual.TryGetValue(field, out var actualValue) ||

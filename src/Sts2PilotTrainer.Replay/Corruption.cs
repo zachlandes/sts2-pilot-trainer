@@ -404,8 +404,61 @@ public static class Corruption
             Actions = Renumber(actions),
             Checkpoints = ShiftCheckpoints(manifest.Checkpoints, target.Seq),
             Boundaries = ShiftBoundaries(manifest.Boundaries, target.Seq),
+            Source = manifest.Source.Native is { } native
+                ? manifest.Source with { Native = ShiftNativeSource(native, target.Seq) }
+                : manifest.Source,
         };
     }
+
+    /// <summary>
+    /// Moves what a native recording says about its own history back past a removed
+    /// action, for the reason checkpoints and boundaries move: a save point, a
+    /// rollback and a stop are coordinates into the history, and left alone they
+    /// would name whatever action slid into their slot - which the validator refuses,
+    /// so the control would be refused at ingestion and never reach the engine it
+    /// exists to test. One standing on the removed action is dropped, as a boundary
+    /// there is: the moment it named is gone. A branch that left from before the
+    /// removed action never held it and is untouched.
+    /// </summary>
+    private static NativeSource ShiftNativeSource(NativeSource native, int removedSeq)
+    {
+        int Moved(int seq) => seq > removedSeq ? seq - 1 : seq;
+
+        return native with
+        {
+            SavePoints = native.SavePoints?
+                .Where(point => point.AfterSeq != removedSeq)
+                .Select(point => MoveSavePoint(point, Moved(point.AfterSeq)))
+                .ToList(),
+            Discarded = native.Discarded?
+                .Where(branch => branch.RollbackToSeq != removedSeq)
+                .Select(branch => branch.RollbackToSeq < removedSeq
+                    ? branch
+                    : branch with
+                    {
+                        RollbackToSeq = branch.RollbackToSeq - 1,
+                        SavePoint = branch.SavePoint is { } point ? MoveSavePoint(point, point.AfterSeq - 1) : null,
+                        Actions = branch.Actions.Select(action => MoveToSequence(action, action.Seq - 1, action.Evidence)).ToList(),
+                        Trace = new ReplayTrace
+                        {
+                            Steps = branch.Trace.Steps.Select(step => step with { Seq = Moved(step.Seq) }).ToList(),
+                        },
+                    })
+                .ToList(),
+            Unmapped = native.Unmapped?
+                .Where(decision => decision.Seq != removedSeq)
+                .Select(decision => decision with { Seq = Moved(decision.Seq) })
+                .ToList(),
+        };
+    }
+
+    private static SavePoint MoveSavePoint(SavePoint point, int sequence) => point with
+    {
+        AfterSeq = sequence,
+        Saved = point.Saved.Evidence is { } evidence
+            ? point.Saved with { Evidence = evidence with { ActionOrdinal = sequence } }
+            : point.Saved,
+    };
 
     private static ReplayManifest WrongOpeningChoice(ReplayManifest manifest)
     {

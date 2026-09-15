@@ -171,11 +171,32 @@ internal static partial class Commands
                 (moved ? "its digest is now the verified replay's" : "the verified replay reproduces it unchanged"));
         }
 
+        // A branch that left from a re-derived arrival identified that arrival by the
+        // same older digest, and identifies it by the new one now, so the validator's
+        // cross-check between the two keeps meaning what it meant.
+        var rederived = predating.ToDictionary(
+            boundary => boundary.Digest.Value,
+            boundary => Matching(report.Boundaries, boundary)!.Digest.Value,
+            StringComparer.Ordinal);
+        var source = manifest.Source.Native is { Discarded: { } branches } native && rederived.Count > 0
+            ? manifest.Source with
+            {
+                Native = native with
+                {
+                    Discarded = branches
+                        .Select(branch => rederived.TryGetValue(branch.RollbackToDigest, out var digest)
+                            ? branch with { RollbackToDigest = digest }
+                            : branch)
+                        .ToList(),
+                },
+            }
+            : manifest.Source;
+
         // A floor entry with no arrival checkpoint is one the validator refuses and a
         // host aborts on, so the deriver writes the arrival beside every floor entry it
         // derives - through the same owner the validator re-derives through, rather
         // than a second copy of the rule.
-        return FloorArrival.WithArrivalCheckpoints(manifest with { Boundaries = boundaries });
+        return FloorArrival.WithArrivalCheckpoints(manifest with { Boundaries = boundaries, Source = source });
     }
 
     /// <summary>The boundary in a list naming the same place as this one, or null where

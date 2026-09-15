@@ -198,7 +198,7 @@ internal static class RecordedRun
             RecordedPatchRoster.HostOnly()),
     };
 
-    private static IReadOnlyDictionary<string, string> Floor(int floor) => new Dictionary<string, string>(
+    internal static IReadOnlyDictionary<string, string> Floor(int floor) => new Dictionary<string, string>(
         StringComparer.Ordinal)
     {
         ["combat.in_progress"] = "false",
@@ -241,9 +241,6 @@ internal static class RecordedRun
     {
         ["combat.in_progress"] = "false",
         ["combat.outcome"] = "victory",
-        ["combat.turn"] = "2",
-        ["combat.encounter"] = "ENCOUNTER.TEST",
-        ["combat.enemy_count"] = "0",
         ["run.total_floor"] = Number(floor),
         ["run.map_coord"] = $"r{Number(floor)}c3",
         ["run.act_floor"] = Number(floor),
@@ -271,12 +268,12 @@ internal static class RecordedRun
 
     private static string DealtHand => string.Join("|", Hand.Select(card => card.CardId));
 
-    private static string Digest(int seq) =>
+    internal static string Digest(int seq) =>
         "sha256:" + (seq + 1).ToString("x2", CultureInfo.InvariantCulture).PadLeft(64, 'a');
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
 
-    private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
+    internal static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
         args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);
 }
 

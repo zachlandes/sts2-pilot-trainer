@@ -332,7 +332,13 @@ internal static partial class Commands
             ? null
             : arrivalDigestHolds
                 ? "The discarded decisions did not reproduce from the state of the save they left."
-                : "The discarded decisions left a floor arrival whose digest is not the one the engine produced there.";
+                : "The discarded decisions left a floor arrival whose digest is not the one the engine produced there." +
+                  // The same class of digest the gate names on a boundary: hashed under
+                  // a projection that carried the finished fight, reproducible by nothing.
+                  (boundary is not null && FinishedFightResidue.PredatesThisProjection(manifest, boundary)
+                      ? " The recording was written under a format that projected the finished fight before that " +
+                        "arrival; re-derive it with `migrate-manifest --derive-boundaries`."
+                      : string.Empty);
 
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine($"branch   : {branchIndex}");
