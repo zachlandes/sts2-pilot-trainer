@@ -116,15 +116,17 @@ public sealed record FightResultSeries(
 /// it spent.
 ///
 /// Both measurements are null when this side's fight was already over by this turn.
-/// The enemy measurement alone is null on the turn this side's fight was lost, whose
-/// killing step left nothing of the enemy in the reading after it. Everything else
-/// is a number the trace sampled either side of an action.
+/// The enemy measurement alone is null on the turn this side's fight ended inside an
+/// end of turn - lost to the enemy's attack, or won during the enemy's own turn,
+/// where a kill and a flight read the same - because that step left nothing of the
+/// enemy in the reading after it. Everything else is a number the trace sampled
+/// either side of an action.
 /// </summary>
 public sealed record FightResultPoint(
     int Turn,
     /// <summary>Enemy health that actually came off this turn, or null where this
-    /// side did not reach the turn or lost the fight on it. Damage a block absorbed
-    /// is not counted.</summary>
+    /// side did not reach the turn or its fight ended inside the end of it. Damage a
+    /// block absorbed is not counted.</summary>
     int? EnemyHealthLost,
     /// <summary>Health that actually came off this side this turn, or null where this
     /// side did not reach the turn.</summary>

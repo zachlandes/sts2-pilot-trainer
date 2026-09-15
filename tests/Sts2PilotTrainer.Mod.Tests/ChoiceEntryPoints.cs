@@ -260,6 +260,55 @@ internal static class ChoiceEntryPoints
 
     private static bool IsMock(Type type) => type.Namespace?.Split('.').Contains(MocksSegment, StringComparer.Ordinal) == true;
 
+    /// <summary>
+    /// Every method outside the game's own test doubles whose body names the callee -
+    /// a call, a construction, or a function pointer taken of it - read off the raw IL
+    /// of every loadable type. Method-level where <see cref="ReachedBy"/> is type-level,
+    /// for a rule about where in a type something happens rather than which type.
+    /// </summary>
+    internal static IReadOnlyList<MethodBase> MethodsNaming(MethodBase callee)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        return Loaded.Value.Types
+            .Where(type => !IsMock(Outermost(type)))
+            .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
+            .Where(method => Callees(method).Contains(callee))
+            .ToList();
+    }
+
+    /// <summary>Every method a body names, or none where it cannot be read.</summary>
+    internal static IReadOnlyList<MethodBase> Callees(MethodBase method)
+    {
+        TryReadCallees(method, out var callees);
+        return callees;
+    }
+
+    /// <summary>
+    /// The member the game's author wrote, for a method the compiler wrote on their
+    /// behalf: an async state machine's <c>MoveNext</c> resolves to the method that
+    /// declares the state machine, and a lambda to the method whose body takes its
+    /// address; anything else is its own author's.
+    /// </summary>
+    internal static MethodBase DeclaredMember(MethodBase method)
+    {
+        var declaring = method.DeclaringType;
+        if (declaring is null || !declaring.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false)) return method;
+
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        var outer = declaring.DeclaringType ?? throw new InvalidOperationException(
+            $"{declaring.FullName} is compiler-generated and nested in nothing; this reading is out of date.");
+        var stateMachineOwner = outer.GetMethods(every).Concat<MethodBase>(outer.GetConstructors(every))
+            .FirstOrDefault(candidate => candidate.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType == declaring);
+        if (stateMachineOwner is not null) return DeclaredMember(stateMachineOwner);
+
+        var pointerTaker = MethodsNaming(method).FirstOrDefault(candidate => candidate.DeclaringType != declaring)
+            ?? throw new InvalidOperationException(
+                $"{declaring.FullName}.{method.Name} is compiler-generated and nothing takes its address or declares it.");
+        return DeclaredMember(pointerTaker);
+    }
+
     private static bool ReturnsAChoice(Type returnType)
     {
         if (!returnType.IsGenericType || returnType.GetGenericTypeDefinition() != typeof(Task<>)) return false;

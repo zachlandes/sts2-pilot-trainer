@@ -353,7 +353,9 @@ public sealed record CombatProjection
     }
 
     /// <summary>The one step inside a fight during which the enemy side acts: the only
-    /// step on which an enemy can leave the fight alive rather than dead.</summary>
+    /// step on which an enemy can leave the fight alive rather than dead. Duplicated
+    /// game knowledge, held to the engine's own call sites by
+    /// <c>FinishedFightProjectionTests.AnEnemyLeavesAFightAliveOnlyDuringTheEnemySideOfTheTurn</c>.</summary>
     private static bool TheEnemySideActsDuring(ReplayStep step) =>
         string.Equals(step.Verb, nameof(ActionVerb.EndTurn), StringComparison.Ordinal);
 

@@ -1,7 +1,10 @@
+using System.Reflection;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Rooms;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -154,6 +157,46 @@ public sealed class FinishedFightProjectionTests
             Assert.Equal(engine, CombatProjection.SecondaryEnemyPowers.OrderBy(id => id, StringComparer.Ordinal));
         });
     }
+
+    /// <summary>
+    /// An enemy can leave a fight alive only during the enemy side of the turn, which
+    /// is the whole of what lets the comparison credit a fight the player's own action
+    /// ended as a kill and leave one that ended inside an end of turn without a number.
+    /// Held to the engine: every call site of <see cref="CreatureCmd.Escape"/> in this
+    /// build, read off the game's own IL, is either a monster's move - a method the
+    /// monster registers as a <see cref="MoveState"/>'s action - or a model's override
+    /// of one of the turn hooks. A build that lets a card or a potion send an enemy
+    /// fleeing fails here by name rather than crediting its health as damage.
+    /// </summary>
+    [GameFact]
+    public void AnEnemyLeavesAFightAliveOnlyDuringTheEnemySideOfTheTurn()
+    {
+        var escape = typeof(CreatureCmd).GetMethod(nameof(CreatureCmd.Escape))
+            ?? throw new InvalidOperationException("CreatureCmd.Escape is not on this build.");
+        var sites = ChoiceEntryPoints.MethodsNaming(escape)
+            .Select(ChoiceEntryPoints.DeclaredMember)
+            .Distinct()
+            .ToList();
+
+        Assert.NotEmpty(sites);
+        Assert.All(sites, site => Assert.True(
+            IsAMonsterMove(site) || IsATurnHook(site),
+            $"{site.DeclaringType?.FullName}.{site.Name} sends a creature out of the fight and is neither a " +
+            "monster's move nor a turn hook."));
+    }
+
+    private static bool IsAMonsterMove(MethodBase site) =>
+        site.DeclaringType is { } monster &&
+        monster.IsSubclassOf(typeof(MonsterModel)) &&
+        ChoiceEntryPoints.MethodsNaming(site).Any(registrar =>
+            registrar.DeclaringType == monster &&
+            ChoiceEntryPoints.Callees(registrar).Any(callee =>
+                callee is ConstructorInfo && callee.DeclaringType == typeof(MoveState)));
+
+    private static bool IsATurnHook(MethodBase site) =>
+        site is MethodInfo method &&
+        method.GetBaseDefinition().DeclaringType == typeof(AbstractModel) &&
+        method.Name.Contains("Turn", StringComparison.Ordinal);
 
     private static void AssertLiveFight(IReadOnlyDictionary<string, string> fields)
     {
