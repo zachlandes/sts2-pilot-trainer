@@ -489,7 +489,9 @@ public sealed record RunJournal
                         "A run journal's rollback does not name exactly the decisions it discards.");
                 }
 
-                discarded.Add(new JournalDiscardedBranch(rollback, entries[boundaryIndex], removed));
+                discarded.Add(new JournalDiscardedBranch(
+                    rollback, entries[boundaryIndex], removed,
+                    rollback.Reload ? null : savePoints.LastOrDefault(point => point.AfterSeq == rollback.RollbackToSeq)));
                 entries.RemoveRange(boundaryIndex + 1, removed.Count);
 
                 // A press on a fight the rollback removed goes with the branch: the
@@ -839,9 +841,13 @@ public sealed record JournalRollback
     public bool Reload { get; init; }
 }
 
-/// <summary>The journal entries one rollback removed from the continued history.</summary>
+/// <summary>The journal entries one rollback removed from the continued history,
+/// with the save the game's own rollback returned to where the journal holds one:
+/// null for a reload's, for a return to the run-start save, and under an older
+/// journal.</summary>
 public sealed record JournalDiscardedBranch(
-    JournalRollback Rollback, RunJournalEntry Boundary, IReadOnlyList<RunJournalEntry> Entries);
+    JournalRollback Rollback, RunJournalEntry Boundary, IReadOnlyList<RunJournalEntry> Entries,
+    JournalSavePoint? SavePoint = null);
 
 /// <summary>
 /// Where a recorder stopped: the decision it could not name, and the sampled state

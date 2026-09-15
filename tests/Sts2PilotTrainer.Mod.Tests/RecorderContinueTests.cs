@@ -589,6 +589,56 @@ public sealed class RecorderContinueTests : IDisposable
         Assert.True(Assert.Single(manifest.Source.Native.Discarded!).Reload);
     }
 
+    /// <summary>
+    /// The game's own rollback, then a reload behind it. A purchase undone by
+    /// Continue at the shop arrival's save is the game's own rollback and the
+    /// recording continuous; a later Continue from an older backup - the fight-won
+    /// save before the shop - is a reload, and it takes the arrival's save off the
+    /// continued history. The first branch carries the save it returned to itself,
+    /// so the rewound recording validates and stays the player's to play from.
+    /// </summary>
+    [GameFact]
+    public void AReloadBehindAnEarlierOwnRollbackLeavesARewoundRecordingTheValidatorTakes()
+    {
+        var lab = new Lab(this);
+        ReplayManifest manifest;
+        int arrival;
+        using (lab.Recording())
+        {
+            lab.Neow();
+            lab.WalkTo(MapPointType.Shop);
+            arrival = lab.Capture.NextSeq - 1;
+            var shopArrival = lab.Saves.Last(save => save.IsFloorEntry);
+            var fightWon = lab.Saves[lab.Saves.IndexOf(shopArrival) - 1];
+            Assert.Equal("Monster", fightWon.PreFinishedRoom);
+            lab.BuyOneThing();
+
+            lab.QuitAndContinue(shopArrival);
+            var continued = lab.Capture;
+            Assert.Equal(NativeSource.ContinuousContinuity, continued.Continuity);
+            var own = Assert.Single(continued.Discarded);
+            Assert.Equal(arrival, own.SavePoint?.AfterSeq);
+            lab.BuyOneThing();
+
+            lab.QuitAndContinue(fightWon);
+            var rewound = lab.Capture;
+            Assert.Equal(NativeSource.RewoundContinuity, rewound.Continuity);
+            Assert.Equal(RunCaptureState.Recording, rewound.State);
+            Assert.Equal(2, rewound.Discarded.Count);
+            Assert.False(rewound.Discarded[0].Reload);
+            Assert.Equal(arrival, rewound.Discarded[0].SavePoint?.AfterSeq);
+            Assert.True(rewound.Discarded[1].Reload);
+            Assert.DoesNotContain(arrival, rewound.SavePoints.Select(point => point.AfterSeq));
+
+            lab.TakeGoldAndSkipTheRest();
+            manifest = lab.Abandon();
+        }
+
+        Assert.Equal(NativeSource.RewoundContinuity, manifest.Source.Native!.Continuity);
+        Assert.Equal(arrival, manifest.Source.Native.Discarded![0].SavePoint?.AfterSeq);
+        Assert.DoesNotContain(arrival, manifest.Source.Native.SavePoints!.Select(point => point.AfterSeq));
+    }
+
     /// <summary>A session the recorder was not watching won the fight and moved on,
     /// and the game saved there; continued with the recorder, the run is at a moment
     /// the journal never saw, and the recording is broken.</summary>

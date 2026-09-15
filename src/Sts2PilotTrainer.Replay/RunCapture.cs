@@ -680,7 +680,9 @@ public sealed class RunCapture
         foreach (var entry in _entries.Where(entry => entry.Seq <= target.Seq)) rebuilt.Replay(entry);
         rebuilt._discarded.AddRange(_discarded);
         rebuilt._journalDiscarded.AddRange(_journalDiscarded);
-        var discarded = new JournalDiscardedBranch(rollback, target, removed);
+        var discarded = new JournalDiscardedBranch(
+            rollback, target, removed,
+            reload ? null : _savePoints.LastOrDefault(point => point.AfterSeq == target.Seq));
         rebuilt._journalDiscarded.Add(discarded);
         rebuilt._discarded.Add(ToDiscardedBranch(discarded));
         foreach (var refusal in _refusals) rebuilt.Break(refusal);
@@ -713,6 +715,7 @@ public sealed class RunCapture
         RollbackToSeq = branch.Rollback.RollbackToSeq,
         RollbackToDigest = branch.Rollback.RollbackToDigest,
         Reload = branch.Rollback.Reload,
+        SavePoint = branch.SavePoint is { } savePoint ? SavePointFact(savePoint) : null,
         Actions = branch.Entries.Select(entry =>
         {
             if (!Enum.TryParse<ActionVerb>(entry.Verb, out var verb))
@@ -1073,12 +1076,14 @@ public sealed class RunCapture
             ? null
             : _savePoints
                 .OrderBy(point => point.AfterSeq)
-                .Select(point => new SavePoint
-                {
-                    AfterSeq = point.AfterSeq,
-                    Saved = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(point.AfterSeq, point.RunClockMs)),
-                })
+                .Select(SavePointFact)
                 .ToList();
+
+    private static SavePoint SavePointFact(JournalSavePoint point) => new()
+    {
+        AfterSeq = point.AfterSeq,
+        Saved = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(point.AfterSeq, point.RunClockMs)),
+    };
 
     /// <summary>The marks that are on, as declared facts, or null where none is.</summary>
     private IReadOnlyList<FightBookmark>? Bookmarks()

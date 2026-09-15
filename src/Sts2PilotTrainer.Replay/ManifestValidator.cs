@@ -777,6 +777,43 @@ public static partial class ManifestValidator
         }
     }
 
+    /// <summary>The decision at <paramref name="seq"/> as the history stood when
+    /// branch <paramref name="branchIndex"/> was discarded: the nearest later branch
+    /// whose rollback rewound behind it and whose actions reach it holds that
+    /// decision now, and the continued history holds it otherwise.</summary>
+    private static ActionRecord? ActionAsTheBranchSawIt(
+        IReadOnlyList<DiscardedBranch> branches, int branchIndex, IReadOnlyList<ActionRecord> actions, int seq)
+    {
+        for (var later = branchIndex + 1; later < branches.Count; later++)
+        {
+            var candidate = branches[later];
+            if (candidate.RollbackToSeq < seq && candidate.Actions.Count > 0 && seq <= candidate.Actions[^1].Seq)
+            {
+                return candidate.Actions.FirstOrDefault(action => action.Seq == seq);
+            }
+        }
+
+        return actions.FirstOrDefault(action => action.Seq == seq);
+    }
+
+    private static void ValidateBranchSavePoint(SavePoint savePoint, string where, int rollbackToSeq, List<string> problems)
+    {
+        if (savePoint.AfterSeq != rollbackToSeq)
+        {
+            problems.Add(
+                $"{where}.after_seq is {savePoint.AfterSeq.ToString(CultureInfo.InvariantCulture)} and the branch " +
+                $"returned to decision {rollbackToSeq.ToString(CultureInfo.InvariantCulture)}. The save a branch " +
+                "carries is the one the game's rollback returned to.");
+        }
+
+        if (!savePoint.Saved.Value)
+        {
+            problems.Add($"{where}.saved is false. A save the game did not take is not a save point.");
+        }
+
+        RequireCapturedFact(savePoint.Saved, $"{where}.saved", "native", rollbackToSeq, problems, rollbackToSeq);
+    }
+
     private static void ValidateDiscardedBranches(ReplayManifest manifest, List<string> problems)
     {
         if (manifest.Source.Native?.Discarded is not { } branches) return;
@@ -793,23 +830,51 @@ public static partial class ManifestValidator
             var path = $"source.native.discarded[{branchIndex.ToString(CultureInfo.InvariantCulture)}]";
             // Either kind may return to the opening reading, before any decision: a
             // reload of the run-start save, or the game's own restore of it when no
-            // later save had landed.
-            if (branch.RollbackToSeq < -1 || branch.RollbackToSeq >= actions.Count)
+            // later save had landed. The decision a branch returned to is read from
+            // the history as it stood when the branch was made: a later rollback
+            // that rewound behind it now carries that decision.
+            var boundaryAction = branch.RollbackToSeq == -1
+                ? null
+                : ActionAsTheBranchSawIt(branches, branchIndex, actions, branch.RollbackToSeq);
+            if (branch.RollbackToSeq < -1 || (branch.RollbackToSeq != -1 && boundaryAction is null))
             {
-                problems.Add($"{path}.rollback_to_seq does not name a decision in the continued history.");
+                problems.Add(
+                    $"{path}.rollback_to_seq does not name a decision in the history as it stood when the " +
+                    "branch was discarded.");
             }
 
             // The game's own rollback returns to a save the recorder watched land,
-            // and a recording that lists where those were is held to them. One
-            // written before they were listed could recognise only a live fight's
+            // and a recording that lists where those were is held to them. The
+            // branch carries the save it returned to, because a later reload that
+            // rewound behind it takes the save off the continued history's list; a
+            // branch written before it carried one is held to the list alone. One
+            // written before the list existed could recognise only a live fight's
             // return to its room entry, and is held to that below.
-            if (!branch.Reload && savePoints is not null && branch.RollbackToSeq != -1 &&
-                !savePoints.Any(savePoint => savePoint.AfterSeq == branch.RollbackToSeq))
+            if (!branch.Reload && savePoints is not null && branch.RollbackToSeq != -1)
             {
-                problems.Add(
-                    $"{path}.rollback_to_seq is {branch.RollbackToSeq.ToString(CultureInfo.InvariantCulture)}, " +
-                    "which source.native.save_points does not list. The game's own rollback returns to a save " +
-                    "it took, and a branch it did not discard is a reload's.");
+                var listed = savePoints.Any(savePoint => savePoint.AfterSeq == branch.RollbackToSeq);
+                if (branch.SavePoint is { } own)
+                {
+                    ValidateBranchSavePoint(own, $"{path}.save_point", branch.RollbackToSeq, problems);
+                    var removedByALaterReload = branches
+                        .Skip(branchIndex + 1)
+                        .Any(later => later.Reload && later.RollbackToSeq < branch.RollbackToSeq);
+                    if (!listed && !removedByALaterReload)
+                    {
+                        problems.Add(
+                            $"{path}.save_point names a save after decision " +
+                            $"{own.AfterSeq.ToString(CultureInfo.InvariantCulture)} that source.native.save_points " +
+                            "does not list and no later reload rewound behind. A save leaves the continued " +
+                            "history only with the reload that restored an older one.");
+                    }
+                }
+                else if (!listed)
+                {
+                    problems.Add(
+                        $"{path}.rollback_to_seq is {branch.RollbackToSeq.ToString(CultureInfo.InvariantCulture)}, " +
+                        "which source.native.save_points does not list. The game's own rollback returns to a save " +
+                        "it took, and a branch it did not discard is a reload's.");
+                }
             }
             if (string.IsNullOrWhiteSpace(branch.RollbackToDigest))
             {
@@ -841,8 +906,7 @@ public static partial class ManifestValidator
             }
 
             var traceSteps = branch.Trace.Steps.OrderBy(step => step.Seq).ToList();
-            var expectedActions = actions
-                .Where(action => action.Seq == branch.RollbackToSeq)
+            var expectedActions = (boundaryAction is null ? Array.Empty<ActionRecord>() : [boundaryAction])
                 .Concat(branch.Actions)
                 .ToList();
             // The opening reading is a step of the trace and never an action, so a

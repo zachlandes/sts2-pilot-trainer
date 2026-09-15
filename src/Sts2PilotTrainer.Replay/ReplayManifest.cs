@@ -450,6 +450,16 @@ public sealed record DiscardedBranch
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Reload { get; init; }
 
+    /// <summary>The save the game's own rollback returned to, as the branch's own
+    /// record of it. <c>source.native.save_points</c> lists the saves on the
+    /// continued history only, and a later reload that rewound behind this save
+    /// takes it off that list; the branch keeps the save it left from so it can be
+    /// held to it after. Null on a reload's branch, on a return to the run-start
+    /// save, and on a branch written before branches carried one.</summary>
+    [JsonPropertyName("save_point")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SavePoint? SavePoint { get; init; }
+
     /// <summary>The captured digest which both the journal boundary and resumed run held.</summary>
     [JsonPropertyName("rollback_to_digest")]
     public required string RollbackToDigest { get; init; }

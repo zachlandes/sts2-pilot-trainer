@@ -473,6 +473,98 @@ public sealed class RunCaptureTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("which source.native.save_points does not list", StringComparison.Ordinal));
+
+        // Nor can the branch be given a save of its own that nothing took off the
+        // list: a branch's save point leaves the continued history only with a
+        // later reload.
+        var forged = relabelled with
+        {
+            Source = relabelled.Source with
+            {
+                Native = relabelled.Source.Native! with
+                {
+                    Discarded =
+                    [
+                        branch with
+                        {
+                            Reload = false,
+                            SavePoint = new SavePoint
+                            {
+                                AfterSeq = branch.RollbackToSeq,
+                                Saved = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(branch.RollbackToSeq)),
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+
+        var forgedResult = ManifestValidator.Validate(forged);
+
+        Assert.False(forgedResult.IsValid);
+        Assert.Contains(forgedResult.Problems, problem =>
+            problem.Contains("no later reload rewound behind", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The game's own rollback at the shop, then a reload behind it: the purchase
+    /// was undone by Continue at the arrival's save, the run went on, and a later
+    /// Continue from an older backup restored the fight-won save. The reload takes
+    /// the arrival's save off the continued history, so the first branch carries the
+    /// save it returned to itself, and the rewound recording still validates - whole
+    /// and the player's to play from - with the branch's boundary read from the
+    /// branch the reload discarded.
+    /// </summary>
+    [Fact]
+    public void AReloadBehindAnEarlierOwnRollbackLeavesARewoundRecordingTheValidatorTakes()
+    {
+        var capture = AtTheShop();
+        var bought = new Dictionary<string, string>(ShopAfter(Won(3, hp: 58)), StringComparer.Ordinal)
+        {
+            ["player.gold"] = "63",
+        };
+        capture.Record(
+            ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
+            bought, Digest(6));
+
+        var continued = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))), "sha256:" + new string('e', 64));
+        Assert.Equal(NativeSource.ContinuousContinuity, continued.Continuity);
+        var own = Assert.Single(continued.Discarded);
+        Assert.Equal(5, own.SavePoint?.AfterSeq);
+        continued.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "3"), ("column", "3")),
+            InFight(4, turn: 1), Digest(7));
+        Saved(continued);
+
+        var rewound = Resume(RunJournal.Parse(continued.Journal.Render()), Digest(4));
+        Assert.Equal(NativeSource.RewoundContinuity, rewound.Continuity);
+        Assert.Equal([0, 1, 4], rewound.SavePoints.Select(point => point.AfterSeq));
+        Assert.Equal(2, rewound.Discarded.Count);
+        Assert.Equal(5, rewound.Discarded[0].SavePoint?.AfterSeq);
+        Assert.True(rewound.Discarded[1].Reload);
+        Assert.Null(rewound.Discarded[1].SavePoint);
+        rewound.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), Won(2, hp: 58), Digest(30));
+        rewound.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "2")),
+            InFight(3, turn: 1), Digest(31));
+        Saved(rewound);
+        rewound.Finish("abandoned");
+
+        var manifest = rewound.ToManifest();
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+        Assert.Equal([0, 1, 4, 6], manifest.Source.Native!.SavePoints!.Select(point => point.AfterSeq));
+        var first = manifest.Source.Native.Discarded![0];
+        Assert.False(first.Reload);
+        Assert.Equal(5, first.SavePoint?.AfterSeq);
+        Assert.Equal(5, first.SavePoint?.Saved.Evidence?.ActionOrdinal);
+
+        var written = ManifestJson.Deserialize(ManifestJson.Serialize(manifest));
+        Assert.Equal(5, written.Source.Native!.Discarded![0].SavePoint?.AfterSeq);
+        Assert.Null(written.Source.Native.Discarded[1].SavePoint);
+        var reread = ManifestValidator.Validate(written);
+        Assert.True(reread.IsValid, reread.Describe());
     }
 
     /// <summary>Neow answered, the first fight won, and a shop entered straight after
