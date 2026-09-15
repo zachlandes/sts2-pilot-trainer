@@ -126,7 +126,7 @@ public class ManifestJsonTests
     [Theory]
     [InlineData(3)]
     [InlineData(4)]
-    [InlineData(8)]
+    [InlineData(9)]
     [InlineData(99)]
     public void RefusesAVersionThisBuildDoesNotRead(int version)
     {
@@ -195,7 +195,7 @@ public class ManifestJsonTests
 
         // Byte-identical everywhere else: re-serialised, only the two fields and
         // the boundaries' own projection differ.
-        var expected = ManifestJson.Serialize(WithBoundariesHashedUnder(original, 5) with
+        var expected = ManifestJson.Serialize(WithoutRunEndRoster(WithBoundariesHashedUnder(original, 5)) with
         {
             Source = original.Source with
             {
@@ -369,6 +369,9 @@ public class ManifestJsonTests
         WrittenIn(manifest, ManifestJson.OldestMigratedVersion);
 
     private static string VersionSix(ReplayManifest manifest) =>
+        WrittenIn(manifest, ManifestJson.FinishedFightResidueManifestVersion);
+
+    private static string VersionSeven(ReplayManifest manifest) =>
         WrittenIn(manifest, ManifestJson.PreviousManifestVersion);
 
     /// <summary>The manifest as a file of that older version: no boundary of one
@@ -378,11 +381,33 @@ public class ManifestJsonTests
     {
         var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
         document["manifest_version"] = version;
-        foreach (var boundary in document["boundaries"]!.AsArray())
+        if (version < 7)
         {
-            boundary!.AsObject().Remove("projection");
+            foreach (var boundary in document["boundaries"]!.AsArray())
+            {
+                boundary!.AsObject().Remove("projection");
+            }
+        }
+
+        if (version < PatchRoster.RunEndIntroducedInManifestVersion)
+        {
+            document["environment"]?["mods"]?["Value"]?["patch_roster"]?.AsObject().Remove("run_end");
         }
         return document.ToJsonString();
+    }
+
+    private static ReplayManifest WithoutRunEndRoster(ReplayManifest manifest)
+    {
+        var mods = manifest.Environment.Mods;
+        return mods.Value.Patches is not { } roster
+            ? manifest
+            : manifest with
+            {
+                Environment = manifest.Environment with
+                {
+                    Mods = mods with { Value = mods.Value with { Patches = roster with { AtRunEnd = null } } },
+                },
+            };
     }
 
     /// <summary>The manifest with every boundary digest marked as hashed under that
@@ -392,6 +417,24 @@ public class ManifestJsonTests
         {
             Boundaries = manifest.Boundaries.Select(boundary => boundary with { Projection = version }).ToList(),
         };
+
+    /// <summary>
+    /// A version-7 native recording reads without a run-end roster and says which
+    /// recorder format could not have captured it.
+    /// </summary>
+    [Fact]
+    public void ReadsAVersionSevenNativeManifestWithoutInventingARunEndRoster()
+    {
+        var original = Fixtures.NativeManifest();
+
+        var migrated = ManifestJson.Deserialize(VersionSeven(original));
+
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        Assert.Equal(7, migrated.Source.Native!.MigratedFromVersion);
+        Assert.Null(migrated.Environment.Mods.Value.Patches!.AtRunEnd);
+        var result = ManifestValidator.Validate(migrated);
+        Assert.True(result.IsValid, result.Describe());
+    }
 
     /// <summary>
     /// A version-6 video manifest whose checkpoints were all taken inside a live
@@ -498,7 +541,7 @@ public class ManifestJsonTests
             ["combat.player_hp"],
             Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Id == "a-health-bar-mid-fight").Expect.Keys);
         Assert.Equal(
-            ManifestJson.Serialize(WithBoundariesHashedUnder(original, 6) with { Checkpoints = [] }),
+            ManifestJson.Serialize(WithoutRunEndRoster(WithBoundariesHashedUnder(original, 6)) with { Checkpoints = [] }),
             ManifestJson.Serialize(migrated with
             {
                 Checkpoints = [],

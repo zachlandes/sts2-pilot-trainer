@@ -195,14 +195,14 @@ public class MigrateManifestTests
 
         var versionSix = Path.Combine(ScratchDirectory(), "version-six-video.replay.json");
         File.WriteAllText(versionSix, WithDigest(
-            AsWrittenIn(JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject(), ManifestJson.PreviousManifestVersion),
+            AsWrittenIn(JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject(), ManifestJson.FinishedFightResidueManifestVersion),
             arrival, stale).ToJsonString() + "\n");
 
         var plain = ScratchPath();
         Assert.Equal(0, Arbiter.Run("migrate-manifest", versionSix, "--out", plain).ExitCode);
         var rewritten = ManifestJson.Load(plain);
         Assert.Equal(ReplayManifest.CurrentManifestVersion, rewritten.ManifestVersion);
-        Assert.All(rewritten.Boundaries, boundary => Assert.Equal(ManifestJson.PreviousManifestVersion, boundary.Projection));
+        Assert.All(rewritten.Boundaries, boundary => Assert.Equal(ManifestJson.FinishedFightResidueManifestVersion, boundary.Projection));
         Assert.Equal(stale, rewritten.BoundaryAt(arrival.Kind, floor: arrival.Floor)!.Digest.Value);
 
         var derived = ScratchPath();
@@ -224,15 +224,22 @@ public class MigrateManifestTests
         Assert.DoesNotContain("rederived:", refused.All, StringComparison.Ordinal);
     }
 
-    /// <summary>The manifest as a file of that older version: no boundary of one
-    /// says which projection its digest was hashed under, because the field arrived
-    /// with format 7.</summary>
+    /// <summary>The manifest as a file of that older version, with fields introduced
+    /// after it removed rather than merely hidden behind an older version number.</summary>
     private static JsonObject AsWrittenIn(JsonObject node, int version)
     {
         node["manifest_version"] = version;
-        foreach (var boundary in node["boundaries"]!.AsArray())
+        if (version < 7)
         {
-            boundary!.AsObject().Remove("projection");
+            foreach (var boundary in node["boundaries"]!.AsArray())
+            {
+                boundary!.AsObject().Remove("projection");
+            }
+        }
+
+        if (version < PatchRoster.RunEndIntroducedInManifestVersion)
+        {
+            node["environment"]?["mods"]?["Value"]?["patch_roster"]?.AsObject().Remove("run_end");
         }
         return node;
     }
@@ -309,7 +316,7 @@ public class MigrateManifestTests
         var path = Path.Combine(
             Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json");
         var node = WithDigest(
-            AsWrittenIn(JsonNode.Parse(File.ReadAllText(path))!.AsObject(), ManifestJson.PreviousManifestVersion),
+            AsWrittenIn(JsonNode.Parse(File.ReadAllText(path))!.AsObject(), ManifestJson.FinishedFightResidueManifestVersion),
             boundary, digest);
 
         var scratch = Path.Combine(ScratchDirectory(), $"version-six-{boundary.Kind}-{boundary.AfterSeq}.replay.json");

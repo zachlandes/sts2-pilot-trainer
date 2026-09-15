@@ -98,6 +98,7 @@ public sealed class RunCapture
     private readonly List<JournalSavePoint> _savePoints = [];
     private readonly string _schemaId;
 
+    private Fact<PatchRoster>? _patchRosterAtRunEnd;
     private FightCapture? _fight;
     private JournalStop? _stop;
     private RunCoverage? _coverage;
@@ -232,6 +233,7 @@ public sealed class RunCapture
         Discarded = _journalDiscarded.ToList(),
         Bookmarks = _bookmarks.Values.ToList(),
         SavePoints = _savePoints.ToList(),
+        PatchRosterAtRunEnd = _patchRosterAtRunEnd,
         SerializedRecords = _journalRecords.ToList(),
     };
 
@@ -374,6 +376,12 @@ public sealed class RunCapture
         RunJournal journal, IReadOnlyDictionary<string, string> liveSample, string liveDigest)
     {
         journal.RequireReadable();
+        if (journal.PatchRosterAtRunEnd is not null)
+        {
+            throw new ManifestException(
+                "This run journal already carries the patch roster read at run end, so the run it describes " +
+                "has ended and cannot be resumed as a recording.");
+        }
         Require(
             !string.IsNullOrWhiteSpace(liveDigest),
             "Continuing a recording needs the complete canonical state digest of the run the game resumed " +
@@ -805,6 +813,46 @@ public sealed class RunCapture
     }
 
     /// <summary>
+    /// Records Harmony's registry at the other end of the run.
+    ///
+    /// The registry at run start is part of <see cref="Identity"/>. Keeping this
+    /// reading separately preserves the first across a resumed session, and nesting
+    /// it under that same roster in <see cref="ToManifest"/> lets the preflight judge
+    /// whether one patch environment held for the whole run.
+    /// </summary>
+    /// <returns>The journal line the caller must append before writing the manifest.</returns>
+    public string RecordPatchRosterAtRunEnd(PatchRoster roster)
+    {
+        if (State == RunCaptureState.Finished)
+        {
+            throw new ManifestException(
+                "This run is already over, so its patch roster cannot be read at run end a second time.");
+        }
+
+        if (Identity.Mods.Patches is null)
+        {
+            throw new ManifestException(
+                "This recording has no patch-roster reading from run start, so an end reading could not say " +
+                "whether the environment stayed the same.");
+        }
+
+        if (_patchRosterAtRunEnd is not null)
+        {
+            throw new ManifestException(
+                "This recording already carries the patch roster read at run end. A run ends once.");
+        }
+
+        var afterSeq = NextSeq - 1;
+        var captured = Fact<PatchRoster>.Captured(
+            roster with { AtRunEnd = null },
+            FactEvidence.AtActionOrdinal(afterSeq, _clocks.GetValueOrDefault(afterSeq)));
+        _patchRosterAtRunEnd = captured;
+        var line = RunJournal.RenderPatchRosterAtRunEnd(captured);
+        _journalRecords.Add(line);
+        return line;
+    }
+
+    /// <summary>
     /// The run is over.
     /// </summary>
     /// <param name="outcome">One of <see cref="NativeSource.Outcomes"/>. Giving up is
@@ -976,11 +1024,25 @@ public sealed class RunCapture
 
         var coverage = Coverage;
         var locations = coverage.Boundaries();
+        var environment = Identity.AsEnvironment();
+        if (_patchRosterAtRunEnd is { } atRunEnd && environment.Mods.Value.Patches is { } atRunStart)
+        {
+            environment = environment with
+            {
+                Mods = environment.Mods with
+                {
+                    Value = environment.Mods.Value with
+                    {
+                        Patches = atRunStart with { AtRunEnd = atRunEnd },
+                    },
+                },
+            };
+        }
 
         return new ReplayManifest
         {
             RunId = RunId,
-            Environment = Identity.AsEnvironment(),
+            Environment = environment,
             Source = new SourceProvenance
             {
                 Kind = "native",

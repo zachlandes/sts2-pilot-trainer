@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 7;
+    public const int CurrentManifestVersion = 8;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -277,7 +277,7 @@ public sealed record NativeSource
 
     /// <summary>The older formats a migrated file may declare it was written in.
     /// A later format widens this when it adds a migration of its own.</summary>
-    public static readonly int[] MigratableVersions = [5, 6];
+    public static readonly int[] MigratableVersions = [5, 6, 7];
 
     /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
     /// over, the history is whole, and the fights in it were really played.</summary>

@@ -828,9 +828,40 @@ public class EnvironmentPreflightTests
 
         Assert.True(Field(result, "patched_members").Matches, Describe(result));
         Assert.Contains(
-            "member(s) at run start, all patched by Runmobile alone",
+            "member(s) at run start and run end, all patched by Runmobile alone",
             Field(result, "patched_members").Actual,
             StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A patch attached lazily after the run began changes the roster and refuses the
+    /// recording by the member that changed.
+    ///
+    /// The start is otherwise the passing host-only reading, so this is the gap a
+    /// start-only roster left: the declaration and content-hash rules are unchanged,
+    /// while the second registry reading establishes that gameplay ran under a
+    /// different patch environment.
+    /// </summary>
+    [Fact]
+    public void APatchAddedAfterRunStartRefusesTheRecording()
+    {
+        var atRunStart = RecordedPatchRoster.HostOnly();
+        var lazyMember = RecordedPatchRoster.Member(
+            "MegaCrit.Sts2.Core.Combat.CombatState", "DrawCards(Int32)", "somebody.lazy");
+        var roster = atRunStart with
+        {
+            AtRunEnd = Fact<PatchRoster>.Captured(
+                new PatchRoster { Members = [.. atRunStart.Members, lazyMember] },
+                FactEvidence.AtActionOrdinal(1, 2000)),
+        };
+
+        var result = NativeMods(Fixtures.NativeModEnvironment(roster));
+
+        Assert.False(result.Matches);
+        Assert.False(Field(result, "patched_members").Matches);
+        Assert.Contains("changed between run start and run end", Diagnostic(result, "patched_members"));
+        Assert.Contains("CombatState.DrawCards(Int32)", Diagnostic(result, "patched_members"));
+        Assert.True(Field(result, "mod_environment").Matches, Describe(result));
     }
 
     /// <summary>
@@ -906,6 +937,20 @@ public class EnvironmentPreflightTests
         Assert.True(result.Matches, Describe(result));
         Assert.Contains(
             "not read", Field(result, "patched_members").Actual, StringComparison.Ordinal);
+    }
+
+    /// <summary>An older recording with a start roster but no run-end reading keeps
+    /// the earlier rule and says exactly which reading is absent.</summary>
+    [Fact]
+    public void ARecordingThatPredatesTheRunEndReadingKeepsItsStartRosterVerdict()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment() with
+        {
+            Patches = RecordedPatchRoster.HostOnly(),
+        });
+
+        Assert.True(result.Matches, Describe(result));
+        Assert.Contains("run-end reading was not taken", Field(result, "patched_members").Actual);
     }
 
     /// <summary>

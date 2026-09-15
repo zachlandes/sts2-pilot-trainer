@@ -7,10 +7,9 @@ namespace Sts2PilotTrainer.Engine;
 /// <summary>
 /// Reads what is patched in this process, out of Harmony's own registry.
 ///
-/// The one owner of that reading. It is asked twice for different reasons - the mod
-/// writes it into the game's log the moment its patches are installed, and the
-/// recorder captures it into a run's environment at run start - and two readers would
-/// be two things to fix when Harmony moves.
+/// The one owner of that reading. The mod writes it into the game's log when its
+/// patches are installed, and the recorder captures it at run start and run end.
+/// Two readers would be two things to fix when Harmony moves.
 ///
 /// It touches nothing of the game. <c>Harmony.GetAllPatchedMethods</c> and
 /// <c>GetPatchInfo</c> read a static registry Harmony keeps of its own work, so this

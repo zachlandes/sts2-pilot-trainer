@@ -263,6 +263,7 @@ public sealed class RunCaptureTests
         Assert.Equal(ActionVerb.ShopPurchase, Assert.Single(branch.Actions).Verb);
 
         // And the manifest says where the saves were, as captured facts.
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var manifest = resumed.ToManifest();
         Assert.Equal([0, 1, 4, 5], manifest.Source.Native!.SavePoints!.Select(point => point.AfterSeq));
@@ -339,6 +340,33 @@ public sealed class RunCaptureTests
         Assert.Equal(RunCaptureState.Broken, resumed.State);
     }
 
+    /// <summary>
+    /// A resumed session compares its run-end roster with the original run-start
+    /// reading from the journal header, not with a new start reading taken at resume.
+    /// </summary>
+    [Fact]
+    public void AResumedRecordingKeepsTheOriginalRosterAndAppendsItsRunEndReading()
+    {
+        var first = Played();
+        var journal = RunJournal.Parse(first.Journal.Render());
+        var resumed = RunCapture.Resume(journal, journal.Entries[^1].State, journal.Entries[^1].Digest);
+        var atRunStart = resumed.Identity.Mods.Patches!;
+        var lazy = RecordedPatchRoster.Member("Game.Type", "Lazy()", "somebody.lazy");
+        var atRunEnd = new PatchRoster { Members = [.. atRunStart.Members, lazy] };
+
+        resumed.RecordPatchRosterAtRunEnd(atRunEnd);
+        resumed.Finish("abandoned");
+
+        var manifestRoster = resumed.ToManifest().Environment.Mods.Value.Patches!;
+        Assert.DoesNotContain(manifestRoster.Members, member => member.Member == "Lazy()");
+        Assert.Contains(manifestRoster.AtRunEnd!.Value.Members, member => member.Member == "Lazy()");
+        Assert.False(manifestRoster.StayedTheSame);
+        Assert.Equal(
+            atRunEnd.Members.Select(member => member.Describe()),
+            RunJournal.Parse(resumed.Journal.Render()).PatchRosterAtRunEnd!.Value.Members
+                .Select(member => member.Describe()));
+    }
+
     /// <summary>The Neow re-offer: the blessing was answered and the game came back
     /// with it unanswered, because the save the finished event asked for never
     /// reached the disk and Continue restored the run-start save. No save point is on
@@ -371,6 +399,7 @@ public sealed class RunCaptureTests
         Saved(resumed);
         resumed.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(22));
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
 
         var manifest = resumed.ToManifest();
@@ -471,6 +500,7 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
             Won(2, hp: 58), Digest(40));
         Saved(resumed);
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var rewound = resumed.ToManifest();
         var accepted = ManifestValidator.Validate(rewound);
@@ -569,6 +599,7 @@ public sealed class RunCaptureTests
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "2")),
             InFight(3, turn: 1), Digest(31));
         Saved(rewound);
+        RecordStableRosterAtRunEnd(rewound);
         rewound.Finish("abandoned");
 
         var manifest = rewound.ToManifest();
@@ -624,6 +655,7 @@ public sealed class RunCaptureTests
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "2")),
             InFight(3, turn: 1), Digest(31));
         Saved(rewound);
+        RecordStableRosterAtRunEnd(rewound);
         rewound.Finish("abandoned");
 
         var manifest = rewound.ToManifest();
@@ -969,6 +1001,7 @@ public sealed class RunCaptureTests
         Assert.Equal(3, resumed.NextSeq);
         Assert.Single(resumed.Discarded);
 
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var manifest = resumed.ToManifest();
 
@@ -992,6 +1025,7 @@ public sealed class RunCaptureTests
 
         var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -1026,6 +1060,7 @@ public sealed class RunCaptureTests
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
             InFight(3), Digest(6));
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -1063,6 +1098,7 @@ public sealed class RunCaptureTests
             Floor(3), Digest(60));
         resumed = Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -1147,6 +1183,7 @@ public sealed class RunCaptureTests
         Assert.Equal(RunCaptureState.Recording, resumed.State);
         Assert.Equal(3, resumed.NextSeq);
 
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var manifest = resumed.ToManifest();
         Assert.Equal(NativeSource.RewoundContinuity, manifest.Source.Native!.Continuity);
@@ -1378,6 +1415,7 @@ public sealed class RunCaptureTests
     public void ARunPlayedByTheGamesOwnRulesIsCompleteAndPublishable()
     {
         var capture = Played();
+        RecordStableRosterAtRunEnd(capture);
         capture.Finish("won");
 
         var manifest = capture.ToManifest();
@@ -1643,6 +1681,7 @@ public sealed class RunCaptureTests
         // game - has to satisfy the rules Phase 1 wrote, and this is where that is
         // established without a game.
         var capture = Played();
+        RecordStableRosterAtRunEnd(capture);
         capture.Finish("abandoned");
 
         var result = ManifestValidator.Validate(capture.ToManifest());
@@ -1915,6 +1954,9 @@ public sealed class RunCaptureTests
             },
         };
     }
+
+    private static void RecordStableRosterAtRunEnd(RunCapture capture) =>
+        capture.RecordPatchRosterAtRunEnd(capture.Identity.Mods.Patches! with { AtRunEnd = null });
 
     private static RunRecordingStart Start() => new()
     {

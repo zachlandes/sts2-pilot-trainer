@@ -2130,6 +2130,12 @@ internal sealed class RunRecorder : IDisposable
         }
 
         DropTheSavesNeverPlaced();
+
+        // Read the same registry again at the far end of the run. A lazy patch can
+        // attach after the start reading and affect gameplay while the recording
+        // still names only the earlier environment; the two readings travel through
+        // the journal and manifest together so the preflight can refuse that claim.
+        Append(_journalPath, _capture.RecordPatchRosterAtRunEnd(HarmonyRoster.Read()));
         _capture.Finish(outcome);
 
         var manifest = _capture.ToManifest();
