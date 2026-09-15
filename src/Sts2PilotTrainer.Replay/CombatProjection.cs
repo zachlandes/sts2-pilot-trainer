@@ -269,20 +269,22 @@ public sealed record CombatProjection
     ///
     /// The step that ends the fight samples no roster afterwards, because nothing of
     /// a finished fight is projected, so what it took off the enemy is read from how
-    /// the fight ended. Won, the engine's own rule says what happened: a fight is won
-    /// once no living enemy is primary, so every primary enemy standing before the
-    /// step is gone after it - dead, or escaped. An enemy whose telegraphed intent was
-    /// <see cref="EscapeIntent"/> leaves the fight alive on its turn, at whatever
-    /// health it had, and that health was not taken off it; it is left out of the
-    /// credit, on the step that ends the fight and on the one that empties the
-    /// roster alike. A secondary enemy - one carrying a power in
+    /// the fight ended and what the step was. Won, the engine's own rule says what
+    /// happened: a fight is won once no living enemy is primary, so every primary
+    /// enemy standing before the step is gone after it - dead, or escaped, and the
+    /// two are told apart by the action and not by anything the enemy telegraphed.
+    /// An enemy leaves alive only on its own side's turn, which runs inside the
+    /// player's end of turn and nowhere else, so a fight the player's own action ended
+    /// killed every primary enemy in it and each one's remaining health is what that
+    /// action dealt; a fight that ended inside an end of turn may have been won by a
+    /// kill or by a flight, nothing after the step says which, and its enemy health
+    /// lost is null. A secondary enemy - one carrying a power in
     /// <see cref="SecondaryEnemyPowers"/> - may still be standing, and whether it is
     /// went unsampled with the rest of the finished fight, so a fight ended around
     /// one is refused rather than credited with its health. Lost, the enemy that
-    /// killed the player was left at a health nothing sampled, so the step's enemy
-    /// health lost is not derivable and is null: the turn it fell in carries no
-    /// number rather than a zero or the roster's whole health, and every turn before
-    /// it keeps its own.
+    /// killed the player was left at a health nothing sampled, so that step is null
+    /// too. Null is a turn that carries no number rather than a zero or the roster's
+    /// whole health, and every turn before it keeps its own.
     /// </summary>
     private static int? EnemyHealthLost(ReplayStep step)
     {
@@ -350,18 +352,15 @@ public sealed record CombatProjection
         return dealt;
     }
 
-    /// <summary>The intent the projection writes for an enemy about to leave the
-    /// fight alive, as <c>CanonicalStateProjection.DescribeIntent</c> renders the
-    /// engine's own intent type.</summary>
-    public const string EscapeIntent = "Escape";
+    /// <summary>The one step inside a fight during which the enemy side acts: the only
+    /// step on which an enemy can leave the fight alive rather than dead.</summary>
+    private static bool TheEnemySideActsDuring(ReplayStep step) =>
+        string.Equals(step.Verb, nameof(ActionVerb.EndTurn), StringComparison.Ordinal);
 
-    private static int HealthOfTheEnemiesTheStepTookDown(ReplayStep step, int before) =>
-        Enumerable.Range(0, before)
-            .Where(i => !IsEscaping(step.Before.GetValueOrDefault($"combat.enemy.{i}.intent") ?? string.Empty))
-            .Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
-
-    private static bool IsEscaping(string intent) =>
-        intent.Split('+').Contains(EscapeIntent, StringComparer.Ordinal);
+    private static int? HealthOfTheEnemiesTheStepTookDown(ReplayStep step, int before) =>
+        TheEnemySideActsDuring(step)
+            ? null
+            : Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
 
     /// <summary>
     /// The powers whose owner the engine counts as a secondary enemy, by the id the

@@ -279,30 +279,65 @@ public class CombatProjectionTests
     }
 
     /// <summary>
-    /// An enemy that telegraphs an escape leaves the fight alive on its turn, and the
-    /// engine counts the fight won once no primary enemy is left in it. Its health was
-    /// not taken off it, so it is not credited; the enemy the same step did kill is.
-    /// The same enemy is left out where an older trace still samples the emptied
-    /// roster after the step.
+    /// A fight the player's own action ended was won by killing what stood there,
+    /// whatever the enemy had telegraphed: a Thieving Hopper announcing its flight and
+    /// struck down first is credited at its remaining health.
     /// </summary>
     [Fact]
-    public void LeavesAnEscapingEnemysHealthOutOfTheCreditWhenItsFlightEndsTheFight()
+    public void CreditsAKillThePlayersOwnActionMadeWhateverTheEnemyTelegraphed()
     {
         var before = InCombat(1, 80, 12);
-        before["combat.enemy_count"] = "2";
-        before["combat.enemy.0.intent"] = CombatProjection.EscapeIntent;
-        before["combat.enemy.1.model"] = "MONSTER.LOUSE";
-        before["combat.enemy.1.hp"] = "5";
-        before["combat.enemy.1.intent"] = "Attack:6";
-
+        before["combat.enemy.0.intent"] = "Escape";
         var end = Outside();
         end["combat.outcome"] = "victory";
         end["player.hp"] = "80";
 
-        var projection = Project("escape", Trace(
+        var projection = Project("hopper-killed", Trace(
             Step(-1, "run_start", Outside(), before),
-            Step(0, "EndTurn", before, end)));
-        Assert.Equal(5, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+            Step(0, "PlayCard", before, end, ("card_id", "CARD.STRIKE_IRONCLAD"))));
+
+        Assert.Equal(12, projection.Turns.Single().EnemyHealthLost);
+    }
+
+    /// <summary>
+    /// A fight that ended inside an end of turn may have been won by a kill or by a
+    /// flight - a Thieving Hopper leaving on its telegraphed move, a Battleworn Dummy
+    /// leaving on a timer it never telegraphed - and nothing after the step says
+    /// which, so that turn's enemy health lost is unavailable rather than the
+    /// roster's remaining health, the earlier turn keeps its number, and the fight
+    /// still projects. The same holds where an older trace samples the emptied
+    /// roster after the step.
+    /// </summary>
+    [Theory]
+    [InlineData("Escape")]
+    [InlineData("none")]
+    public void LeavesTheTurnAnEnemyMayHaveFledOnWithoutANumber(string intent)
+    {
+        var start = InCombat(1, 80, 20);
+        start["combat.enemy.0.intent"] = intent;
+        var struck = InCombat(1, 80, 12);
+        struck["combat.enemy.0.intent"] = intent;
+        var end = Outside();
+        end["combat.outcome"] = "victory";
+        end["player.hp"] = "80";
+
+        var projection = Project("fled", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
+            Step(1, "EndTurn", struck, end)));
+
+        Assert.Equal("victory", projection.Summary.Outcome);
+        Assert.Null(projection.Turns.Single().EnemyHealthLost);
+
+        var secondTurn = InCombat(2, 80, 12);
+        secondTurn["combat.enemy.0.intent"] = intent;
+        var twoTurns = Project("fled-later", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
+            Step(1, "EndTurn", struck, secondTurn),
+            Step(2, "EndTurn", secondTurn, end)));
+        Assert.Equal(8, twoTurns.Turns[0].EnemyHealthLost);
+        Assert.Null(twoTurns.Turns[1].EnemyHealthLost);
 
         var emptied = new Dictionary<string, string>(end, StringComparer.Ordinal)
         {
@@ -311,11 +346,11 @@ public class CombatProjectionTests
             ["combat.turn"] = "1",
             ["combat.enemy_count"] = "0",
         };
-        var older = Project("escape-older", Trace(
-            Step(-1, "run_start", Outside(), before),
-            Step(0, "EndTurn", before, emptied),
+        var older = Project("fled-older", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "EndTurn", start, emptied),
             Step(1, "EndTurn", emptied, end)));
-        Assert.Equal(5, older.Turns.Sum(turn => turn.EnemyHealthLost));
+        Assert.Null(older.Turns.Single().EnemyHealthLost);
     }
 
     [Fact]
