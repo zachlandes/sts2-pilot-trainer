@@ -21,6 +21,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -78,6 +79,7 @@ internal sealed class RunRecorder : IDisposable
     private readonly string _journalPath;
     private readonly Queue<PendingDecision> _pending = new();
     private readonly List<ScreenAnswer> _screenAnswers = [];
+    private readonly List<PendingSave> _saves = [];
 
     private PlayerFightObserver? _observer;
 
@@ -92,6 +94,13 @@ internal sealed class RunRecorder : IDisposable
     private bool _pumping;
     private bool _disposed;
     private bool _finished;
+
+    /// <summary>Whether a decision has been read at its prefix and not yet
+    /// announced from its postfix: the member is executing between the two, and a
+    /// save the game asks for there is that decision's. Cleared when the pump has
+    /// dealt with a decision, so a prefix whose postfix never came cannot hold it
+    /// past the next decision.</summary>
+    private bool _decisionOpening;
 
     internal RunRecorder(RunCapture capture, string journalPath)
     {
@@ -406,14 +415,14 @@ internal sealed class RunRecorder : IDisposable
         var startedUtc = LiveRun.RunStartedUtc();
         var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
         var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
-        var (sample, digest) = LiveRun.Read();
+        var (sample, digest, saveRepresentable) = LiveRun.Read();
         var clock = LiveRun.RunClockMs();
 
         RunCapture capture;
         if (RunmobileStore.Read(journalPath) is { } existing)
         {
             var journal = RunJournal.Parse(existing);
-            capture = RunCapture.Resume(journal, sample, digest);
+            capture = RunCapture.Resume(journal, sample, digest, saveRepresentable);
             var resumeRefusals = capture.Refusals.Count;
 
             // Before anything is appended, because an append onto a fragment a
@@ -452,6 +461,15 @@ internal sealed class RunRecorder : IDisposable
             Log.Info(
                 $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
                 $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
+            if (capture.Discarded.Count > journal.Discarded.Count)
+            {
+                var branch = capture.Discarded[^1];
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] the game returned this run to " +
+                    $"{(branch.RollbackToSeq == -1 ? "its start" : $"decision {Number(branch.RollbackToSeq)}")}" +
+                    $"{(branch.Reload ? " by a reload of an older save" : ", its latest save")}; " +
+                    $"{Number(branch.Actions.Count)} decision(s) made after it are kept as a discarded branch", 2);
+            }
             if (capture.Refusal is { } refusal) Log.Warn($"[{RunmobileMod.ModId}] {refusal}", 2);
 
             // Where this resume refused, the fields the game came back different in,
@@ -480,6 +498,7 @@ internal sealed class RunRecorder : IDisposable
                 Identity = LiveRun.ReadIdentity(run),
                 State = sample,
                 Digest = digest,
+                SaveRepresentableDigest = saveRepresentable,
                 RunClockMs = clock,
             });
             RunmobileStore.Write(journalPath, capture.Journal.Render());
@@ -620,8 +639,9 @@ internal sealed class RunRecorder : IDisposable
 
         try
         {
-            var (sample, digest) = LiveRun.Read();
-            return new TakenReading(sample, digest, LiveRun.RunClockMs());
+            var (sample, digest, saveRepresentable) = LiveRun.Read();
+            lock (Gate) recorder._decisionOpening = true;
+            return new TakenReading(sample, digest, LiveRun.RunClockMs(), saveRepresentable);
         }
         catch (Exception ex)
         {
@@ -650,8 +670,8 @@ internal sealed class RunRecorder : IDisposable
         TakenReading reading;
         try
         {
-            var (sample, digest) = LiveRun.Read();
-            reading = new TakenReading(sample, digest, LiveRun.RunClockMs());
+            var (sample, digest, saveRepresentable) = LiveRun.Read();
+            reading = new TakenReading(sample, digest, LiveRun.RunClockMs(), saveRepresentable);
         }
         catch (Exception ex)
         {
@@ -1200,6 +1220,14 @@ internal sealed class RunRecorder : IDisposable
 
                 Refuse($"A {next.Verb} could not be recorded: {ex.GetType().Name}: {ex.Message}");
             }
+            finally
+            {
+                // Whatever became of the decision, a save the game asked for while
+                // it was in flight holds the state the history now ends in: after
+                // the decision where it was written, and after the one before it
+                // where the engine turned it down and left the run as it was.
+                PlaceTheSavesAskedDuringTheDecision();
+            }
         }
     }
 
@@ -1284,7 +1312,7 @@ internal sealed class RunRecorder : IDisposable
 
         // Read now unless this decision brought the state it left with it, which one
         // that finished inside another decision's work has to.
-        var (sample, digest) = taken is null ? LiveRun.Read() : (taken.Sample, taken.Digest);
+        var after = taken?.AsStateReading() ?? LiveRun.Read().AsStateReading();
         var clock = taken is null ? LiveRun.RunClockMs() : taken.RunClockMs;
 
         List<ScreenAnswer> answers;
@@ -1325,9 +1353,8 @@ internal sealed class RunRecorder : IDisposable
             answers.Remove(reward[0]);
         }
 
-        Write(_capture.Record(
-            verb, args, new StateReading(before.Sample, before.Digest), new StateReading(sample, digest), clock));
-        WriteAnswers(answers, sample, digest, clock);
+        Write(_capture.Record(verb, args, before.AsStateReading(), after, clock));
+        WriteAnswers(answers, after, clock);
 
         StartOrStopWatchingTheFight();
     }
@@ -1341,13 +1368,8 @@ internal sealed class RunRecorder : IDisposable
     /// after the decision are the same state - and the headless driver's trace has
     /// the same shape, a step that confirms the answer and changes nothing.
     /// </summary>
-    private void WriteAnswers(
-        IEnumerable<ScreenAnswer> answers,
-        IReadOnlyDictionary<string, string> after,
-        string digest,
-        int? clock)
+    private void WriteAnswers(IEnumerable<ScreenAnswer> answers, StateReading reading, int? clock)
     {
-        var reading = new StateReading(after, digest);
         foreach (var answer in answers)
         {
             if (!Enum.TryParse<ActionVerb>(answer.Verb, out var verb))
@@ -1542,8 +1564,12 @@ internal sealed class RunRecorder : IDisposable
     /// observer samples the moment an action begins and this runs inside that same
     /// call, so the two are readings of one instant.
     /// </summary>
-    private static TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample) =>
-        new(sample, LiveRun.Project().Digest(), LiveRun.RunClockMs());
+    private static TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample)
+    {
+        var projection = LiveRun.Project();
+        return new TakenReading(
+            sample, projection.Digest(), LiveRun.RunClockMs(), ReplayTrace.SaveRepresentableDigest(projection.Fields));
+    }
 
     /// <summary>
     /// The fight is over.
@@ -1586,6 +1612,19 @@ internal sealed class RunRecorder : IDisposable
     /// samples and a boundary is identified by the whole canonical state. Both are
     /// readings of the same instant: the observer takes its sample the moment the
     /// engine settles and this runs inside that same call.
+    ///
+    /// The one step that is not read here is the one that ends the fight while the
+    /// run goes on. The observer's sample is taken when the killing action finishes,
+    /// and the engine is not settled there: it goes on to end the combat, take the
+    /// fight-won save and roll the rewards, and rolling the rewards moves a random
+    /// stream. A reading taken before that names a state the run is never in again -
+    /// the headless replay reads the same step once the engine has drained, and the
+    /// game's own Continue restores the fight-won save into a run that has rolled
+    /// its rewards - so a resume after a loot-screen quit could never find the state
+    /// the game came back in. That step goes through the pump like a decision made
+    /// outside a fight, and is read once the engine has settled, in its turn before
+    /// anything the loot screen then announces. A fight the run was lost in is read
+    /// here: the run is over and nothing rolls, and <see cref="Finish"/> follows.
     /// </summary>
     private void CommitFightStep(
         string verb,
@@ -1594,6 +1633,20 @@ internal sealed class RunRecorder : IDisposable
         IReadOnlyDictionary<string, string> after)
     {
         if (_finished || _disposed) return;
+
+        if (_outcomeAwaitingFightEnd is null && _capture.Stop is null &&
+            !string.Equals(after.GetValueOrDefault("combat.outcome"), "in_progress", StringComparison.Ordinal))
+        {
+            lock (Gate)
+            {
+                _pending.Enqueue(new PendingDecision(verb, args, null, before, FightEnd: true));
+                if (_pumping) return;
+                _pumping = true;
+            }
+
+            _ = Pump();
+            return;
+        }
 
         // The fight is still watched past a stop, so its end is still seen; what it
         // decides is not recorded, the way nothing after a stop is.
@@ -1613,7 +1666,9 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            var digest = LiveRun.Project().Digest();
+            var projection = LiveRun.Project();
+            var digest = projection.Digest();
+            var saveRepresentable = ReplayTrace.SaveRepresentableDigest(projection.Fields);
             var clock = LiveRun.RunClockMs();
 
             List<ScreenAnswer> answers;
@@ -1631,9 +1686,9 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            Write(_capture.Record(
-                parsed, args, new StateReading(before.Sample, before.Digest), new StateReading(after, digest), clock));
-            WriteAnswers(answers, after, digest, clock);
+            var reading = new StateReading(after, digest, saveRepresentable);
+            Write(_capture.Record(parsed, args, before.AsStateReading(), reading, clock));
+            WriteAnswers(answers, reading, clock);
 
             StartOrStopWatchingTheFight();
         }
@@ -1641,6 +1696,147 @@ internal sealed class RunRecorder : IDisposable
         {
             Refuse($"A {verb} inside a fight could not be recorded: {ex.GetType().Name}: {ex.Message}");
         }
+        finally
+        {
+            // The save a won fight takes is asked inside the killing play, and holds
+            // the state that play left.
+            PlaceTheSavesAskedDuringTheDecision();
+        }
+    }
+
+    // ── The game's own saves ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The game asked for a save of the run. Called from the postfix on
+    /// <c>SaveManager.SaveRun</c> with the task the game handed back.
+    ///
+    /// The game saves at five moments and nowhere else: as the run begins, at every
+    /// map-point arrival before the room is rolled, when a fight is won, when an
+    /// ancient event finishes, and again with the reload count on Continue. The
+    /// Continue button restores the latest of them, so where they were is what tells
+    /// the game's own return to its save from a reload of an older one, and the
+    /// recorder is the only thing in a position to write it down. The run-start save
+    /// and the Continue's own come before this recorder attaches and are never
+    /// noticed; the first is what a rollback to the opening reading returns to, and
+    /// the second is the save the run was just restored from.
+    /// </summary>
+    internal static void SaveAsked(Task? saveTask)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished || recorder._disposed) return;
+        if (ProfileWriteBarrier.IsActive) return;
+
+        try
+        {
+            recorder.NoticeSave(saveTask);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] the game's save could not be noted, so a Continue from it would read " +
+                $"as a reload: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
+    /// Places the save in the history and waits for it to land.
+    ///
+    /// Two things have to be known before the line is written, and they arrive
+    /// separately. Which decision the save holds the state after: a save asked while
+    /// a decision is in flight - the map move that saves on arrival, the card play
+    /// that ends the fight, the event option that finishes an ancient event - holds
+    /// the state that decision leaves, and is placed once the decision is written;
+    /// one asked with nothing in flight holds the state after the last decision
+    /// recorded. In flight is from the prefix that reads the decision's before-state
+    /// to the pump writing it: the member executes between the two, and the map
+    /// move's save is asked inside it, before its postfix has announced anything. And whether the save reached the disk: the Continue button restores
+    /// what is there, so a save the game asked for and never finished writing is no
+    /// save point, and a line for it would read the honest Continue after it as a
+    /// reload of an older save. The game's own task says when it has landed.
+    /// </summary>
+    private void NoticeSave(Task? saveTask)
+    {
+        var pending = new PendingSave();
+        lock (Gate)
+        {
+            var inFlight = _decisionOpening || _pending.Count > 0 || _openFightStep is not null;
+            if (!inFlight) pending.AfterSeq = _capture.NextSeq - 1;
+            _saves.Add(pending);
+        }
+
+        _ = AwaitSave(pending, saveTask);
+    }
+
+    private async Task AwaitSave(PendingSave pending, Task? saveTask)
+    {
+        try
+        {
+            if (saveTask is not null) await saveTask;
+        }
+        catch (Exception ex)
+        {
+            lock (Gate) _saves.Remove(pending);
+            Log.Warn(
+                $"[{RunmobileMod.ModId}] the game's save did not complete, so it is not a save point of this " +
+                $"recording: {ex.GetType().Name}: {ex.Message}", 2);
+            return;
+        }
+
+        lock (Gate) pending.Landed = true;
+        WriteSavePointIfSettled(pending);
+    }
+
+    /// <summary>The decision the pump or the fight observer was handling is on the
+    /// file, or was dropped: every save asked while it was in flight holds the state
+    /// the history now ends in.</summary>
+    private void PlaceTheSavesAskedDuringTheDecision()
+    {
+        List<PendingSave> placed;
+        lock (Gate)
+        {
+            _decisionOpening = false;
+            placed = _saves.Where(save => save.AfterSeq is null).ToList();
+            foreach (var save in placed) save.AfterSeq = _capture.NextSeq - 1;
+        }
+
+        foreach (var save in placed) WriteSavePointIfSettled(save);
+    }
+
+    /// <summary>Writes the save point once it is both placed and landed, whichever
+    /// came second.</summary>
+    private void WriteSavePointIfSettled(PendingSave save)
+    {
+        int afterSeq;
+        lock (Gate)
+        {
+            if (!save.Landed || save.AfterSeq is not { } placed) return;
+            if (!_saves.Remove(save)) return;
+            afterSeq = placed;
+        }
+
+        if (_finished || _disposed) return;
+
+        try
+        {
+            if (_capture.MarkSavePoint(afterSeq) is { } line)
+            {
+                Journal(line, "the game's save point", "a reload of an older save");
+            }
+        }
+        catch (ManifestException ex)
+        {
+            Log.Warn(
+                $"[{RunmobileMod.ModId}] the game's save could not be placed in this recording, so a Continue " +
+                $"from it would read as a reload: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>A save the game asked for: which decision it holds the state after,
+    /// once that is known, and whether it has reached the disk.</summary>
+    private sealed class PendingSave
+    {
+        internal int? AfterSeq;
+        internal bool Landed;
     }
 
     // ── The bookmark ─────────────────────────────────────────────────────────────
@@ -1808,6 +2004,29 @@ internal sealed class RunRecorder : IDisposable
         _observer?.Dispose();
         _observer = null;
 
+        // The step that ended the run's last fight may still be waiting for the engine
+        // to settle, and the run ending is the engine settling: it is read now, in its
+        // turn, so a won run's killing blow is in the history it finishes.
+        var fightEnds = new List<PendingDecision>();
+        lock (Gate)
+        {
+            while (_pending.Count > 0 && _pending.Peek().FightEnd) fightEnds.Add(_pending.Dequeue());
+        }
+
+        foreach (var step in fightEnds)
+        {
+            try
+            {
+                Commit(step.Verb, step.Args, step.Before);
+            }
+            catch (Exception ex)
+            {
+                Refuse($"A {step.Verb} that ended the run's last fight could not be recorded: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            PlaceTheSavesAskedDuringTheDecision();
+        }
+
         // A decision announced and not yet read is a decision this recording cannot
         // describe. Said out loud rather than dropped: the history would be missing it,
         // and a history missing decisions replays into a different run.
@@ -1911,7 +2130,7 @@ internal sealed class RunRecorder : IDisposable
         string line;
         try
         {
-            line = _capture.MarkUnmapped(decision, new StateReading(before.Sample, before.Digest));
+            line = _capture.MarkUnmapped(decision, before.AsStateReading());
         }
         catch (ManifestException ex)
         {
@@ -2025,7 +2244,8 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private sealed record PendingDecision(
         string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
-        TakenReading Before, TakenReading? Reading = null, UnmappedFacts? Unmapped = null);
+        TakenReading Before, TakenReading? Reading = null, UnmappedFacts? Unmapped = null,
+        bool FightEnd = false);
 
     /// <summary>
     /// A decision the recorder saw and could not name, as the game named it.
@@ -2077,7 +2297,11 @@ internal sealed class RunRecorder : IDisposable
     /// which time the run is somewhere else entirely.
     /// </summary>
     internal sealed record TakenReading(
-        IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs);
+        IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs,
+        string? SaveRepresentableDigest = null)
+    {
+        internal StateReading AsStateReading() => new(Sample, Digest, SaveRepresentableDigest);
+    }
 
     /// <summary>A decision read in a prefix and announced in the postfix beside it,
     /// where the engine hands back a task that says when it is finished. It carries
@@ -2200,7 +2424,7 @@ internal sealed class RunRecorder : IDisposable
     /// <c>PatchAll</c> over the assembly would install the recorded-fight journey's too.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
-        typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown),
+        typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown), typeof(RunSaved),
         typeof(EventOption), typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
@@ -2265,6 +2489,22 @@ internal sealed class RunRecorder : IDisposable
     {
         [HarmonyPostfix]
         internal static void After() => RunTornDown();
+    }
+
+    /// <summary>
+    /// The game saving the run, at the member every one of its save sites reaches.
+    ///
+    /// A postfix, so it reads the task the game handed back and changes nothing about
+    /// the save; the headless host's own prefix on this member and the trainer's write
+    /// barrier both skip the original, and a postfix runs either way. The write
+    /// barrier's case is never a recorded run, and <see cref="SaveAsked"/> refuses it
+    /// besides.
+    /// </summary>
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.SaveRun), [typeof(AbstractRoom), typeof(bool)])]
+    internal static class RunSaved
+    {
+        [HarmonyPostfix]
+        internal static void After(Task? __result) => SaveAsked(__result);
     }
 
     /// <summary>

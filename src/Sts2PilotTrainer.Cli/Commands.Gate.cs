@@ -293,7 +293,7 @@ internal static partial class Commands
         "Every required corruption applies, and corrupted and incomplete histories are refused.";
 
     private const string DiscardedBranchesRequirement =
-        "Every discarded fight branch reproduces through the real engine from its verified room-entry state.";
+        "Every discarded branch reproduces through the real engine from the state of the save it left.";
 
     private const string CoveredFightRequirement =
         "The reproduced history covers a whole fight, from its combat start to the end of that fight.";

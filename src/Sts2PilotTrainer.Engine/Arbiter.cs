@@ -21,6 +21,24 @@ public static class Arbiter
         string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null) =>
         RunCore(manifest, stopAfterSeq, progress, gameModeOverride, modifierTypeNames, validate: true);
 
+    /// <summary>
+    /// Replays one discarded branch: the continued history to the decision the
+    /// branch left from, then the branch's own decisions, through the real engine.
+    ///
+    /// Two states are held. The state the branch left from has to be the state the
+    /// engine reaches at that decision - the save the game restored was of that
+    /// moment, whichever room it was taken in - and the branch's final state has to
+    /// be what the engine produces from it. Both are compared as samples, the way
+    /// every reproduction here is; a floor arrival's complete digest is held by the
+    /// validator against the verified boundary there.
+    ///
+    /// Where either side carries a finished fight, the comparison is of what a save
+    /// carries - <see cref="ReplayTrace.SaveRepresentable"/> - for the reason the
+    /// recorder's resume compares that way: a branch played after a Continue was
+    /// recorded on a run the game restored, and a restored run carries none of the
+    /// last fight's residue, or a fresh one in its place, where the engine carries
+    /// the fight as it was fought. The residue is not what a branch is evidence of.
+    /// </summary>
     public static ArbiterOutcome RunDiscardedBranch(
         ReplayManifest manifest, int branchIndex, PlayerProgress? progress = null)
     {
@@ -30,16 +48,34 @@ public static class Arbiter
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
 
+        var branch = DiscardedBranchAt(manifest, branchIndex);
+        var outcome = RunCore(DiscardedBranchManifest(manifest, branch), null, progress, null, null, validate: false);
+        return JudgeDiscardedBranch(branch, outcome);
+    }
+
+    /// <summary>The same, on a run a caller has already started and stood past the
+    /// retail preflight, for the reason <see cref="ReplayStartedRun"/> exists.</summary>
+    internal static ArbiterOutcome ReplayDiscardedBranchOnStartedRun(
+        GameSession session, ReplayManifest manifest, int branchIndex, PreflightResult preflight)
+    {
+        var branch = DiscardedBranchAt(manifest, branchIndex);
+        var outcome = ReplayStartedRun(session, DiscardedBranchManifest(manifest, branch), preflight, null, null);
+        return JudgeDiscardedBranch(branch, outcome);
+    }
+
+    private static DiscardedBranch DiscardedBranchAt(ReplayManifest manifest, int branchIndex)
+    {
         var branches = manifest.Source.Native?.Discarded ?? [];
         if (branchIndex < 0 || branchIndex >= branches.Count)
         {
             throw new ManifestException($"Discarded branch {branchIndex} does not exist.");
         }
 
-        var branch = branches[branchIndex];
-        var finalAction = branch.Actions[^1];
-        var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
-        var branchManifest = manifest with
+        return branches[branchIndex];
+    }
+
+    private static ReplayManifest DiscardedBranchManifest(ReplayManifest manifest, DiscardedBranch branch) =>
+        manifest with
         {
             Source = manifest.Source with
             {
@@ -56,22 +92,41 @@ public static class Arbiter
             Boundaries = [],
             Verification = null,
         };
-        var outcome = RunCore(branchManifest, null, progress, null, null, validate: false);
+
+    private static ArbiterOutcome JudgeDiscardedBranch(DiscardedBranch branch, ArbiterOutcome outcome)
+    {
+        var diagnostics = new List<string>();
+        var capturedOrigin = branch.Trace.Steps.SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
+        var replayedOrigin = outcome.Report.Trace?.Steps
+            .SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
+        var originDifferences = capturedOrigin is null
+            ? ["the branch carries no reading of the state it left from"]
+            : ExactSampleDifferences(capturedOrigin, replayedOrigin);
+        if (originDifferences.Count > 0)
+        {
+            diagnostics.Add(
+                $"discarded branch state at decision {branch.RollbackToSeq} differs: " +
+                $"{string.Join(", ", originDifferences)}");
+        }
+
+        var finalAction = branch.Actions[^1];
+        var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
         var replayedFinalState = outcome.Report.Trace?.Steps
             .SingleOrDefault(step => step.Seq == finalAction.Seq)?.After;
         var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState);
-        if (differences.Count == 0) return outcome;
+        if (differences.Count > 0)
+        {
+            diagnostics.Add($"discarded branch final state differs: {string.Join(", ", differences)}");
+        }
+
+        if (diagnostics.Count == 0) return outcome;
 
         return outcome with
         {
             Report = outcome.Report with
             {
                 Status = VerificationStatus.Rejected,
-                Diagnostics =
-                [
-                    .. outcome.Report.Diagnostics,
-                    $"discarded branch final state differs: {string.Join(", ", differences)}",
-                ],
+                Diagnostics = [.. outcome.Report.Diagnostics, .. diagnostics],
             },
         };
     }
@@ -80,6 +135,12 @@ public static class Arbiter
         IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
     {
         if (actual is null) return ["the replay produced no final sample"];
+
+        if (ReplayTrace.CarriesFinishedCombat(expected) || ReplayTrace.CarriesFinishedCombat(actual))
+        {
+            expected = ReplayTrace.SaveRepresentable(expected);
+            actual = ReplayTrace.SaveRepresentable(actual);
+        }
 
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)

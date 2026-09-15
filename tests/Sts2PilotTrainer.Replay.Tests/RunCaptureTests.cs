@@ -227,6 +227,267 @@ public sealed class RunCaptureTests
         Assert.Equal(Digest(0), capture.LastDigest);
     }
 
+    // ── Where the game saved ───────────────────────────────────────────────────
+    //
+    // The game saves at every map-point arrival, every fight won and every ancient
+    // event finished, and Continue restores the latest of them. A resume that comes
+    // back to that save is the game working as designed - what was done after it is
+    // re-offered - and is continuous with those decisions kept as the branch the
+    // restore discarded, whatever room the save was taken in. A resume behind it is
+    // a reload of an older save, and a resume nowhere in the history is a hole.
+
+    /// <summary>A purchase made after the shop arrival's save, quit, continue: the
+    /// game re-stocks the shelf and puts the gold back, and the recording is still
+    /// continuous, with the purchase as the branch.</summary>
+    [Fact]
+    public void AReturnToTheLatestSaveInAShopIsTheGamesOwnRollback()
+    {
+        var capture = AtTheShop();
+        var bought = new Dictionary<string, string>(ShopAfter(Won(3, hp: 58)), StringComparer.Ordinal)
+        {
+            ["player.gold"] = "63",
+        };
+        capture.Record(
+            ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
+            bought, Digest(6));
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Refusals);
+        Assert.Equal(6, resumed.NextSeq);
+        Assert.Equal(5, resumed.LatestSavePointSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.False(branch.Reload);
+        Assert.Equal(5, branch.RollbackToSeq);
+        Assert.Equal(ActionVerb.ShopPurchase, Assert.Single(branch.Actions).Verb);
+
+        // And the manifest says where the saves were, as captured facts.
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+        Assert.Equal([0, 1, 4, 5], manifest.Source.Native!.SavePoints!.Select(point => point.AfterSeq));
+        Assert.All(manifest.Source.Native.SavePoints!, point =>
+        {
+            Assert.True(point.Saved.Value);
+            Assert.Equal(FactSource.Captured, point.Saved.Source);
+            Assert.Equal(point.AfterSeq, point.Saved.Evidence?.ActionOrdinal);
+        });
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+    }
+
+    /// <summary>A resume behind the latest save is a reload of an older one - a
+    /// backup, a cloud copy - and the recording is rewound: whole, and never
+    /// shareable.</summary>
+    [Fact]
+    public void AReturnToAnOlderSaveThanTheLatestIsAReload()
+    {
+        var capture = AtTheShop();
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Contains("latest save (after decision 5)", resumed.Refusal!, StringComparison.Ordinal);
+        Assert.Equal(5, resumed.NextSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.True(branch.Reload);
+        Assert.Equal(4, branch.RollbackToSeq);
+        Assert.Equal(4, resumed.LatestSavePointSeq);
+    }
+
+    [Fact]
+    public void AResumeNowhereInTheHistoryIsStillAHole()
+    {
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(AtTheShop().Journal.Render()), Floor(9), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Broken, resumed.State);
+    }
+
+    /// <summary>The Neow re-offer: the blessing was answered and the game came back
+    /// with it unanswered, because the save the finished event asked for never
+    /// reached the disk and Continue restored the run-start save. No save point is on
+    /// the file, so the run-start save is the latest, and the recording is
+    /// continuous with the first answer kept as the branch.</summary>
+    [Fact]
+    public void ANeowReOfferWhoseFinishSaveNeverLandedIsTheGamesOwnRollback()
+    {
+        var first = RunCapture.Begin(Start());
+        first.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+
+        var resumed = Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Refusals);
+        Assert.Equal(0, resumed.NextSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.False(branch.Reload);
+        Assert.Equal(-1, branch.RollbackToSeq);
+
+        resumed.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "2"), ("option_key", "NEOW.OTHER")),
+            Floor(1), Digest(20));
+        Saved(resumed);
+        resumed.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(21));
+        Saved(resumed);
+        resumed.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(22));
+        resumed.Finish("abandoned");
+
+        var manifest = resumed.ToManifest();
+        Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native!.Continuity);
+        Assert.Equal([0, 1], manifest.Source.Native.SavePoints!.Select(point => point.AfterSeq));
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+    }
+
+    /// <summary>A journal written before save points were recorded made no promise
+    /// about them, so it keeps the rule it was written under: a live fight's return
+    /// to its room entry is the game's own, and everything else is a reload. It takes
+    /// no save-point line and its manifest lists none.</summary>
+    [Fact]
+    public void AnOlderJournalKeepsTheFightOnlyRuleAndTakesNoSavePoints()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(2, turn: 1, enemyHp: 30), Digest(2));
+        var older = RunJournal.Parse(
+            capture.Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal));
+        Assert.False(older.RecordsSavePoints);
+
+        var midFight = Resume(older, Digest(1));
+        Assert.Equal(NativeSource.ContinuousContinuity, midFight.Continuity);
+        Assert.False(midFight.RecordsSavePoints);
+        Assert.Null(midFight.MarkSavePoint(1));
+        Assert.Empty(midFight.SavePoints);
+        Assert.DoesNotContain("save_point", midFight.Journal.Render(), StringComparison.Ordinal);
+
+        var behindTheFight = Resume(older, Digest(0));
+        Assert.Equal(NativeSource.RewoundContinuity, behindTheFight.Continuity);
+        Assert.Contains("the room entry of the fight", behindTheFight.Refusal!, StringComparison.Ordinal);
+
+        midFight.Finish("abandoned");
+        Assert.Null(midFight.ToManifest().Source.Native!.SavePoints);
+    }
+
+    /// <summary>The save-point line survives a quit and comes back where it was; a
+    /// rollback drops the ones on the branch it discards, because the game's restore
+    /// of the older save took them off the disk.</summary>
+    [Fact]
+    public void SavePointsAreKeptByTheJournalAndDroppedWithTheBranchARollbackDiscards()
+    {
+        var capture = AtTheShop();
+        var read = RunJournal.Parse(capture.Journal.Render());
+        Assert.Equal([0, 1, 4, 5], read.SavePoints.Select(point => point.AfterSeq));
+        Assert.Equal(812_340, read.SavePoints[2].RunClockMs);
+
+        var rewound = RunCapture.Resume(read, Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+        Assert.Equal([0, 1, 4], rewound.SavePoints.Select(point => point.AfterSeq));
+
+        var again = RunJournal.Parse(rewound.Journal.Render());
+        Assert.Equal([0, 1, 4], again.SavePoints.Select(point => point.AfterSeq));
+        Assert.Equal(4, again.LatestSavePointSeq);
+    }
+
+    [Fact]
+    public void ASavePointNamingADecisionTheHistoryDoesNotHoldIsRefused()
+    {
+        var capture = Played();
+        var refusal = Assert.Throws<ManifestException>(() => capture.MarkSavePoint(5));
+        Assert.Contains("has not made", refusal.Message, StringComparison.Ordinal);
+
+        var text = capture.Journal.Render() + RunJournal.RenderSavePoint(new JournalSavePoint { AfterSeq = 9 }) +
+                   RunJournal.RenderEntry(capture.Journal.Entries[^1]);
+        var unreadable = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
+        Assert.Contains("names decision 9", unreadable.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A rollback line claiming to be the game's own is held to the latest
+    /// save on the file, so a journal cannot be edited into a continuous one.</summary>
+    [Fact]
+    public void ARollbackLineClaimingTheGamesOwnIsHeldToTheLatestSaveOnTheFile()
+    {
+        var capture = AtTheShop();
+        var claimed = RunJournal.RenderRollback(new JournalRollback
+        {
+            RollbackToSeq = 4,
+            RollbackToDigest = Digest(4),
+            DiscardedFromSeq = 5,
+            DiscardedThroughSeq = 5,
+        });
+
+        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(capture.Journal.Render() + claimed));
+
+        Assert.Contains("latest save on the file is after decision 5", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The validator holds a branch the game's own rollback made to a save
+    /// the recording lists, so a reload's branch from somewhere the game never saved
+    /// cannot be relabelled as the game's to make a rewound recording shareable.
+    /// Which of the listed saves was the latest when the run came back is the
+    /// journal's knowledge, and its reader holds the rollback line to it.</summary>
+    [Fact]
+    public void TheValidatorHoldsTheGamesOwnBranchToAListedSavePoint()
+    {
+        var capture = AtTheShop();
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(3));
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        resumed.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            Won(2, hp: 58), Digest(40));
+        Saved(resumed);
+        resumed.Finish("abandoned");
+        var rewound = resumed.ToManifest();
+        var accepted = ManifestValidator.Validate(rewound);
+        Assert.True(accepted.IsValid, accepted.Describe());
+
+        var branch = Assert.Single(rewound.Source.Native!.Discarded!);
+        var relabelled = rewound with
+        {
+            Source = rewound.Source with
+            {
+                Native = rewound.Source.Native with
+                {
+                    Continuity = NativeSource.ContinuousContinuity,
+                    Discarded = [branch with { Reload = false }],
+                },
+            },
+        };
+
+        var result = ManifestValidator.Validate(relabelled);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("which source.native.save_points does not list", StringComparison.Ordinal));
+    }
+
+    /// <summary>Neow answered, the first fight won, and a shop entered straight after
+    /// it, with the game's saves where it takes them: after the event, at each
+    /// arrival and at the fight's end.</summary>
+    private static RunCapture AtTheShop()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
+            ShopAfter(Won(3, hp: 58)), Digest(5));
+        Saved(capture);
+        return capture;
+    }
+
     // ── What the game's save cannot carry ──────────────────────────────────────
     //
     // A finished fight stays on the player until the next fight replaces it, and the
@@ -276,11 +537,11 @@ public sealed class RunCaptureTests
 
     /// <summary>The fight-won save comes back to the loot screen with nothing claimed
     /// and no combat state, so a claim made before the quit was rolled back by the
-    /// game. The match is the killing play - a finished fight, not a room entry - so
-    /// under the fight-only rollback rule this is a reload that rewound the run:
-    /// whole, playable, and not broken.</summary>
+    /// game. The match is the killing play, which is where the game saved, so this is
+    /// the game's own return to its latest save: continuous, with the claim kept as
+    /// the branch the restore discarded.</summary>
     [Fact]
-    public void ALootScreenQuitAfterAClaimResumesAsARewindNotAHole()
+    public void ALootScreenQuitAfterAClaimResumesContinuouslyAtTheFightWonSave()
     {
         var capture = Played();
         var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
@@ -289,13 +550,47 @@ public sealed class RunCaptureTests
         var resumed = RunCapture.Resume(
             RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
 
-        Assert.NotEqual(NativeSource.BrokenContinuity, resumed.Continuity);
-        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Refusals);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
         Assert.Equal(5, resumed.NextSeq);
         var branch = Assert.Single(resumed.Discarded);
+        Assert.False(branch.Reload);
         Assert.Equal(4, branch.RollbackToSeq);
         Assert.Equal(ActionVerb.ClaimReward, Assert.Single(branch.Actions).Verb);
+    }
+
+    /// <summary>The same quit where the fight-won save never landed on the disk - the
+    /// journal holds no save point for it - is a return to the arrival save the game
+    /// took before the fight, behind the recorder's latest: a reload that rewound
+    /// the run, whole and playable and never shareable, and not a hole.</summary>
+    [Fact]
+    public void ALootScreenQuitWhoseSaveNeverLandedResumesAsARewindNotAHole()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            Won(2, hp: 58), Digest(4));
+        var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
+        capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), claimed, Digest(5));
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(3, resumed.NextSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.True(branch.Reload);
+        Assert.Equal(2, branch.RollbackToSeq);
     }
 
     /// <summary>Two readings that agree in every sampled field while their complete
@@ -363,9 +658,11 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));
+        Saved(capture);
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
             InFight(2, turn: 1), Digest(1));
+        Saved(capture);
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(2, turn: 1, enemyHp: 30), Digest(2));
@@ -378,6 +675,7 @@ public sealed class RunCaptureTests
         Assert.Null(resumed.Refusal);
         Assert.Equal(2, resumed.NextSeq);
         Assert.NotNull(resumed.ResumptionRecord);
+        Assert.Equal(1, resumed.LatestSavePointSeq);
 
         var persisted = RunJournal.Parse(resumed.Journal.Render());
         var discarded = Assert.Single(persisted.Discarded);
@@ -407,11 +705,13 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
             InFight(3), Digest(5));
+        Saved(capture);
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(3, enemyHp: 30), Digest(6));
 
         var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -431,6 +731,7 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
             Floor(3), Digest(5));
+        Saved(capture);
         capture.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
@@ -440,6 +741,7 @@ public sealed class RunCaptureTests
             InFight(3, enemyHp: 30), Digest(7));
 
         var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         resumed.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
@@ -451,6 +753,7 @@ public sealed class RunCaptureTests
 
         Assert.True(result.IsValid, result.Describe());
         var discarded = Assert.Single(verified.Source.Native!.Discarded!);
+        Assert.False(discarded.Reload);
         Assert.Equal([6, 7], discarded.Actions.Select(action => action.Seq));
         Assert.Contains(verified.Verification!.Trace!.Steps, step =>
             step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
@@ -463,6 +766,7 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
             Floor(3), Digest(5));
+        Saved(capture);
         capture.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
@@ -472,11 +776,13 @@ public sealed class RunCaptureTests
             InFight(3, enemyHp: 30), Digest(7));
 
         var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         resumed.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "1"), ("option_key", "EVENT.SAFE")),
             Floor(3), Digest(60));
         resumed = Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -537,11 +843,15 @@ public sealed class RunCaptureTests
         first.Record(
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));
+        // Neow is an ancient event, and the game saved when it finished; the run
+        // that came back at its start was restored from the older run-start save.
+        Saved(first);
 
         var resumed = Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
 
         Assert.Equal(RunCaptureState.Recording, resumed.State);
         Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Contains("latest save (after decision 0)", resumed.Refusal!, StringComparison.Ordinal);
         Assert.Equal(0, resumed.NextSeq);
 
         // The blessing chosen a second time, and the run played on from it.
@@ -910,7 +1220,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void AJournalWhoseLastLineWasCutOffByACrashKeepsThePrefix()
     {
-        var whole = Played().Journal.Render();
+        var whole = EndingInADecision(Played().Journal.Render());
         var truncated = whole[..(whole.Length - 30)];
 
         var read = RunJournal.Parse(truncated);
@@ -935,7 +1245,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void AnEntryAppendedAfterACrashDoesNotFuseOntoTheLineItCutShort()
     {
-        var whole = Played().Journal.Render();
+        var whole = EndingInADecision(Played().Journal.Render());
         var path = Path.Combine(Path.GetTempPath(), $"runmobile-journal-{Guid.NewGuid():N}.journal.jsonl");
         File.WriteAllText(path, whole[..(whole.Length - 30)]);
 
@@ -968,6 +1278,16 @@ public sealed class RunCaptureTests
         {
             File.Delete(path);
         }
+    }
+
+    /// <summary>The journal with the save point the game took after its last
+    /// decision not yet landed, so the decision's own line is the last one: what a
+    /// crash inside a decision's append leaves.</summary>
+    private static string EndingInADecision(string journal)
+    {
+        var savePoint = journal.LastIndexOf("{\"save_point\"", StringComparison.Ordinal);
+        Assert.True(savePoint > 0 && journal.IndexOf('\n', savePoint) == journal.Length - 1);
+        return journal[..savePoint];
     }
 
     /// <summary>The two decisions a resumed session goes on to record.</summary>
@@ -1283,9 +1603,11 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));
+        Saved(capture);
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
             InFight(2, turn: 1), Digest(1));
+        Saved(capture);
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(2, turn: 1, enemyHp: 30), Digest(2));
@@ -1293,7 +1615,18 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
             Won(2, hp: 58), Digest(4), runClockMs: 812_340);
+        Saved(capture);
         return capture;
+    }
+
+    /// <summary>The game saved after the last decision recorded, and the save landed:
+    /// what the recorder writes at every map-point arrival, every fight won and every
+    /// ancient event finished.</summary>
+    private static string Saved(RunCapture capture)
+    {
+        var line = capture.MarkSavePoint(capture.NextSeq - 1);
+        Assert.NotNull(line);
+        return line;
     }
 
     private static ReplayManifest Verified(RunCapture capture)
