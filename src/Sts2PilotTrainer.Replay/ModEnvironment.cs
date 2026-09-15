@@ -38,8 +38,8 @@ public sealed record ModEnvironment
     public HeadlessParityWaiver? HeadlessParityWaiver { get; init; }
 
     /// <summary>
-    /// What was actually patched in the process this run was played in, when
-    /// something was in a position to look.
+    /// What was actually patched in the process this run was played in, at its start
+    /// and again at its end when the recorder was new enough to take both readings.
     ///
     /// The list above it is what each mod says about itself; this is what they did.
     /// Kept on the same field because it answers the same question and a reader
@@ -47,9 +47,9 @@ public sealed record ModEnvironment
     /// declaring itself non-gameplay and a member of the combat state on this roster
     /// under its name are the same paragraph.
     ///
-    /// Null where nobody could take the reading: every manifest reconstructed from a
-    /// video, and every recording made before the recorder took it. An absence is
-    /// therefore not a claim that nothing else was patched, and
+    /// Null where nobody could take even the start reading: every manifest
+    /// reconstructed from a video, and every recording made before the recorder took
+    /// it. An absence is therefore not a claim that nothing else was patched, and
     /// <c>EnvironmentPreflight</c> reports it as the reading that was never taken
     /// rather than as a pass.
     /// </summary>
@@ -88,10 +88,10 @@ public sealed record ModEnvironment
     /// for a native recording the two agree by construction.
     /// </summary>
     /// <param name="patches">
-    /// What was patched in this process, read from Harmony rather than from anybody's
-    /// manifest. Required rather than optional: a recorder is in a position to take
-    /// this reading, so leaving it out would be a reading skipped rather than one
-    /// nobody could take, and the two are not the same absence.
+    /// What was patched in this process at run start, read from Harmony rather than
+    /// from anybody's manifest. Required rather than optional: a recorder is in a
+    /// position to take this reading, so leaving it out would be a reading skipped
+    /// rather than one nobody could take, and the two are not the same absence.
     /// </param>
     public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> discovered, PatchRoster patches)
     {

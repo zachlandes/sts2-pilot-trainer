@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -268,11 +269,86 @@ public sealed class GameSessionWatchTests : IDisposable
         Assert.Equal(NativeSource.CompleteIntegrity, WrittenIntegrity(manifestPath));
     }
 
+    /// <summary>The ordinary path reads the same registry at both ends and records
+    /// that it stayed unchanged.</summary>
+    [GameFact]
+    public void AnUnchangedPatchRosterIsRecordedAtBothEnds()
+    {
+        _ = EngineHost.StartupPhase();
+        var capture = RecordedRun.Captured(HarmonyRoster.Read());
+        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        var manifestPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RecordingLibrary.ManifestExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        RunRecorder.BeginRecording(capture, journalPath);
+
+        RunRecorder.RunEnded(isVictory: true);
+
+        var written = ManifestJson.Deserialize(RunmobileStore.Read(manifestPath)!);
+        var roster = Assert.IsType<PatchRoster>(written.Environment.Mods.Value.Patches);
+        Assert.True(roster.StayedTheSame);
+        Assert.Equal(roster.Members.Count, roster.AtRunEnd!.Value.Members.Count);
+        Assert.NotNull(RunJournal.Parse(RunmobileStore.Read(journalPath)!).PatchRosterAtRunEnd);
+        Assert.True(ManifestValidator.Validate(written).IsValid);
+    }
+
+    /// <summary>
+    /// A lazy patch installed after recording begins reaches both crash-surviving and
+    /// finished artifacts through the recorder's real end path.
+    ///
+    /// The start remains the reading taken before the patch. The end is read from
+    /// Harmony after the run finishes, so the two differ by the exact owner and member
+    /// that arrived in between instead of the manifest claiming the first reading held
+    /// for the whole run.
+    /// </summary>
+    [GameFact]
+    public void APatchInstalledAfterRecordingBeginsIsRecordedAtRunEnd()
+    {
+        _ = EngineHost.StartupPhase();
+        var owner = $"sts2-pilot-trainer.lazy-roster-test.{Guid.NewGuid():N}";
+        var harmony = new Harmony(owner);
+        var target = typeof(GameSessionWatchTests).GetMethod(
+            nameof(PatchedAfterRecordingBegan), BindingFlags.Static | BindingFlags.NonPublic)!;
+        var capture = RecordedRun.Captured(HarmonyRoster.Read());
+        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        var manifestPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RecordingLibrary.ManifestExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        RunRecorder.BeginRecording(capture, journalPath);
+
+        try
+        {
+            harmony.Patch(target, prefix: new HarmonyMethod(typeof(GameSessionWatchTests), nameof(Prefix)));
+            Assert.Contains(HarmonyRoster.Read().Members, member => member.Owners.Contains(owner));
+
+            RunRecorder.RunEnded(isVictory: true);
+
+            var written = ManifestJson.Deserialize(RunmobileStore.Read(manifestPath)!);
+            var roster = Assert.IsType<PatchRoster>(written.Environment.Mods.Value.Patches);
+            Assert.DoesNotContain(roster.Members, member => member.Owners.Contains(owner));
+            Assert.Contains(roster.AtRunEnd!.Value.Members, member => member.Owners.Contains(owner));
+            Assert.False(roster.StayedTheSame);
+            Assert.Contains(
+                RunJournal.Parse(RunmobileStore.Read(journalPath)!).PatchRosterAtRunEnd!.Value.Members,
+                member => member.Owners.Contains(owner));
+            Assert.True(ManifestValidator.Validate(written).IsValid);
+        }
+        finally
+        {
+            harmony.UnpatchAll(owner);
+        }
+    }
+
     /// <summary>What the manifest on disk says about the run it recorded. Read back
     /// through the format's own reader, because the file is the artifact anybody else
     /// acts on.</summary>
     private static string? WrittenIntegrity(string manifestPath) =>
         ManifestJson.Deserialize(RunmobileStore.Read(manifestPath)!).Source.Native!.Integrity;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int PatchedAfterRecordingBegan(int value) => value;
+
+    private static void Prefix()
+    {
+    }
 
     /// <summary>
     /// Every member the multiplayer watch attaches to is on this build.

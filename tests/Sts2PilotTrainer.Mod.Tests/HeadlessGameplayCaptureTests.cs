@@ -199,6 +199,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         Assert.Equal(NativeSource.CompleteIntegrity, native.Integrity);
         Assert.True(native.WitnessedRunStart.Value);
         Assert.Empty(capture.Refusals);
+        Assert.True(manifest.Environment.Mods.Value.Patches!.StayedTheSame);
 
         var validation = ManifestValidator.Validate(manifest);
         Assert.True(validation.IsValid, validation.Describe());

@@ -134,13 +134,15 @@ A mod list is what each mod says about itself.
 The patch roster is what they did.
 
 Inside a player's own game there is one reading a declaration cannot lie to: Harmony's own registry of every member something has patched, and who patched it.
-`HarmonyRoster.Read` takes it, the recorder captures it into `environment.mods.patch_roster` at run start alongside the mod list, and `EnvironmentPreflight` judges it.
+`HarmonyRoster.Read` takes it, the recorder captures it into `environment.mods.patch_roster` at run start alongside the mod list, reads the same registry again at run end, and `EnvironmentPreflight` judges both.
 A mod that declares itself non-gameplay and prefixes a member of the combat state passes the declaration rule, passes the content hash, and appears on the roster by member name.
 
 Each entry names the declaring type, the member with its parameter types, every owner id, and how many prefixes, postfixes, transpilers and finalizers sit on it.
 The parameter types are there because the drift this is a fingerprint against is not only a rename: this game grew two parameters on a run-start method once already, which a name-only roster would have read as unchanged.
+The run-end reading is a captured fact at the last action and run clock, rather than inheriting the opening reading's coordinates.
+It is appended to `RunJournal` before the manifest is written, so a resumed recording still compares its end against the original header's start.
 
-Two things refuse a native recording, and they are different failures.
+Three things refuse a native recording, and they are different failures.
 
 A member owned by anybody other than `PatchRoster.HostOwnerId` is somebody else's patch on the game the run was played in, and nothing here bounded what it did.
 That includes a member Runmobile also patched: two prefixes on one method is the case where the order they run in decides the answer.
@@ -149,16 +151,16 @@ A roster naming none of Runmobile's own patches is a broken reading rather than 
 The shell installs the profile write barrier and its screen patches before it reports itself started, and only a started shell records, so a roster that saw none of those saw nothing — and what it says about anybody else's patches is worth nothing either.
 This is the "did our patches apply, or silently fail after a rename" question, as a verdict rather than a log line.
 
-It is one reading, taken at run start, and the row says so.
-A mod that patches lazily on first use rather than at initialization is installed after the reading and is outside it, so a run played under its prefix can still read back as patched by Runmobile alone.
-That shape is not hypothetical: this project's own `YieldSuppression` is a one-shot latch tripped on the first end turn.
-Closing it would take a second reading at run end and a comparison between the two, and this does not do that.
+A roster that changed between run start and run end is not one stable mod environment.
+The comparison includes every member, owner and patch count, so a patch added, removed or changed after the opening reading refuses publication by the member that differed.
+This closes the lazy-patch case: a prefix installed on first use can affect the run even though it was absent when the recorder attached.
 
-An absent roster is neither.
+An absent start roster is neither.
 Only a recorder can take this reading, so a manifest reconstructed from a video never carries one and draws no row at all, and a recording made before the recorder took it has nobody to blame for the gap.
-That row is emitted saying it was not read, and it passes: the roster strengthens the declaration rule beside it rather than replacing it, and refusing an absence would void evidence for a reading nobody could have taken while judging it exactly as well as before.
+A native recording migrated from format 7 or earlier may carry the start roster without the run-end reading, and the row says the second reading was not taken rather than claiming stability.
+Those older absences pass the earlier declaration rule unchanged; a current native recording missing either reading fails validation because its recorder was in a position to take both.
 
-The same reading is written into the game's own log at mod start, one line per member.
+The start reading is also written into the game's own log at mod start, one line per member.
 A `godot.log` attached to a bug report then already answers "what else was patching this game", without rebuilding anything.
 
 ## The resumed-run problem

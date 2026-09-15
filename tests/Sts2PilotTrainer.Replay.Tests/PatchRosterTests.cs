@@ -85,18 +85,138 @@ public sealed class PatchRosterTests
     }
 
     /// <summary>
-    /// A serialized manifest's <c>patch_roster</c> carries the captured members and
-    /// nothing derived from them: the two computed readings are answers to questions
-    /// about the roster, not facts a recorder observed.
+    /// A current native recording must carry the end reading its recorder was in a
+    /// position to take, while a version-7 recording is excused rather than repaired.
     /// </summary>
     [Fact]
-    public void ASerializedRosterCarriesOnlyTheCapturedMembers()
+    public void ACurrentNativeRecordingRequiresTheRunEndReadingAndAMigratedOneDoesNot()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var withoutEnd = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Mods = manifest.Environment.Mods with
+                {
+                    Value = manifest.Environment.Mods.Value with
+                    {
+                        Patches = manifest.Environment.Mods.Value.Patches! with { AtRunEnd = null },
+                    },
+                },
+            },
+        };
+
+        Assert.Contains(
+            ManifestValidator.Validate(withoutEnd).Problems,
+            problem => problem.Contains("patch_roster.run_end is absent", StringComparison.Ordinal));
+
+        var withoutStart = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Mods = manifest.Environment.Mods with
+                {
+                    Value = manifest.Environment.Mods.Value with { Patches = null },
+                },
+            },
+        };
+        Assert.Contains(
+            ManifestValidator.Validate(withoutStart).Problems,
+            problem => problem.Contains("patch_roster is absent", StringComparison.Ordinal));
+
+        var migrated = withoutEnd with
+        {
+            Source = withoutEnd.Source with
+            {
+                Native = withoutEnd.Source.Native! with { MigratedFromVersion = 7 },
+            },
+        };
+        Assert.True(ManifestValidator.Validate(migrated).IsValid);
+    }
+
+    /// <summary>The end roster has to be a captured reading at the last action,
+    /// because anything earlier leaves later gameplay outside the comparison.</summary>
+    [Fact]
+    public void ARunEndRosterReadingBelongsAtTheLastAction()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var roster = manifest.Environment.Mods.Value.Patches!;
+        var tooEarly = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Mods = manifest.Environment.Mods with
+                {
+                    Value = manifest.Environment.Mods.Value with
+                    {
+                        Patches = roster with
+                        {
+                            AtRunEnd = roster.AtRunEnd! with
+                            {
+                                Evidence = FactEvidence.AtActionOrdinal(0, 1000),
+                            },
+                        },
+                    },
+                },
+            },
+        };
+
+        Assert.Contains(
+            ManifestValidator.Validate(tooEarly).Problems,
+            problem => problem.Contains("patch_roster.run_end", StringComparison.Ordinal) &&
+                       problem.Contains("belongs after action 1", StringComparison.Ordinal));
+    }
+
+    /// <summary>The end roster is validated by the same member rules as the start,
+    /// rather than being trusted because the first reading was well formed.</summary>
+    [Fact]
+    public void ARunEndRosterEntryWithNoOwnerIsRefused()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var roster = manifest.Environment.Mods.Value.Patches!;
+        var broken = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Mods = manifest.Environment.Mods with
+                {
+                    Value = manifest.Environment.Mods.Value with
+                    {
+                        Patches = roster with
+                        {
+                            AtRunEnd = Fact<PatchRoster>.Captured(
+                                new PatchRoster
+                                {
+                                    Members = [new PatchedMember("Type", "Member()", [], 1, 0, 0, 0)],
+                                },
+                                FactEvidence.AtActionOrdinal(1, 2000)),
+                        },
+                    },
+                },
+            },
+        };
+
+        Assert.Contains(
+            ManifestValidator.Validate(broken).Problems,
+            problem => problem.Contains("patch_roster.run_end entry", StringComparison.Ordinal) &&
+                       problem.Contains("names no owner", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A serialized manifest's <c>patch_roster</c> carries only the two readings and
+    /// their provenance. The computed comparison is an answer about them, not another
+    /// fact the recorder observed.
+    /// </summary>
+    [Fact]
+    public void ASerializedRosterCarriesOnlyTheCapturedReadings()
     {
         var json = System.Text.Json.Nodes.JsonNode.Parse(
             ManifestJson.Serialize(Fixtures.NativeManifest()))!.AsObject();
 
         var roster = json["environment"]!["mods"]!["Value"]!["patch_roster"]!.AsObject();
 
-        Assert.Equal(["members"], roster.Select(property => property.Key));
+        Assert.Equal(["members", "run_end"], roster.Select(property => property.Key));
+        Assert.Equal(
+            ["members"], roster["run_end"]!["Value"]!.AsObject().Select(property => property.Key));
     }
 }

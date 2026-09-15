@@ -62,7 +62,30 @@ public class CorruptionTests
             }).ToList();
         }
 
-        return manifest with { Actions = actions, Checkpoints = Checkpoints(native) };
+        var playable = manifest with { Actions = actions, Checkpoints = Checkpoints(native) };
+        if (!native) return playable;
+
+        var mods = playable.Environment.Mods;
+        var roster = mods.Value.Patches!;
+        return playable with
+        {
+            Environment = playable.Environment with
+            {
+                Mods = mods with
+                {
+                    Value = mods.Value with
+                    {
+                        Patches = roster with
+                        {
+                            AtRunEnd = roster.AtRunEnd! with
+                            {
+                                Evidence = FactEvidence.AtActionOrdinal(actions.Count - 1),
+                            },
+                        },
+                    },
+                },
+            },
+        };
     }
 
     /// <summary>
@@ -193,6 +216,7 @@ public class CorruptionTests
             ActionVerb.MapMove, RecordedRun.Args(("act", "0"), ("row", "2"), ("column", "3")),
             RecordedRun.Floor(3), RecordedRun.Digest(20));
         Assert.NotNull(resumed.MarkSavePoint(9));
+        resumed.RecordPatchRosterAtRunEnd(resumed.Identity.Mods.Patches!);
         resumed.Finish("abandoned");
         var recording = resumed.ToManifest();
         Assert.True(ManifestValidator.Validate(recording).IsValid);
