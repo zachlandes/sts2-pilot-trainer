@@ -98,7 +98,7 @@ public sealed class RunCaptureStopTests
         Assert.Equal(5, read.Stop.Decision.Seq);
         Assert.Equal("NetMysteryAction", read.Stop.Decision.Name);
 
-        var resumed = RunCapture.Resume(read, "sha256:" + new string('c', 64));
+        var resumed = Resume(read, "sha256:" + new string('c', 64));
         Assert.Equal(RunCaptureState.Unmapped, resumed.State);
         Assert.Equal(NativeSource.UnmappedIntegrity, resumed.Integrity);
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
@@ -285,4 +285,17 @@ public sealed class RunCaptureStopTests
 
     private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
         args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Resumes at the moment a digest names: the live sample is that entry's own
+    /// reading, exactly as a game restored to it would read, and a digest no entry
+    /// carries resumes with a reading nothing in the journal matches. The tests
+    /// about what a save cannot carry pass their own sample instead.
+    /// </summary>
+    private static RunCapture Resume(RunJournal journal, string digest) =>
+        RunCapture.Resume(
+            journal,
+            journal.Entries.LastOrDefault(entry => entry.Digest == digest)?.State
+                ?? new Dictionary<string, string>(StringComparer.Ordinal) { ["run.total_floor"] = "unseen" },
+            digest);
 }

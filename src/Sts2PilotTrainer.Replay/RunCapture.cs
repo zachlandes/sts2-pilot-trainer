@@ -337,22 +337,38 @@ public sealed class RunCapture
     /// recorder stopped watching is the question: the journal's last entry carries the
     /// complete state digest of the moment it was written, and the live game carries
     /// the digest of the moment it resumed into. Equal means nothing happened in
-    /// between that the recorder missed. A return to the entry of the fight the journal
-    /// still holds open is the game's observed save rollback, so the unwound decisions
-    /// are marked discarded and the replayable history resumes there. A return to any
-    /// other decision the journal holds is a reload that rewound the run, handled the
-    /// same way and marked rewound. Anything else is marked broken rather than repaired.
+    /// between that the recorder missed. Equal in everything the game's own save can
+    /// carry means the same: a finished fight's residue stays on the run until the
+    /// next fight and no save carries it, so a reading taken at a shop, a rest site,
+    /// an event or a loot screen after a fight can never match the restored run
+    /// digest for digest, and <see cref="ReplayTrace.SaveRepresentable"/> is what is
+    /// compared once the complete digests have disagreed - the complete digest is
+    /// still asked first, and still what a boundary is identified by. A return to
+    /// the entry of the fight the journal still holds open is the game's observed save
+    /// rollback, so the unwound decisions are marked discarded and the replayable
+    /// history resumes there. A return to any other decision the journal holds is a
+    /// reload that rewound the run, handled the same way and marked rewound. Anything
+    /// else is marked broken rather than repaired.
     /// </summary>
     /// <param name="journal">What the previous session wrote.</param>
+    /// <param name="liveSample">The sampled canonical state of the run the game has
+    /// just resumed into, read at the same instant as <paramref name="liveDigest"/>.</param>
     /// <param name="liveDigest">The complete canonical state digest of the run the
     /// game has just resumed into.</param>
-    public static RunCapture Resume(RunJournal journal, string liveDigest)
+    public static RunCapture Resume(
+        RunJournal journal, IReadOnlyDictionary<string, string> liveSample, string liveDigest)
     {
         journal.RequireReadable();
         Require(
             !string.IsNullOrWhiteSpace(liveDigest),
             "Continuing a recording needs the complete canonical state digest of the run the game resumed " +
             "into, or nothing can say whether it is the run the journal describes.");
+        if (liveSample is null)
+        {
+            throw new ManifestException(
+                "Continuing a recording needs the sampled state of the run the game resumed into, read at the " +
+                "same instant as its digest, or a finished fight's residue would refuse every honest Continue.");
+        }
 
         var start = new RunRecordingStart
         {
@@ -396,10 +412,15 @@ public sealed class RunCapture
         foreach (var bookmark in journal.Bookmarks) capture._bookmarks[bookmark.Fight] = bookmark;
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
-        if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
+        if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal) &&
+            !SameButForWhatNoSaveCarries(last, liveSample))
         {
+            // The complete digest first; only where no entry carries it, the part of
+            // each entry's reading a save can carry, so a finished fight's residue in
+            // the journal cannot hide the entry the game came back to.
             var rolledBackTo = capture.Journal.Entries
-                .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal));
+                .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal))
+                ?? capture.Journal.Entries.LastOrDefault(entry => SameButForWhatNoSaveCarries(entry, liveSample));
             if (rolledBackTo is not null && capture.IsObservedFightRollback(rolledBackTo))
             {
                 capture = capture.RollBack(rolledBackTo);
@@ -455,6 +476,26 @@ public sealed class RunCapture
 
         return capture;
     }
+
+    /// <summary>
+    /// Whether an entry's reading and the live one agree in everything the game's
+    /// own save carries, and disagree only because one of them carries what it
+    /// cannot. See <see cref="ReplayTrace.SaveRepresentable"/>.
+    ///
+    /// The second half is what keeps this from accepting too much: two readings
+    /// whose samples agree while their complete digests do not, with no residue on
+    /// either side, differ in something the sample does not carry - a random
+    /// stream's position, say - and that is a moment the journal never saw, not a
+    /// finished fight's leftovers. So a reading is compared this way only where
+    /// there was residue to take away.
+    /// </summary>
+    private static bool SameButForWhatNoSaveCarries(
+        RunJournalEntry entry, IReadOnlyDictionary<string, string> liveSample) =>
+        (ReplayTrace.CarriesFinishedCombat(entry.State) || ReplayTrace.CarriesFinishedCombat(liveSample)) &&
+        string.Equals(
+            ReplayTrace.SaveRepresentableDigest(entry.State),
+            ReplayTrace.SaveRepresentableDigest(liveSample),
+            StringComparison.Ordinal);
 
     /// <summary>
     /// True only for the game's observed save behavior: the recording ended in a

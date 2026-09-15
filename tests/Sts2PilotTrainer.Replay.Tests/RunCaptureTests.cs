@@ -227,12 +227,128 @@ public sealed class RunCaptureTests
         Assert.Equal(Digest(0), capture.LastDigest);
     }
 
+    // ── What the game's save cannot carry ──────────────────────────────────────
+    //
+    // A finished fight stays on the player until the next fight replaces it, and the
+    // projection keeps emitting it, so every reading taken after a won fight carries
+    // that fight's residue. The game's save has no combat member, so a run continued
+    // from it comes back without it. These hold the resume to comparing what a save
+    // can carry once the complete digests have disagreed, and to nothing looser.
+
+    /// <summary>The recorder's reading at a shop or rest site arrival after a won
+    /// fight carries the fight; the restored run does not. Nothing else differs, so
+    /// nothing happened that the recorder missed.</summary>
+    [Fact]
+    public void AnArrivalAfterAWonFightResumesContinuouslyWithoutTheFightsResidue()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
+            ShopAfter(Won(3, hp: 58)), Digest(5));
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(3, hp: 58)), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Empty(resumed.Refusals);
+        Assert.Empty(resumed.Discarded);
+        Assert.Equal(6, resumed.NextSeq);
+    }
+
+    /// <summary>A reading that differs in something a save does carry - here a point
+    /// of health - is a moment the journal never saw, residue or no residue.</summary>
+    [Fact]
+    public void AnArrivalThatDiffersBeyondTheResidueIsStillBroken()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
+            ShopAfter(Won(3, hp: 58)), Digest(5));
+
+        var live = new Dictionary<string, string>(Restored(Won(3, hp: 58)), StringComparer.Ordinal) { ["player.hp"] = "57" };
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), live, "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Broken, resumed.State);
+    }
+
+    /// <summary>The fight-won save comes back to the loot screen with nothing claimed
+    /// and no combat state, so a claim made before the quit was rolled back by the
+    /// game. The match is the killing play - a finished fight, not a room entry - so
+    /// under the fight-only rollback rule this is a reload that rewound the run:
+    /// whole, playable, and not broken.</summary>
+    [Fact]
+    public void ALootScreenQuitAfterAClaimResumesAsARewindNotAHole()
+    {
+        var capture = Played();
+        var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
+        capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), claimed, Digest(5));
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)), "sha256:" + new string('e', 64));
+
+        Assert.NotEqual(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(5, resumed.NextSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.Equal(4, branch.RollbackToSeq);
+        Assert.Equal(ActionVerb.ClaimReward, Assert.Single(branch.Actions).Verb);
+    }
+
+    /// <summary>Two readings that agree in every sampled field while their complete
+    /// digests disagree, with no finished fight on either side, differ in something
+    /// the sample does not carry; that is not residue and is not accepted as
+    /// equal.</summary>
+    [Fact]
+    public void AgreeingSamplesWithoutResidueDoNotPassAsTheSameMoment()
+    {
+        var resumed = RunCapture.Resume(Played().Journal, Floor(1), "sha256:" + new string('e', 64));
+
+        Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+    }
+
+    [Fact]
+    public void SaveRepresentableDropsAFinishedFightAndKeepsALiveOne()
+    {
+        var finished = ReplayTrace.SaveRepresentable(Won(2, hp: 58));
+        Assert.DoesNotContain(finished.Keys, key => key.StartsWith("combat.", StringComparison.Ordinal));
+        Assert.Equal("58", finished["player.hp"]);
+        Assert.True(ReplayTrace.CarriesFinishedCombat(Won(2, hp: 58)));
+
+        var live = ReplayTrace.SaveRepresentable(InFight(2, turn: 2, enemyHp: 30, hp: 58));
+        Assert.Equal(InFight(2, turn: 2, enemyHp: 30, hp: 58).Count, live.Count);
+        Assert.False(ReplayTrace.CarriesFinishedCombat(InFight(2)));
+        Assert.False(ReplayTrace.CarriesFinishedCombat(Floor(1)));
+
+        Assert.StartsWith("sha256-sr:", ReplayTrace.SaveRepresentableDigest(Floor(1)), StringComparison.Ordinal);
+        Assert.Equal(
+            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 58)),
+            ReplayTrace.SaveRepresentableDigest(Restored(Won(2, hp: 58))));
+        Assert.NotEqual(
+            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 58)),
+            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 57)));
+    }
+
+    [Fact]
+    public void DifferencesNameEachFieldOnceInOrder()
+    {
+        var differences = ReplayTrace.Differences(Won(2, hp: 58), Restored(Won(2, hp: 57)));
+
+        Assert.Equal(
+            ["combat.encounter: ENCOUNTER.TEST -> absent", "combat.enemy_count: 0 -> absent",
+             "combat.outcome: victory -> none", "combat.turn: 2 -> absent", "player.hp: 58 -> 57"],
+            differences);
+    }
+
     [Fact]
     public void ASessionThatResumesWhereItLeftOffCarriesOnRecording()
     {
         var journal = Played().Journal;
 
-        var resumed = RunCapture.Resume(journal, Digest(4));
+        var resumed = Resume(journal, Digest(4));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -256,7 +372,7 @@ public sealed class RunCaptureTests
             InFight(2, turn: 1, enemyHp: 30), Digest(2));
         capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(3));
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -272,7 +388,7 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
             Won(2, hp: 58), Digest(4));
 
-        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(4));
+        resumed = Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(4));
         Assert.Equal(3, resumed.NextSeq);
         Assert.Single(resumed.Discarded);
 
@@ -296,7 +412,7 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(3, enemyHp: 30), Digest(6));
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -324,7 +440,7 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(3, enemyHp: 30), Digest(7));
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
         resumed.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
@@ -356,12 +472,12 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
             InFight(3, enemyHp: 30), Digest(7));
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
         resumed.Record(
             ActionVerb.ChooseEventOption,
             Args(("event_id", "EVENT.TEST"), ("option_index", "1"), ("option_key", "EVENT.SAFE")),
             Floor(3), Digest(60));
-        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
+        resumed = Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
         resumed.Finish("abandoned");
         var verified = Verified(resumed);
 
@@ -390,7 +506,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void ASessionThatResumesAtAnEarlierNonFightBoundaryKeepsRecordingAndCannotBeShared()
     {
-        var resumed = RunCapture.Resume(Played().Journal, Digest(0));
+        var resumed = Resume(Played().Journal, Digest(0));
 
         Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -423,7 +539,7 @@ public sealed class RunCaptureTests
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
+        var resumed = Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
 
         Assert.Equal(RunCaptureState.Recording, resumed.State);
         Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
@@ -482,7 +598,7 @@ public sealed class RunCaptureTests
         played.MarkBookmark(1, on: true, _ => { });
         Assert.True(played.IsBookmarked(1));
 
-        var rewound = RunCapture.Resume(RunJournal.Parse(played.Journal.Render()), Digest(0));
+        var rewound = Resume(RunJournal.Parse(played.Journal.Render()), Digest(0));
         Assert.False(rewound.IsBookmarked(1));
         rewound.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "2")),
@@ -491,7 +607,7 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(31));
         Assert.False(rewound.IsBookmarked(1));
 
-        var again = RunCapture.Resume(RunJournal.Parse(rewound.Journal.Render()), Digest(31));
+        var again = Resume(RunJournal.Parse(rewound.Journal.Render()), Digest(31));
 
         Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
         Assert.Equal(RunCaptureState.Recording, again.State);
@@ -510,12 +626,12 @@ public sealed class RunCaptureTests
     [Fact]
     public void AReloadsRefusalAloneOnTheFileResumesAndRollsBackAgain()
     {
-        var rewound = RunCapture.Resume(RunJournal.Parse(Played().Journal.Render()), Digest(0));
+        var rewound = Resume(RunJournal.Parse(Played().Journal.Render()), Digest(0));
         var text = rewound.Journal.Render();
         Assert.EndsWith(RunJournal.RenderRefusal(rewound.Refusals[0]) + rewound.ResumptionRecord, text);
 
         var interrupted = text[..^rewound.ResumptionRecord!.Length];
-        var again = RunCapture.Resume(RunJournal.Parse(interrupted), Digest(0));
+        var again = Resume(RunJournal.Parse(interrupted), Digest(0));
 
         Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
         Assert.Equal(RunCaptureState.Recording, again.State);
@@ -528,10 +644,10 @@ public sealed class RunCaptureTests
     [Fact]
     public void AReloadAfterAHoleLeavesTheRecordingBroken()
     {
-        var broken = RunCapture.Resume(Played().Journal, "sha256:" + new string('f', 64));
+        var broken = Resume(Played().Journal, "sha256:" + new string('f', 64));
         Assert.Equal(RunCaptureState.Broken, broken.State);
 
-        var again = RunCapture.Resume(RunJournal.Parse(broken.Journal.Render()), Digest(0));
+        var again = Resume(RunJournal.Parse(broken.Journal.Render()), Digest(0));
 
         Assert.Equal(NativeSource.BrokenContinuity, again.Continuity);
         Assert.Equal(RunCaptureState.Broken, again.State);
@@ -559,7 +675,7 @@ public sealed class RunCaptureTests
             InFight(2, turn: 1), Digest(1));
         Assert.NotNull(capture.Fight);
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
 
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.NotNull(resumed.Fight);
@@ -574,7 +690,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void ASessionThatResumesSomewhereTheRecorderNeverSawIsBrokenToo()
     {
-        var resumed = RunCapture.Resume(Played().Journal, Digest(77));
+        var resumed = Resume(Played().Journal, Digest(77));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Broken, resumed.State);
@@ -587,7 +703,7 @@ public sealed class RunCaptureTests
     {
         var journal = Played().Journal with { WitnessedRunStart = false };
 
-        var resumed = RunCapture.Resume(journal, Digest(4));
+        var resumed = Resume(journal, Digest(4));
 
         Assert.False(resumed.WitnessedRunStart);
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
@@ -611,11 +727,11 @@ public sealed class RunCaptureTests
     [Fact]
     public void ASessionResumedAfterAnEarlierOneWasRewoundIsStillRewound()
     {
-        var first = RunCapture.Resume(Played().Journal, Digest(1));
+        var first = Resume(Played().Journal, Digest(1));
         Assert.Equal(NativeSource.RewoundContinuity, first.Continuity);
         first.Record(ActionVerb.SkipRewards, Args(), Floor(2), Digest(5));
 
-        var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(5));
+        var second = Resume(RunJournal.Parse(first.Journal.Render()), Digest(5));
 
         Assert.Equal(NativeSource.RewoundContinuity, second.Continuity);
         Assert.Equal(RunCaptureState.Recording, second.State);
@@ -635,7 +751,7 @@ public sealed class RunCaptureTests
         var first = Played();
         first.MarkBroken("a card screen came back with a card it never offered");
 
-        var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(4));
+        var second = Resume(RunJournal.Parse(first.Journal.Render()), Digest(4));
 
         Assert.Equal(NativeSource.BrokenContinuity, second.Continuity);
         Assert.Equal(RunCaptureState.Broken, second.State);
@@ -746,7 +862,7 @@ public sealed class RunCaptureTests
         // Every decision is still there, and the resumed capture is non-standard
         // without having seen the command itself.
         Assert.Equal(6, read.Entries.Count);
-        var resumed = RunCapture.Resume(read, Digest(4));
+        var resumed = Resume(read, Digest(4));
         Assert.Equal(NativeSource.NonStandardIntegrity, resumed.Integrity);
         Assert.True(resumed.Journal.NonStandard);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
@@ -765,11 +881,11 @@ public sealed class RunCaptureTests
         Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
 
         var twiceMarked = RunJournal.Parse(capture.Journal.Render() + once);
-        var resumed = RunCapture.Resume(twiceMarked, Digest(4));
+        var resumed = Resume(twiceMarked, Digest(4));
 
         Assert.True(twiceMarked.NonStandard);
         Assert.Equal(NativeSource.NonStandardIntegrity, resumed.Integrity);
-        Assert.Equal(RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(4)).Journal.Render(),
+        Assert.Equal(Resume(RunJournal.Parse(capture.Journal.Render()), Digest(4)).Journal.Render(),
             resumed.Journal.Render());
 
         capture.Finish("abandoned");
@@ -858,7 +974,7 @@ public sealed class RunCaptureTests
     /// <summary>The two decisions a resumed session goes on to record.</summary>
     private static string Continued(string journal)
     {
-        var resumed = RunCapture.Resume(RunJournal.Parse(journal), Digest(3));
+        var resumed = Resume(RunJournal.Parse(journal), Digest(3));
         return RunJournal.RenderEntry(resumed.Record(
                    ActionVerb.PlayCard, Args(("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0")),
                    InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(4))) +
@@ -914,7 +1030,7 @@ public sealed class RunCaptureTests
         var journal = Played().Journal;
         var gapped = journal with { Entries = [journal.Entries[0], journal.Entries[1], journal.Entries[3]] };
 
-        var refusal = Assert.Throws<ManifestException>(() => RunCapture.Resume(gapped, Digest(4)));
+        var refusal = Assert.Throws<ManifestException>(() => Resume(gapped, Digest(4)));
 
         Assert.Contains("a missing decision wearing a plausible face", refusal.Message, StringComparison.Ordinal);
     }
@@ -1012,7 +1128,7 @@ public sealed class RunCaptureTests
         capture.MarkBookmark(1, on: false, Nothing);
         capture.MarkBookmark(1, on: true, Nothing);
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), capture.LastDigest);
+        var resumed = Resume(RunJournal.Parse(capture.Journal.Render()), capture.LastDigest);
         resumed.Finish("won");
 
         Assert.True(resumed.IsBookmarked(1));
@@ -1287,4 +1403,38 @@ public sealed class RunCaptureTests
 
     private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
         args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Resumes at the moment a digest names: the live sample is that entry's own
+    /// reading, exactly as a game restored to it would read, and a digest no entry
+    /// carries resumes with a reading nothing in the journal matches. The tests
+    /// about what a save cannot carry pass their own sample instead.
+    /// </summary>
+    private static RunCapture Resume(RunJournal journal, string digest) =>
+        RunCapture.Resume(
+            journal,
+            journal.Entries.LastOrDefault(entry => entry.Digest == digest)?.State
+                ?? new Dictionary<string, string>(StringComparer.Ordinal) { ["run.total_floor"] = "unseen" },
+            digest);
+
+    /// <summary>The reading at a shop entered straight after the fight in
+    /// <paramref name="won"/>: the next floor, the fight's residue still on the
+    /// player, exactly as the projection reads it there.</summary>
+    private static IReadOnlyDictionary<string, string> ShopAfter(IReadOnlyDictionary<string, string> won) =>
+        new Dictionary<string, string>(won, StringComparer.Ordinal);
+
+    /// <summary>The same moment as <paramref name="reading"/> read off a run the game
+    /// restored from its save: no combat state at all, everything else the same.</summary>
+    private static IReadOnlyDictionary<string, string> Restored(IReadOnlyDictionary<string, string> reading)
+    {
+        var restored = new Dictionary<string, string>(
+            reading.Where(field => !field.Key.StartsWith("combat.", StringComparison.Ordinal))
+                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
+            StringComparer.Ordinal)
+        {
+            ["combat.in_progress"] = "false",
+            ["combat.outcome"] = "none",
+        };
+        return restored;
+    }
 }
