@@ -54,12 +54,8 @@ The second fight won and its loot taken, the ? node above resolves to a treasure
 ![The treasure room on arrival, before the quit](8c524804-2026-09-15.png)
 
 Continue re-enters the treasure room. The recorder's reading at the arrival carried the second fight's residue and the restored run carries none, which on main was a broken watch in exactly those eight fields; here the resume placed it at the arrival itself, wrote no refusal and no rollback, and the log reads `continuing the recording ... at decision 29; continuity rewound` - the rewound is the loot screen's from earlier in the run, carried on the journal, and this Continue added nothing to it. The overlay reads RECORDING.
-
-```bash {image}
-![The treasure room after Continue: RECORDING, nothing refused](recorder-continue-treasure-after.png)
-```
-
-![The treasure room after Continue: RECORDING, nothing refused](a5f2138b-2026-09-15.png)
+A second frame was captured after the Continue and rendered byte-identical to the one above: the chest is untouched, the overlay reads RECORDING in both, and nothing on the screen moves, so the after-capture is not repeated here.
+That the quit and the Continue happened between the two is the session's timestamped click record, kept with the session and not committed, and the log line quoted above, which the recorder writes only on a resume.
 
 ## The recording
 
