@@ -1283,13 +1283,24 @@ internal sealed class RunRecorder : IDisposable
             // and RecordedFightEntry asks the same one; a fight that has ended answers by
             // not being in combat, so a lethal card settles here rather than waiting for
             // a turn that never comes.
-            () => RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
-                  manager.ActionQueueSet.IsEmpty &&
-                  (!LiveRun.InCombat || LiveRun.ReadyForThePlayer()),
+            EngineIsQuiet,
             Clock.Budget,
             Clock.Poll,
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
                      "decision left.");
+
+    /// <summary>
+    /// Whether the engine has nothing in flight right now: the executor idle, the
+    /// action queue empty, and where a fight is open, the player able to act.
+    ///
+    /// One reading of the same instant, asked by the settle on every poll and by
+    /// <see cref="Finish"/> once, at the run's end, of the decision the run ended
+    /// inside.
+    /// </summary>
+    private static bool EngineIsQuiet() =>
+        RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
+        manager.ActionQueueSet.IsEmpty &&
+        (!LiveRun.InCombat || LiveRun.ReadyForThePlayer());
 
     /// <summary>Why a settle should stop because the run itself went away, or null while
     /// it is still being played.</summary>
@@ -2075,21 +2086,39 @@ internal sealed class RunRecorder : IDisposable
         // The step that ended the run's last fight may still be waiting for the engine
         // to settle, and the run ending is the engine settling: it is read now, in its
         // turn, so a won run's killing blow is in the history it finishes.
-        var fightEnds = new List<PendingDecision>();
+        //
+        // So is the decision the run ended inside. The game wins a run from the
+        // Architect's PROCEED, and RunManager.OnEnded runs within that very call -
+        // synchronously, under Instant fast mode, before the pump has polled once -
+        // so the decision is still queued when this runs. Its settling and the run's
+        // end are the same instant: OnEnded is called with the run's final state,
+        // before GuaranteeKillAllPlayers kills the player creature, and this postfix
+        // reads it there. Taken only where it is the one decision left and the engine
+        // is quiet, which is the settle's own condition asked once; a decision still
+        // in flight, or one of several, has no state this reading could honestly be.
+        var settledByTheEnd = new List<PendingDecision>();
         lock (Gate)
         {
-            while (_pending.Count > 0 && _pending.Peek().FightEnd) fightEnds.Add(_pending.Dequeue());
+            while (_pending.Count > 0 && _pending.Peek().FightEnd) settledByTheEnd.Add(_pending.Dequeue());
+            if (_pending.Count == 1 && EngineIsQuiet()) settledByTheEnd.Add(_pending.Dequeue());
         }
 
-        foreach (var step in fightEnds)
+        foreach (var step in settledByTheEnd)
         {
             try
             {
-                Commit(step.Verb, step.Args, step.Before);
+                if (step.Unmapped is { } met)
+                {
+                    StopAt(met, step.Before);
+                }
+                else
+                {
+                    Commit(step.Verb, step.Args, step.Before);
+                }
             }
             catch (Exception ex)
             {
-                Refuse($"A {step.Verb} that ended the run's last fight could not be recorded: {ex.GetType().Name}: {ex.Message}");
+                Refuse($"A {step.Verb} the run ended on could not be recorded: {ex.GetType().Name}: {ex.Message}");
             }
 
             PlaceTheSavesAskedDuringTheDecision(step.Before.Ticket);

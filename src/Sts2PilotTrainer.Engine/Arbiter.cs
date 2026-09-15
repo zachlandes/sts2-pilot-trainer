@@ -326,7 +326,9 @@ public static class Arbiter
                     FinalState: refusedState);
             }
 
-            var after = CanonicalStateProjection.Project(session.RunState);
+            // A run the game ended inside this action is read where it ended it,
+            // before the player creature is killed for the ending
+            var after = RunEnding.Reading ?? CanonicalStateProjection.Project(session.RunState);
             steps.Add(new ReplayStep
             {
                 Seq = action.Seq,
@@ -337,10 +339,10 @@ public static class Arbiter
             });
             digests[action.Seq] = after.Digest();
 
-            results.AddRange(Evaluate(checkpointsBySeq[action.Seq], session));
+            results.AddRange(Evaluate(checkpointsBySeq[action.Seq], after));
         }
 
-        var finalState = CanonicalStateProjection.Project(session.RunState);
+        var finalState = RunEnding.Reading ?? CanonicalStateProjection.Project(session.RunState);
         var replayedActions = stopAfterSeq is { } stop
             ? manifest.Actions.Where(a => a.Seq <= stop).ToList()
             : manifest.Actions;
@@ -454,11 +456,13 @@ public static class Arbiter
     /// A checkpoint that quietly checks nothing is worse than no checkpoint, because
     /// it reports a pass.
     /// </summary>
-    private static IEnumerable<CheckpointResult> Evaluate(IEnumerable<Checkpoint> checkpoints, GameSession session)
+    private static IEnumerable<CheckpointResult> Evaluate(IEnumerable<Checkpoint> checkpoints, GameSession session) =>
+        Evaluate(checkpoints, CanonicalStateProjection.Project(session.RunState));
+
+    private static IEnumerable<CheckpointResult> Evaluate(IEnumerable<Checkpoint> checkpoints, CanonicalState state)
     {
         foreach (var checkpoint in checkpoints)
         {
-            var state = CanonicalStateProjection.Project(session.RunState);
             var comparisons = new List<FieldComparison>();
 
             foreach (var (field, expected) in checkpoint.Expect.OrderBy(kv => kv.Key, StringComparer.Ordinal))

@@ -45,6 +45,10 @@ public static partial class SyntheticFixtureGenerator
 
     private static readonly int RequiredCoverage = (1 << RequiredTypes.Length) - 1;
 
+    /// <summary>The coverage the walk under way demands of its route: every required
+    /// type for the fixture, or none for a walk that only has to reach the boss.</summary>
+    private static int _requiredCoverage = RequiredCoverage;
+
     private static ReplayManifest GenerateWholeAct()
     {
         var identity = RequireSupportedBuild();
@@ -55,37 +59,8 @@ public static partial class SyntheticFixtureGenerator
         driver.ImproviseUnrecordedCardSelections();
         driver.EnterFirstRoom();
 
-        var actions = new List<ActionRecord>();
         var checkpoints = new List<Checkpoint>();
-
-        Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
-
-        var route = PlanRoute(session);
-        if (route.Count > MapMoveLimit)
-        {
-            throw new EngineException(
-                $"The planned act route is {route.Count.ToString(CultureInfo.InvariantCulture)} moves long, " +
-                $"past the {MapMoveLimit.ToString(CultureInfo.InvariantCulture)} this journey allows. An act " +
-                "is sixteen rows and its boss; anything longer is a routing defect rather than a long act.");
-        }
-
-        foreach (var next in route)
-        {
-            Apply(driver, actions, ActionVerb.MapMove,
-                ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
-                ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
-                ("column", next.coord.col.ToString(CultureInfo.InvariantCulture)));
-
-            checkpoints.Add(Capture(
-                $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
-                "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
-
-            HandleRoom(driver, session, actions, checkpoints, next.PointType);
-        }
-
-        Apply(driver, actions, ActionVerb.ProceedToNextAct);
-        checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
-            "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
+        var actions = WalkTheAct(session, driver, checkpoints);
 
         return new ReplayManifest
         {
@@ -129,6 +104,73 @@ public static partial class SyntheticFixtureGenerator
             Actions = actions,
             Checkpoints = checkpoints,
         };
+    }
+
+    /// <summary>
+    /// The journey itself, from Neow's blessing through the act transition, on a run
+    /// already stood in its first room.
+    ///
+    /// Separate from the fixture so the same walk can be watched: the recorder's
+    /// headless proof of a won run plays this act on a run of this act alone, where
+    /// the transition opens the victory room instead of an act, through the recorder.
+    /// </summary>
+    /// <param name="afterEachDecision">Run after every decision the walk applies,
+    /// including the screen answers the driver improvised for it; a recorder watching
+    /// the walk settles each decision here before the next is made.</param>
+    /// <param name="visitEveryRoomType">Whether the route has to visit a shop, a rest
+    /// site, a treasure room and an elite on the way, which the fixture needs for the
+    /// verbs that only exist there; a walk that only has to reach the boss takes the
+    /// cheapest route there instead.</param>
+    internal static List<ActionRecord> WalkTheAct(
+        GameSession session, RunDriver driver, List<Checkpoint> checkpoints,
+        Action? afterEachDecision = null, bool visitEveryRoomType = true)
+    {
+        var actions = new List<ActionRecord>();
+        var previous = (_afterEachDecision, _requiredCoverage);
+        (_afterEachDecision, _requiredCoverage) =
+            (afterEachDecision, visitEveryRoomType ? RequiredCoverage : 0);
+        try
+        {
+            WalkTheActFrom(session, driver, actions, checkpoints);
+            return actions;
+        }
+        finally
+        {
+            (_afterEachDecision, _requiredCoverage) = previous;
+        }
+    }
+
+    private static void WalkTheActFrom(
+        GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
+    {
+        Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+
+        var route = PlanRoute(session);
+        if (route.Count > MapMoveLimit)
+        {
+            throw new EngineException(
+                $"The planned act route is {route.Count.ToString(CultureInfo.InvariantCulture)} moves long, " +
+                $"past the {MapMoveLimit.ToString(CultureInfo.InvariantCulture)} this journey allows. An act " +
+                "is sixteen rows and its boss; anything longer is a routing defect rather than a long act.");
+        }
+
+        foreach (var next in route)
+        {
+            Apply(driver, actions, ActionVerb.MapMove,
+                ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
+                ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
+                ("column", next.coord.col.ToString(CultureInfo.InvariantCulture)));
+
+            checkpoints.Add(Capture(
+                $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
+                "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
+
+            HandleRoom(driver, session, actions, checkpoints, next.PointType);
+        }
+
+        Apply(driver, actions, ActionVerb.ProceedToNextAct);
+        checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
+            "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
     }
 
     // ── The route ───────────────────────────────────────────────────────────
@@ -180,7 +222,7 @@ public static partial class SyntheticFixtureGenerator
         RoutePlan? best = null;
         if (node.PointType == MapPointType.Boss)
         {
-            best = covered == RequiredCoverage ? new RoutePlan(0, []) : null;
+            best = (covered & _requiredCoverage) == _requiredCoverage ? new RoutePlan(0, []) : null;
         }
         else
         {

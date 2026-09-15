@@ -284,6 +284,11 @@ internal static class HeadlessPatches
         // neutralize above does. See RunSaveInterception.
         InterceptSaveRun(harmony, assembly, warnings);
 
+        // The run's end, read where the game ends it and before it kills the player
+        // creature for the ending; the arbiter reads the decision the run ended on
+        // there, as the recorder does. See RunEnding.
+        ObserveRunEnding(harmony, assembly, warnings);
+
         // Screen fades between rooms and acts. Pure vfx, and they dereference a
         // scene tree that does not exist here.
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "FadeOut", warnings);
@@ -502,6 +507,46 @@ internal static class HeadlessPatches
             }
         }
     }
+
+    /// <summary>
+    /// Postfixes <c>RunManager.OnEnded</c> and <c>RunManager.CleanUp</c> so
+    /// <see cref="RunEnding"/> holds the state a run ended in until the run is gone.
+    /// Both are required: a host that missed the first would sample a won run's last
+    /// decision after the kill, and one that missed the second would hand the next
+    /// run's replay the last run's ending.
+    /// </summary>
+    private static void ObserveRunEnding(Harmony harmony, Assembly assembly, List<string> failures)
+    {
+        var type = assembly.GetType("MegaCrit.Sts2.Core.Runs.RunManager");
+        foreach (var (name, postfixName) in new[] { ("OnEnded", nameof(RunEnded)), ("CleanUp", nameof(RunCleanedUp)) })
+        {
+            var method = type?.GetMethod(
+                name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (method is null)
+            {
+                failures.Add(
+                    $"headless patch: MegaCrit.Sts2.Core.Runs.RunManager.{name} not found in this build. Without " +
+                    "it the arbiter cannot read the state a run ended in.");
+                continue;
+            }
+
+            var postfix = typeof(HeadlessPatches).GetMethod(postfixName, BindingFlags.NonPublic | BindingFlags.Static)!;
+            try
+            {
+                harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"headless patch RunManager.{name}: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>Harmony postfix on <c>RunManager.OnEnded</c>.</summary>
+    private static void RunEnded() => RunEnding.Observe();
+
+    /// <summary>Harmony postfix on <c>RunManager.CleanUp</c>.</summary>
+    private static void RunCleanedUp() => RunEnding.Forget();
 
     /// <summary>Harmony prefix: offer the save to whatever is collecting, then skip the
     /// original and hand back a finished task.</summary>

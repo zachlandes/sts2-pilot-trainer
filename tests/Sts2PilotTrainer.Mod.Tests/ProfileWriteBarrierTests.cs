@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using HarmonyLib;
 using Sts2PilotTrainer.Mod;
@@ -452,8 +453,13 @@ public sealed class ProfileWriteBarrierTests
     {
         internal static int Calls { get; set; }
 
+        // Never inlined: the test body is compiled before the barrier is installed
+        // over these, and without tiering the JIT folds a one-line write into its
+        // caller, where no detour can reach it
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static void VoidWrite() => Calls++;
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static Task TaskWrite()
         {
             Calls++;

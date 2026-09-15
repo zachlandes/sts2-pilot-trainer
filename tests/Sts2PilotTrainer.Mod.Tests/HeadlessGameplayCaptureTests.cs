@@ -70,10 +70,24 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class HeadlessGameplayCaptureTests : IDisposable
 {
     private const string Seed = "P1L0TTRA1NER";
+
+    /// <summary>A seed whose first act, played alone, the whole-act journey's own rules
+    /// win on the cheapest route to its boss. Found by searching seeds, because the
+    /// fixture's seed was chosen for a three-act run and its act plays differently
+    /// alone; a claim about this journey's rules on this build and nothing else.</summary>
+    private const string WonRunSeed = "A249YBES73";
     private static readonly string[] Acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
 
+    /// <summary>Where the recordings these tests write are kept: a directory named by
+    /// this variable, left in place for a demo to read, or a temporary one deleted
+    /// with the test.</summary>
+    private const string KeepRecordingsVariable = "HEADLESS_CAPTURE_RECORDINGS";
+
     private readonly string _root = Path.Combine(
-        Path.GetTempPath(), $"headless-capture-{Guid.NewGuid():N}", "Runmobile", "steam", "test", "profile1");
+        Environment.GetEnvironmentVariable(KeepRecordingsVariable) is { Length: > 0 } kept
+            ? Path.Combine(kept, $"headless-capture-{Guid.NewGuid():N}")
+            : Path.Combine(Path.GetTempPath(), $"headless-capture-{Guid.NewGuid():N}"),
+        "Runmobile", "steam", "test", "profile1");
 
     public HeadlessGameplayCaptureTests()
     {
@@ -88,6 +102,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         RunmobileStore.UseRootForTesting(null);
         RunRecorder.ResetHostSeamsForTesting();
         HeadlessEngine.Forget();
+        if (Environment.GetEnvironmentVariable(KeepRecordingsVariable) is { Length: > 0 }) return;
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
     }
@@ -205,6 +220,184 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         AssertSameTrace(capture.Trace, replay.Trace);
     }
 
+    // ── The won run ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A run played to its victory finishes won, continuous and complete, with the
+    /// decision it was won on in the history, and replays.
+    ///
+    /// The game wins a run from the Architect's event room: the last boss's reward
+    /// screen issues the same act-change vote every act ends with, <c>EnterNextAct</c>
+    /// opens the victory room in place of an act, and the event's PROCEED calls
+    /// <c>RunManager.WinRun</c>, which calls <c>OnEnded(true)</c> inside that very
+    /// press. Under Instant fast mode the two animations before it are skipped, so
+    /// <c>OnEnded</c> runs synchronously before the recorder's pump has polled once
+    /// and PROCEED is still a pending decision when the recording is finished. Headless
+    /// <c>Cmd.Wait</c> is neutralised, so this process is that setting exactly; before
+    /// the recorder read the decision the run ended inside, every won recording made
+    /// this way finished <c>continuity = broken</c> with its last decision stranded,
+    /// and the replay driver refused the last act's transition besides.
+    ///
+    /// The act is walked by the whole-act fixture's own journey
+    /// (<see cref="SyntheticFixtureGenerator.WalkTheAct"/>) on a run of that act alone,
+    /// so its boss is the run's last, with the recorder watching every decision go
+    /// through the game members it patches; the card rewards it takes are handed to the
+    /// recorder by <see cref="HeadlessCardRewardScreen"/>, standing in for the screen
+    /// this process never draws. The recording is then replayed fresh from the seed,
+    /// the way every recording here is, and held to its declared boundaries and its
+    /// trace.
+    /// </summary>
+    [GameFact]
+    public void AWonRunFinishesContinuousWithTheDecisionItWasWonOnAndReplays()
+    {
+        using var recording = Patched();
+        RunRecorder.GameIdentitySource = HeadlessIdentity;
+        RunRecorder.Clock = new PumpedSettleClock();
+
+        var (manifest, capture) = CaptureWonRun();
+
+        var native = manifest.Source.Native!;
+        Assert.Equal("won", native.Outcome);
+        Assert.Equal(NativeSource.ContinuousContinuity, native.Continuity);
+        Assert.Equal(NativeSource.CompleteIntegrity, native.Integrity);
+        Assert.Empty(capture.Refusals);
+
+        var last = manifest.Actions[^1];
+        Assert.Equal(ActionVerb.ChooseEventOption, last.Verb);
+        Assert.Equal("EVENT.THE_ARCHITECT", last.Args["event_id"]);
+        Assert.Equal("PROCEED", last.Args["option_key"]);
+        Assert.Contains(manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+
+        var replay = FreshReplayFromSeed(manifest);
+        foreach (var declared in manifest.Boundaries)
+        {
+            var derived = replay.Boundaries.SingleOrDefault(candidate =>
+                candidate.Kind == declared.Kind && candidate.Fight == declared.Fight &&
+                candidate.Floor == declared.Floor && candidate.Turn == declared.Turn);
+            Assert.True(derived is not null, $"the replay did not reach {declared.Describe()}");
+            Assert.Equal(declared.Digest.Value, derived!.Digest.Value);
+        }
+
+        AssertSameTrace(capture.Trace, replay.Trace);
+    }
+
+    /// <summary>
+    /// A history that goes on past the decision the game ended the run on is not this
+    /// run's, and the replay refuses it at that action rather than playing on with a
+    /// dead player: the run's end is read where the game ends it, inside PROCEED, and
+    /// nothing after it is a decision the run was there to make.
+    /// </summary>
+    [GameFact]
+    public void AHistoryThatGoesOnPastTheWinIsRefusedAtTheActionAfterIt()
+    {
+        using var recording = Patched();
+        RunRecorder.GameIdentitySource = HeadlessIdentity;
+        RunRecorder.Clock = new PumpedSettleClock();
+
+        var (manifest, _) = CaptureWonRun();
+        var pastTheEnd = manifest.Actions[^1].Seq + 1;
+        var wentOn = manifest with
+        {
+            Actions = [.. manifest.Actions, Record(pastTheEnd, ActionVerb.ChooseEventOption,
+                ("event_id", "EVENT.THE_ARCHITECT"), ("option_index", "0"), ("option_key", "PROCEED"))],
+        };
+
+        var outcome = FreshReplayOutcome(wentOn);
+
+        Assert.Equal(VerificationStatus.Rejected, outcome.Report.Status);
+        var refusal = Assert.Single(outcome.Report.Diagnostics);
+        Assert.True(refusal.StartsWith($"action {pastTheEnd} (ChooseEventOption): ", StringComparison.Ordinal), refusal);
+        Assert.Contains("after the game ended the run", refusal);
+        Assert.Equal(pastTheEnd, outcome.Report.Trace!.Steps[^1].Seq);
+    }
+
+    /// <summary>
+    /// A second won run recorded in the same process is the same recording.
+    ///
+    /// The recorder's patches are installed and taken off per test here, so the second
+    /// recording is made through detours written a second time over engine members the
+    /// first run left hot. Under tiered compilation that re-detour raced the runtime's
+    /// recompilation of those members - <c>RewardsSetSynchronizer.SelectLocalReward</c>
+    /// went unpatched for the first fights of the second run and its loot decisions
+    /// vanished from the history with nothing refused and nothing logged, in five runs
+    /// of eight - which is the race the test project now turns tiering off for. This
+    /// makes both recordings in one process and holds the second to the first,
+    /// decision for decision, so that setting cannot come back off quietly.
+    /// </summary>
+    [GameFact]
+    public void ASecondWonRunRecordedInTheSameProcessIsTheSameRecording()
+    {
+        ReplayManifest first;
+        using (Patched())
+        {
+            RunRecorder.GameIdentitySource = HeadlessIdentity;
+            RunRecorder.Clock = new PumpedSettleClock();
+            (first, _) = CaptureWonRun();
+        }
+
+        // A fresh store for the second run: two runs a second apart share a run id.
+        var secondRoot = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(secondRoot);
+        RunmobileStore.UseRootForTesting(secondRoot);
+
+        ReplayManifest second;
+        RunCapture capture;
+        using (Patched())
+        {
+            RunRecorder.GameIdentitySource = HeadlessIdentity;
+            RunRecorder.Clock = new PumpedSettleClock();
+            (second, capture) = CaptureWonRun(secondRoot);
+        }
+
+        Assert.Empty(capture.Refusals);
+        Assert.Equal(NativeSource.ContinuousContinuity, second.Source.Native!.Continuity);
+        Assert.Equal(
+            first.Actions.Select(action => (action.Seq, action.Verb, string.Join(";", action.Args.Select(pair => $"{pair.Key}={pair.Value}")))),
+            second.Actions.Select(action => (action.Seq, action.Verb, string.Join(";", action.Args.Select(pair => $"{pair.Key}={pair.Value}")))));
+        Assert.Equal(
+            first.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)),
+            second.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)));
+    }
+
+    /// <summary>Walks the whole-act journey through the recorder on a run of that act
+    /// alone, then the victory room's dialogue to PROCEED, and hands back what the
+    /// recorder wrote when the game ended the run.</summary>
+    private (ReplayManifest Manifest, RunCapture Capture) CaptureWonRun(string? root = null)
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        session.StartRun(WonRunSeed, "CHARACTER.IRONCLAD", 0, "standard", [Acts[0]]);
+        using var driver = new RunDriver(session);
+        driver.ImproviseUnrecordedCardSelections();
+        driver.EnterFirstRoom();
+        Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+
+        var walked = SyntheticFixtureGenerator.WalkTheAct(session, driver, [], DrainSettles, visitEveryRoomType: false);
+
+        Assert.True(session.RunState.CurrentRoom is { IsVictoryRoom: true }, "the last act's transition did not open the victory room");
+        var recorder = RunRecorder.Active!;
+        var capture = recorder.Capture;
+
+        // The Architect's lines, then PROCEED: each is the event's only option
+        var seq = walked.Count;
+        for (var presses = 0; presses < 20 && capture.State == RunCaptureState.Recording; presses++)
+        {
+            var options = RunManager.Instance.EventSynchronizer!.GetLocalEvent().CurrentOptions;
+            Assert.Single(options);
+            driver.Apply(Record(seq++, ActionVerb.ChooseEventOption,
+                ("event_id", "EVENT.THE_ARCHITECT"), ("option_index", "0"), ("option_key", RunDriver.OptionKey(options[0]))));
+            DrainSettles();
+        }
+
+        Assert.Equal(RunCaptureState.Finished, capture.State);
+        var manifest = ManifestJson.Deserialize(File.ReadAllText(
+            Path.Combine(root ?? _root, "recordings", $"{capture.RunId}.replay.json")));
+        return (manifest, capture);
+    }
+
     // ── Capturing a natural Silent run ───────────────────────────────────────────
 
     private (ReplayManifest Manifest, RunCapture Capture) CaptureNaturalSilentRun()
@@ -251,6 +444,15 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
     private static (ReplayTrace Trace, IReadOnlyList<ReplayBoundary> Boundaries) FreshReplayFromSeed(
         ReplayManifest manifest)
     {
+        var outcome = FreshReplayOutcome(manifest);
+        Assert.True(
+            outcome.Report.Status == VerificationStatus.Verified,
+            $"the replay was {outcome.Report.Status}: {string.Join("; ", outcome.Report.Diagnostics)}");
+        return (outcome.Report.Trace!, outcome.Report.Boundaries);
+    }
+
+    private static ArbiterOutcome FreshReplayOutcome(ReplayManifest manifest)
+    {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
 
         var session = new GameSession();
@@ -267,12 +469,8 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
             var runIdentity = Preflight.EvaluateStartedRun(manifest.Environment);
             Assert.True(runIdentity.Matches, "the started run is not the run the recording describes");
 
-            var outcome = Engine.Arbiter.ReplayStartedRun(
+            return Engine.Arbiter.ReplayStartedRun(
                 session, manifest, runIdentity, stopAfterSeq: null, gameModeOverride: null);
-            Assert.True(
-                outcome.Report.Status == VerificationStatus.Verified,
-                $"the replay was {outcome.Report.Status}: {string.Join("; ", outcome.Report.Diagnostics)}");
-            return (outcome.Report.Trace!, outcome.Report.Boundaries);
         }
         finally
         {
@@ -442,6 +640,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
             foreach (var type in CardScreensUp.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
             foreach (var type in CardPrompts.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
             foreach (var type in RunRecorder.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
+            _harmony.CreateClassProcessor(typeof(HeadlessCardRewardScreen)).Patch();
             RunRecorder.ReadTheAnswers();
         }
 
@@ -453,6 +652,34 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
             CardPrompts.Answered = _previousAnswered;
             CardScreensUp.RewardAnswered = _previousReward;
             CardPrompts.Forget();
+        }
+    }
+
+    /// <summary>
+    /// The card reward's screen, stood in for where a headless process answers it.
+    ///
+    /// The recorder reads a card reward's answer off the client's own
+    /// <c>NCardRewardSelectionScreen</c>, which this process never draws; the driver
+    /// answers the same reward through its <see cref="ManifestCardSelector"/>, the
+    /// engine's own seam, from inside the same call. This hands the recorder what the
+    /// screen would have: the cards and alternatives offered, in the order the screen
+    /// lists them, and the position that came back.
+    /// </summary>
+    [HarmonyPatch(typeof(ManifestCardSelector), nameof(ManifestCardSelector.GetSelectedCardReward))]
+    private static class HeadlessCardRewardScreen
+    {
+        [HarmonyPostfix]
+        internal static void After(
+            IReadOnlyList<CardCreationResult> options, IReadOnlyList<CardRewardAlternative> alternatives,
+            CardRewardSelection __result)
+        {
+            var offered = options.Select(option => option.Card).ToList();
+            int? position = __result.card is { } card
+                ? offered.IndexOf(card)
+                : __result.alternative is { } alternative
+                    ? offered.Count + alternatives.ToList().IndexOf(alternative)
+                    : null;
+            RunRecorder.CardRewardAnswered(offered, alternatives, position);
         }
     }
 

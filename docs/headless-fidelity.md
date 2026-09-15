@@ -50,6 +50,7 @@ mechanism rather than an unsupported hook.
 | `PreloadManager.Load*Assets` | Texture, audio and animation preloading. There is no renderer to want them, and the loaders dereference stub properties while assembling their asset lists. |
 | `SaveManager.SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `SaveManager.SaveRun` | The same refusal with one addition — see [the run save, collected rather than dropped](#the-run-save-collected-rather-than-dropped). |
+| `RunManager.OnEnded`, `RunManager.CleanUp` | Postfixes that read and change nothing — see [the run's end, read where the game ends it](#the-runs-end-read-where-the-game-ends-it). |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 | `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards`, `ScrollBoxes.GenerateRandomBundles` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these four sites — see [four places the flag changes what the game generates](#four-places-the-flag-changes-what-the-game-generates). |
 | `CardSelectCmd.FromChooseABundleScreen`, `RelicSelectCmd.FromChooseARelicScreen`, `NCrystalSphereScreen.ShowScreen` | Prompts no seam answers, stood in for at the prompt itself — see [four screens the host has to stand in for](#four-screens-the-host-has-to-stand-in-for). Installed only where a driver is answering; with none, the game's own path runs. |
@@ -80,6 +81,16 @@ For a snapshot produced from a replay that is the same object; reading a save a 
 A missing `SaveRun` in a future build is a startup **failure**, as every name in this
 patch set is: a host that silently stopped intercepting it would write no save and
 collect none either, and both silences look like success.
+
+### The run's end, read where the game ends it
+
+The game ends a run inside a decision.
+The Architect's PROCEED calls `RunManager.WinRun`, which calls `OnEnded(true)` with the run's final state and then `GuaranteeKillAllPlayers`, which kills the player creature so the client can draw the ending.
+The recorder reads the decision the run ended on at `OnEnded`, before that kill, because it is the last reading of the run as it was played, and a replay that sampled the same decision once the driver's call returned would read a dead player, a lost fight and a game over, and refuse the recording it was made from.
+So `RunEnding` holds the projection a postfix on `OnEnded` takes, the first one of the run because the kill reaches `OnEnded` a second time with the player dead, and `Arbiter.ReplayStartedRun` takes it as the after-state of the action the run ended on, evaluates that action's checkpoints against it, and reports it as the final state.
+A postfix on `CleanUp` forgets it, so the next run replayed in the process starts with no ending.
+`RunDriver.Apply` refuses every action after it, because a history that goes on past the run's end is not this run's.
+Both members missing in a future build are startup failures, as every name here is.
 
 ### Four screens the host has to stand in for
 
