@@ -914,7 +914,8 @@ public sealed class RecorderContinueTests : IDisposable
     /// fight, or refused for a hole in the watch. A recording the validator takes is
     /// replayed through the engine at every checkpoint, every boundary and every
     /// discarded branch before the row passes, a reload's branch from the opening
-    /// reading included. A row that fails on a Continue names the fields
+    /// reading included, and a publishable one twice to one digest: the headless
+    /// equivalent of the gate, short of the retail preflight. A row that fails on a Continue names the fields
     /// the restored run differed in, which is what every diagnosis so far had to be
     /// rebuilt from a journal to learn.
     /// </summary>
@@ -942,7 +943,7 @@ public sealed class RecorderContinueTests : IDisposable
             case Verdict.Publishable:
                 Assert.True(given.Validation.IsValid, given.Validation.Describe());
                 Assert.False(native.IsRewound);
-                lab.ReplayTheWholeHistory(given.Manifest);
+                lab.ReplayTheWholeHistoryDeterministically(given.Manifest);
                 if (scenario.Branches > 0) lab.ReplayEveryBranch(given.Manifest);
                 break;
             case Verdict.PlayableNeverShared:
@@ -968,7 +969,11 @@ public sealed class RecorderContinueTests : IDisposable
     /// are the validator's refusal, in its own words.</summary>
     private enum Verdict
     {
-        /// <summary>Valid, continuous, and reproduces whole through the engine.</summary>
+        /// <summary>Valid, continuous, and reproduces whole through the engine: the
+        /// headless equivalent of the gate - the validator, the whole history replayed
+        /// at every checkpoint and declared boundary in two fresh sessions to one final
+        /// digest, and every branch - short of the retail preflight, which a headless
+        /// recording's own patch roster rightly fails and is not claimed here.</summary>
         Publishable,
 
         /// <summary>Valid and rewound: the player's to play from, refused by the gate.</summary>
@@ -1725,6 +1730,17 @@ public sealed class RecorderContinueTests : IDisposable
             }
         }
 
+        /// <summary>The continued history replayed twice, each from a fresh session,
+        /// and held to one final digest: the gate's determinism condition, in one
+        /// process rather than two.</summary>
+        internal void ReplayTheWholeHistoryDeterministically(ReplayManifest manifest)
+        {
+            var first = ReplayTheWholeHistory(manifest);
+            var second = ReplayTheWholeHistory(manifest);
+            Assert.NotNull(first.FinalStateDigest);
+            Assert.Equal(first.FinalStateDigest, second.FinalStateDigest);
+        }
+
         /// <summary>Every discarded branch replayed through the engine from the
         /// continued history, past the retail preflight a headless recording's own
         /// patch roster rightly fails, and held to the state it left from and the
@@ -1804,10 +1820,21 @@ public sealed class RecorderContinueTests : IDisposable
 
         internal Patches()
         {
-            foreach (var type in CardScreensUp.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
-            foreach (var type in CardPrompts.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
-            foreach (var type in RunRecorder.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
-            RunRecorder.ReadTheAnswers();
+            try
+            {
+                foreach (var type in CardScreensUp.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
+                foreach (var type in CardPrompts.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
+                foreach (var type in RunRecorder.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
+                RunRecorder.ReadTheAnswers();
+            }
+            catch
+            {
+                _harmony.UnpatchAll(_harmony.Id);
+                CardPrompts.Answered = _previousAnswered;
+                CardScreensUp.RewardAnswered = _previousReward;
+                CardPrompts.Forget();
+                throw;
+            }
         }
 
         public void Dispose()
