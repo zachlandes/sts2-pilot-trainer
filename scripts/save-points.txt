@@ -1,0 +1,24 @@
+# The game's save contract on this build, read by RunRecorderTests from the
+# assembly's own IL and type table rather than assumed: every member that calls
+# SaveManager.SaveRun, and every type that subclasses AncientEventModel. A build
+# that moves where the run saves, or adds or removes an ancient event, changes
+# this file in the change that adopts it. Regenerate with
+#   ./scripts/save-points.sh --update
+
+# Members that call SaveManager.SaveRun:
+MegaCrit.Sts2.Core.Combat.CombatManager.EndCombatInternal
+MegaCrit.Sts2.Core.Nodes.Debug.Multiplayer.NMultiplayerTest.BeginRunAsync
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NCharacterSelectScreen.StartNewMultiplayerRun
+MegaCrit.Sts2.Core.Rooms.EventRoom.OnEventStateChanged
+MegaCrit.Sts2.Core.Runs.RunManager.EnterMapPointInternal
+
+# Types that subclass AncientEventModel:
+MegaCrit.Sts2.Core.Models.Events.Darv
+MegaCrit.Sts2.Core.Models.Events.DeprecatedAncientEvent
+MegaCrit.Sts2.Core.Models.Events.Neow
+MegaCrit.Sts2.Core.Models.Events.Nonupeipe
+MegaCrit.Sts2.Core.Models.Events.Orobas
+MegaCrit.Sts2.Core.Models.Events.Pael
+MegaCrit.Sts2.Core.Models.Events.Tanx
+MegaCrit.Sts2.Core.Models.Events.Tezcatara
+MegaCrit.Sts2.Core.Models.Events.Vakuu
