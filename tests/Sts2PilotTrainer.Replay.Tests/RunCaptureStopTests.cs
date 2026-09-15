@@ -133,6 +133,7 @@ public sealed class RunCaptureStopTests
         var capture = Played();
         capture.MarkUnmapped(Stop(capture.NextSeq), new StateReading(Floor(2), Digest(4)));
         capture.MarkNonStandard();
+        capture.RecordPatchRosterAtRunEnd(capture.Identity.Mods.Patches!);
         capture.Finish("abandoned");
 
         var manifest = capture.ToManifest();

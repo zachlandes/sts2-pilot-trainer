@@ -101,17 +101,17 @@ public class PackedScene : Resource
 }
 
 // Texture types
-public class Texture2D : Resource
+public partial class Texture2D : Resource
 {
     public Vector2 GetSize() => Vector2.Zero;
 }
 public class CompressedTexture2D : Texture2D { }
-public class AtlasTexture : Texture2D
+public partial class AtlasTexture : Texture2D
 {
     public Rect2 Region { get; set; }
     public Texture2D? Atlas { get; set; }
 }
-public class ImageTexture : Texture2D { }
+public partial class ImageTexture : Texture2D { }
 
 // Material types
 public class Material : Resource { }
@@ -472,7 +472,7 @@ public class ResourceFormatLoader : GodotObject
 }
 
 // Image
-public class Image : Resource
+public partial class Image : Resource
 {
     public enum Format { Rgba8 }
     public static Image CreateEmpty(int width, int height, bool useMipmaps, Format format) => new();

@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
-/// Every game member something had patched at run start, with who patched it.
+/// Every game member something had patched at run start, with who patched it, and
+/// the same reading at run end where the recorder was new enough to take it.
 ///
 /// This is the one reading available inside a player's process that a mod's own
 /// declaration cannot lie to. <see cref="ModEnvironment"/> records what each loaded
@@ -24,6 +25,9 @@ namespace Sts2PilotTrainer.Replay;
 /// </summary>
 public sealed record PatchRoster
 {
+    /// <summary>The manifest format whose recorder first read the roster again at run end.</summary>
+    public const int RunEndIntroducedInManifestVersion = 8;
+
     /// <summary>
     /// The patched members, ordered so that two readings of the same process produce
     /// the same list. A roster whose order came from a hash table would differ from
@@ -31,6 +35,55 @@ public sealed record PatchRoster
     /// </summary>
     [JsonPropertyName("members")]
     public required IReadOnlyList<PatchedMember> Members { get; init; }
+
+    /// <summary>
+    /// The same registry read when the run ended.
+    ///
+    /// Nested under the start roster rather than beside it as a second environment
+    /// record: the two readings answer one question, whether the patch environment
+    /// stayed the same for the run. The fact carries the last action ordinal and run
+    /// clock so the second reading does not inherit the start reading's coordinates.
+    /// Null only for a manifest reconstructed from a video or migrated from a format
+    /// whose recorder never took the second reading.
+    /// </summary>
+    [JsonPropertyName("run_end")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Fact<PatchRoster>? AtRunEnd { get; init; }
+
+    /// <summary>
+    /// Whether both readings name the same members, owners and patch counts.
+    ///
+    /// Null means there was no end reading, never that an absent reading matched.
+    /// Member and owner order are normalised because registry order is not part of
+    /// the environment; every value Harmony reported is.
+    /// </summary>
+    [JsonIgnore]
+    public bool? StayedTheSame => AtRunEnd is null ? null : SameMembers(Members, AtRunEnd.Value.Members);
+
+    /// <summary>The members whose presence, owners or patch counts differ between
+    /// the two readings, by their stable type-and-signature identity.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> ChangedMembers => AtRunEnd is null
+        ? []
+        : Members.Select(Identity)
+            .Concat(AtRunEnd.Value.Members.Select(Identity))
+            .Distinct(StringComparer.Ordinal)
+            .Where(identity => !SameMembers(
+                Members.Where(member => Identity(member) == identity),
+                AtRunEnd.Value.Members.Where(member => Identity(member) == identity)))
+            .OrderBy(identity => identity, StringComparer.Ordinal)
+            .ToList();
+
+    private static bool SameMembers(IEnumerable<PatchedMember> left, IEnumerable<PatchedMember> right) =>
+        left.Select(Fingerprint).OrderBy(value => value, StringComparer.Ordinal)
+            .SequenceEqual(right.Select(Fingerprint).OrderBy(value => value, StringComparer.Ordinal),
+                StringComparer.Ordinal);
+
+    private static string Identity(PatchedMember member) => $"{member.DeclaringType}.{member.Member}";
+
+    private static string Fingerprint(PatchedMember member) =>
+        $"{Identity(member)}\n{string.Join("\n", member.Owners.OrderBy(owner => owner, StringComparer.Ordinal))}\n" +
+        $"{member.Prefixes}\n{member.Postfixes}\n{member.Transpilers}\n{member.Finalizers}";
 
     /// <summary>
     /// The Harmony id Runmobile patches under, held here because it is the one thing

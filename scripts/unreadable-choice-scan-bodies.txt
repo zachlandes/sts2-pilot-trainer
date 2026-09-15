@@ -10,7 +10,6 @@ GodotPlugins.Game.Main 1
 MegaCrit.Sts2.Core.Animation.CreatureAnimator 1
 MegaCrit.Sts2.Core.Assets.AssetCache 2
 MegaCrit.Sts2.Core.Assets.AssetLoadingSession 4
-MegaCrit.Sts2.Core.Assets.AtlasManager 1
 MegaCrit.Sts2.Core.Assets.AtlasResourceLoader 6
 MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager 12
 MegaCrit.Sts2.Core.AutoSlay.AutoSlayer 3
@@ -368,7 +367,7 @@ MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuButton 9
 MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuStack 11
 MegaCrit.Sts2.Core.Nodes.Screens.Map.NAncientMapPoint 8
 MegaCrit.Sts2.Core.Nodes.Screens.Map.NBossMapPoint 8
-MegaCrit.Sts2.Core.Nodes.Screens.Map.NControllerMapDrawingInput 11
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NControllerMapDrawingInput 10
 MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapBg 9
 MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapClearButton 9
 MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawButton 9

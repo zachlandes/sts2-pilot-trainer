@@ -404,6 +404,7 @@ public static class Corruption
             Actions = Renumber(actions),
             Checkpoints = ShiftCheckpoints(manifest.Checkpoints, target.Seq),
             Boundaries = ShiftBoundaries(manifest.Boundaries, target.Seq),
+            Environment = ShiftRunEndPatchRoster(manifest.Environment, target.Seq),
             Source = manifest.Source.Native is { } native
                 ? manifest.Source with { Native = ShiftNativeSource(native, target.Seq) }
                 : manifest.Source,
@@ -413,13 +414,43 @@ public static class Corruption
     /// <summary>
     /// Moves what a native recording says about its own history back past a removed
     /// action, for the reason checkpoints and boundaries move: a save point, a
-    /// rollback and a stop are coordinates into the history, and left alone they
-    /// would name whatever action slid into their slot - which the validator refuses,
+    /// rollback, a stop and the run-end roster are coordinates into the history, and
+    /// left alone they would name whatever action slid into their slot - which the validator refuses,
     /// so the control would be refused at ingestion and never reach the engine it
     /// exists to test. One standing on the removed action is dropped, as a boundary
     /// there is: the moment it named is gone. A branch that left from before the
     /// removed action never held it and is untouched.
     /// </summary>
+    private static EnvironmentIdentity ShiftRunEndPatchRoster(EnvironmentIdentity environment, int removedSeq)
+    {
+        var mods = environment.Mods;
+        if (mods.Value.Patches?.AtRunEnd is not { Evidence: { } evidence } atRunEnd ||
+            evidence.ActionOrdinal is not { } sequence)
+        {
+            return environment;
+        }
+
+        return environment with
+        {
+            Mods = mods with
+            {
+                Value = mods.Value with
+                {
+                    Patches = mods.Value.Patches with
+                    {
+                        AtRunEnd = atRunEnd with
+                        {
+                            Evidence = evidence with
+                            {
+                                ActionOrdinal = sequence >= removedSeq ? sequence - 1 : sequence,
+                            },
+                        },
+                    },
+                },
+            },
+        };
+    }
+
     private static NativeSource ShiftNativeSource(NativeSource native, int removedSeq)
     {
         int Moved(int seq) => seq > removedSeq ? seq - 1 : seq;

@@ -69,7 +69,8 @@ public static partial class ManifestValidator
             ? checked(video.DurationSeconds * 1000)
             : 0;
         ValidateEnvironment(
-            manifest.Environment, manifest.Source.Kind, videoDurationMs, maxActionOrdinal, problems);
+            manifest.Environment, manifest.Source.Kind, manifest.Source.Native,
+            videoDurationMs, maxActionOrdinal, problems);
         if (manifest.Source.Synthetic is { } synthetic &&
             !string.Equals(
                 synthetic.GeneratedBuild, manifest.Environment.BuildVersion.Value, StringComparison.Ordinal))
@@ -93,8 +94,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateEnvironment(
-        EnvironmentIdentity env, string sourceKind, int videoDurationMs, int maxActionOrdinal,
-        List<string> problems)
+        EnvironmentIdentity env, string sourceKind, NativeSource? native, int videoDurationMs,
+        int maxActionOrdinal, List<string> problems)
     {
         if (!BuildVersionPattern.IsMatch(env.BuildVersion.Value))
         {
@@ -232,21 +233,42 @@ public static partial class ManifestValidator
         // A patched member with no owner names nobody, and one with no member names
         // nothing. Either would sit in a roster looking like a reading and answer no
         // question the roster exists to answer.
-        foreach (var member in mods.Patches?.Members ?? [])
+        if (mods.Patches is { } roster)
         {
-            if (string.IsNullOrWhiteSpace(member.DeclaringType) || string.IsNullOrWhiteSpace(member.Member))
+            ValidatePatchedMembers(roster.Members, "environment.mods.patch_roster", problems);
+            if (roster.AtRunEnd is { } atRunEnd)
             {
-                problems.Add(
-                    "environment.mods.patch_roster has an entry that names no member. A roster is read by " +
-                    "member name, so an unnamed entry is a row nobody can check.");
-            }
+                ValidatePatchedMembers(
+                    atRunEnd.Value.Members, "environment.mods.patch_roster.run_end", problems);
+                RequireCapturedFact(
+                    atRunEnd, "environment.mods.patch_roster.run_end", sourceKind, maxActionOrdinal, problems,
+                    maxActionOrdinal);
 
-            if (member.Owners.Count == 0)
+                if (atRunEnd.Value.AtRunEnd is not null)
+                {
+                    problems.Add(
+                        "environment.mods.patch_roster.run_end carries another run-end reading. A run ends " +
+                        "once, so a third roster is not evidence this format records.");
+                }
+            }
+        }
+
+        if (sourceKind == "native" && native is { } recorded &&
+            !recorded.PredatesVersion(PatchRoster.RunEndIntroducedInManifestVersion))
+        {
+            if (mods.Patches is null)
             {
                 problems.Add(
-                    $"environment.mods.patch_roster entry '{member.DeclaringType}.{member.Member}' names no " +
-                    "owner. Who patched a member is the whole reading; a patched member with no patcher is a " +
-                    "reading that was not taken.");
+                    "environment.mods.patch_roster is absent from a current native recording. The recorder " +
+                    "was in a position to read Harmony's registry at run start and run end, so this is a " +
+                    "reading skipped rather than one nobody could take.");
+            }
+            else if (mods.Patches.AtRunEnd is null)
+            {
+                problems.Add(
+                    "environment.mods.patch_roster.run_end is absent from a current native recording. Without " +
+                    "the second reading, a patch installed after the run began is outside the recording's mod " +
+                    "environment claim.");
             }
         }
 
@@ -344,6 +366,28 @@ public static partial class ManifestValidator
         yield return ("character", env.Character.Source, env.Character.Evidence);
         yield return ("acts", env.Acts.Source, env.Acts.Evidence);
         yield return ("mods", env.Mods.Source, env.Mods.Evidence);
+    }
+
+    private static void ValidatePatchedMembers(
+        IEnumerable<PatchedMember> members, string path, List<string> problems)
+    {
+        foreach (var member in members)
+        {
+            if (string.IsNullOrWhiteSpace(member.DeclaringType) || string.IsNullOrWhiteSpace(member.Member))
+            {
+                problems.Add(
+                    $"{path} has an entry that names no member. A roster is read by member name, so an unnamed " +
+                    "entry is a row nobody can check.");
+            }
+
+            if (member.Owners.Count == 0)
+            {
+                problems.Add(
+                    $"{path} entry '{member.DeclaringType}.{member.Member}' names no owner. Who patched a " +
+                    "member is the whole reading; a patched member with no patcher is a reading that was not " +
+                    "taken.");
+            }
+        }
     }
 
     private static void ValidateParityWaiver(HeadlessParityWaiver waiver, List<string> problems)

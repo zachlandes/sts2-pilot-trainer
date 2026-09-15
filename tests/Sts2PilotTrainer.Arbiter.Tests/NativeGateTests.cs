@@ -217,6 +217,62 @@ public sealed class NativeGateTests
     }
 
     /// <summary>
+    /// A structurally valid recording whose patch registry changed is stopped by the
+    /// publication gate before any replay is treated as environment evidence.
+    /// </summary>
+    [GameFact]
+    public void APatchRosterThatChangedDuringTheRunIsNotPublishable()
+    {
+        var directory = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"native-roster-change-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var manifest = Native();
+            var atRunStart = manifest.Environment.Mods.Value.Patches!;
+            var atRunEnd = new PatchRoster
+            {
+                Members =
+                [
+                    .. atRunStart.Members,
+                    RecordedPatchRoster.Member("Game.Type", "Lazy()", "somebody.lazy"),
+                ],
+            };
+            var changed = manifest with
+            {
+                Environment = manifest.Environment with
+                {
+                    Mods = manifest.Environment.Mods with
+                    {
+                        Value = manifest.Environment.Mods.Value with
+                        {
+                            Patches = atRunStart with
+                            {
+                                AtRunEnd = Fact<PatchRoster>.Captured(
+                                    atRunEnd,
+                                    FactEvidence.AtActionOrdinal(manifest.Actions.Count - 1)),
+                            },
+                        },
+                    },
+                },
+            };
+            var path = Path.Combine(directory, "changed.replay.json");
+            ManifestJson.Save(changed, path);
+
+            var result = Arbiter.Run("gate", path, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("patch roster changed between run start and run end", result.Output);
+            Assert.Contains("FAIL  environment", result.Output);
+            Assert.Contains("NOT PUBLISHABLE", result.Output);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// And a video recording is still asked all of them, so the arm above is a branch
     /// rather than a removal.
     /// </summary>

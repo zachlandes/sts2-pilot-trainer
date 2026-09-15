@@ -442,6 +442,44 @@ public partial class NinePatchRect
     public AxisStretchMode AxisStretchVertical { get; set; }
 }
 
+/// <summary>The image members used to preserve an atlas texture's transparent
+/// margins when the library widens a ribbon.</summary>
+public partial class Texture2D
+{
+    public Image GetImage() => new();
+}
+
+public partial class AtlasTexture
+{
+    public Rect2 Margin { get; set; }
+}
+
+public partial class ImageTexture
+{
+    public static ImageTexture CreateFromImage(Image image) => new();
+}
+
+public partial class Image
+{
+    public bool IsCompressed() => false;
+    public Error Decompress() => Error.Ok;
+    public void Convert(Format format) { }
+    public void Fill(Color color) { }
+    public void BlitRect(Image source, Rect2I sourceRect, Vector2I destination) { }
+}
+
+public struct Rect2I
+{
+    public Vector2I Position { get; set; }
+    public Vector2I Size { get; set; }
+
+    public Rect2I(int x, int y, int width, int height)
+    {
+        Position = new Vector2I(x, y);
+        Size = new Vector2I(width, height);
+    }
+}
+
 /// <summary>
 /// Godot's filled polygon. The transport's glyph family is drawn rather than taken
 /// from the game's art - the game ships no playback iconography - and a filled

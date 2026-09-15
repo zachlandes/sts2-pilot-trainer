@@ -159,8 +159,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 153
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 217 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 154
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 218 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
@@ -176,7 +176,8 @@ Two fields on that list are there because a replay looked correct and was not: t
 Both change every fight in a run while leaving the map identical.
 The document also owns the distinction between a runtime reading and an explicitly supplied headless progress model.
 `LocalEnvironment` owns the v0.111.0 adapter, `EnvironmentPreflight` owns the game-free rules, and neither path writes.
-What a mod *says* about itself and what it *did* are two readings, not one: `HarmonyRoster` takes the second from Harmony's own registry, the recorder captures it into `environment.mods.patch_roster`, and the preflight judges it beside the declaration rule rather than in place of it.
+What a mod *says* about itself and what it *did* are two readings, not one: `HarmonyRoster` takes the second from Harmony's own registry, the recorder captures it into `environment.mods.patch_roster` at run start and run end, and the preflight judges both beside the declaration rule rather than in place of it.
+A changed roster means the run had no stable mod environment and refuses publication; [docs/environment-identity.md](docs/environment-identity.md) owns the comparison and the migration exception for recordings made before the end reading existed.
 **A refused prerequisite is an errand or a statement, and `PreflightField.Outcome` is where that is decided once.**
 Most are errands - `NotMet`, carrying `UnlockRemediation`, remediated by playing the game.
 A native recording's `exact` unlock state names ids this build either ships or does not, and a build that does not is `Unavailable`, carrying `ContentNotShipped`: no play adds content a build has not got, so an errand there is an instruction that can never be carried out.
@@ -401,7 +402,7 @@ The class is on the journal line as `watch_continues` rather than derived from t
 `source.native.integrity` is the one field that says whether a recording may ever be published, and it is required from format v6: `complete`, `non-standard` for a run the console was used in, or `unmapped` for a recorder that stopped at a decision it could not name, with what it met in `source.native.unmapped` - `RunCapture.MarkNonStandard` and `RunCapture.MarkUnmapped` are the only writers.
 A version-5 file states none, and `ManifestJson.MigrateFromVersion5` reads it as `complete` with `migrated_from_version = 5` beside it; that note is what excuses the `option_key` a version-5 recorder never read, and nothing else is ever excused by it.
 A version-5 recorder sampled no map coordinate either, so the same reading derives the arrival checkpoint at every floor arrival the file declares, through `FloorArrival` and marked inferred, because the validator refuses a floor arrival nothing proves and a player's own recording in the store is the file the recorder wrote; `OwnRunPlaybackTests` drives the library's offer from that on-disk form as well as from the migrated copy.
-Every decision in a journal carries the reading it began from as well as the one it settled into, because the comparison instant is before each decision; `RunJournal.Schema` is v5 - v2 added the before-reading, v3 the bookmark line, v4 the save-point line and the promise that every save the game asked for is on the file, v5 the promise that no reading carries a finished fight - and a journal declaring any older schema is refused on resume rather than repaired, because every complete digest on its lines after a fight hashes the finished fight this projection no longer carries, and a recording continued from one would be two projections in one file.
+Every decision in a journal carries the reading it began from as well as the one it settled into, because the comparison instant is before each decision; `RunJournal.Schema` is v6 - v2 added the before-reading, v3 the bookmark line, v4 the save-point line and the promise that every save the game asked for is on the file, v5 the promise that no reading carries a finished fight, and v6 the run-end patch-roster receipt - and a journal declaring any older schema is refused on resume rather than repaired, because continuing without the current projection and receipts would make one file claim two recording contracts.
 **Every integrity claim it makes is derived from what was observed, never from what a component assumes it observed.**
 Continuity, a witnessed start, the mod set a run was played under, the controls a verdict rests on: each of these is a claim about what happened, and a component that reports one it did not establish produces evidence nobody can check while every value in it is individually true.
 Four such claims were shipped on this branch and caught in review; [docs/in-game-host.md](docs/in-game-host.md) names them, so the rule is checkable rather than an abstraction.

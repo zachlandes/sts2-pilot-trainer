@@ -561,14 +561,13 @@ public static class EnvironmentPreflight
     /// did not see those did not see anything, and a pass from it would be a claim
     /// nobody established.
     ///
-    /// One reading, taken at run start. A mod that patches lazily on first use rather
-    /// than at initialization installs after it and is outside it - this project's own
-    /// <c>YieldSuppression</c> is exactly that shape, a one-shot latch tripped on the
-    /// first end turn - so the row says what was patched when the run began and not
-    /// what was patched for the whole of it. Closing that would take a second reading
-    /// at run end and a comparison between the two, which this does not do.
+    /// The recorder reads the same registry at run start and run end. A mod that
+    /// patches lazily on first use therefore changes the fingerprint and refuses the
+    /// recording, whether it added or removed a member, owner or patch count. The two
+    /// readings are one roster because they answer one question: whether this run had
+    /// one stable patch environment.
     ///
-    /// Absent is neither. Only a recorder can take this reading, so a manifest
+    /// An absent start reading is neither. Only a recorder can take this reading, so a manifest
     /// reconstructed from a video never has one, and a recording made before the
     /// recorder took it has no one to blame for the gap. The row is emitted saying so
     /// rather than dropped, and it passes: the roster strengthens the declaration rule
@@ -592,20 +591,32 @@ public static class EnvironmentPreflight
         }
 
         var foreign = roster.PatchedByAnybodyElse;
-        var matches = foreign.Count == 0 && roster.NamesTheHost;
+        var changed = roster.ChangedMembers;
+        var stable = roster.StayedTheSame;
+        var matches = foreign.Count == 0 && roster.NamesTheHost && stable != false;
 
         yield return new PreflightField(
             "patched_members",
-            $"every member patched at run start owned by {HostModName}",
+            stable is null
+                ? $"every member patched at run start owned by {HostModName}"
+                : $"the patch roster unchanged from run start to run end, with every member owned by " +
+                  $"{HostModName}",
             matches
-                ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) at run start, all " +
-                  $"patched by {HostModName} alone"
+                ? stable is null
+                    ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) at run start, " +
+                      $"all patched by {HostModName} alone; the run-end reading was not taken because this " +
+                      "recording predates it"
+                    : $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) at run start " +
+                      $"and run end, all patched by {HostModName} alone"
                 : !roster.NamesTheHost
                     ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s), none of them " +
                       $"patched by {HostModName}"
-                    : $"{foreign.Count.ToString(CultureInfo.InvariantCulture)} of " +
-                      $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) patched by " +
-                      "somebody else",
+                    : stable == false
+                        ? $"the patch roster changed between run start and run end on " +
+                          $"{changed.Count.ToString(CultureInfo.InvariantCulture)} member(s)"
+                        : $"{foreign.Count.ToString(CultureInfo.InvariantCulture)} of " +
+                          $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) patched by " +
+                          "somebody else",
             matches,
             matches ? null : Refusal());
 
@@ -617,6 +628,21 @@ public static class EnvironmentPreflight
                        "recorder only records inside a shell that installed them. So the roster is a reading " +
                        "that did not see what this process definitely did, and what it says about anybody " +
                        "else's patches cannot be relied on either. Re-record the run.";
+            }
+
+            if (stable == false)
+            {
+                var namedChanges = changed.Take(NamedMembersInARefusal);
+                var remainingChanges = changed.Count - NamedMembersInARefusal;
+                return "This recording's patch roster changed between run start and run end on " +
+                       $"{changed.Count.ToString(CultureInfo.InvariantCulture)} member(s): " +
+                       $"{string.Join("; ", namedChanges)}" +
+                       (remainingChanges > 0
+                           ? $", and {remainingChanges.ToString(CultureInfo.InvariantCulture)} more"
+                           : string.Empty) +
+                       ". A patch added, removed or changed during the run can change gameplay after the " +
+                       "opening reading, so this recording does not establish one stable mod environment. " +
+                       "Re-record the run.";
             }
 
             var named = foreign.Take(NamedMembersInARefusal)

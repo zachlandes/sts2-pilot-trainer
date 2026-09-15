@@ -29,8 +29,11 @@ namespace Sts2PilotTrainer.Replay;
 public sealed record RunJournal
 {
     /// <summary>
-    /// Version 5 samples nothing of a finished fight into the digest, and beside it
-    /// only which side's turn the fight ended in. Every reading a version-4
+    /// Version 6 adds the patch-roster reading taken when the run ends, so a resumed
+    /// capture still compares the end of the run against the original header's start
+    /// reading rather than against the session it resumed in. Version 5 samples
+    /// nothing of a finished fight into the digest, and beside it only which side's
+    /// turn the fight ended in. Every reading a version-4
     /// journal took after a fight until the next one carried that fight's residue -
     /// its turn, energy, empty piles and a victory that outlived the room - and every
     /// complete digest on those lines hashes it, because the projection of the build
@@ -45,7 +48,7 @@ public sealed record RunJournal
     /// to its latest save from a reload of an older one; version 3 added the bookmark
     /// line; version 2 samples the state before every decision as well as after it.
     /// </summary>
-    public const string Schema = "sts2-pilot-trainer/run-journal/v5";
+    public const string Schema = "sts2-pilot-trainer/run-journal/v6";
 
     /// <summary>The schemas this build reads: only its own, for the reason above.</summary>
     public static readonly string[] ReadableSchemas = [Schema];
@@ -146,6 +149,16 @@ public sealed record RunJournal
     /// </summary>
     public IReadOnlyList<JournalSavePoint> SavePoints { get; init; } = [];
 
+    /// <summary>
+    /// The second reading of Harmony's registry, taken when the run ended.
+    ///
+    /// The first is in <see cref="Identity"/>, where it was captured at run start.
+    /// Kept as an append-only line so the manifest and the crash-surviving recording
+    /// have the same evidence, and as a fact so its end-of-run coordinates travel
+    /// with it rather than inheriting the header's start coordinates.
+    /// </summary>
+    public Fact<PatchRoster>? PatchRosterAtRunEnd { get; init; }
+
     /// <summary>The seq of the latest save point on the continued history, or -1 for
     /// the run-start save the game takes before the recorder can watch.</summary>
     public int LatestSavePointSeq => SavePoints.Count == 0 ? -1 : SavePoints.Max(point => point.AfterSeq);
@@ -220,6 +233,10 @@ public sealed record RunJournal
     public static string RenderSavePoint(JournalSavePoint savePoint) =>
         JsonSerializer.Serialize(new JournalSavePointLine { SavePoint = savePoint }, Compact) + "\n";
 
+    /// <summary>The Harmony registry read at run end, as one append-only line.</summary>
+    public static string RenderPatchRosterAtRunEnd(Fact<PatchRoster> roster) =>
+        JsonSerializer.Serialize(new JournalRunEndPatchRoster { PatchRoster = roster }, Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
     public string Render() => SerializedRecords is { } records
@@ -230,7 +247,8 @@ public sealed record RunJournal
           string.Concat(Refusals.Select(RenderRefusal)) +
           (NonStandard ? RenderNonStandard() : string.Empty) +
           string.Concat(Bookmarks.Select(RenderBookmark)) +
-          (Stop is { } stop ? RenderStop(stop) : string.Empty);
+          (Stop is { } stop ? RenderStop(stop) : string.Empty) +
+          (PatchRosterAtRunEnd is { } roster ? RenderPatchRosterAtRunEnd(roster) : string.Empty);
 
     /// <summary>
     /// The journal brought back to a boundary an append may follow, or null when it is
@@ -283,7 +301,7 @@ public sealed record RunJournal
     private static Exception? ReadRecord(
         string line, out RunJournalEntry? entry, out RunRefusal? refusal, out bool nonStandard,
         out JournalStop? stop, out JournalRollback? rollback, out JournalBookmark? bookmark,
-        out JournalSavePoint? savePoint)
+        out JournalSavePoint? savePoint, out Fact<PatchRoster>? runEndPatchRoster)
     {
         entry = null;
         refusal = null;
@@ -292,8 +310,17 @@ public sealed record RunJournal
         rollback = null;
         bookmark = null;
         savePoint = null;
+        runEndPatchRoster = null;
         try
         {
+            if (JsonSerializer.Deserialize<JournalRunEndPatchRoster>(line, Compact) is
+                { PatchRoster: not null } roster)
+            {
+                ManifestJson.ValidateRequiredMembers(roster.PatchRoster, "Run journal end patch roster");
+                runEndPatchRoster = roster.PatchRoster;
+                return null;
+            }
+
             if (JsonSerializer.Deserialize<JournalBookmarkLine>(line, Compact) is { Bookmark: not null } marked)
             {
                 ManifestJson.ValidateRequiredMembers(marked.Bookmark, "Run journal bookmark");
@@ -354,7 +381,8 @@ public sealed record RunJournal
     }
 
     private static bool ReadsAsARecord(string line) =>
-        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _, out _, out _, out _) is null;
+        line.Trim().Length > 0 &&
+        ReadRecord(line, out _, out _, out _, out _, out _, out _, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -395,11 +423,12 @@ public sealed record RunJournal
         var savePoints = new List<JournalSavePoint>();
         var nonStandard = false;
         JournalStop? stop = null;
+        Fact<PatchRoster>? runEndPatchRoster = null;
         for (var index = 1; index < lines.Count; index++)
         {
             if (ReadRecord(
                     lines[index], out var entry, out var refusal, out var marked, out var stopped, out var rollback,
-                    out var bookmark, out var savePoint)
+                    out var bookmark, out var savePoint, out var readRunEndPatchRoster)
                 is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
@@ -408,7 +437,18 @@ public sealed record RunJournal
                 throw unreadable;
             }
 
-            if (refusal is not null) refusals.Add(refusal);
+            if (readRunEndPatchRoster is not null)
+            {
+                if (runEndPatchRoster is not null)
+                {
+                    throw new ManifestException(
+                        "This run journal carries two patch-roster readings at run end. A run ends once, so the " +
+                        "second line is a reading nothing wrote in order.");
+                }
+
+                runEndPatchRoster = readRunEndPatchRoster;
+            }
+            else if (refusal is not null) refusals.Add(refusal);
             else if (bookmark is not null)
             {
                 // The last press on a fight is what stands; the earlier ones stay on
@@ -503,6 +543,13 @@ public sealed record RunJournal
                         "decision there is one nothing watched.");
                 }
 
+                if (runEndPatchRoster is not null)
+                {
+                    throw new ManifestException(
+                        $"This run journal holds decision {entry.Seq.ToString(CultureInfo.InvariantCulture)} " +
+                        "after the patch roster was read at run end. A run has no decisions after it ended.");
+                }
+
                 entries.Add(entry);
             }
         }
@@ -521,6 +568,7 @@ public sealed record RunJournal
             Discarded = discarded,
             Bookmarks = bookmarks.OrderBy(bookmark => bookmark.Fight).ToList(),
             SavePoints = savePoints,
+            PatchRosterAtRunEnd = runEndPatchRoster,
             SerializedRecords = NormalizeRecords(lines.Skip(1)),
         };
         journal.RequireReadable();
@@ -697,6 +745,14 @@ public sealed record RunJournal
     {
         [JsonPropertyName("save_point")]
         public JournalSavePoint? SavePoint { get; init; }
+    }
+
+    /// <summary>The second patch-registry reading, told apart from every decision and
+    /// receipt by the one property only it carries.</summary>
+    private sealed record JournalRunEndPatchRoster
+    {
+        [JsonPropertyName("patch_roster_at_run_end")]
+        public Fact<PatchRoster>? PatchRoster { get; init; }
     }
 }
 

@@ -30,17 +30,18 @@ internal static class RecordedRun
     internal static ReplayManifest Manifest()
     {
         var capture = Captured();
+        capture.RecordPatchRosterAtRunEnd(RecordedPatchRoster.HostOnly());
         capture.Finish("abandoned");
         return capture.ToManifest();
     }
 
-    internal static RunCapture Captured()
+    internal static RunCapture Captured(PatchRoster? rosterAtStart = null)
     {
         var capture = RunCapture.Begin(new RunRecordingStart
         {
             RunId = "native-SFXT47K77RFK-20260905-030000",
             RecorderVersion = "runmobile-recorder/fixture",
-            Identity = Identity(),
+            Identity = Identity(rosterAtStart),
             State = Floor(1),
             Digest = Digest(-1),
             RunClockMs = 0,
@@ -177,7 +178,7 @@ internal static class RecordedRun
         return args;
     }
 
-    private static RunIdentityReading Identity() => new()
+    private static RunIdentityReading Identity(PatchRoster? rosterAtStart = null) => new()
     {
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
@@ -195,7 +196,7 @@ internal static class RecordedRun
         },
         Mods = ModEnvironment.AsRecorded(
             [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")],
-            RecordedPatchRoster.HostOnly()),
+            rosterAtStart ?? RecordedPatchRoster.HostOnly()),
     };
 
     internal static IReadOnlyDictionary<string, string> Floor(int floor) => new Dictionary<string, string>(
