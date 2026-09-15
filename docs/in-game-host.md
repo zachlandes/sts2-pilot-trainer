@@ -387,6 +387,9 @@ A crash that cost one decision would then cost every decision after it.
 Whether that final line is a record or a fragment is one predicate both the repair and `Parse` ask, so the repair cannot delete what the reader would have kept, and a fragment cut back marks the recording broken with the decision it lost named.
 On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
 Equal means nothing happened in between that the recorder missed.
+The state the game came back in is read once the run is standing in its room, which `RunRecorder.HasEnteredItsRoom` asks beside the floor count: a continued run has its floor count on the save before it has a room, and `run.act_floor` - set only by `EnterMapPointInternal`, never saved - reads 0 until `LoadIntoLatestMapCoord` re-enters the coordinate, so a reading taken in that gap is a state the journal never saw and an honest Continue at Neow's room resumed as a broken watch.
+A Continue into a live fight has the same gap one step later - the combat room is pushed, its assets load over the frames after, and only then is the fight set up - so the same predicate asks `LiveRun.ReadyForThePlayer` of a combat room whose fight is not restored finished, the question the settle after a map move asks.
+`RecorderContinueTests` drives both Continues headlessly from the saves the game itself took.
 The one unequal state that remains continuous is the game's own save behavior after a quit during a live fight: the live digest must equal that same open fight's room-entry decision in the journal, and the journal must contain decisions observed after it.
 Those decisions remain in an append-only rollback record and in `source.native.discarded`, while the replayable history resumes at the room-entry decision; the fact that Continue was pressed establishes none of this.
 For publication, `gate` replays every discarded branch from that verified room-entry state and requires its final engine state to match the final state the recorder captured.
@@ -581,7 +584,7 @@ otherwise.
 `RunmobileMod.EnsureAdopted` is the mod's one adoption entry and remembers its answer,
 and every feature that reads the engine asks it for itself at the first moment it
 demonstrably has a running game - the singleplayer menu for the mode card, the recorder
-when a run has entered its first room. No feature's correctness rests on another having
+when a run is standing in its room. No feature's correctness rests on another having
 asked first, and a refusal is the caller's to act on: no mode card, and no recording.
 The singleplayer-menu postfix asks for adoption only where a module contributed a card
 it is about to draw, so on a build where every module declined it is never reached from
@@ -1198,6 +1201,7 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
 
 To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
 Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
+[demo/RECORDER-CONTINUE.md](../demo/RECORDER-CONTINUE.md) has that Continue pressed at Neow's room and inside the first fight, at the head that read a continued run too early and at the head that reads it once the game has re-entered its room.
 During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
 A `continuity broken` line names a mismatch the recorder cannot place in its journal, and the recording is then refused for publication rather than repaired.
 To exercise the save-scum path, answer the Neow blessing, quit to the main menu, and continue: the game offers the blessing again, the `continuity rewound` line names the decision it came back at, the overlay goes on reading RECORDING, and the rest of the run goes on being recorded into a recording the run history offers to play from and refuses to submit.
