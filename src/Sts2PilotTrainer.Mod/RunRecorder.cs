@@ -299,11 +299,12 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// Two things have to have happened before the opening reading is worth taking.
     /// The run has to exist: continuing a saved run is asynchronous, so the method that
-    /// starts it returns long before the game has one. And the run has to have entered
-    /// its first room, because that is where the headless replay's own opening reading
-    /// is taken - <c>RunDriver.EnterFirstRoom</c> before the first action - and a
-    /// reading taken on the near side of it would describe a floor the recording then
-    /// claims to arrive on.
+    /// starts it returns long before the game has one. And the run has to be standing
+    /// in its room, which <see cref="HasEnteredItsRoom"/> owns: on a new run that is
+    /// its first, where the headless replay's own opening reading is taken -
+    /// <c>RunDriver.EnterFirstRoom</c> before the first action - and a reading taken
+    /// on the near side of it would describe a floor the recording then claims to
+    /// arrive on; on a continued run it is the room the save names, re-entered.
     /// </summary>
     private static async Task AttachWhenReady()
     {

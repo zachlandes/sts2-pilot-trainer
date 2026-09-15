@@ -221,7 +221,7 @@ public static class RunmobileMod
     ///
     /// Not from mod loading, because the game has no model database yet then. Every
     /// feature that reads the engine asks this for itself at the first moment it has
-    /// demonstrably got a running game - the recorder when a run has entered its first
+    /// demonstrably got a running game - the recorder when a run is standing in its
     /// room - so no feature's correctness rests on another
     /// having asked first. It is the mod's one adoption entry and answers the same way
     /// however many ask.
@@ -261,7 +261,7 @@ public static class RunmobileMod
     /// Here rather than at mod start because the mod reads nothing at initialization,
     /// and a scene is the game. This is the mod's first moment with a running game. It
     /// is ahead of anything this mod draws from a menu, and not ahead of everything: the
-    /// recorder asks for adoption at the first room of a run, so on a player who opens
+    /// recorder asks for adoption once a run stands in its room, so on a player who opens
     /// no Runmobile surface the sweep runs during that transition instead. Either way a
     /// role this build renamed is named in the log before the surface that asks for it
     /// refuses, rather than first being noticed by a player already entering a recorded
