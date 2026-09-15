@@ -284,10 +284,88 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         AssertSameTrace(capture.Trace, replay.Trace);
     }
 
+    /// <summary>
+    /// A history that goes on past the decision the game ended the run on is not this
+    /// run's, and the replay refuses it at that action rather than playing on with a
+    /// dead player: the run's end is read where the game ends it, inside PROCEED, and
+    /// nothing after it is a decision the run was there to make.
+    /// </summary>
+    [GameFact]
+    public void AHistoryThatGoesOnPastTheWinIsRefusedAtTheActionAfterIt()
+    {
+        using var recording = Patched();
+        RunRecorder.GameIdentitySource = HeadlessIdentity;
+        RunRecorder.Clock = new PumpedSettleClock();
+
+        var (manifest, _) = CaptureWonRun();
+        var pastTheEnd = manifest.Actions[^1].Seq + 1;
+        var wentOn = manifest with
+        {
+            Actions = [.. manifest.Actions, Record(pastTheEnd, ActionVerb.ChooseEventOption,
+                ("event_id", "EVENT.THE_ARCHITECT"), ("option_index", "0"), ("option_key", "PROCEED"))],
+        };
+
+        var outcome = FreshReplayOutcome(wentOn);
+
+        Assert.Equal(VerificationStatus.Rejected, outcome.Report.Status);
+        var refusal = Assert.Single(outcome.Report.Diagnostics);
+        Assert.True(refusal.StartsWith($"action {pastTheEnd} (ChooseEventOption): ", StringComparison.Ordinal), refusal);
+        Assert.Contains("after the game ended the run", refusal);
+        Assert.Equal(pastTheEnd, outcome.Report.Trace!.Steps[^1].Seq);
+    }
+
+    /// <summary>
+    /// A second won run recorded in the same process is the same recording.
+    ///
+    /// The recorder's patches are installed and taken off per test here, so the second
+    /// recording is made through detours written a second time over engine members the
+    /// first run left hot. Under tiered compilation that re-detour raced the runtime's
+    /// recompilation of those members - <c>RewardsSetSynchronizer.SelectLocalReward</c>
+    /// went unpatched for the first fights of the second run and its loot decisions
+    /// vanished from the history with nothing refused and nothing logged, in five runs
+    /// of eight - which is the race the test project now turns tiering off for. This
+    /// makes both recordings in one process and holds the second to the first,
+    /// decision for decision, so that setting cannot come back off quietly.
+    /// </summary>
+    [GameFact]
+    public void ASecondWonRunRecordedInTheSameProcessIsTheSameRecording()
+    {
+        ReplayManifest first;
+        using (Patched())
+        {
+            RunRecorder.GameIdentitySource = HeadlessIdentity;
+            RunRecorder.Clock = new PumpedSettleClock();
+            (first, _) = CaptureWonRun();
+        }
+
+        // A fresh store for the second run: two runs a second apart share a run id.
+        var secondRoot = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(secondRoot);
+        RunmobileStore.UseRootForTesting(secondRoot);
+
+        ReplayManifest second;
+        RunCapture capture;
+        using (Patched())
+        {
+            RunRecorder.GameIdentitySource = HeadlessIdentity;
+            RunRecorder.Clock = new PumpedSettleClock();
+            (second, capture) = CaptureWonRun(secondRoot);
+        }
+
+        Assert.Empty(capture.Refusals);
+        Assert.Equal(NativeSource.ContinuousContinuity, second.Source.Native!.Continuity);
+        Assert.Equal(
+            first.Actions.Select(action => (action.Seq, action.Verb, string.Join(";", action.Args.Select(pair => $"{pair.Key}={pair.Value}")))),
+            second.Actions.Select(action => (action.Seq, action.Verb, string.Join(";", action.Args.Select(pair => $"{pair.Key}={pair.Value}")))));
+        Assert.Equal(
+            first.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)),
+            second.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)));
+    }
+
     /// <summary>Walks the whole-act journey through the recorder on a run of that act
     /// alone, then the victory room's dialogue to PROCEED, and hands back what the
     /// recorder wrote when the game ended the run.</summary>
-    private (ReplayManifest Manifest, RunCapture Capture) CaptureWonRun()
+    private (ReplayManifest Manifest, RunCapture Capture) CaptureWonRun(string? root = null)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
@@ -316,7 +394,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
 
         Assert.Equal(RunCaptureState.Finished, capture.State);
         var manifest = ManifestJson.Deserialize(File.ReadAllText(
-            Path.Combine(_root, "recordings", $"{capture.RunId}.replay.json")));
+            Path.Combine(root ?? _root, "recordings", $"{capture.RunId}.replay.json")));
         return (manifest, capture);
     }
 
@@ -366,6 +444,15 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
     private static (ReplayTrace Trace, IReadOnlyList<ReplayBoundary> Boundaries) FreshReplayFromSeed(
         ReplayManifest manifest)
     {
+        var outcome = FreshReplayOutcome(manifest);
+        Assert.True(
+            outcome.Report.Status == VerificationStatus.Verified,
+            $"the replay was {outcome.Report.Status}: {string.Join("; ", outcome.Report.Diagnostics)}");
+        return (outcome.Report.Trace!, outcome.Report.Boundaries);
+    }
+
+    private static ArbiterOutcome FreshReplayOutcome(ReplayManifest manifest)
+    {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
 
         var session = new GameSession();
@@ -382,12 +469,8 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
             var runIdentity = Preflight.EvaluateStartedRun(manifest.Environment);
             Assert.True(runIdentity.Matches, "the started run is not the run the recording describes");
 
-            var outcome = Engine.Arbiter.ReplayStartedRun(
+            return Engine.Arbiter.ReplayStartedRun(
                 session, manifest, runIdentity, stopAfterSeq: null, gameModeOverride: null);
-            Assert.True(
-                outcome.Report.Status == VerificationStatus.Verified,
-                $"the replay was {outcome.Report.Status}: {string.Join("; ", outcome.Report.Diagnostics)}");
-            return (outcome.Report.Trace!, outcome.Report.Boundaries);
         }
         finally
         {

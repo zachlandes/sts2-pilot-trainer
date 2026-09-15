@@ -6,6 +6,16 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <RootNamespace>Sts2PilotTrainer.Arbiter.Tests</RootNamespace>
+    <!-- No tiered compilation in this test host. These tests install the mod's Harmony
+         patches per test and take them off again, which re-detours engine members the
+         previous test left hot, and re-detouring a method races with the runtime's own
+         recompilation of it - the cause Localization.ApplyPatches and
+         HeadlessPatches.Apply already latch against for the engine's own patches. Under
+         tiering a second won run recorded in one process lost its loot decisions in
+         five runs of eight, with no line in any log; with the recompilation gone it
+         lost none in eight. The retail client patches once and never re-detours, so this
+         is the harness's condition and not the game's. -->
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
 
   <ItemGroup>
