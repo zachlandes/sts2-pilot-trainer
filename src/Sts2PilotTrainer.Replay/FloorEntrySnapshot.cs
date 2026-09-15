@@ -223,18 +223,16 @@ public sealed record FloorEntrySnapshot(
 ///
 /// The rule is one field wide and it is the whole finding of the floor-entry
 /// measurement. A floor arrival where a fight is live restores through the retail
-/// continue path field for field. A floor arrival where one is not carries the
-/// previous fight's finished <c>PlayerCombatState</c> in the live run, and the game's
-/// own save has no representation of it, so the restored run is missing seventeen
-/// <c>combat.*</c> fields that describe a fight that already ended. Nothing about the
-/// run itself differs there - seed, every RNG stream position, deck, relics, gold and
-/// the map coordinate all agree - which is exactly why it must be refused by a rule
-/// rather than noticed later: it is the most convincing shape a wrong answer has.
-///
-/// Making those arrivals pass by dropping a finished fight from the projection is a
-/// different change with its own migration - it would move every boundary digest in
-/// every committed recording, including ones a recorder captured inside a player's own
-/// client - and it must not happen as a side effect of wanting a cache to hit. See
+/// continue path field for field, and is the only arrival the measurement covered.
+/// Under format 6 an arrival where one was not could not restore at all: the live run
+/// carried the previous fight's finished <c>PlayerCombatState</c>, which the game's own
+/// save has no representation of, so the restored run was missing seventeen
+/// <c>combat.*</c> fields while seed, every RNG stream position, deck, relics, gold and
+/// the map coordinate all agreed - the most convincing shape a wrong answer has, and
+/// the reason this is a rule rather than something noticed later. The projection now
+/// carries nothing of a fight outside a live one, so such an arrival reads the same
+/// restored as live; whether it restores field for field is a measurement nobody has
+/// taken yet, and a cache is written only for a boundary the measurement covered. See
 /// docs/native-replay-format.md.
 ///
 /// Pure, and asked of the state the replay derived rather than of the manifest, because
@@ -260,9 +258,8 @@ public static class FloorEntrySnapshotEligibility
         var outcome = boundaryFields.GetValueOrDefault("combat.outcome", "none");
         return
             $"No fight is live at this arrival ({LiveCombatField}={live}, combat.outcome={outcome}). The " +
-            "game's own save carries no combat at all, so a run restored here would be missing the finished " +
-            "fight the live run is still carrying - the same run in every other respect, and a different " +
-            "canonical state. Only a floor arrival with a live fight is cached; see " +
-            "docs/native-replay-format.md.";
+            "restore measurement covered floor arrivals with a live fight and nothing else, and a cache is " +
+            "written only for a boundary the measurement covered. Only a floor arrival with a live fight is " +
+            "cached; see docs/native-replay-format.md.";
     }
 }

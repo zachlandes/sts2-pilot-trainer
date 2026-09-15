@@ -81,6 +81,7 @@ public class CanonicalStateTests
         Assert.Contains(CanonicalState.ExcludedByDesign, e => e.Category == "wall_clock");
         Assert.Contains(CanonicalState.ExcludedByDesign, e => e.Category == "object_identity");
         Assert.Contains(CanonicalState.ExcludedByDesign, e => e.Category == "filesystem_paths");
+        Assert.Contains(CanonicalState.ExcludedByDesign, e => e.Category == "finished_fight");
     }
 
     [Fact]

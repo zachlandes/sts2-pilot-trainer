@@ -30,14 +30,11 @@ public static class Arbiter
     /// moment, whichever room it was taken in - and the branch's final state has to
     /// be what the engine produces from it. Both are compared as samples, the way
     /// every reproduction here is; a floor arrival's complete digest is held by the
-    /// validator against the verified boundary there.
-    ///
-    /// Where either side carries a finished fight, the comparison is of what a save
-    /// carries - <see cref="ReplayTrace.SaveRepresentable"/> - for the reason the
-    /// recorder's resume compares that way: a branch played after a Continue was
-    /// recorded on a run the game restored, and a restored run carries none of the
-    /// last fight's residue, or a fresh one in its place, where the engine carries
-    /// the fight as it was fought. The residue is not what a branch is evidence of.
+    /// validator against the verified boundary there. A branch played after a
+    /// Continue was recorded on a run the game restored, which carries none of the
+    /// last fight or a fresh combat state in its place where the engine carries the
+    /// fight as it was fought; the projection carries nothing of a fight outside a
+    /// live one, so the two read the same and the comparison is exact.
     /// </summary>
     public static ArbiterOutcome RunDiscardedBranch(
         ReplayManifest manifest, int branchIndex, PlayerProgress? progress = null)
@@ -135,12 +132,6 @@ public static class Arbiter
         IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
     {
         if (actual is null) return ["the replay produced no final sample"];
-
-        if (ReplayTrace.CarriesFinishedCombat(expected) || ReplayTrace.CarriesFinishedCombat(actual))
-        {
-            expected = ReplayTrace.SaveRepresentable(expected);
-            actual = ReplayTrace.SaveRepresentable(actual);
-        }
 
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)

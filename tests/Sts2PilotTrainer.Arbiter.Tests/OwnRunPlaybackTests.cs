@@ -52,8 +52,8 @@ public sealed class OwnRunPlaybackTests
     {
         var document = JsonNode.Parse(File.ReadAllText(ManifestPath(fileName)))!.AsObject();
         var native = document["source"]!["native"]!.AsObject();
-        Assert.Equal(ManifestJson.PreviousManifestVersion, native["migrated_from_version"]!.GetValue<int>());
-        document["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        Assert.Equal(ManifestJson.OldestMigratedVersion, native["migrated_from_version"]!.GetValue<int>());
+        document["manifest_version"] = ManifestJson.OldestMigratedVersion;
         native.Remove("integrity");
         native.Remove("migrated_from_version");
 

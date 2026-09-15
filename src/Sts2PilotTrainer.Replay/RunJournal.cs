@@ -845,17 +845,12 @@ public sealed record RunJournalEntry
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, string>? Before { get; init; }
 
+    /// <summary>The complete digest of the state this decision began from, which for
+    /// the decision after a won fight is the first reading taken once the client has
+    /// rolled the rewards: what a Continue from the fight-won save comes back at.</summary>
     [JsonPropertyName("before_digest")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? BeforeDigest { get; init; }
-
-    /// <summary>The save-representable digest of the state this decision began
-    /// from - see <see cref="SaveRepresentableDigest"/> - which for the decision
-    /// after a won fight is the first reading taken once the client has rolled the
-    /// rewards. Absent on a line an earlier recorder wrote.</summary>
-    [JsonPropertyName("before_sr_digest")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? BeforeSaveRepresentableDigest { get; init; }
 
     /// <summary>The sampled canonical state after this decision settled.</summary>
     [JsonPropertyName("state")]
@@ -864,17 +859,6 @@ public sealed record RunJournalEntry
     /// <summary>The complete canonical state digest at that same moment.</summary>
     [JsonPropertyName("digest")]
     public required string Digest { get; init; }
-
-    /// <summary>
-    /// The digest of what the game's own save can carry of that same moment -
-    /// <see cref="ReplayTrace.SaveRepresentableDigest"/> - so a resume after a
-    /// finished fight can ask whether the restored run is this moment less the
-    /// fight's residue, exactly, rather than as far as a sample can see. Absent on
-    /// a line an earlier recorder wrote, where the sample is all there is to compare.
-    /// </summary>
-    [JsonPropertyName("sr_digest")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? SaveRepresentableDigest { get; init; }
 
     [JsonPropertyName("run_clock_ms")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

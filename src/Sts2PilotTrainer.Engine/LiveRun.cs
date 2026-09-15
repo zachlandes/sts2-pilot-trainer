@@ -47,8 +47,7 @@ public static class LiveRun
     public static LiveReading Read()
     {
         var state = Project();
-        return new LiveReading(
-            ReplayTrace.Sample(state.Fields), state.Digest(), ReplayTrace.SaveRepresentableDigest(state.Fields));
+        return new LiveReading(ReplayTrace.Sample(state.Fields), state.Digest());
     }
 
     /// <summary>Just the sampled fields, for a caller that only needs the trace's half.</summary>
@@ -232,18 +231,10 @@ public static class LiveRun
 }
 
 /// <summary>
-/// One reading of the live run: the sampled fields, the complete digest, and the
-/// digest of what a save can carry, all of one projection. Deconstructs into the
-/// first two for the readers that want only those.
+/// One reading of the live run: the sampled fields and the complete digest, both of
+/// one projection.
 /// </summary>
-public sealed record LiveReading(
-    IReadOnlyDictionary<string, string> Sample, string Digest, string SaveRepresentableDigest)
+public sealed record LiveReading(IReadOnlyDictionary<string, string> Sample, string Digest)
 {
-    public void Deconstruct(out IReadOnlyDictionary<string, string> sample, out string digest)
-    {
-        sample = Sample;
-        digest = Digest;
-    }
-
-    public StateReading AsStateReading() => new(Sample, Digest, SaveRepresentableDigest);
+    public StateReading AsStateReading() => new(Sample, Digest);
 }

@@ -46,7 +46,9 @@ public class ReplayTraceTests
         var outcome = fight[^1].After.GetValueOrDefault("combat.outcome");
         var totalTurns = fight.Max(step => Int(step.Before, "combat.turn"));
         var startingHp = Int(entry.After, "combat.player_hp");
-        var finalHp = Int(fight[^1].After, "combat.player_hp");
+        // The player's, not the fight's: once the fight is over the projection
+        // carries nothing of it but the outcome, and the player is still there.
+        var finalHp = Int(fight[^1].After, "player.hp");
         // Scoped to the fight, like every other quantity in the summary. The history
         // picks up a potion from this fight's loot, which is an addition to the belt
         // and not a use, and a summary counted over the whole run would be answering a
@@ -89,11 +91,13 @@ public class ReplayTraceTests
             // subtract from. When they all go, each one's remaining health is what the
             // step dealt - which is the one case the sampled state still resolves
             // exactly, and the reason a fight that ends in a kill is derivable at all.
-            var dealt = Int(step.After, "combat.enemy_count") == 0
+            // The killing step's after-reading carries no fight at all, which is the
+            // same "no enemy afterwards" as a count of zero.
+            var dealt = (step.After.TryGetValue("combat.enemy_count", out var left) ? int.Parse(left, CultureInfo.InvariantCulture) : 0) == 0
                 ? Enumerable.Range(0, Int(step.Before, "combat.enemy_count"))
                     .Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"))
                 : Int(step.Before, "combat.enemy.0.hp") - Int(step.After, "combat.enemy.0.hp");
-            var received = Int(step.Before, "combat.player_hp") - Int(step.After, "combat.player_hp");
+            var received = Int(step.Before, "player.hp") - Int(step.After, "player.hp");
             var running = byTurn.TryGetValue(turn, out var existing) ? existing : (0, 0);
             byTurn[turn] = (running.Item1 + Math.Max(0, dealt), running.Item2 + Math.Max(0, received));
         }

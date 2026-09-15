@@ -265,8 +265,9 @@ public sealed class RecorderContinueTests : IDisposable
 
     /// <summary>
     /// Arrive at a shop straight after a won fight, quit, continue: the recorder's
-    /// reading at the arrival carries the finished fight and the restored run does
-    /// not, and nothing else differs, so nothing happened that the recorder missed.
+    /// reading at the arrival carries nothing of the finished fight, and neither does
+    /// the restored run, so the two are the same state digest for digest and the
+    /// resume needs no comparison of what a save can carry to place it.
     /// </summary>
     [GameFact]
     public void AnHonestContinueAtAShopArrivalAfterAWonFightResumesContinuously()
@@ -306,7 +307,7 @@ public sealed class RecorderContinueTests : IDisposable
             Assert.Empty(capture.Refusals);
             lastDigest = capture.LastDigest;
             lastReading = capture.Trace.Steps[^1].After;
-            Assert.True(ReplayTrace.CarriesFinishedCombat(lastReading), "the arrival reading carries no finished fight");
+            Assert.Equal("none", lastReading["combat.outcome"]);
             runId = capture.RunId;
             seq = capture.NextSeq;
 
@@ -322,12 +323,13 @@ public sealed class RecorderContinueTests : IDisposable
         continued.RestoreSavedRun(arrival.Json);
         Pump.Drain();
 
+        // The restored run is the recorded state, digest for digest: the game's
+        // save carries no combat and the projection now carries none of a finished
+        // one, so there is nothing left to differ in.
         Assert.True(RunRecorder.HasEnteredItsRoom());
         var (live, liveDigest) = LiveRun.Read();
-        Assert.NotEqual(lastDigest, liveDigest);
-        Assert.False(ReplayTrace.CarriesFinishedCombat(live));
-        Assert.All(ReplayTrace.Differences(lastReading, live),
-            difference => Assert.StartsWith("combat.", difference, StringComparison.Ordinal));
+        Assert.Empty(ReplayTrace.Differences(lastReading, live));
+        Assert.Equal(lastDigest, liveDigest);
 
         Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
         var resumed = RunRecorder.Active!.Capture;

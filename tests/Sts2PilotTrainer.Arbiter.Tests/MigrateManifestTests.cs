@@ -92,7 +92,7 @@ public class MigrateManifestTests
         var path = Path.Combine(
             Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json");
         var node = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
-        node["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        node["manifest_version"] = ManifestJson.OldestMigratedVersion;
 
         var native = node["source"]!.AsObject()["native"]!.AsObject();
         native.Remove("integrity");
@@ -130,7 +130,7 @@ public class MigrateManifestTests
         var native = root.GetProperty("source").GetProperty("native");
         Assert.Equal(NativeSource.CompleteIntegrity, native.GetProperty("integrity").GetString());
         Assert.Equal(
-            ManifestJson.PreviousManifestVersion, native.GetProperty("migrated_from_version").GetInt32());
+            ManifestJson.OldestMigratedVersion, native.GetProperty("migrated_from_version").GetInt32());
 
         // And nothing else. A recorder that never read an option key did not read one,
         // and a recording that stopped nowhere names no stop; inventing either would be
@@ -155,13 +155,15 @@ public class MigrateManifestTests
     }
 
     /// <summary>A version-5 manifest whose source is a video gains the version and
-    /// nothing else: integrity is a claim a native recorder makes about what it
-    /// watched, and a reconstruction from footage has no recorder to make it.</summary>
+    /// nothing else but what every older version loses: integrity is a claim a native
+    /// recorder makes about what it watched, and a reconstruction from footage has no
+    /// recorder to make it, and what a format-6 checkpoint expected of a finished
+    /// fight is taken away by the reader the way it is for any older file.</summary>
     [GameFact]
     public void AVersionFiveVideoManifestGainsTheVersionAndNoIntegrity()
     {
         var node = JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject();
-        node["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        node["manifest_version"] = ManifestJson.OldestMigratedVersion;
         var input = Path.Combine(ScratchDirectory(), "version-five-video.replay.json");
         File.WriteAllText(input, node.ToJsonString() + "\n");
         var outPath = ScratchPath();
@@ -170,6 +172,80 @@ public class MigrateManifestTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("integrity:", result.All, StringComparison.Ordinal);
-        Assert.Equal(CurrentText, File.ReadAllText(outPath));
+        Assert.Equal(
+            ManifestJson.Serialize(FinishedFightResidue.StripExpectations(ManifestJson.Load(Arbiter.Manifest))) + "\n",
+            File.ReadAllText(outPath));
+    }
+
+    /// <summary>
+    /// The migration format 7 needs, done on disk.
+    ///
+    /// A format-6 recording's digest at a floor arrival with no live fight after a
+    /// fight hashes the finished fight its projection carried, which this build never
+    /// produces, so no replay can reproduce it and holding the file to it would refuse
+    /// every such recording for a difference that is the format's. With
+    /// <c>--derive-boundaries</c> exactly those digests are re-derived from the replay
+    /// that verified everything else; every other kind of boundary is still held to
+    /// what it declares, so a recording that really disagrees with this build is still
+    /// refused rather than smoothed over.
+    /// </summary>
+    [GameFact]
+    public void AVersionSixRecordingsNonFightArrivalsAreRederivedAndNothingElseIs()
+    {
+        var committed = ManifestJson.Load(Path.Combine(
+            Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json"));
+        var arrival = committed.Boundaries.Single(boundary => boundary.IsFloorEntry && boundary.Floor == 4);
+        var fight = committed.Boundaries.First(boundary => boundary.IsCombatStart);
+        Assert.True(FinishedFightResidue.PredatesThisProjection(committed with { ReadFromVersion = 6 }, arrival));
+
+        var stale = "sha256:" + new string('6', 64);
+        var input = AVersionSixNativeManifest(arrival, stale);
+        var outPath = ScratchPath();
+
+        var result = Arbiter.Run("migrate-manifest", input, "--out", outPath, "--derive-boundaries");
+
+        Assert.True(result.ExitCode == 0, result.All);
+        Assert.Contains($"rederived: {arrival.Describe()}", result.All, StringComparison.Ordinal);
+        var migrated = ManifestJson.Load(outPath);
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        // What it records is where the file began, which was 5, through every migration since.
+        Assert.Equal(ManifestJson.OldestMigratedVersion, migrated.Source.Native!.MigratedFromVersion);
+        Assert.Equal(
+            committed.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)),
+            migrated.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)));
+        Assert.Equal(FactSource.Engine, migrated.Boundaries.Single(boundary => boundary.IsFloorEntry && boundary.Floor == 4).Digest.Source);
+        Assert.Equal(FactSource.Captured, migrated.Boundaries.First(boundary => boundary.IsCombatStart).Digest.Source);
+
+        // A combat start is read inside a live fight, whose projection did not
+        // change, so a digest that disagrees there is the finding and is kept.
+        var refused = Arbiter.Run(
+            "migrate-manifest", AVersionSixNativeManifest(fight, stale), "--out", ScratchPath(), "--derive-boundaries");
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("Overwriting the older digest would erase the evidence", refused.All, StringComparison.Ordinal);
+    }
+
+    /// <summary>The shipped native recording as the version-6 file it was before this
+    /// format bump, holding the given boundary with the given digest: what a format-6
+    /// arbiter left on disk. Its own migration note stays, because the recorder that
+    /// wrote it read no option keys and the note is what excuses that.</summary>
+    private static string AVersionSixNativeManifest(ReplayBoundary boundary, string digest)
+    {
+        var path = Path.Combine(
+            Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json");
+        var node = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        node["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        foreach (var candidate in node["boundaries"]!.AsArray())
+        {
+            var entry = candidate!.AsObject();
+            if (entry["kind"]!.GetValue<string>() == boundary.Kind &&
+                entry["after_seq"]!.GetValue<int>() == boundary.AfterSeq)
+            {
+                entry["digest"]!.AsObject()["Value"] = digest;
+            }
+        }
+
+        var scratch = Path.Combine(ScratchDirectory(), $"version-six-{boundary.Kind}-{boundary.AfterSeq}.replay.json");
+        File.WriteAllText(scratch, node.ToJsonString() + "\n");
+        return scratch;
     }
 }

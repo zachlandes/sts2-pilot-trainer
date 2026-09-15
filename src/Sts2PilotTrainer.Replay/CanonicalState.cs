@@ -61,6 +61,16 @@ public sealed class CanonicalState
             "Animation progress, tween state, sound cues, UI focus, camera.",
             "The headless host has no presentation layer at all, so including any of " +
             "this would compare nothing against nothing and look like agreement."),
+
+        new("finished_fight",
+            "A fight that has ended: its last turn, energy, empty piles, encounter and " +
+            "enemy roster, which the engine keeps on the player until the next fight.",
+            "The game's own save carries no combat, so a run continued from a save stands " +
+            "at the same place with a fresh combat state or none where the run that was " +
+            "never quit carries the fight as it was fought - the same run, and a " +
+            "different digest at every shop, rest, event and loot screen after a fight. " +
+            "Outside a live fight the canonical form carries only that none is live and, " +
+            "off the room the run stands in, how the last one ended."),
     ];
 
     public static Builder Build() => new();
