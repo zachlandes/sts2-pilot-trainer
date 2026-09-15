@@ -120,7 +120,7 @@ public sealed record RunJournal
     /// </summary>
     public JournalStop? Stop { get; init; }
 
-    /// <summary>Branches explicitly removed by observed room-entry rollbacks.</summary>
+    /// <summary>Branches removed by the game's own rollbacks and by reloads, in order.</summary>
     public IReadOnlyList<JournalDiscardedBranch> Discarded { get; init; } = [];
 
     /// <summary>
@@ -215,7 +215,7 @@ public sealed record RunJournal
             },
             Compact) + "\n";
 
-    /// <summary>The append-only receipt for an observed room-entry rollback.</summary>
+    /// <summary>The append-only receipt for a rollback, the game's own or a reload's.</summary>
     public static string RenderRollback(JournalRollback rollback) =>
         JsonSerializer.Serialize(new JournalRollbackLine { Rollback = rollback }, Compact) + "\n";
 

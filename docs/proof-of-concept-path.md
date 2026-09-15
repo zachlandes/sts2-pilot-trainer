@@ -453,11 +453,11 @@ same kind, without a video and without a transcriber.
 
 - `RunCapture` in `Sts2PilotTrainer.Replay`: the whole-run counterpart of `FightCapture`, delegating the inside of each fight to one so there is a single capture path.
   It records the run's identity as captured facts, one captured action per decision, and a captured checkpoint and digest at every boundary `RunCoverage` finds.
-  It refuses a run whose start it did not witness and applies the recorder's continuity contract on resume; [the in-game host](in-game-host.md#producing-a-recording-and-checking-it) owns that contract and its verified mid-fight rollback exception.
+  It refuses a run whose start it did not witness and applies the recorder's continuity contract on resume; [the in-game host](in-game-host.md#producing-a-recording-and-checking-it) owns that contract and its exception for the game's own return to its latest save.
 - `RunJournal`: a header and a line per decision, appended as the run is played, so
   finishing a write means finishing a line.
   A crash leaves a real recording of the part of the run that happened.
-  `RunCapture.Resume` rebuilds the capture from it, preserving the same replayable history and any discarded branch evidence established by a verified mid-fight rollback.
+  `RunCapture.Resume` rebuilds the capture from it, preserving the same replayable history, the game's own save points, and any discarded branch evidence a rollback or a reload established.
 - `RunRecorder` and `RecorderModule` in the mod: the hooks, the settle rule, and the
   translation from what the game announces into what the format records. Inside a
   fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses,
@@ -479,7 +479,7 @@ same kind, without a video and without a transcriber.
 
 **Runnable now:** the whole pure half.
 `dotnet test` exercises the capture, the journal, the continuity rule and the validator's acceptance of what the recorder produces without the game, and the game-dependent tests pin every member each reading goes through and every method the recorder patches.
-The local gate additionally replays any discarded fight branch through the real engine before accepting it.
+The local gate additionally replays any discarded branch through the real engine before accepting it.
 
 **Proved by play.** Two runs a person played on this build are committed under
 `manifests/` and both reproduce every boundary they captured.

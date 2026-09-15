@@ -330,9 +330,9 @@ Both hues are `LibraryPalette`'s and nothing the row writes down for itself.
 `RunRecorderStopTests` holds the two apart on the recording each writes.
 
 **Every decision is read either side.**
-The journal's schema is v3 - v2 added the before-reading and v3 the bookmark line - and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
+The journal's schema is v4 - v2 added the before-reading, v3 the bookmark line and v4 the save-point line - and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
 Inside a fight that reading is the observer's before-sample and coincides with the previous after-sample, and `FightCapture` still refuses a gap between them; outside one, the reward screen after a fight is generated on the client's clock between two decisions, so `RunCapture` carries the reading that was taken rather than refusing the gap.
-A v2 journal is read as it stands, because every v2 line is a v3 line and a journal with no bookmark line in it is one with nothing pressed.
+A v3 or v2 journal is read as it stands, because every line of each is a v4 line: a journal with no bookmark line in it is one with nothing pressed, and one declaring v3 or v2 made no promise about save points, which the continuity section below owns.
 A v1 journal on a player's disk is refused on resume, exactly as any schema this build does not read is, and the run is simply not continued as a recording.
 
 **The seam is the console's own funnel, not the action queue.**
