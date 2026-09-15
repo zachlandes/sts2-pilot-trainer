@@ -1209,6 +1209,7 @@ To exercise continuity, quit to the main menu part way through a run and continu
 Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
 [demo/RECORDER-CONTINUE.md](../demo/RECORDER-CONTINUE.md) has that Continue pressed at Neow's room and inside the first fight, at the head that read a continued run too early and at the head that reads it once the game has re-entered its room.
 During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
+On a loot screen after a reward is claimed, the game's save predates the claim, so Continue reads `continuity rewound` with the claim discarded; a Continue at a shop, rest site, event or treasure room after a won fight is continuous, because the resume compares what the save can carry there - [demo/RECORDER-CONTINUE-RESIDUE.md](../demo/RECORDER-CONTINUE-RESIDUE.md) has both.
 A `continuity broken` line names a mismatch the recorder cannot place in its journal, and the recording is then refused for publication rather than repaired.
 To exercise the save-scum path, answer the Neow blessing, quit to the main menu, and continue: the game offers the blessing again, the `continuity rewound` line names the decision it came back at, the overlay goes on reading RECORDING, and the rest of the run goes on being recorded into a recording the run history offers to play from and refuses to submit.
 
