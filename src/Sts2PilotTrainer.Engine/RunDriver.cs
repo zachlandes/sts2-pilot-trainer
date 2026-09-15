@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -225,18 +226,39 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             return Task.CompletedTask;
         };
 
-        // A chest's relic is awarded by the relic screen, not by the synchronizer that
-        // decides who gets it. The synchronizer announces the outcome and the screen
-        // hands the relic over; with no screen the run would pick a relic and never
-        // receive one. Subscribed here for the run's lifetime because the synchronizer
-        // outlives any one room.
-        RunManager.Instance.TreasureRoomRelicSynchronizer.RelicsAwarded += AwardChestRelics;
-        _chestRelicsSubscribed = true;
+        SubscribeToChestAwards();
     }
 
-    /// <summary>Whether this driver subscribed to the chest's award announcement, so
-    /// that disposing one that did not cannot unsubscribe another's handler.</summary>
-    private bool _chestRelicsSubscribed;
+    /// <summary>The synchronizer this driver hears chest awards from, so that
+    /// disposing a driver that never subscribed cannot unsubscribe another's handler,
+    /// and a run set up again under this driver is heard from its new one.</summary>
+    private TreasureRoomRelicSynchronizer? _chestRelicsSubscribedTo;
+
+    /// <summary>
+    /// A chest's relic is awarded by the relic screen, not by the synchronizer that
+    /// decides who gets it. The synchronizer announces the outcome and the screen
+    /// hands the relic over; with no screen the run would pick a relic and never
+    /// receive one. Subscribed for the run's lifetime because the synchronizer
+    /// outlives any one room, and again before a chest is opened because the game
+    /// builds a new one when it sets a run up, which a save restored under a driver
+    /// already constructed does: subscribed once, the pick after a Continue at a
+    /// treasure room was announced to nobody and the run never received its relic.
+    /// </summary>
+    private void SubscribeToChestAwards()
+    {
+        var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
+        if (ReferenceEquals(_chestRelicsSubscribedTo, synchronizer)) return;
+        UnsubscribeFromChestAwards();
+        synchronizer.RelicsAwarded += AwardChestRelics;
+        _chestRelicsSubscribedTo = synchronizer;
+    }
+
+    private void UnsubscribeFromChestAwards()
+    {
+        if (_chestRelicsSubscribedTo is null) return;
+        _chestRelicsSubscribedTo.RelicsAwarded -= AwardChestRelics;
+        _chestRelicsSubscribedTo = null;
+    }
 
     /// <summary>
     /// Hands over the relics the chest's own synchronizer just awarded, exactly as
@@ -257,11 +279,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     public void Dispose()
     {
-        if (_chestRelicsSubscribed)
-        {
-            RunManager.Instance.TreasureRoomRelicSynchronizer.RelicsAwarded -= AwardChestRelics;
-            _chestRelicsSubscribed = false;
-        }
+        UnsubscribeFromChestAwards();
 
         if (ReferenceEquals(ScreenStandIns.Current, this))
         {
@@ -340,6 +358,24 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>Applies one action, with no history after it. Kept for callers that
     /// drive a single decision.</summary>
     public void Apply(ActionRecord action) => Apply(action, []);
+
+    /// <summary>
+    /// Does what the client does between the last decision and this one that is not
+    /// itself a decision, so that a reading taken just before <see cref="Apply"/> is
+    /// the state the decision was made in. Today that is one thing: a decision about
+    /// what a treasure chest holds is made with the chest open, and the client opens
+    /// it on a click after the arrival. <see cref="Apply"/> opens it too, so a caller
+    /// that takes no reading before an action need not call this.
+    /// </summary>
+    public void Approach(ActionRecord action)
+    {
+        if (action.Verb is ActionVerb.TakeChestRelic or ActionVerb.SkipChestRelic
+            or ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.TakeCardRewardAlternative
+            or ActionVerb.SkipRewards)
+        {
+            OpenTreasureChestIfEntered();
+        }
+    }
 
     /// <summary>
     /// Applies one action.
@@ -629,6 +665,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// needed one.</summary>
     private RewardsSet OpenRewards(ActionRecord action)
     {
+        // A treasure room's extra rewards are put up by opening its chest.
+        OpenTreasureChestIfEntered();
         if (_openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set))
         {
             return set;
@@ -1213,14 +1251,23 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     /// <summary>
     /// Opens the chest a treasure room puts in front of the player, exactly where the
-    /// retail client does.
+    /// retail client does: at the first decision about what it holds, and never
+    /// inside the map move that entered the room.
     ///
     /// The third screen with no engine command behind it. <c>NTreasureRoom.OpenChest</c>
     /// is what calls <c>TreasureRoom.DoNormalRewards</c> and
     /// <c>TreasureRoom.DoExtraRewardsIfNeeded</c>, and nothing else does, so a headless
     /// replay that walked into a treasure room would find an unopened chest and refuse
-    /// every decision about it. This calls the same two methods at the same point and
-    /// generates nothing itself.
+    /// every decision about it. This calls the same two methods and generates nothing
+    /// itself.
+    ///
+    /// When matters as much as what. The client opens the chest on a click after the
+    /// arrival, so the chest's gold lands after the game's arrival save and after the
+    /// reading a recorder takes of the arrival, and before the relic is decided about.
+    /// Opened inside the map move, that gold was in the arrival's reading headlessly
+    /// and not in the client's: a Continue at a treasure-room arrival read as a hole
+    /// headlessly, and a retail recording's floor-entry boundary there was one no
+    /// replay could reproduce.
     ///
     /// Opening is not a decision and so is not an action; the relic and any rewards set
     /// it puts up are, and both are refused where the manifest is silent. The relics
@@ -1229,10 +1276,12 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// </summary>
     private void OpenTreasureChestIfEntered()
     {
+        if (_insideRunningGame) return;
         if (_session.RunState.CurrentRoom is not TreasureRoom room) return;
         if (ReferenceEquals(_chestOpenedForRoom, room)) return;
 
         _chestOpenedForRoom = room;
+        SubscribeToChestAwards();
         room.DoNormalRewards().GetAwaiter().GetResult();
         Pump.Drain();
         room.DoExtraRewardsIfNeeded().GetAwaiter().GetResult();
@@ -1243,6 +1292,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// that needed one.</summary>
     private IReadOnlyList<RelicModel> OpenChestRelics(ActionRecord action)
     {
+        OpenTreasureChestIfEntered();
         if (_session.RunState.CurrentRoom is TreasureRoom room &&
             !ReferenceEquals(_chestRelicDecidedForRoom, room) &&
             RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics is { Count: > 0 } relics)
@@ -1532,7 +1582,6 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         if (!_insideRunningGame)
         {
             Settle(RunManager.Instance.EnterMapCoord(coord));
-            OpenTreasureChestIfEntered();
             return;
         }
 

@@ -133,7 +133,12 @@ internal static class Program
               Compare the verified prefix under the real build's standard, custom and
               daily run construction, with a behavior-changing modifier control.
 
-          synthetic-fixture / generate-synthetic-fixture --out <path>
+          synthetic-fixture --out <path>
+              Copy out the committed first-fight fixture as this build ships it. It
+              takes no journey, so it writes the wrong history at any other
+              fixture's path; regenerating a fixture is the command below.
+
+          generate-synthetic-fixture --out <path>
                                      [--journey first-fight|whole-act|screen-at-boundary]
                                      [--line reference|alternate]
               Emit the mechanically generated engine fixture. The first-fight journey

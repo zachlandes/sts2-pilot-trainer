@@ -303,6 +303,10 @@ public static class Arbiter
             var action = ordered[index];
             if (stopAfterSeq is { } actionLimit && action.Seq > actionLimit) break;
 
+            // Read where the decision was made, past whatever the client does on the
+            // way to it that is not a decision - the chest a treasure room opens on a
+            // click, before anything about it is decided.
+            driver.Approach(action);
             var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
