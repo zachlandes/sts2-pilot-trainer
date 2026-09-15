@@ -620,6 +620,46 @@ public sealed class RecorderContinueTests : IDisposable
     }
 
     /// <summary>
+    /// A save asked while a decision was in flight whose member then threw: the
+    /// prefix read the decision and opened its ticket, the postfix never ran, and the
+    /// pump never saw it. The save waits on that ticket for the rest of the recording
+    /// and is dropped at its end, so the save points are exactly the ones the game
+    /// took on decisions the history holds. Placed on whichever decision happened to
+    /// commit later, it would have named a decision the save does not hold, and a
+    /// reload to that decision would then have read as the game's own return.
+    /// </summary>
+    [GameFact]
+    public void ASaveAskedDuringADecisionThatNeverReachedThePumpIsNoSavePoint()
+    {
+        var lab = new Lab(this);
+        ReplayManifest manifest;
+        int[] gameSaves;
+        using (lab.Recording())
+        {
+            lab.Neow();
+            var finishedEvent = lab.Capture.LatestSavePointSeq;
+
+            lab.OpenAMapMoveThatNeverAnnounces();
+            RunRecorder.SaveAsked(Task.CompletedTask);
+
+            // Three decisions commit with that ticket still open, and none of them
+            // is where the save goes.
+            lab.MoveTo(MapPointType.Monster);
+            var arrival = lab.Capture.NextSeq - 1;
+            lab.PlayOneCard();
+            lab.PlayOneCard();
+            lab.PlayToVictory();
+            gameSaves = [finishedEvent, arrival, lab.Capture.NextSeq - 1];
+            Assert.Equal(gameSaves, lab.Capture.SavePoints.Select(point => point.AfterSeq));
+
+            manifest = lab.Abandon();
+        }
+
+        Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native!.Continuity);
+        Assert.Equal(gameSaves, manifest.Source.Native.SavePoints!.Select(point => point.AfterSeq));
+    }
+
+    /// <summary>
     /// The Neow re-offer. The blessing is answered, and the game comes back with it
     /// unanswered: Continue restored the run-start save because the save the
     /// finished event asked for never reached the disk. The journal then holds no
@@ -865,6 +905,16 @@ public sealed class RecorderContinueTests : IDisposable
         }
 
         internal void MoveTo(MapPointType type) => RecorderContinueTests.MoveTo(_driver!, _actions, _session!, type);
+
+        /// <summary>The map move's prefix run on a reachable node and its postfix
+        /// never run: what the recorder is left with when the game member threw
+        /// between the two, a decision read and never announced.</summary>
+        internal void OpenAMapMoveThatNeverAnnounces()
+        {
+            var open = RunRecorder.Active!.OpenTicketCount;
+            RunRecorder.MapMove.Before(Current(_session!).Children.First().coord);
+            Assert.Equal(open + 1, RunRecorder.Active!.OpenTicketCount);
+        }
 
         internal void PlayToVictory() => RecorderContinueTests.PlayToVictory(_driver!, _actions, _session!);
 

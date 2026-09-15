@@ -1579,6 +1579,15 @@ internal sealed class RunRecorder : IDisposable
             OpenTicket());
     }
 
+    /// <summary>How many decisions are read and not yet dealt with.</summary>
+    internal int OpenTicketCount
+    {
+        get
+        {
+            lock (Gate) return _openTickets.Count;
+        }
+    }
+
     /// <summary>A ticket for a decision being read now, open until the pump or the
     /// fight observer has dealt with it.</summary>
     private long OpenTicket()
@@ -1812,13 +1821,17 @@ internal sealed class RunRecorder : IDisposable
     /// every save asked while it was the one executing holds the state the history
     /// now ends in.
     ///
-    /// Only that ticket closes. An older ticket still open is not necessarily
-    /// stale: the loot screen's skip is declined from inside the map move that
-    /// leaves the room, so the move's ticket is older than the skip's and is still
-    /// executing when the skip commits, and the arrival's save is asked after that.
-    /// A ticket whose decision never reaches the pump - a prefix read, and the member
-    /// threw - would hold its saves for ever, so a save that has watched three later
-    /// decisions commit is placed on the history as it then stands rather than kept.
+    /// Only that ticket closes, and a ticket is the one thing that places a save. An
+    /// older ticket still open is not necessarily stale: the loot screen's skip is
+    /// declined from inside the map move that leaves the room, so the move's ticket
+    /// is older than the skip's and is still executing when the skip commits, and the
+    /// arrival's save is asked after that. A ticket whose decision never reaches the
+    /// pump - a prefix read, and the member threw - holds its saves until the
+    /// recording finishes, where <see cref="DropTheSavesNeverPlaced"/> lets them go.
+    /// Placing one on whatever decision came later would name a decision the save
+    /// does not hold, and a Continue to that decision would then read as the game's
+    /// own return rather than the reload it is; a save never placed only costs an
+    /// honest Continue its continuity, which is the safe side.
     /// </summary>
     private void PlaceTheSavesAskedDuringTheDecision(long ticket)
     {
@@ -1827,20 +1840,34 @@ internal sealed class RunRecorder : IDisposable
         {
             _openTickets.Remove(ticket);
             placed = [];
-            foreach (var save in _saves.Where(save => save.AfterSeq is null))
+            foreach (var save in _saves.Where(save => save.AfterSeq is null && save.Ticket == ticket))
             {
-                if (save.Ticket == ticket || ++save.CommitsWaited >= StaleTicketCommits)
-                {
-                    save.AfterSeq = _capture.NextSeq - 1;
-                    placed.Add(save);
-                }
+                save.AfterSeq = _capture.NextSeq - 1;
+                placed.Add(save);
             }
         }
 
         foreach (var save in placed) WriteSavePointIfSettled(save);
     }
 
-    private const int StaleTicketCommits = 3;
+    /// <summary>The saves still waiting on a ticket at the end of the recording are
+    /// let go, and said once, by count: the decision each was asked during never
+    /// reached the file, so nothing can say which decision the save holds.</summary>
+    private void DropTheSavesNeverPlaced()
+    {
+        int unplaced;
+        lock (Gate)
+        {
+            unplaced = _saves.RemoveAll(save => save.AfterSeq is null);
+        }
+
+        if (unplaced == 0) return;
+
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] {Number(unplaced)} save(s) the game asked for were never placed in this " +
+            "recording, because the decision each was asked during was never recorded; a Continue from one " +
+            "of them would read as a reload of an older save", 2);
+    }
 
     /// <summary>Writes the save point once it is both placed and landed, whichever
     /// came second.</summary>
@@ -1877,7 +1904,6 @@ internal sealed class RunRecorder : IDisposable
     {
         internal int? AfterSeq;
         internal long Ticket;
-        internal int CommitsWaited;
         internal bool Landed;
     }
 
@@ -2081,6 +2107,7 @@ internal sealed class RunRecorder : IDisposable
                 "recorder had not finished reading, so the history stops short of where the run did.");
         }
 
+        DropTheSavesNeverPlaced();
         _capture.Finish(outcome);
 
         var manifest = _capture.ToManifest();
