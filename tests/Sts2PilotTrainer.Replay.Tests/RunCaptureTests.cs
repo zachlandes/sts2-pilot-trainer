@@ -276,6 +276,40 @@ public sealed class RunCaptureTests
         Assert.True(validation.IsValid, validation.Describe());
     }
 
+    /// <summary>How long the run sat between the quit and the Continue is nothing to
+    /// the placing: the recorder places a resume by the complete digest and by nothing
+    /// on a clock. A recording stamped weeks before, continued at the game's latest
+    /// save with the game's own run clock far past the journal's, is the game's own
+    /// rollback and continuous, exactly as it is a minute later.</summary>
+    [Fact]
+    public void AReturnToTheLatestSaveWeeksLaterIsStillTheGamesOwnRollback()
+    {
+        var capture = Played(Start() with { RunId = "native-SFXT47K77RFK-20260801-030000" });
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "1")),
+            Shop(3, hp: 58), Digest(5), runClockMs: 900_000);
+        Saved(capture);
+        capture.Record(
+            ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
+            new Dictionary<string, string>(Shop(3, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "63" },
+            Digest(6), runClockMs: 901_000);
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Shop(3, hp: 58), Digest(5));
+        // Twenty days of run clock later, as far as an int of milliseconds reaches.
+        resumed.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "3"), ("column", "1")),
+            Floor(4), Digest(7), runClockMs: 1_728_000_000);
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Refusals);
+        Assert.False(Assert.Single(resumed.Discarded).Reload);
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+        Assert.False(manifest.Source.Native!.IsRewound);
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+    }
+
     /// <summary>A resume behind the latest save is a reload of an older one - a
     /// backup, a cloud copy - and the recording is rewound: whole, and never
     /// shareable.</summary>
@@ -1828,9 +1862,9 @@ public sealed class RunCaptureTests
     /// A short run: Neow, a map move into a fight, two cards and an ended turn either
     /// side of a second turn, and the killing blow.
     /// </summary>
-    private static RunCapture Played()
+    private static RunCapture Played(RunRecordingStart? start = null)
     {
-        var capture = RunCapture.Begin(Start());
+        var capture = RunCapture.Begin(start ?? Start());
         capture.Record(
             ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
             Floor(1), Digest(0));

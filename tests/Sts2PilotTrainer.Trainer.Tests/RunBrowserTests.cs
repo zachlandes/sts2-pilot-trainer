@@ -457,9 +457,29 @@ public sealed class RunBrowserTests
         Assert.True(pane.Plate[1].Enabled);
         Assert.True(pane.OpenEnabled);
         Assert.Equal(LibraryCopy.PlateRewound, pane.PlateReason);
-        Assert.Equal("Continued from an older save; this run can't be shared.", pane.PlateReason);
+        Assert.Equal("Restored to an earlier point in the run; this run can't be shared.", pane.PlateReason);
         Assert.Null(RunBrowser.For(
             LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build, submitAvailable: true).Pane!.PlateReason);
+    }
+
+    /// <summary>
+    /// A run played weeks ago and continued from the game's latest automatic save
+    /// today is as shareable as one played this sitting: the pane refuses Submit off
+    /// the recording's own continuity and off nothing else, so the date it carries for
+    /// ordering, however old, is never a reason.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(21)]
+    [InlineData(400)]
+    public void ARunHoweverOldStaysShareableUnlessItsRecordingSaysItWasRewound(int daysAgo)
+    {
+        var recorded = new DateTimeOffset(2026, 9, 15, 12, 0, 0, TimeSpan.Zero).AddDays(-daysAgo);
+        var pane = RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine, recorded: recorded)], Build, submitAvailable: true).Pane!;
+
+        Assert.True(pane.Plate[0].Enabled);
+        Assert.Null(pane.PlateReason);
     }
 
     /// <summary>

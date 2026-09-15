@@ -128,8 +128,8 @@ public sealed class RunHistoryPlateTests
     /// run as it stands is played from, and never shared, and the plate says so here
     /// rather than leaving the publication gate to refuse it after the form is filled in.
     /// The sentence is pinned because it is the player's one warning: it names what
-    /// they did in their own terms, an older save continued from, and nothing of the
-    /// recorder's.
+    /// happened in their own terms, the run put back behind decisions already made,
+    /// and nothing of the recorder's.
     /// </summary>
     [Fact]
     public void ARewoundRunStopsTheSubmitRowAndNothingElse()
@@ -141,7 +141,7 @@ public sealed class RunHistoryPlateTests
         Assert.True(plate.Rows[1].Enabled);
         Assert.False(plate.Rows[2].Enabled);
         Assert.Equal(LibraryCopy.PlateRewound, plate.Reason);
-        Assert.Equal("Continued from an older save; this run can't be shared.", plate.Reason);
+        Assert.Equal("Restored to an earlier point in the run; this run can't be shared.", plate.Reason);
         Assert.Equal(LibraryCopy.NotSaved, plate.NotSaved);
     }
 
@@ -159,6 +159,26 @@ public sealed class RunHistoryPlateTests
 
         Assert.True(plate.Rows[2].Enabled);
         Assert.Null(plate.Reason);
+    }
+
+    /// <summary>
+    /// How long a run sat between Save and Quit and Continue is not among the facts the
+    /// plate is handed, so no gap can refuse the row: the record carries no clock, and
+    /// a plate that read one would be deciding shareability on something the recorder
+    /// never established. Held structurally, on the record's own fields, so adding a
+    /// timestamp to it fails here until its bearing on the row is decided.
+    /// </summary>
+    [Fact]
+    public void ElapsedTimeIsNotAFactThePlateIsHanded()
+    {
+        var fields = typeof(RunHistoryFacts).GetProperties().Select(property => property.PropertyType);
+
+        Assert.DoesNotContain(typeof(DateTimeOffset), fields);
+        Assert.DoesNotContain(typeof(DateTimeOffset?), fields);
+        Assert.DoesNotContain(typeof(DateTime), fields);
+        Assert.DoesNotContain(typeof(DateTime?), fields);
+        Assert.DoesNotContain(typeof(TimeSpan), fields);
+        Assert.DoesNotContain(typeof(TimeSpan?), fields);
     }
 
     /// <summary>
