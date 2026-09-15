@@ -269,9 +269,9 @@ public sealed class RunRecorderTests
             "build changed, regenerate the list in the same change");
 
     /// <summary>
-    /// The game's save contract - every member that calls <c>SaveManager.SaveRun</c>
-    /// and every type that subclasses <c>AncientEventModel</c> - is the one this
-    /// build's resume logic and <c>AGENTS.md</c> were written against.
+    /// The game's save contract - every <c>SaveManager.SaveRun</c> overload, every
+    /// member that calls each, and every type that subclasses <c>AncientEventModel</c> -
+    /// is the one this build's resume logic and <c>AGENTS.md</c> were written against.
     ///
     /// Informational in the same sense as the choice-entry-point enumeration above:
     /// the set itself is not judged here, only held to a committed record, so a game
