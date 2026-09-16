@@ -1224,7 +1224,7 @@ Opening the executable by hand gets the game's `No appID found`: Steamworks init
 The helper asks Steam nothing, refuses first while any Slay the Spire 2 client exists, and launches the retail executable with MegaCrit's own `--force-steam=off` and an explicit `--clientId`, from a working directory that is empty by construction.
 
 That launch was proved end to end on v0.111.0, with the Steam client running and logged in throughout.
-`--force-steam=off` takes the skip branch in `NGame.InitializePlatform`, so `SteamInitializer.Initialize` is never called and no cloud store is constructed; the session lives in the isolated non-Steam tree `user://default/<clientId>/`, `modded/profile1` under it once the mod loads, and the player's own `steam/<account>/` tree is never read or written.
+`--force-steam=off` takes the skip branch in `NGame.InitializePlatform`, so `SteamInitializer.Initialize` is never called and no cloud store is constructed; the session lives in the isolated non-Steam tree `user://default/<clientId>/`, `modded/profile<n>` under it once the mod loads, `<n>` being the profile the tree's own pointer selects, and the player's own `steam/<account>/` tree is never read or written.
 Across the measured launches Steam's own records stayed flat - no tracked-process line in its `gameprocess_log.txt`, no cloud sync, no logon event, and the Steam process set identical pid for pid - and this build never calls `SteamAPI_RestartAppIfNecessary`, the one function that could start Steam or relaunch through it.
 The captain confirmed it from the other side on 2026-09-05: a client launched this way did not disturb his Steam-logged-in game on another machine.
 
