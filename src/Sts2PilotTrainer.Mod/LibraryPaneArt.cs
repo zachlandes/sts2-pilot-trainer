@@ -139,9 +139,10 @@ internal static class LibraryPaneArt
     /// gives is the two grids, and each gives the same way: it pages, down to one
     /// row, with the game's own arrows in the first and last place of the page the
     /// way the strip pages its floors. The deck takes its rows first, up to every
-    /// row it has, and the relics page into what is left, because the deck is what the
-    /// opened run's pane exists to show and a run's relics are read at a glance; a
-    /// browser pane draws no deck, so there the relics take the room. A pane with no
+    /// row it has, and the relics page into what is left, because the deck is what a
+    /// pane exists to show and a run's relics are read at a glance; the browser pane
+    /// carries the run's deck as the opened run does, and a recording that carries no
+    /// deck gives the relics the room. A pane with no
     /// row of each beside the strip refuses by name rather than overlapping. The
     /// numbers are measured, so a build that changes a font moves the layout rather
     /// than the collision.
@@ -483,7 +484,7 @@ internal static class LibraryPaneArt
         }
 
         var below = lines.Sum(line => LibraryScreen.LineHeight(line.Text, at.Size.X, factStyle));
-        // The deck is the opened run's: a browser pane carries the count and no tiles
+        // A recording that carries no deck lays out a block of no rows
         var tile = at.Size.X / TilesPerRow;
         var deck = LayoutDeck(pane.Deck?.Count ?? 0);
         var layout = Lay(

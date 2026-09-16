@@ -40,6 +40,7 @@ structure: VALID
 ## The Mine pane
 
 The rewound run selected: `Share this run` is refused, `Open the run` and `Remove this run` are not, and the recording is still the player's to play from. The reason line is drawn between `Reached floor 2` and the verdict line - and on this build it is under the plate: the pane pulls its three rows up over the facts when they do not fit, which is a layout defect of the pane and not of the row, is set aside for the Mine-pane task with a patch, and is the same occlusion the continuous run's `Reached floor 4` shows below.
+That task has since gone in: the pane is laid out against its room and the refused ribbon says its reason on hover rather than on a line, as `docs/mod-ui-direction.md` records and `demo/RUNMOBILE-NATIVE-TYPE.md` shows; these captures stand for the seal and the refusal, not the layout.
 
 ```bash {image}
 ![Mine pane, the rewound run: Share this run refused, its reason line under the plate](rewound-submit-mine-rewound.png)

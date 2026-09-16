@@ -21,8 +21,8 @@ namespace Sts2PilotTrainer.Mod;
 /// The visible compatibility control can reveal those runs only as disabled rows, and
 /// the run-code field does the same for an exact incompatible result.</para>
 ///
-/// <para><b>The run view is reached one way.</b> The pane's "Open the run" ribbon, in
-/// either tab. Back returns to the browser with the same run still selected, so the
+/// <para><b>The run view is reached one way.</b> "Open the run" on the panel's own
+/// primary ribbon under the pane, in either tab. Back returns to the browser with the same run still selected, so the
 /// list a player was reading does not move under them. Run history never opens it
 /// except through its own "Choose another floor" row, which is about the run it was
 /// already showing.</para>

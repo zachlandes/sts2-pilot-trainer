@@ -75,7 +75,7 @@ A player with run history does not get that row by default and can instead use t
 The settings page can show or hide the main-menu row for either player, overriding the run-count default.
 Both buttons open the same library.
 Its parchment browser has two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
-With no sharing service configured, or with **Show community runs** off, the Community tab wears the game's own lock and says in one line what is missing and where the setting is; the runs included with Runmobile and any run opened by code are still listed under it.
+With no sharing service configured, or with **Show community runs** off, the Community tab wears the game's own lock and says in one line what is missing - the setting and where it is, or the service, which no setting adds; the runs included with Runmobile and any run opened by code are still listed under it.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves an entry point the client can reach.
 On this build the first fight is reached by walking the recording's decisions and a later fight by restoring the run's own save at the floor it was dealt on; a floor between fights has no such save, so its row stays visible and disabled with the reason that the client cannot yet replay the preceding fights.
