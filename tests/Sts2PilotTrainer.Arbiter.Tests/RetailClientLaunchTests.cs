@@ -93,7 +93,7 @@ public sealed class RetailClientLaunchTests : IDisposable
         Assert.Equal($"{SteamlessFlag} --clientId=1", seen["args"]);
         Assert.Equal("unset", seen["SteamAppId"]);
         Assert.Equal(string.Empty, seen["entries"].Trim());
-        Assert.StartsWith(Path.Combine(_home, "Library"), seen["cwd"], StringComparison.Ordinal);
+        Assert.StartsWith(StateDirectory(), seen["cwd"], StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(seen["cwd"], "steam_appid.txt")));
         Assert.False(File.Exists(_openLog), "Steam was asked to launch: " + ReadOrEmpty(_openLog));
         Assert.Contains("Steam initialization skipped", File.ReadAllText(RecordValue(record, "log")), StringComparison.Ordinal);
