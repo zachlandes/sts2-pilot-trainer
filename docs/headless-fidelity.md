@@ -143,12 +143,23 @@ The format's addition is inside version 6 and is why the legacy form is read: a 
 
 A card reward's alternative is answered through the same seam and is not one of those
 followers. `ICardSelector.GetSelectedCardReward` hands back either a card or a
-`CardRewardAlternative`, and on v0.111.0 the one alternative there is - Pael's Wing's
-sacrifice - ends the reward's selection. So the loot-screen click is written as
-`TakeCardRewardAlternative` in place of `TakeCard`, naming the alternative's own id and
-the position the screen reports for it, and the driver answers the seam with it. An
-alternative that kept the screen open would be asked again, and the selector refuses
-that second question rather than inventing an answer.
+`CardRewardAlternative`, and what the alternative does to the reward is its own
+`AfterSelected`, which the driver reads as the engine reads it rather than assuming.
+On v0.111.0 `CardRewardAlternative.Generate` puts two kinds on the screen: the loot
+screen's own Skip, first on every card reward that can be skipped, which ends the
+selection and leaves the reward unclaimed on the loot screen, where it can be opened
+again or left behind by `SkipRewards`; and a relic's alternative - Pael's Wing's
+sacrifice - which ends the selection and completes the reward.
+So the loot-screen click is written as `TakeCardRewardAlternative` in place of `TakeCard`,
+naming the alternative's own id and the position the screen reports for it, and the
+driver answers the seam with it and holds the reward to what that alternative does.
+A player who presses Skip and opens the same reward again is two clicks, and the
+recorder writes each as its own decision with its one answer; a completed loss from a
+player's store was refused at exactly that until the driver stopped reading the
+unclaimed reward as the engine refusing.
+The reroll keeps the selection open for an answer the recorder never writes - it
+refuses a second answer to one reward - so the selector refuses it by name and answers
+nothing, which is the engine's own way out of the selection.
 
 **Three prompts the seam does not reach.** `CardSelectCmd.FromChooseABundleScreen`,
 which Scroll Boxes opens, takes its first bundle without asking when the headless flag

@@ -81,6 +81,76 @@ public class RewardAndScreenVerbTests
         Assert.Contains("this reward offers 3", result.All, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The loot screen's own Skip is a card reward's first alternative on this build,
+    /// and it ends the selection without completing the reward: the card reward stays
+    /// on the loot screen, unclaimed, and can be opened again or left behind. A
+    /// completed loss from a player's own store was refused at exactly this - the
+    /// Skip recorded twice, once per press, and the driver reading the reward it left
+    /// unclaimed as "the engine refused it" - so the same three decisions are held
+    /// here against the shipped history's first card reward, to a verified replay
+    /// whose deck never took the card.
+    /// </summary>
+    [GameFact]
+    public void SkippingACardRewardOnItsOwnScreenLeavesTheRewardOnOfferAndReplays()
+    {
+        var statePath = Path.Combine(TempDir(), "skipped-twice.state");
+        var manifest = Actions(manifest =>
+        [
+            .. manifest.Actions.Take(13),
+            SkipTheCardReward(13),
+            SkipTheCardReward(14),
+            new ActionRecord
+            {
+                Seq = 15,
+                Verb = ActionVerb.SkipRewards,
+                Source = FactSource.Observed,
+                Evidence = FactEvidence.AtVideoTime(0, "test"),
+            },
+        ]);
+
+        var result = Arbiter.Run("replay", manifest, "--state-out", statePath);
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("VERIFIED", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("engine refused it", result.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("CARD.POMMEL_STRIKE", File.ReadAllText(statePath), StringComparison.Ordinal);
+    }
+
+    /// <summary>A reward skipped on its own screen is still the reward it was, so the
+    /// card the shipped history took can still be taken off it afterwards.</summary>
+    [GameFact]
+    public void ACardRewardSkippedOnItsOwnScreenCanStillBeTaken()
+    {
+        var statePath = Path.Combine(TempDir(), "skipped-then-taken.state");
+        var manifest = Actions(manifest =>
+        [
+            .. manifest.Actions.Take(13),
+            SkipTheCardReward(13),
+            manifest.Actions[13] with { Seq = 14 },
+        ]);
+
+        var result = Arbiter.Run("replay", manifest, "--state-out", statePath);
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("CARD.POMMEL_STRIKE", File.ReadAllText(statePath), StringComparison.Ordinal);
+    }
+
+    /// <summary>The loot screen's Skip as the recorder writes it: the alternative past
+    /// the three cards the first card reward offers.</summary>
+    private static ActionRecord SkipTheCardReward(int seq) => new()
+    {
+        Seq = seq,
+        Verb = ActionVerb.TakeCardRewardAlternative,
+        Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["option_id"] = "Skip",
+            ["option_index"] = "3",
+        },
+        Source = FactSource.Observed,
+        Evidence = FactEvidence.AtVideoTime(0, "test"),
+    };
+
     [GameFact]
     public void SkippingALootScreenNobodyIsShowingIsRefused()
     {

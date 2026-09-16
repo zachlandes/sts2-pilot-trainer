@@ -1067,6 +1067,16 @@ internal sealed class RunRecorder : IDisposable
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
+        recorder.HoldCardRewardAnswer(offered, alternatives, option);
+    }
+
+    /// <summary>
+    /// Shelves one card reward's answer for the card-reward decision that opened its
+    /// screen, which is the only decision <see cref="Commit"/> hands it to.
+    /// </summary>
+    internal void HoldCardRewardAnswer(
+        IReadOnlyList<CardModel> offered, IReadOnlyList<CardRewardAlternative> alternatives, int? option)
+    {
         // No option means the screen was dismissed rather than answered, which reaches
         // the loot screen as a skip and is recorded there.
         if (option is not { } index) return;
@@ -1092,7 +1102,7 @@ internal sealed class RunRecorder : IDisposable
 
             lock (Gate)
             {
-                recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCardRewardAlternative), args));
+                _screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCardRewardAlternative), args));
             }
 
             return;
@@ -1114,7 +1124,7 @@ internal sealed class RunRecorder : IDisposable
 
         lock (Gate)
         {
-            recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCard), reward));
+            _screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCard), reward));
         }
     }
 
@@ -1331,11 +1341,19 @@ internal sealed class RunRecorder : IDisposable
         var after = taken?.AsStateReading() ?? LiveRun.Read().AsStateReading();
         var clock = taken is null ? LiveRun.RunClockMs() : taken.RunClockMs;
 
+        // A card reward's answer belongs to the card-reward decision that opened its
+        // screen and to nothing else, so only that decision takes one off the shelf.
+        // The pump commits decisions one at a time behind a settle, and a reward
+        // answer can arrive while an earlier decision is still settling; a commit that
+        // took every answer on the shelf handed that one to the wrong decision, wrote
+        // it as a loot click of its own, and left the real card-reward decision with
+        // no answer at all.
         List<ScreenAnswer> answers;
         lock (Gate)
         {
-            answers = _screenAnswers.ToList();
-            _screenAnswers.Clear();
+            var takesRewardAnswers = verb == ActionVerb.TakeCard;
+            answers = _screenAnswers.Where(answer => takesRewardAnswers || !IsCardRewardAnswer(answer)).ToList();
+            _screenAnswers.RemoveAll(answer => takesRewardAnswers || !IsCardRewardAnswer(answer));
         }
 
         // A screen this decision opened answered with something the recorder could
@@ -1349,12 +1367,16 @@ internal sealed class RunRecorder : IDisposable
 
         // A card reward names what came back itself - the card, or the alternative
         // that ended the selection instead - so the loot decision is written with that
-        // answer's own verb and arguments. Every other screen is answered by the
-        // selections recorded after the decision that opened it.
+        // answer's own verb and arguments. Exactly one, because the engine asks the
+        // screen once per click and every alternative this build records ends the
+        // selection: a second answer is one no click of this reward produced, and a
+        // duplicate written down would replay as a decision nobody made. A player who
+        // presses Skip and opens the same reward again is two clicks, and each is
+        // committed here on its own with its one answer. Every other screen is
+        // answered by the selections recorded after the decision that opened it.
         if (verb == ActionVerb.TakeCard)
         {
-            var reward = answers.Where(answer => answer.Verb
-                is nameof(ActionVerb.TakeCard) or nameof(ActionVerb.TakeCardRewardAlternative)).ToList();
+            var reward = answers.Where(IsCardRewardAnswer).ToList();
             if (reward.Count != 1)
             {
                 Refuse(
@@ -1374,6 +1396,12 @@ internal sealed class RunRecorder : IDisposable
 
         StartOrStopWatchingTheFight();
     }
+
+    /// <summary>Whether a shelved answer is a card reward's own - the card, or the
+    /// alternative that ended the selection instead - which only a card-reward
+    /// decision may take.</summary>
+    private static bool IsCardRewardAnswer(ScreenAnswer answer) =>
+        answer.Verb is nameof(ActionVerb.TakeCard) or nameof(ActionVerb.TakeCardRewardAlternative);
 
     /// <summary>
     /// Records the screen answers a decision pulled out of the player, sharing that

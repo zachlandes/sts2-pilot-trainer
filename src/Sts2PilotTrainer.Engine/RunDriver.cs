@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Potions;
+using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Entities.TreasureRelicPicking;
 using MegaCrit.Sts2.Core.Events;
@@ -892,11 +893,19 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// Answers a card reward with one of its alternatives rather than a card.
     ///
     /// The same loot-screen click a <see cref="TakeCard"/> makes, and the same seam
-    /// answers the screen it opens; what differs is what came back. On this build the
-    /// one alternative - Pael's Wing's sacrifice - ends the selection and completes the
-    /// reward, so the record is the decision itself. A build whose alternative kept
-    /// the screen open would be answered here and then asked again, and the selector
-    /// refuses that second question rather than inventing an answer to it.
+    /// answers the screen it opens; what differs is what came back, and what that does
+    /// to the reward is the alternative's own <c>AfterSelected</c> rather than anything
+    /// decided here. The loot screen's Skip is one: on this build it is the first
+    /// alternative of every card reward that can be skipped, and it ends the selection
+    /// without completing the reward, so the card reward stays on the loot screen
+    /// unclaimed and can be opened again or left behind by <see cref="SkipRewards"/>.
+    /// Pael's Wing's sacrifice is the other kind: it ends the selection and completes
+    /// the reward. A recording of a player pressing Skip was refused here as "the engine
+    /// refused it" for as long as this expected every alternative to complete the
+    /// reward, which is what the recorded fight it was found on came to.
+    ///
+    /// An alternative that keeps the screen open - the reroll - is refused by the
+    /// selector, because the answer that followed it is one the recorder never writes.
     /// </summary>
     private void TakeCardRewardAlternative(ActionRecord action)
     {
@@ -906,18 +915,34 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 $"Action {action.Seq} answers a card reward with an alternative, but this loot screen offers " +
                 $"no unclaimed card reward ({DescribeRewards(set)}).");
 
-        _selector.Enqueue(new ManifestCardSelector.AlternativePick(
-            action.Seq, Arg.String(action, "option_id"), Arg.Int(action, "option_index")));
+        var optionId = Arg.String(action, "option_id");
+        _selector.Enqueue(new ManifestCardSelector.AlternativePick(action.Seq, optionId, Arg.Int(action, "option_index")));
 
-        Select(action, set, cardReward);
+        // Not through Select: the reward reporting itself not taken is the correct
+        // outcome of one kind of alternative, and Select reads it as a refusal.
+        var taken = RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(cardReward)
+            .GetAwaiter().GetResult();
+        Pump.Drain();
 
-        if (_selector.Refusal is null && !cardReward.SuccessfullySelected)
+        // A refusal the selector recorded names which alternative disagreed, and is
+        // raised by Apply.
+        if (_selector.Refusal is not null) return;
+
+        var answered = _selector.AnsweredAlternative
+            ?? throw new EngineException(
+                $"Action {action.Seq} answered the card reward with alternative '{optionId}' and the engine " +
+                "never asked which alternative was taken. The loot screen is " +
+                $"{DescribeRewards(set)}.");
+
+        var completed = answered.AfterSelected == PostAlternateCardRewardAction.EndSelectionAndCompleteReward;
+        if (taken != completed || cardReward.SuccessfullySelected != completed)
         {
             throw new EngineException(
-                $"Action {action.Seq} answered the card reward with alternative " +
-                $"'{Arg.String(action, "option_id")}' and the engine did not complete the reward. An " +
-                "alternative that keeps the screen open is a decision this build's history has no record " +
-                "of the rest of.");
+                $"Action {action.Seq} answered the card reward with alternative '{optionId}', which on this " +
+                $"build {(completed ? "completes the reward" : "leaves the reward on the loot screen")} " +
+                $"({answered.AfterSelected}), and the engine " +
+                $"{(cardReward.SuccessfullySelected ? "completed it" : "left it unclaimed")}. The loot screen is " +
+                $"{DescribeRewards(set)}.");
         }
     }
 
