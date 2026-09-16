@@ -214,11 +214,33 @@ public sealed class LibraryPaneArtTests
         {
             Assert.True(layout.DeckPage.Pages > 1, "the deck pages");
             Assert.True(layout.DeckPage.Drawn <= deck.PlacesIn(layout.DeckRows));
+            Assert.Equal(1, layout.RelicRows);
         }
         else
         {
             Assert.Equal(cards, layout.DeckPage.Count);
         }
+    }
+
+    /// <summary>
+    /// The deck takes its rows before the relics do: a mid-act run with fifteen
+    /// relics and a twenty-card deck, under the four fact lines the opened run can
+    /// carry, used to give the relics three rows and leave the deck one - six tiles a
+    /// page, four pages to read a deck the pane exists to show. The deck is drawn
+    /// whole and the relics page instead.
+    /// </summary>
+    [Fact]
+    public void TheOpenedRunPaneShowsTheDeckWholeAndPagesTheRelics()
+    {
+        var pane = MinePane() with { SubtitleLines = 1, FactLines = 4 };
+        var layout = pane.Lay(relics: 15, plateRows: 0, height: pane.ViewHeight, cards: 20);
+
+        Assert.Equal(LibraryPaneArt.LayoutDeck(20).Rows, layout.DeckRows);
+        Assert.Equal(1, layout.DeckPage.Pages);
+        Assert.Equal(20, layout.DeckPage.Count);
+        Assert.True(layout.RelicRows < pane.RelicBlock(15).Rows, "the relics gave the deck its rows");
+        Assert.True(layout.RelicPage.Pages > 1, "the relics page");
+        AssertNothingOverlaps(pane, layout, 15, 20);
     }
 
     /// <summary>Every relic page of a long run is reachable, holds whole places, and

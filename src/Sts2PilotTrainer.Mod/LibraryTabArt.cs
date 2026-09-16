@@ -17,12 +17,13 @@ namespace Sts2PilotTrainer.Mod;
 /// <para><b>The lock is the game's own image, in the mod's own place.</b> The stats
 /// screen lays <c>submenu_lock.png</c> across the middle of its Achievements tab while
 /// that tab is disabled and its label dimmed. The Community tab stays pressable and its
-/// label has to read, so the same image sits at the tab's right end instead, at the
-/// run-history entry's own icon size, and the label's box ends where the lock's column
-/// begins - the tab's own auto-sizing label then fits its word to the room left rather
-/// than running under the lock. What is behind the tab - the runs included with
-/// Runmobile and a run looked up by code - is still there, and a locked tab a player
-/// cannot open would hide them.</para>
+/// label has to read, so the same image is a small badge instead - half the
+/// run-history entry's marker - hung off the tab's top-right corner above the band the
+/// word is drawn in, and the label's box is left whole: the tab's own auto-sizing label
+/// draws its word at the size the other tab's word stands at, and nothing runs under
+/// the lock. What is behind the tab - the runs included with Runmobile and a run looked
+/// up by code - is still there, and a locked tab a player cannot open would hide
+/// them.</para>
 ///
 /// <para>The tab's hover materials are declared local to its scene, so every instance
 /// animates its own; nothing here shares a material with a row or a ribbon.</para>

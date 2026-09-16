@@ -42,8 +42,8 @@ What they still stand for is the roles and the column width, which that change d
 
 ## What changed since these captures
 
-The captures above predate the change that sized the run strip's markers and the Community tab's lock to the run-history entry's own icon, moved the lock into a column of its own at the tab's right end, put the deck count on the relic row, measured the body and the band, and set a list row's second line at the dense-line role - the run-history hover tip's own card listing.
-They show the strip's markers capped at a multiple of the floor numeral, the lock centred across the Community label, and the row note at the secondary role.
+The captures above predate the change that sized the run strip's markers to the run-history entry's own icon, made the Community tab's lock a half-size badge hung off the tab's corner with the label untouched, moved "Open the run" onto the popup's primary ribbon, put the deck count on the relic row, paged the relic and deck rows, measured the body and the band, and set a list row's second line at the dense-line role - the run-history hover tip's own card listing.
+They show the strip's markers capped at a multiple of the floor numeral, the lock centred across the Community label, the pane's own "Open the run" ribbon, and the row note at the secondary role.
 `docs/mod-ui-direction.md` owns the layout as it now stands; an in-client capture of the Mine tab at the new sizes is still owed.
 
 ## What these captures prove

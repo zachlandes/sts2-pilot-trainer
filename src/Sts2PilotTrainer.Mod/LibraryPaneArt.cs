@@ -125,9 +125,10 @@ internal static class LibraryPaneArt
     /// run-history entry's own marker, because that size is the point of it. What
     /// gives is the two grids, and each gives the same way: it pages, down to one
     /// row, with the game's own arrows in the first and last place of the page the
-    /// way the strip pages its floors. The relics page first and the deck takes what
-    /// is left, because the relics stand over the strip and the deck under it, and a
-    /// deck of any size is still every card a page away. A pane with no room for one
+    /// way the strip pages its floors. The deck takes its rows first, up to every
+    /// row it has, and the relics page into what is left, because the deck is what the
+    /// opened run's pane exists to show and a run's relics are read at a glance; a
+    /// browser pane draws no deck, so there the relics take the room. A pane with no
     /// row of each beside the strip refuses by name rather than overlapping. The
     /// numbers are measured, so a build that changes a font moves the layout rather
     /// than the collision.
@@ -198,16 +199,16 @@ internal static class LibraryPaneArt
                 "which is short of one row of each, and refuses rather than overlapping.");
         }
 
+        var deckRows = deck.Rows == 0
+            ? 0
+            : Math.Clamp((int)Math.Floor((room - oneRelicRow) / tilePitch), 1, deck.Rows);
+        var deckWindow = DeckRowsHeight(deckRows, tilePitch);
         var relicRows = relics.Rows == 0
             ? 0
             : Math.Clamp(
-                (int)Math.Floor((room - oneDeckRow - relics.CountLine - (box * RelicRowSpace)) / box),
+                (int)Math.Floor((room - deckWindow - relics.CountLine - (box * RelicRowSpace)) / box),
                 1, relics.Rows);
         var relicsWindow = RelicRowsHeight(relics, relicRows, box);
-        var deckRows = deck.Rows == 0
-            ? 0
-            : Math.Clamp((int)Math.Floor((room - relicsWindow) / tilePitch), 1, deck.Rows);
-        var deckWindow = DeckRowsHeight(deckRows, tilePitch);
 
         var stripTop = above + relicsWindow;
         var afterStrip = stripTop + (strip?.Room ?? 0f);

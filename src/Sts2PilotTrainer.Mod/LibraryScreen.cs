@@ -257,10 +257,11 @@ internal static class LibraryScreen
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
     ///
-    /// One ribbon at the foot. There is no affirmative ribbon there because everything
-    /// on this surface is pressed where it is: the pane has its own "Open the run"
-    /// ribbon, and a panel-level ribbon meaning "the one you highlighted" would be a
-    /// second way to press the thing already under the cursor.
+    /// The panel's own two ribbons at the foot: where the screen carries a pane with a
+    /// way forward, the primary ribbon is that way forward - "Open the run", on the
+    /// confirm key - and the cancel ribbon is the way back; a screen with no such pane
+    /// keeps one ribbon, the way back, because everything else on it is pressed where
+    /// it is.
     /// </summary>
     internal static long Show(LibraryPage page)
     {
