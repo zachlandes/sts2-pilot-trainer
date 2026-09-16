@@ -1109,10 +1109,8 @@ internal static class RecordedFightRun
             var progressFloor = _progressFloor;
             var credit = _afterTheFight?.Credit ?? _credit;
 
-            // The attempt is being discarded rather than left, so the result the
-            // teardown queues for it is dropped before the return that would show it.
             PrefightScreen.Close();
-            await LeaveTheRun(keepTheResult: false);
+            await LeaveTheRun();
             Finish();
 
             // Only once the menu is back: the game's own return task completing is the
@@ -1133,10 +1131,15 @@ internal static class RecordedFightRun
     /// End the attempt where it is and show the result.
     ///
     /// It adds no comparison kind. An unfinished fight has no completed line to set
-    /// beside the recording's, and the result surface already says exactly that for a
-    /// fight left by any other route; this is one more route to it. A partial line for
-    /// the player is a change to the comparison contract and belongs to the comparison
-    /// owner - see docs/comparison-direction.md.
+    /// beside the recording's, and the result surface says exactly that. A partial
+    /// line for the player is a change to the comparison contract and belongs to the
+    /// comparison owner - see docs/comparison-direction.md.
+    ///
+    /// This is the one route to that notice. A fight left any other way - Save and
+    /// Quit, Abandon Run, the game tearing the run down - asked for no result and
+    /// gets none; the first build queued the notice from the teardown patch as well,
+    /// so a player who saved and quit a replayed fight came back to the main menu to
+    /// a popup about a comparison they never asked for.
     /// </summary>
     private static void FinishHere() => LeaveTheFightNow();
 
@@ -1149,8 +1152,10 @@ internal static class RecordedFightRun
             if (_entry is { } entry)
                 MarkShownThisSitting(_progressRunId ?? entry.Manifest.RunId, entry.Plan.Fight);
 
+            // Queued before the run is torn down: the teardown patch finishes the
+            // journey, and the return to the main menu is what shows this.
             _resultAfterMainMenu = FightResultScreen.Left();
-            _ = LeaveTheRun(keepTheResult: true);
+            _ = LeaveTheRun();
             Finish();
         }
         catch (Exception ex)
@@ -1163,20 +1168,13 @@ internal static class RecordedFightRun
 
     /// <summary>
     /// Tears the run down and returns to the main menu, answering when the menu is
-    /// there.
-    ///
-    /// Cleaning the run up is what makes the teardown patch queue a result for the
-    /// fight being left, so a caller that does not want one drops it here - between
-    /// the clean-up that queues it and the return that shows it, which is the only
-    /// point where the drop cannot race the return completing.
+    /// there. Cleaning the run up queues nothing: whatever result is shown over the
+    /// menu afterwards was queued by the caller before this, or not at all.
     /// </summary>
-    /// <param name="keepTheResult">Whether the queued result is the one the player
-    /// asked for. False where the attempt is being discarded.</param>
-    private static Task LeaveTheRun(bool keepTheResult)
+    private static Task LeaveTheRun()
     {
         PlaybackTransportDock.Detach();
         if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
-        if (!keepTheResult) _resultAfterMainMenu = null;
         return NGame.Instance?.ReturnToMainMenu() ?? Task.CompletedTask;
     }
 
@@ -2213,8 +2211,13 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// The game has cleaned the run up. A fight still being fought was left; a fight
-    /// that had ended keeps its choice.
+    /// The game has cleaned the run up. A fight still being fought was left silently;
+    /// a fight that had ended keeps its choice.
+    ///
+    /// The first case queues no result. This patch cannot tell Save and Quit, Abandon
+    /// Run and Jump to the end apart - each reaches it through the same clean-up - and
+    /// only the last asked to see anything, so the notice for a fight left before it
+    /// ended is queued by that handler, <see cref="LeaveTheFightNow"/>, and never here.
     ///
     /// The second case is the one this patch exists for now: the run may be torn down
     /// by the game's own flow while the choice is owed, so the run's own things - the
@@ -2228,13 +2231,6 @@ internal static class RecordedFightRun
         [HarmonyPostfix]
         internal static void AfterRunEnds()
         {
-            if (Phase == JourneyPhase.InFight)
-            {
-                _resultAfterMainMenu = FightResultScreen.Left();
-                Finish();
-                return;
-            }
-
             if (Phase is JourneyPhase.Result or JourneyPhase.Ended)
             {
                 ReleaseTheRun();
