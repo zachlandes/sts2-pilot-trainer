@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The one way a retail Slay the Spire 2 client is started, watched and stopped here.
 #
-#   ./scripts/retail-client.sh launch [--owner <label>] [--client-id <n>] [-- <game args>]
+#   ./scripts/retail-client.sh launch [--owner <label>] [--client-id <n>]
 #   ./scripts/retail-client.sh status
 #   ./scripts/retail-client.sh release [--wait <seconds>]
 #
@@ -44,15 +44,15 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: retail-client.sh launch [--owner <label>] [--client-id <n>] [--game <executable>] [-- <game args>]
+usage: retail-client.sh launch [--owner <label>] [--client-id <n>] [--game <executable>]
        retail-client.sh status
        retail-client.sh release [--wait <seconds>]
 
 launch   start the retail client with --force-steam=off from an empty working
          directory, refusing while any Slay the Spire 2 client exists, and write
          the ownership record. --client-id selects the isolated save tree
-         user://default/<n>/ (default 1). Arguments after -- go to the game;
-         --force-steam and --clientId among them are refused.
+         user://default/<n>/ (default 1). The game gets exactly --force-steam=off
+         and --clientId=<n>, nothing else.
 status   print the ownership record and every client that exists. Exit 0 when
          none does, 1 when one does.
 release  send TERM to the client the record names and wait up to --wait seconds
@@ -76,14 +76,12 @@ game="${STS2_GAME_EXECUTABLE:-}"
 owner=""
 client_id="1"
 wait_seconds="60"
-extra_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --owner) owner="$2"; shift 2 ;;
     --client-id) client_id="$2"; shift 2 ;;
     --game) game="$2"; shift 2 ;;
     --wait) wait_seconds="$2"; shift 2 ;;
-    --) shift; extra_args=("$@"); break ;;
     *) echo "unknown argument: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -109,20 +107,25 @@ process_table() {
   ps -Ao pid=,ppid=,comm=
 }
 
-# The rows of the process table that are a retail client, as "pid<TAB>ppid<TAB>comm".
-clients() {
-  local pid ppid comm
-  while read -r pid ppid comm; do
-    [[ -z "$pid" ]] && continue
-    if [[ "$comm" == "$client_name" || "$comm" == *"/$client_name" || ( -n "$game" && "$comm" == "$game" ) ]]; then
-      printf '%s\t%s\t%s\n' "$pid" "$ppid" "$comm"
-    fi
-  done < <(process_table)
-}
-
 record_value() {
   [[ -f "$record" ]] || return 0
   awk -F'\t' -v key="$1" '$1 == key { print substr($0, length(key) + 2); exit }' "$record"
+}
+
+# The rows of the process table that are a retail client, as "pid<TAB>ppid<TAB>comm".
+# A row is a client by the executable's name, by the executable this invocation
+# was told to launch, or by the one the record says was launched - so status and
+# release judge the owned pid by what was launched, not by what they were told.
+clients() {
+  local pid ppid comm owned
+  owned="$(record_value executable)"
+  while read -r pid ppid comm; do
+    [[ -z "$pid" ]] && continue
+    if [[ "$comm" == "$client_name" || "$comm" == *"/$client_name" \
+          || ( -n "$game" && "$comm" == "$game" ) || ( -n "$owned" && "$comm" == "$owned" ) ]]; then
+      printf '%s\t%s\t%s\n' "$pid" "$ppid" "$comm"
+    fi
+  done < <(process_table)
 }
 
 alive() { kill -0 "$1" 2>/dev/null; }
@@ -143,18 +146,6 @@ discover_game() {
   local candidate
   candidate="$HOME/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/$client_name"
   if [[ -x "$candidate" ]]; then game="$candidate"; return 0; fi
-  return 1
-}
-
-discover_user_dir() {
-  local candidate
-  for candidate in \
-    "$HOME/Library/Application Support/SlayTheSpire2" \
-    "$HOME/.local/share/SlayTheSpire2" \
-    "${APPDATA:-}/SlayTheSpire2"
-  do
-    if [[ -n "$candidate" && -d "$candidate" ]]; then echo "$candidate"; return 0; fi
-  done
   return 1
 }
 
@@ -297,15 +288,6 @@ if ! [[ "$client_id" =~ ^[1-9][0-9]*$ ]]; then
   exit 2
 fi
 
-for arg in "${extra_args[@]+"${extra_args[@]}"}"; do
-  case "$arg" in
-    --force-steam*|--clientId*)
-      echo "Refusing to pass '$arg' to the game: --force-steam=off and --clientId are this helper's to set." >&2
-      exit 2
-      ;;
-  esac
-done
-
 # An app-id override is the other transport Steamworks reads an app id from, and
 # it is how a launch would authenticate against the player's own Steam account.
 for variable in SteamAppId SteamGameId; do
@@ -343,11 +325,7 @@ if [[ -f "$record" ]]; then
   clear_record
 fi
 
-if user_dir="$(discover_user_dir)"; then
-  save_tree="$user_dir/default/$client_id"
-else
-  save_tree="user://default/$client_id"
-fi
+save_tree="user://default/$client_id"
 
 launched_from="$PWD"
 launched_by="$(id -un)@$(hostname -s 2>/dev/null || hostname)"
@@ -362,7 +340,6 @@ if [[ -n "$(ls -A "$cwd")" ]]; then
 fi
 
 arguments=(--force-steam=off "--clientId=$client_id")
-if [[ "${#extra_args[@]}" -gt 0 ]]; then arguments+=("${extra_args[@]}"); fi
 
 : > "$client_log"
 (

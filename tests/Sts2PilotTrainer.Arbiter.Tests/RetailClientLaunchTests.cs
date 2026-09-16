@@ -105,7 +105,7 @@ public sealed class RetailClientLaunchTests : IDisposable
         Assert.EndsWith(Path.Combine("MacOS", "Slay the Spire 2"), RecordValue(record, "executable"), StringComparison.Ordinal);
         Assert.True(File.Exists(RecordValue(record, "executable")));
         Assert.Equal("1", RecordValue(record, "client_id"));
-        Assert.EndsWith("/default/1", RecordValue(record, "save_tree"), StringComparison.Ordinal);
+        Assert.Equal("user://default/1", RecordValue(record, "save_tree"));
 
         var status = Run("status");
         Assert.Equal(1, status.ExitCode);
@@ -123,15 +123,15 @@ public sealed class RetailClientLaunchTests : IDisposable
     }
 
     [Fact]
-    public void ExtraGameArgumentsFollowTheFixedOnes()
+    public void TheClientIdSelectsTheSaveTreeAndNothingElseReachesTheGame()
     {
         if (OperatingSystem.IsWindows()) return;
 
-        var launched = Run("launch", "--game", _game, "--client-id", "7", "--", "--seed=ABCDEF");
+        var launched = Run("launch", "--game", _game, "--client-id", "7");
 
         Assert.Equal(0, launched.ExitCode);
-        Assert.Equal($"{SteamlessFlag} --clientId=7 --seed=ABCDEF", StandInSaw()["args"]);
-        Assert.EndsWith("/default/7", RecordValue(RecordPath(launched), "save_tree"), StringComparison.Ordinal);
+        Assert.Equal($"{SteamlessFlag} --clientId=7", StandInSaw()["args"]);
+        Assert.Equal("user://default/7", RecordValue(RecordPath(launched), "save_tree"));
         Assert.Equal(0, Run("release", "--wait", "10").ExitCode);
     }
 
@@ -154,17 +154,17 @@ public sealed class RetailClientLaunchTests : IDisposable
     }
 
     [Theory]
+    [InlineData("--")]
+    [InlineData("--seed=ABCDEF")]
     [InlineData("--force-steam=on")]
-    [InlineData("--force-steam")]
-    [InlineData("--clientId=4")]
-    public void TheSteamlessFlagAndTheClientIdCannotBeOverridden(string argument)
+    public void AnArgumentTheHelperDoesNotOwnIsRefusedRatherThanPassedToTheGame(string argument)
     {
         if (OperatingSystem.IsWindows()) return;
 
-        var launched = Run("launch", "--game", _game, "--", "--seed=ABCDEF", argument);
+        var launched = Run("launch", "--game", _game, argument);
 
         Assert.Equal(2, launched.ExitCode);
-        Assert.Contains($"Refusing to pass '{argument}'", launched.All, StringComparison.Ordinal);
+        Assert.Contains($"unknown argument: {argument}", launched.All, StringComparison.Ordinal);
         Assert.False(File.Exists(_gameLog), "the client was launched anyway");
     }
 
@@ -382,27 +382,36 @@ public sealed class RetailClientLaunchTests : IDisposable
     }
 
     /// <summary>
-    /// What the helper is made of, read off the script: no Steam launch, no open of
-    /// anything, and the only signals it sends are the liveness probe and TERM.
+    /// Liveness is judged against what was launched, not against what this
+    /// invocation was told: a client launched under --game with an executable of
+    /// another name is still the record's client to a release that names no game.
+    /// Before the fix that release reported it gone, cleared the record and left
+    /// the client running with no owner.
     /// </summary>
     [Fact]
-    public void TheHelperContainsNoSteamLaunchAndNoForcedKill()
+    public void ReleaseFindsAClientLaunchedUnderAnotherExecutableName()
     {
-        var script = File.ReadAllText(ScriptPath);
-        var code = string.Join(
-            "\n",
-            script.Split('\n').Where(line => !line.TrimStart().StartsWith('#')));
+        if (OperatingSystem.IsWindows()) return;
+        var renamed = Path.Combine(_sandbox, "copy", "sts2-bin");
+        WriteStandInClient(renamed, secondsToExitAfterTerm: 0);
+        // The table shows the physical path, which is what the helper records too.
+        var environment = new Dictionary<string, string> { ["FAKE_GAME_EXECUTABLE"] = PhysicalPath(renamed) };
+        var launched = RunWith(environment, "launch", "--game", renamed);
+        Assert.Equal(0, launched.ExitCode);
+        var record = RecordPath(launched);
+        var pid = int.Parse(RecordValue(record, "pid"));
 
-        Assert.DoesNotContain("steam://", code, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotMatch(new Regex(@"(^|[\s;&|(])open\s", RegexOptions.Multiline), code);
-        Assert.DoesNotContain("xdg-open", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("SIGKILL", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("--force-steam=on", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("steam_appid", code, StringComparison.OrdinalIgnoreCase);
-        var signals = Regex.Matches(code, @"\bkill\s+-(\S+)").Select(match => match.Groups[1].Value).Distinct().ToList();
-        Assert.NotEmpty(signals);
-        Assert.All(signals, signal => Assert.Contains(signal, new[] { "0", "TERM" }));
-        Assert.Contains(SteamlessFlag, code, StringComparison.Ordinal);
+        var status = RunWith(environment, "status");
+        Assert.Equal(1, status.ExitCode);
+        Assert.Contains("record state : live", status.All, StringComparison.Ordinal);
+
+        var released = RunWith(environment, "release", "--wait", "10");
+
+        Assert.Equal(0, released.ExitCode);
+        Assert.Contains($"Sent TERM to pid {pid}", released.All, StringComparison.Ordinal);
+        Assert.False(File.Exists(record));
+        Assert.False(IsAlive(pid));
+        Assert.Contains("exited on TERM", File.ReadAllText(_gameLog), StringComparison.Ordinal);
     }
 
     private static string ScriptPath => Path.Combine(Arbiter.RepoRoot, "scripts", "retail-client.sh");
@@ -434,6 +443,24 @@ public sealed class RetailClientLaunchTests : IDisposable
         var process = Process.Start(startInfo)!;
         _bystanders.Add(process);
         return process;
+    }
+
+    private static string PhysicalPath(string path)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("cd \"$(dirname \"$1\")\" && printf '%s/%s' \"$(pwd -P)\" \"$(basename \"$1\")\"");
+        startInfo.ArgumentList.Add("--");
+        startInfo.ArgumentList.Add(path);
+        using var process = Process.Start(startInfo)!;
+        var physical = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        return physical;
     }
 
     private static bool IsAlive(int pid)

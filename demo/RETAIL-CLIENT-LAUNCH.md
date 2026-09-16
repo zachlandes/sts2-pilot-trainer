@@ -3,7 +3,7 @@
 *2026-09-16T11:56:49Z by Showboat 0.6.1*
 <!-- showboat-id: abc384fc-cca0-4126-9d8b-e3387b0bd91e -->
 
-This document runs the retail-client helper against the real v0.111.0 installation on the captain's machine and records what it printed. Every code block below was executed from the repository root; the output under it is that run's output. `showboat --workdir .. verify RETAIL-CLIENT-LAUNCH.md` re-runs the lot, and its diff is the pids, the times and the ledger's file count, which differ per session - nothing else should.
+This document runs the retail-client helper against the real v0.111.0 installation on the captain's machine and records what it printed. Every code block below was executed from the repository root; the output under it is that run's output. `showboat --workdir .. verify RETAIL-CLIENT-LAUNCH.md` re-runs the lot, and its diff is the pids, the times and the ledger's file count, which differ per session, and the home directory, the worktree and the launching account, which are written here as `~`, `<worktree>` and `<user>@<host>` - nothing else should.
 
 **The claim being tested.** The two launch failures that kept recurring during retail testing - Steam's `Game already running` and the game's `No appID found` - cannot be reached through `./scripts/retail-client.sh`: it asks Steam nothing, refuses while any Slay the Spire 2 client exists, launches the retail executable with MegaCrit's own `--force-steam=off` and an explicit `--clientId` from an empty working directory, writes one ownership record, and releases exactly that process with TERM. `RetailClientLaunchTests` holds all of that without the game; this is the same helper against the game.
 
@@ -16,7 +16,7 @@ The Steam client was not running at all during this session, so nothing here cou
 ```
 
 ```output
-record       : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/owner
+record       : ~/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 record state : none - no client is owned by this helper
 
 clients      : none
@@ -29,10 +29,10 @@ steam client processes: 0
 ```
 
 ```output
-ledger       : /Users/zacharylandes/.treehouse/sts2-pilot-trainer-c4991a/1/sts2-pilot-trainer/build/retail-client-launch/before.ledger
+ledger       : <worktree>/build/retail-client-launch/before.ledger
 files        : 686
-user         : /Users/zacharylandes/Library/Application Support/SlayTheSpire2
-mods         : /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods
+user         : ~/Library/Application Support/SlayTheSpire2
+mods         : ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods
 steam gameprocess_log lines:     1035
 ```
 
@@ -46,12 +46,12 @@ One command. It finds the retail executable, sees no client, creates an empty wo
 
 ```output
 client       : pid 35945
-executable   : /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+executable   : ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=1
-save tree    : /Users/zacharylandes/Library/Application Support/SlayTheSpire2/default/1
-working dir  : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.3UV2wk
-log          : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
-record       : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/owner
+save tree    : user://default/1
+working dir  : ~/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.3UV2wk
+log          : ~/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
+record       : ~/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : steamless-retail-launch-owner crewmate
 release with : ./scripts/retail-client.sh release
 exit 0
@@ -64,23 +64,23 @@ sleep 30; ./scripts/retail-client.sh status; echo "exit $?"
 ```
 
 ```output
-record       : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/owner
+record       : ~/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 record state : live
   pid                35945
-  executable         /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+  executable         ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
   arguments          --force-steam=off --clientId=1
   client_id          1
-  save_tree          /Users/zacharylandes/Library/Application Support/SlayTheSpire2/default/1
-  working_directory  /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.3UV2wk
-  log                /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
+  save_tree          user://default/1
+  working_directory  ~/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.3UV2wk
+  log                ~/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
   owner              steamless-retail-launch-owner crewmate
-  launched_by        zacharylandes@Mac
-  launched_from      /Users/zacharylandes/.treehouse/sts2-pilot-trainer-c4991a/1/sts2-pilot-trainer (pid 35779)
+  launched_by        <user>@<host>
+  launched_from      <worktree> (pid 35779)
   launched_at        2026-09-16T11:57:09Z
 
 clients      :
   pid 35945  owned by steamless-retail-launch-owner crewmate  (parent 1)
-  /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+  ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 exit 1
 ```
 
@@ -93,7 +93,7 @@ log="$HOME/Library/Application Support/sts2-pilot-trainer/retail-client/client.l
 ```output
 --- client.log (213 lines)
 [INFO] Steam initialization skipped (editor mode). Use --force-steam to enable.
-[INFO] Loading assembly DLL /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/Runmobile/Runmobile.dll
+[INFO] Loading assembly DLL ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/Runmobile/Runmobile.dll
 [INFO]  --- RUNNING MODDED! --- Loaded 1 mods (4 total)
 [INFO] Profile-scoped data path initialized: user://default/1/modded/profile3
 [WARN] Cannot initialize Steam Input because Steamworks is not initialized. Falling back to standard input.
@@ -123,7 +123,7 @@ This is the situation that used to end in Steam's `Game already running` dialog.
 ```output
 A Slay the Spire 2 client already exists; refusing to launch a second one.
   pid 35945  owned by steamless-retail-launch-owner crewmate  (parent 1)
-  /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+  ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 Release it through whoever owns it - './scripts/retail-client.sh release' for one this helper launched - and launch again.
 exit 1
 ```
@@ -149,7 +149,7 @@ exit 0
 ```
 
 ```output
-record       : /Users/zacharylandes/Library/Application Support/sts2-pilot-trainer/retail-client/owner
+record       : ~/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 record state : none - no client is owned by this helper
 
 clients      : none
@@ -164,9 +164,9 @@ client.log
 ```
 
 ```output
-ledger       : /Users/zacharylandes/.treehouse/sts2-pilot-trainer-c4991a/1/sts2-pilot-trainer/build/retail-client-launch/before.ledger
-user         : /Users/zacharylandes/Library/Application Support/SlayTheSpire2
-mods         : /Users/zacharylandes/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods
+ledger       : <worktree>/build/retail-client-launch/before.ledger
+user         : ~/Library/Application Support/SlayTheSpire2
+mods         : ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods
 
 protected files (must not change):
   nothing
