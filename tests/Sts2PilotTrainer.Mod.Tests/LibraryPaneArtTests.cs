@@ -356,6 +356,56 @@ public sealed class LibraryPaneArtTests
     }
 
     /// <summary>
+    /// The plate's ribbons end above the panel ribbon's art, not merely above its box:
+    /// the retail ribbon paints 8 units above its own box, and a plate whose air
+    /// cleared the box alone drew "Remove this run" onto "Open the run". The pane's
+    /// height is measured to the art, so the plate's foot and its air stand off it.
+    /// </summary>
+    [Fact]
+    public void ThePlateStandsOffThePanelRibbonsArtRatherThanItsBox()
+    {
+        var pane = MinePane();
+        var layout = pane.Lay(relics: 10, plateRows: 2, height: pane.Height);
+        var plateBottom = layout.PlateTop!.Value + pane.Ribbon.Y;
+        var artTop = pane.Height + pane.Overhang;
+
+        Assert.Equal(LibraryScreen.RibbonTop(pane.Ribbon.Y) - pane.Overhang, pane.Foot, 3);
+        Assert.Equal(pane.Height - (pane.Ribbon.Y * LibraryPaneArt.PlateAir), plateBottom, 3);
+        Assert.True(
+            artTop - plateBottom >= pane.Overhang + (pane.Ribbon.Y * LibraryPaneArt.PlateAir) - 0.01f,
+            $"the plate's foot is {artTop - plateBottom} above the panel ribbon's art");
+    }
+
+    /// <summary>
+    /// The list keeps room for every line its footer says: the Mine footer is a
+    /// numeral and, under it, where to keep or remove the runs, and a reservation of
+    /// one line drew the second under the area's foot, through the Back ribbon.
+    /// </summary>
+    [Fact]
+    public void TheListReservesEveryLineOfItsFooter()
+    {
+        var footer = new GameTextStyle(null, 24);
+        var oneLine = LibraryScreen.FooterRoom("4 runs · 5 MB on this computer", 500f, footer);
+        var twoLines = LibraryScreen.FooterRoom(
+            "4 runs · 5 MB on this computer\nKeep or remove them in Settings", 500f, footer);
+
+        Assert.Equal(24f * 1.6f, oneLine, 3);
+        Assert.Equal(oneLine + (24f * LibraryScreen.LabelLineRatio), twoLines, 3);
+    }
+
+    /// <summary>An upgraded card is written <c>CARD.X+1</c> and wears <c>CARD.X</c>'s
+    /// portrait; a relic or an unupgraded card is asked for as written.</summary>
+    [Theory]
+    [InlineData("CARD.STRIKE_IRONCLAD+1", "CARD.STRIKE_IRONCLAD")]
+    [InlineData("CARD.SEARING_BLOW+7", "CARD.SEARING_BLOW")]
+    [InlineData("CARD.STRIKE_IRONCLAD", "CARD.STRIKE_IRONCLAD")]
+    [InlineData("RELIC.BURNING_BLOOD", "RELIC.BURNING_BLOOD")]
+    public void AnUpgradedCardWearsItsBaseCardsArt(string modelId, string artId)
+    {
+        Assert.Equal(artId, ModelArt.ArtId(modelId));
+    }
+
+    /// <summary>
     /// The Mine pane at v0.111.0's own sizes, on the popup as the library expands it,
     /// holds the most relic rows it can beside the strip at the game's own marker, and
     /// pages the rest - the numbers the captain's screen was drawn from.
@@ -433,11 +483,17 @@ public sealed class LibraryPaneArtTests
     /// <see cref="LibraryScreen.BodyRoom"/> under its scene offset, the panes under
     /// <see cref="LibraryScreen.BandBottom"/> - rather than restated.
     /// </summary>
+    /// <param name="Overhang">How far above its box the panel's ribbon paints its
+    /// art, which is where the area ends.</param>
     internal sealed record NativePaneSizes(
         int RowTitle, int Secondary, int Fact, int CardCaption, int Numeral, int Body, Vector2 Ribbon,
-        float BodyTop, float RelicBox, float RelicIcon, float Arrow, int SubtitleLines = 0, int FactLines = 2)
+        float BodyTop, float RelicBox, float RelicIcon, float Arrow, float Overhang,
+        int SubtitleLines = 0, int FactLines = 2)
     {
         internal float Width => (LibraryScreen.PopupWidth - 140f) * (1f - 0.54f - 0.03f);
+
+        /// <summary>Where the area ends: the ribbon's drawn top.</summary>
+        internal float Foot => LibraryScreen.AreaFoot(LibraryScreen.RibbonTop(Ribbon.Y), Overhang);
 
         /// <summary>The browser's pane: under a body line and the tab band.</summary>
         internal float Height
@@ -446,12 +502,12 @@ public sealed class LibraryPaneArtTests
             {
                 var body = new GameTextStyle(null, Body);
                 var areaTop = BodyTop + LibraryScreen.BodyRoom(body, Body * LibraryScreen.LabelLineRatio);
-                return LibraryScreen.RibbonTop(Ribbon.Y) - LibraryScreen.BandBottom(areaTop, Ribbon.Y);
+                return Foot - LibraryScreen.BandBottom(areaTop, Ribbon.Y);
             }
         }
 
         /// <summary>The opened run's pane: no body, no band, so the area's own top.</summary>
-        internal float ViewHeight => LibraryScreen.RibbonTop(Ribbon.Y) - BodyTop;
+        internal float ViewHeight => Foot - BodyTop;
 
         /// <summary>The heading, and the creator line where the pane has one.</summary>
         internal float Above => Line(RowTitle) + (SubtitleLines * Line(Secondary));
@@ -483,7 +539,8 @@ public sealed class LibraryPaneArtTests
 
     internal static NativePaneSizes MinePane() => new(
         RowTitle: 28, Secondary: 24, Fact: 24, CardCaption: 24, Numeral: 22, Body: 26,
-        Ribbon: new Vector2(180f, 72f), BodyTop: 115f, RelicBox: 68f, RelicIcon: 60f, Arrow: Arrow);
+        Ribbon: new Vector2(180f, 72f), BodyTop: 115f, RelicBox: 68f, RelicIcon: 60f, Arrow: Arrow,
+        Overhang: 8f);
 
     private static float Line(int size) =>
         LibraryScreen.LineHeight("one line", 1000f, new GameTextStyle(null, size));

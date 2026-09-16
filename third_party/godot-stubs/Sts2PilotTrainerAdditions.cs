@@ -219,6 +219,7 @@ public partial class Label
     public HorizontalAlignment HorizontalAlignment { get; set; }
     public VerticalAlignment VerticalAlignment { get; set; }
     public bool ClipText { get; set; }
+    public TextServer.OverrunBehavior TextOverrunBehavior { get; set; }
 }
 
 public partial class Font

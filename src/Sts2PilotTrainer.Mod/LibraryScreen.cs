@@ -248,6 +248,19 @@ internal static class LibraryScreen
     /// </summary>
     internal static float RibbonTop(float ribbon) => PopupHeight - ribbon;
 
+    /// <summary>
+    /// Where the area ends: the panel ribbon's drawn top, not its box. The retail
+    /// button paints its art above its own box - <see cref="RibbonOverhang"/> - so a
+    /// foot at the box put the pane's plate and the list's footer on the ribbon's art.
+    /// </summary>
+    internal static float AreaFoot(float ribbonTop, float overhang) => ribbonTop - overhang;
+
+    /// <summary>How far above its own box the panel's ribbon paints, read off the
+    /// ribbon's own visuals node - 8 units on v0.111.0's 72-unit box - and refused by
+    /// name where a build's ribbon has lost the node.</summary>
+    internal static float RibbonOverhang(Control ribbon) =>
+        -ribbon.GetNode<Control>("%Visuals").Position.Y;
+
     /// <inheritdoc cref="RibbonTop"/>
     internal static float BodyRoom(GameTextStyle style, float wrapped) => wrapped + (style.Size * BodyBreath);
 
@@ -541,7 +554,7 @@ internal static class LibraryScreen
     {
         var label = content.BodyLabel();
         var top = label.Position.Y + label.Size.Y;
-        var bottom = content.NoButton.Position.Y;
+        var bottom = AreaFoot(content.NoButton.Position.Y, RibbonOverhang(content.NoButton));
         if (bottom <= top)
         {
             throw new InvalidOperationException(
@@ -669,7 +682,7 @@ internal static class LibraryScreen
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= footerText.Size * LineStep;
+            bottom -= FooterRoom(footer, at.Size.X, footerText);
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
                 LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
@@ -719,6 +732,15 @@ internal static class LibraryScreen
         JoinColumn(placed, content);
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
     }
+
+    /// <summary>
+    /// The room the list keeps for its footer above the area's foot: every line of it
+    /// and the step's own breath. It used to keep one line whatever the footer said,
+    /// and the Mine list's second line - "Keep or remove them in Settings" - was drawn
+    /// under the foot, where the Back ribbon is.
+    /// </summary>
+    internal static float FooterRoom(string footer, float width, GameTextStyle style) =>
+        LineHeight(footer, width, style) + (style.Size * (LineStep - LineAdvanceRatio));
 
     private static CheckBox AddFilter(
         NVerticalPopup content, ScreenFilter filter, Vector2 at, float width, GameTextStyle text)
@@ -991,6 +1013,9 @@ internal static class LibraryScreen
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
             Size = new Vector2(row.Size.X, style.Size * LabelLineRatio),
             ClipText = true,
+            // Trimmed at the end with an ellipsis: a centred line that is only clipped
+            // loses both its ends, and a run with several relics read "ing Rod ... 31 ca"
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             TooltipText = note,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,

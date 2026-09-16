@@ -94,8 +94,9 @@ internal static class LibraryPaneArt
     private const float RelicRowSpace = 0.3f;
 
     /// <summary>The air under the plate's ribbons before the panel's own, as a share
-    /// of a ribbon: the pane's foot is the panel's primary ribbon's top edge, and a
-    /// plate ribbon flush against it read as one ribbon stacked on another.</summary>
+    /// of a ribbon: the pane's foot is the panel's primary ribbon's drawn top edge -
+    /// <see cref="LibraryScreen.AreaFoot"/>, above the box the retail art overhangs -
+    /// and a plate ribbon flush against it read as one ribbon stacked on another.</summary>
     internal const float PlateAir = 0.12f;
 
     /// <summary>Clear space between the last relic on the first row and the deck
@@ -946,8 +947,25 @@ internal static class LibraryPaneArt
             }
             else
             {
-                LibraryScreen.AddLine(
-                    content, text, position, tile * 0.92f, LibraryPalette.Muted, line);
+                // The name where the picture would have been, on one line clipped to
+                // the tile, with the whole of it on hover. Wrapped, a name in a tile's
+                // width ran to five lines through the facts under the deck, because the
+                // row's pitch budgets a portrait and never a paragraph.
+                var caption = new Label
+                {
+                    Name = $"RunmobileCard{index.ToString(CultureInfo.InvariantCulture)}",
+                    Text = text,
+                    Position = position,
+                    CustomMinimumSize = new Vector2(tile * 0.92f, 0f),
+                    Size = new Vector2(tile * 0.92f, line.Size * LibraryScreen.LabelLineRatio),
+                    ClipText = true,
+                    TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                    TooltipText = text,
+                    MouseFilter = Control.MouseFilterEnum.Stop,
+                };
+                line.ApplyTo(caption);
+                caption.AddThemeColorOverride("font_color", LibraryPalette.Muted);
+                content.AddChild(caption);
             }
         }
 

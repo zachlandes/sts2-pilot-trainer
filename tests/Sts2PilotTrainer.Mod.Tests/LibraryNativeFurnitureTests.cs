@@ -166,7 +166,10 @@ public sealed class LibraryNativeFurnitureTests
                 System.Globalization.CultureInfo.InvariantCulture),
             RelicBox: box,
             RelicIcon: icon,
-            Arrow: ArrowWidthOnThisBuild());
+            Arrow: ArrowWidthOnThisBuild(),
+            Overhang: -float.Parse(
+                NativeScenes.Properties(RoleScene(NativeTextRole.ButtonCaption), "Visuals")!["offset_top"],
+                System.Globalization.CultureInfo.InvariantCulture));
 
         Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
         LibraryPaneArtTests.AssertMinePaneFits(sizes);

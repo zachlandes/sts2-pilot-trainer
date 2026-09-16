@@ -54,7 +54,7 @@ public static class TextServer
 
     public enum Orientation { Horizontal, Vertical }
 
-    public enum OverrunBehavior { NoTrimming }
+    public enum OverrunBehavior { NoTrimming, TrimChar, TrimWord, TrimEllipsis, TrimWordEllipsis }
 }
 
 public enum InlineAlignment { Top, Center, Baseline, Bottom }
