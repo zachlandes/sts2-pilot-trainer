@@ -746,14 +746,12 @@ internal static class LibraryScreen
     /// One row, as a duplicate of the panel's own second ribbon.
     ///
     /// Widened to the pane it is in rather than left at the ribbon's own width, because
-    /// a list row carries a run's identity and a ribbon is sized for a word.
+    /// a list row carries a run's identity and a ribbon is sized for a word. Left at
+    /// the ribbon's own width where <paramref name="width"/> is that width - the
+    /// pane's plate - so its art is the game's untouched.
     /// </summary>
-    /// <param name="prototype">The panel ribbon to duplicate: its cancel ribbon, or
-    /// the primary one for a row that is not a refusal. Left at its own width where
-    /// <paramref name="width"/> is that width, so its art is the game's untouched.</param>
     internal static Control? AddRow(
-        NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width,
-        NPopupYesNoButton? prototype = null)
+        NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width)
     {
         if (row.Heading)
         {
@@ -761,7 +759,7 @@ internal static class LibraryScreen
             return null;
         }
 
-        var source = prototype ?? content.NoButton;
+        var source = content.NoButton;
         var button = Duplicate(
             content, source, name, Math.Abs(width - source.Size.X) < 0.5f ? null : width);
         if (button is null) return null;

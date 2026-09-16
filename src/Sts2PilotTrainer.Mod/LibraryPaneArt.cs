@@ -462,7 +462,7 @@ internal static class LibraryPaneArt
         var layout = Lay(
             y - at.Position.Y, relics, holder.Box, deck, DeckRowPitch(tile, card.Size), below,
             pane.Strip.Count, at.Size.X, StripAnchor(pane), floor.Size, pane.StripPage, pane.RelicPage,
-            pane.DeckPage, pane.Plate.Count, content.YesButton.Size, at.Size.Y);
+            pane.DeckPage, pane.Plate.Count, content.NoButton.Size, at.Size.Y);
 
         var relicControls = AddRelics(
             content, pane, new Vector2(at.Position.X, at.Position.Y + layout.RelicsTop), at.Size.X,
@@ -960,17 +960,18 @@ internal static class LibraryPaneArt
     /// ribbon size.
     ///
     /// Flat and hung under the pane rather than drawn as another modal: it is about the
-    /// run the pane is showing, so it belongs to the pane. Each ribbon is the panel's
-    /// primary ribbon at its own width - not the cancel ribbon, whose art is the red
-    /// of a refusal, and not widened, so its art is the game's untouched. Where it
-    /// sits is <see cref="Lay"/>'s answer; this draws it there.
+    /// run the pane is showing, so it belongs to the pane. Each ribbon is the same
+    /// duplicate of the panel's cancel ribbon every row on this surface is, at the
+    /// ribbon's own width rather than widened to the pane, so its art is the game's
+    /// untouched and a destructive Remove never wears the affirmative ribbon's colour.
+    /// Where it sits is <see cref="Lay"/>'s answer; this draws it there.
     /// </summary>
     private static Control? AddPlate(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
     {
         if (pane.Plate.Count == 0) return null;
 
-        var ribbon = content.YesButton.Size;
+        var ribbon = content.NoButton.Size;
         var columns = PlateColumns(pane.Plate.Count, width, ribbon.X);
         var placed = new List<Control>();
         for (var index = 0; index < pane.Plate.Count; index++)
@@ -980,8 +981,7 @@ internal static class LibraryPaneArt
                 pane.Plate[index],
                 $"RunmobilePlate{index.ToString(CultureInfo.InvariantCulture)}",
                 new Vector2(at.X + columns[index], at.Y),
-                ribbon.X,
-                content.YesButton);
+                ribbon.X);
             if (control is not null) placed.Add(control);
         }
 
