@@ -183,8 +183,10 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     /// <summary>
-    /// A run the console was used in says on its plate why it cannot be submitted, and a
-    /// recording made before the recorder could tell says nothing rather than "clean".
+    /// A run the console was used in is kept and nothing more, and the plate over it
+    /// refuses every row - play-from included - in the one sentence the Mine pane says
+    /// it in; a recording made before the recorder could tell states no integrity, and
+    /// is refused the same way rather than read as clean, because the entry refuses it.
     ///
     /// The reading is the subject, so the two facts this takes off the process rather
     /// than off the recording - which build this game is, and whether a run is live - are
@@ -193,12 +195,12 @@ public sealed class RunLibraryStoreTests : IDisposable
     /// asserting.
     /// </summary>
     [GameFact]
-    public void ARunTheConsoleWasUsedInSaysSoAndOneThatStatesNothingDoesNot()
+    public void ARunTheConsoleWasUsedInIsKeptOnlyOnThePlateAndThePaneAlike()
     {
         var recorded = BareRecording("native-quiet");
 
         // A recording from before the recorder could tell states no integrity at all,
-        // which is not the same as stating that nothing happened.
+        // which is not a clean run under another name.
         var quiet = recorded with
         {
             Source = recorded.Source with { Native = recorded.Source.Native! with { Integrity = null! } },
@@ -213,18 +215,32 @@ public sealed class RunLibraryStoreTests : IDisposable
 
         var consoleFacts = RunHistoryPlateHost.FactsFor(null, console);
         var quietFacts = RunHistoryPlateHost.FactsFor(null, quiet);
+        var cleanFacts = RunHistoryPlateHost.FactsFor(null, recorded);
 
-        Assert.True(consoleFacts.ConsoleUsed);
-        Assert.Null(quietFacts.ConsoleUsed);
+        Assert.True(consoleFacts.KeptOnly);
+        Assert.True(quietFacts.KeptOnly);
+        Assert.False(cleanFacts.KeptOnly);
 
         var consolePlate = RunHistoryPlate.For(AsIfHere(consoleFacts))!;
-        Assert.Null(consolePlate.Head);
-        Assert.False(consolePlate.Rows[^1].Enabled);
-        Assert.Equal(LibraryCopy.PlateConsoleUsed, consolePlate.Reason);
+        Assert.Equal(LibraryCopy.PlateCantBeReplayed, consolePlate.Head);
+        Assert.All(consolePlate.Rows, row => Assert.False(row.Enabled));
+        Assert.Equal(LibraryCopy.KeptOnly, consolePlate.Reason);
 
         var quietPlate = RunHistoryPlate.For(AsIfHere(quietFacts))!;
-        Assert.Null(quietPlate.Head);
-        Assert.Equal(LibraryCopy.PlateSubmitComing, quietPlate.Reason);
+        Assert.All(quietPlate.Rows, row => Assert.False(row.Enabled));
+        Assert.Equal(LibraryCopy.KeptOnly, quietPlate.Reason);
+
+        var cleanPlate = RunHistoryPlate.For(AsIfHere(cleanFacts))!;
+        Assert.Null(cleanPlate.Head);
+        Assert.Equal(LibraryCopy.PlateSubmitComing, cleanPlate.Reason);
+
+        // The Mine pane over the same file refuses Submit with the same sentence.
+        var run = LibraryRun.From(console, RunOrigin.Mine, RunVerdict.Passed);
+        var pane = RunBrowser.For(
+            LibraryTab.MyRuns, [run], console.Environment.BuildVersion.Value,
+            selectedEntryId: run.EntryId, submitAvailable: true).Pane!;
+        Assert.False(pane.Plate.Single(row => row.Kind == PaneRowKind.Submit).Enabled);
+        Assert.Equal(LibraryCopy.KeptOnly, pane.PlateReason);
     }
 
     /// <summary>The same facts with this process's own two readings settled, so what

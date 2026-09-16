@@ -454,10 +454,16 @@ public static class LibraryCopy
     /// the game's own disclosure chevron is its glyph.</summary>
     public const string ChooseAnotherFloor = "Choose another floor";
 
-    /// <summary>Why a run cannot be submitted. Not why it cannot be played from: a
-    /// console command changes what the run was, and submitting it would be publishing
-    /// a run nobody can reproduce.</summary>
-    public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
+    /// <summary>Why nothing on a recording that is kept and nothing more is offered -
+    /// not play-from, not Submit. One sentence for every such recording, said in the
+    /// same words on the run-history plate, the Mine pane and the run view: a run the
+    /// console was used in, a run played partly while Runmobile was not recording, and
+    /// a recorder that stopped at a decision it could not name are one refusal with one
+    /// mechanism, and a sentence per cause would be three places to keep in step with
+    /// the validator. It names the recording's shortfall in the player's terms, and
+    /// nothing of the recorder's.</summary>
+    public const string KeptOnly =
+        "Runmobile couldn't record everything that happened in this run, so it's kept but can't be played from or shared.";
 
     /// <summary>Why a run a reload rewound cannot be shared. The run as it stands was
     /// played and can be played from; what it is not is the run that would have been
@@ -469,10 +475,6 @@ public static class LibraryCopy
 
     /// <summary>Why the submit row is refused when its host has no sharing service.</summary>
     public const string PlateSubmitComing = "Submitting runs is unavailable";
-
-    /// <summary>Why nothing on a broken recording is offered.</summary>
-    public const string PlateContinuityBroken =
-        "Part of this run was played while Runmobile wasn't recording.";
 
     /// <summary>Why nothing is offered while a run is in progress. Play-from is after
     /// the fact, and this is the sentence that says so where a player would ask.</summary>

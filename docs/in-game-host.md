@@ -1095,23 +1095,37 @@ Established multiplayer runs and incompatible runs still hidden by the filter re
 A transport failure is stated inside the browser while direct run-code lookup remains available.
 Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup judge live every time they open.
 
-**One state the design names is derived and not reachable, for a reason outside this
-module.** The plate's console-command state - play rows offered, Submit refused, "A
-console command was used, so it can't be submitted." - is not that state any more: the
-recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
-through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
-That reading answers `ConsoleUsed` null where a recording states no integrity at all, because
-absent is not a clean run under another name and a plate reporting one it never checked is the
-claim `AGENTS.md` forbids. From format v6 the field is required and a version-5 file reads as
-`complete` through the migration, so no manifest this build parses reaches that answer.
+**A recording that is kept and nothing more is refused at every offer, in one sentence.**
+The plate's console-command state the design named - play rows offered, Submit refused - was
+built and then found to offer what the engine refuses: `RecordedFightEntry` asks the validator
+before it stands anybody in a fight, the validator refuses any integrity but `complete`, and the
+press aborted with the validator's publication sentence in front of a player who had pressed
+"Play from floor N".
+The Mine pane over the same file offered Submit with no reason and refused it after the form
+was filled in.
+Both surfaces now read one fact: `NativeSource.KeptOnly`, the mirror of what the validator
+refuses on continuity and on integrity - a history with a hole in it, a run the console was used
+in, a recorder that stopped at a decision it could not name, and a recording stating no
+integrity at all, which is not a clean run under another name.
+`RunCaptureTests` holds that reading to the validator's own verdict over what the recorder can
+write, and `KeptOnlyRunPlaybackTests` drives a console-marked copy of a committed recording
+through every offer and the engine's own entry.
+The plate reads it as `RunHistoryFacts.KeptOnly` and refuses every row; `LibraryRun.KeptOnly`
+refuses the pane's Submit row; and `RunView.PositionsIn` carries it on every position so
+`RunViewPosition.Playable` - the one rule the plate's floor row, both strips, the play-from
+row, Continue and Start the run over read - answers no everywhere in such a recording.
+Every one of them says `LibraryCopy.KeptOnly`, one sentence for every kept-only cause, because
+a sentence per cause would be three places to keep in step with the validator; a rewound
+recording is whole and complete and is not kept only - it is played from and never shared,
+which is `IsRewound`'s question and the submit row's alone.
 The browser's multiplayer rule is the state that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
 `LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
 reached.
-Null rather than false for the same reason the console fact is null where it is - a host
-reporting "single-player" it never established is the claim `AGENTS.md` forbids, and the
-hidden rule hides what was established and never a question nobody asked.
+Null rather than false because a host reporting "single-player" it never established is the
+claim `AGENTS.md` forbids, and the hidden rule hides what was established and never a question
+nobody asked.
 The reading it waits on is a recording that says which kind of run it was, and no manifest
 field carries one: the recorder attaches to singleplayer runs only, so nothing writes a
 session kind for the library to read.

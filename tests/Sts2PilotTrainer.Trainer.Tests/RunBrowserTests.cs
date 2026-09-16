@@ -19,7 +19,8 @@ public sealed class RunBrowserTests
         DateTimeOffset? recorded = null,
         int? lastFloorReplayed = null,
         int? actReached = null,
-        bool rewound = false) =>
+        bool rewound = false,
+        bool keptOnly = false) =>
         new LibraryRun(
             id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build,
             Fights: [1, 2, 3, 4, 5, 6], Floors: [2, 3, 4, 5, 6, 7], Outcome: "won", verdict,
@@ -28,6 +29,7 @@ public sealed class RunBrowserTests
         {
             ActReached = actReached,
             Rewound = rewound,
+            KeptOnly = keptOnly,
         };
 
     /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
@@ -464,6 +466,33 @@ public sealed class RunBrowserTests
         Assert.Equal("Restored to an earlier point in the run; this run can't be shared.", pane.PlateReason);
         Assert.Null(RunBrowser.For(
             LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build, submitAvailable: true).Pane!.PlateReason);
+    }
+
+    /// <summary>
+    /// A run that is kept and nothing more - a run the console was used in is the case
+    /// this was written for - refuses Submit on the Mine pane up front, in the one
+    /// sentence the run-history plate says it in, rather than offering the row and
+    /// leaving the local publication gate to refuse it after the form is filled in.
+    /// The pane still opens the run: browsing is after the fact and hides nothing the
+    /// player made. Kept-only outranks rewound in the reason, the plate's own order.
+    /// </summary>
+    [Fact]
+    public void AKeptOnlyRunRefusesTheSubmitRowInTheOneSentence()
+    {
+        var browser = RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine, keptOnly: true)], Build, submitAvailable: true);
+        var pane = browser.Pane!;
+
+        Assert.False(pane.Plate[0].Enabled);
+        Assert.True(pane.Plate[1].Enabled);
+        Assert.True(pane.OpenEnabled);
+        Assert.Equal(LibraryCopy.KeptOnly, pane.PlateReason);
+
+        var both = RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine, rewound: true, keptOnly: true)], Build,
+            submitAvailable: true).Pane!;
+        Assert.False(both.Plate[0].Enabled);
+        Assert.Equal(LibraryCopy.KeptOnly, both.PlateReason);
     }
 
     /// <summary>

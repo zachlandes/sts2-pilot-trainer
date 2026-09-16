@@ -15,16 +15,15 @@ public sealed class RunHistoryPlateTests
 
     private static RunHistoryFacts Facts(
         bool hasRecording = true,
-        bool historyWhole = true,
+        bool keptOnly = false,
         bool rewound = false,
-        bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
         bool submitAvailable = false,
         int? lastFloor = 11,
         FloorKind lastFloorKind = FloorKind.Combat,
         bool hasOtherFloors = true) =>
-        new(hasRecording, historyWhole, rewound, consoleUsed, recordedBuild, Build,
+        new(hasRecording, keptOnly, rewound, recordedBuild, Build,
             runInProgress, submitAvailable, lastFloor, lastFloorKind, hasOtherFloors);
 
     [Fact]
@@ -70,7 +69,7 @@ public sealed class RunHistoryPlateTests
     public void TheNotSavedSentenceIsSaidBesideTheRowsAndNeverAtTheHead()
     {
         var offered = RunHistoryPlate.For(Facts())!;
-        var refused = RunHistoryPlate.For(Facts(historyWhole: false))!;
+        var refused = RunHistoryPlate.For(Facts(keptOnly: true))!;
 
         Assert.Equal(LibraryCopy.NotSaved, offered.NotSaved);
         Assert.Null(offered.Head);
@@ -106,21 +105,24 @@ public sealed class RunHistoryPlateTests
     }
 
     /// <summary>
-    /// A console command changes what the run was, so it stops the run being published
-    /// and stops nothing else: the fights really were fought. It is also the more
-    /// particular thing true of this run, so it is what the reason names even where the
-    /// submit flow is missing too.
+    /// A recording that is kept and nothing more - a run the console was used in is
+    /// the case this was written for - has every row refused, play-from included, in
+    /// the one sentence every surface says it in. The plate used to offer play-from
+    /// here and the entry refused the press with the validator's publication sentence;
+    /// the offer and the entry now read the same fact, so the plate never offers what
+    /// the engine will refuse. Asked with the submit flow present, so nothing but the
+    /// recording refuses the rows.
     /// </summary>
     [Fact]
-    public void AConsoleCommandStopsTheSubmitRowAndNothingElse()
+    public void AKeptOnlyRecordingRefusesEveryRowInTheOneSentence()
     {
-        var plate = RunHistoryPlate.For(Facts(consoleUsed: true))!;
+        var plate = RunHistoryPlate.For(Facts(keptOnly: true, submitAvailable: true))!;
 
-        Assert.Null(plate.Head);
-        Assert.True(plate.Rows[0].Enabled);
-        Assert.True(plate.Rows[1].Enabled);
-        Assert.False(plate.Rows[2].Enabled);
-        Assert.Equal(LibraryCopy.PlateConsoleUsed, plate.Reason);
+        Assert.Equal(PlateMark.Warning, plate.Mark);
+        Assert.Equal(LibraryCopy.PlateCantBeReplayed, plate.Head);
+        Assert.All(plate.Rows, row => Assert.False(row.Enabled));
+        Assert.Equal(LibraryCopy.KeptOnly, plate.Reason);
+        Assert.Null(plate.NotSaved);
     }
 
     /// <summary>
@@ -161,22 +163,6 @@ public sealed class RunHistoryPlateTests
         Assert.Null(plate.Reason);
     }
 
-    /// <summary>
-    /// Nobody has established whether a console command was used, so nothing is claimed
-    /// about it. Null is not "no": it is the absence of a reading, and the submit row is
-    /// left as it is rather than being refused on a check that never ran. Asked with the
-    /// submit flow present, so the console question is the only thing that could refuse
-    /// the row.
-    /// </summary>
-    [Fact]
-    public void AnUnaskedConsoleQuestionIsNotAnsweredAsNo()
-    {
-        var plate = RunHistoryPlate.For(Facts(consoleUsed: null, submitAvailable: true))!;
-
-        Assert.Null(plate.Reason);
-        Assert.True(plate.Rows[2].Enabled);
-    }
-
     [Theory]
     [MemberData(nameof(RefusedStates))]
     public void ARefusedStateKeepsEveryRowAndStatesOneThing(
@@ -194,8 +180,8 @@ public sealed class RunHistoryPlateTests
     public static TheoryData<RunHistoryFacts, PlateMark?, string?, string?> RefusedStates() => new()
     {
         {
-            Facts(historyWhole: false), PlateMark.Warning,
-            LibraryCopy.PlateCantBeReplayed, LibraryCopy.PlateContinuityBroken
+            Facts(keptOnly: true), PlateMark.Warning,
+            LibraryCopy.PlateCantBeReplayed, LibraryCopy.KeptOnly
         },
         {
             // Both versions in the head line, in the eligibility screen's red, and no
@@ -211,17 +197,19 @@ public sealed class RunHistoryPlateTests
     };
 
     /// <summary>
-    /// The continuity sentence names what happened in the player's own terms rather
-    /// than in the recorder's. "The game reloaded past a point already recorded" is a
-    /// fact about a journal; this is a fact about their run.
+    /// The kept-only sentence names what happened in the player's own terms rather
+    /// than in the recorder's, and says both halves of what it means: the run is kept,
+    /// and it is neither played from nor shared. "Integrity is non-standard" is a fact
+    /// about a manifest; this is a fact about their run.
     /// </summary>
     [Fact]
-    public void AnIncompleteRecordingSaysWhatHappenedRatherThanWhatTheRecorderSaw()
+    public void AKeptOnlyRecordingSaysWhatHappenedRatherThanWhatTheRecorderSaw()
     {
-        var plate = RunHistoryPlate.For(Facts(historyWhole: false))!;
+        var plate = RunHistoryPlate.For(Facts(keptOnly: true))!;
 
         Assert.Equal(
-            "Part of this run was played while Runmobile wasn't recording.", plate.Reason);
+            "Runmobile couldn't record everything that happened in this run, so it's kept but can't be played from or shared.",
+            plate.Reason);
     }
 
     /// <summary>

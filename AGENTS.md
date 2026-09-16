@@ -160,12 +160,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 160
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 245 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 161
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 246 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 245.
+datum where it runs, so a run with the game reports more cases than 246.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -386,6 +386,8 @@ Godot loads no resources under `dotnet test`, so a path is checked by reading th
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
 It records singleplayer runs only, and which kind of run this is is read - `LiveRun.ReadSession` off the game's own networking and player list, with `RunSession` owning what each `RunSessionKind` permits - never inferred from the name of the setup member the game called.
 A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this.
+Such a recording is kept and nothing more - neither played from nor shared - and `NativeSource.KeptOnly` is the one reading every offering surface makes of that: the mirror of what the validator refuses on continuity and integrity, held to the validator's own verdict by `RunCaptureTests`, carried on every `RunViewPosition` so `Playable` refuses it, and said in the one sentence `LibraryCopy.KeptOnly` on the run-history plate, the Mine pane and the run view alike.
+Do not add a second reader of that question or a sentence per cause; [docs/in-game-host.md](docs/in-game-host.md) owns the rule and why the plate once offered what the entry refused.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
 When a continued run is read is `RunRecorder.HasEnteredItsRoom`: standing in its room, with a fight that is opening open, because a continued run carries its floor count on the save before it has a room and the act floor reads 0 until the room is re-entered - an honest Continue read before that resumed as a broken watch; `RecorderContinueTests` holds both Continues.
 Inside a fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses, through `IFightSampleSink`.

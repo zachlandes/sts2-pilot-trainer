@@ -111,6 +111,13 @@ public sealed record LibraryRun(
     /// the run-history plate does.</summary>
     public bool Rewound { get; init; }
 
+    /// <summary>Whether the recording is kept and nothing more - neither played from
+    /// nor submitted - as it says of itself through <see cref="NativeSource.KeptOnly"/>.
+    /// The pane's submit row and its reason read this the way the run-history plate
+    /// does, and the strip's cells read it through <see cref="RunViewPosition.Playable"/>,
+    /// so the pane never offers what the entry refuses.</summary>
+    public bool KeptOnly { get; init; }
+
     /// <summary>The sharing service's identity for this submission.</summary>
     [JsonIgnore]
     public string? ShareId { get; init; }
@@ -208,6 +215,7 @@ public sealed record LibraryRun(
         {
             ActReached = RunReading.ActReached(recording),
             Rewound = recording.Source.Native?.IsRewound ?? false,
+            KeptOnly = RunView.KeptOnly(recording),
         };
     }
 

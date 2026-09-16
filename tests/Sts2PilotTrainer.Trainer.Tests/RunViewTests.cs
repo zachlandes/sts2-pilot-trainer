@@ -648,6 +648,52 @@ public sealed class RunViewTests
         Assert.Equal(1, row.Fight);
     }
 
+    /// <summary>
+    /// A recording that is kept and nothing more - a run the console was used in is the
+    /// case this was written for - has no place to stand in it. The rule is carried on
+    /// every position so <see cref="RunViewPosition.Playable"/> stays the one thing
+    /// every strip reads, and every row refuses in the one sentence the plate and the
+    /// pane say it in: the entry refuses such a recording before it looks at a
+    /// boundary, so a row that named a floor's own reason would suggest another floor
+    /// is a place to stand.
+    /// </summary>
+    [Theory]
+    [InlineData(NativeSource.NonStandardIntegrity, NativeSource.ContinuousContinuity)]
+    [InlineData(NativeSource.UnmappedIntegrity, NativeSource.ContinuousContinuity)]
+    [InlineData(NativeSource.CompleteIntegrity, NativeSource.BrokenContinuity)]
+    public void AKeptOnlyRecordingOffersNoPlaceAndEveryRowSaysWhyInTheOneSentence(
+        string integrity, string continuity)
+    {
+        var recording = Fixtures.NativeRecording() with
+        {
+            RunId = Run,
+            Boundaries = ThreeFloorsAsPlayed().Boundaries,
+            Actions = ThreeFloorsAsPlayed().Actions,
+        };
+        var keptOnly = recording with
+        {
+            Source = recording.Source with
+            {
+                Native = recording.Source.Native! with { Integrity = integrity, Continuity = continuity },
+            },
+        };
+        Assert.True(RunView.KeptOnly(keptOnly));
+        Assert.False(RunView.KeptOnly(recording));
+
+        var positions = RunView.PositionsIn(keptOnly);
+        Assert.All(positions, position => Assert.True(position.KeptOnly));
+        Assert.All(positions, position => Assert.False(position.Playable));
+        Assert.Contains(RunView.PositionsIn(recording), position => position.Playable);
+
+        var played = RunProgress.Empty.WithFightPlayed(Run, 1);
+        var view = RunView.For(keptOnly, played, selectedFloor: 2);
+        Assert.Equal(3, view.Rows.Count);
+        Assert.All(view.Rows, row => Assert.False(row.Enabled));
+        Assert.All(view.Rows, row => Assert.Equal(LibraryCopy.KeptOnly, row.Reason));
+        Assert.All(view.Strip, cell => Assert.False(cell.Playable));
+        Assert.Null(view.NotSaved);
+    }
+
     /// <summary>Continue names the next unplayed fight, and that fight is reached by
     /// restoring the arrival that dealt it.</summary>
     [Fact]

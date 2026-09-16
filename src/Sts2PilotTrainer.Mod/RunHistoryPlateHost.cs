@@ -191,13 +191,14 @@ internal static class RunHistoryPlateHost
     /// recording's own decisions on it, through the same <c>FloorKinds</c> the run view
     /// reads, so a floor named one thing here and another there is impossible.
     ///
-    /// <para>Whether a console command was used is the recording's own answer, read
-    /// through <c>NativeSource.StatesSomethingOtherThanComplete</c> - the owner of that
-    /// reading, so the integrity values are compared in one place. A recording stating
-    /// no integrity at all answers null rather than a clean run, because reporting one
-    /// this never established is the claim <c>AGENTS.md</c> forbids; from format v6 the
-    /// field is required and a version-5 file reads as <c>complete</c> through the
-    /// migration, so no manifest this build parses reaches that answer.</para>
+    /// <para>Whether the recording is kept and nothing more is its own answer, read
+    /// through <c>NativeSource.KeptOnly</c> - the same reader the pane's and the run
+    /// view's rows go through, so the three surfaces cannot disagree about one file. A
+    /// recording stating no integrity at all is kept only rather than a clean run,
+    /// because the entry refuses it and offering it would be the claim <c>AGENTS.md</c>
+    /// forbids; from format v6 the field is required and a version-5 file reads as
+    /// <c>complete</c> through the migration, so no manifest this build parses reaches
+    /// that answer.</para>
     ///
     /// </summary>
     internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording)
@@ -214,11 +215,10 @@ internal static class RunHistoryPlateHost
 
         return new RunHistoryFacts(
             HasRecording: recording is not null,
-            HistoryWhole: recording?.Source.Native?.HistoryIsWhole ?? false,
+            // A run in the game's own history is one the recorder wrote, so a recording
+            // here with no native source states no watch at all and is kept only.
+            KeptOnly: recording?.Source.Native?.KeptOnly ?? true,
             Rewound: recording?.Source.Native?.IsRewound ?? false,
-            ConsoleUsed: recording?.Source.Native is { Integrity: not null } native
-                ? native.StatesSomethingOtherThanComplete
-                : null,
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
