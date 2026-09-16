@@ -125,8 +125,11 @@ public sealed class RunHistoryPlateTests
 
     /// <summary>
     /// A reload that rewound the run behind what was recorded is the same shape: the
-    /// run as it stands is played from, and never submitted, and the plate says so here
+    /// run as it stands is played from, and never shared, and the plate says so here
     /// rather than leaving the publication gate to refuse it after the form is filled in.
+    /// The sentence is pinned because it is the player's one warning: it names what
+    /// happened in their own terms, the run put back behind decisions already made,
+    /// and nothing of the recorder's.
     /// </summary>
     [Fact]
     public void ARewoundRunStopsTheSubmitRowAndNothingElse()
@@ -138,7 +141,24 @@ public sealed class RunHistoryPlateTests
         Assert.True(plate.Rows[1].Enabled);
         Assert.False(plate.Rows[2].Enabled);
         Assert.Equal(LibraryCopy.PlateRewound, plate.Reason);
+        Assert.Equal("Restored to an earlier point in the run; this run can't be shared.", plate.Reason);
         Assert.Equal(LibraryCopy.NotSaved, plate.NotSaved);
+    }
+
+    /// <summary>
+    /// The game's own Save and Quit returns to its latest automatic save, which the
+    /// recorder reads as continuous and never as rewound, so the plate warns of nothing
+    /// and offers Submit. The fact arrives as <c>rewound: false</c> because that is what
+    /// <c>RecorderContinueTests</c> holds the recorder to for that Continue; the plate
+    /// draws nothing the recorder did not establish.
+    /// </summary>
+    [Fact]
+    public void AReturnToTheLatestSaveIsNotRewoundAndKeepsTheSubmitRow()
+    {
+        var plate = RunHistoryPlate.For(Facts(rewound: false, submitAvailable: true))!;
+
+        Assert.True(plate.Rows[2].Enabled);
+        Assert.Null(plate.Reason);
     }
 
     /// <summary>

@@ -467,10 +467,13 @@ public static class LibraryCopy
     /// a run nobody can reproduce.</summary>
     public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
 
-    /// <summary>Why a run a reload rewound cannot be submitted. The run as it stands was
+    /// <summary>Why a run a reload rewound cannot be shared. The run as it stands was
     /// played and can be played from; what it is not is the run that would have been
-    /// played without the reload, so it is never published.</summary>
-    public const string PlateRewound = "A reload rewound this run, so it can't be submitted.";
+    /// played without the reload, so it is never published. Said in the player's terms -
+    /// the run was put back to an earlier point, behind decisions already made - and
+    /// never for the game's own return to its latest automatic save, which is
+    /// continuous and stays shareable however long ago it was taken.</summary>
+    public const string PlateRewound = "Restored to an earlier point in the run; this run can't be shared.";
 
     /// <summary>Why the submit row is refused when its host has no sharing service.</summary>
     public const string PlateSubmitComing = "Submitting runs is unavailable";
