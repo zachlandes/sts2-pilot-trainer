@@ -38,12 +38,28 @@ public sealed class ChildProcessLifetimeTests
     private static readonly string[] ShortChildren = ["validate", "preflight"];
 
     [UnixGameFact]
-    public void ATerminatedGateTakesItsChildrenWithIt() => AStoppedGateLeavesNoChild("TERM", expectedExit: 143);
+    public void ATerminatedGateTakesItsChildrenWithIt() => AStoppedGateLeavesNoChild("TERM", expectedExit: 143, ALongChild);
 
     [UnixGameFact]
-    public void AKilledGatesChildrenStopOnTheirOwn() => AStoppedGateLeavesNoChild("KILL", expectedExit: 137);
+    public void AKilledGatesChildrenStopOnTheirOwn() => AStoppedGateLeavesNoChild("KILL", expectedExit: 137, ALongChild);
 
-    private static void AStoppedGateLeavesNoChild(string signal, int expectedExit)
+    /// <summary>
+    /// The scenario the orphan was found in: the gate stopped while its
+    /// negative-controls child has a replay of its own running, so the tree is three
+    /// deep and the last condition is the one interrupted. A grandchild is what a
+    /// best-effort tree kill can miss, and a gate whose last child was killed can
+    /// finish its report as though that child had answered.
+    /// </summary>
+    [UnixGameFact]
+    public void ATerminatedGateTakesItsGrandchildrenWithIt() =>
+        AStoppedGateLeavesNoChild("TERM", expectedExit: 143, NegativeControlsWithAReplayOfItsOwn);
+
+    [UnixGameFact]
+    public void AKilledGatesGrandchildrenStopOnTheirOwn() =>
+        AStoppedGateLeavesNoChild("KILL", expectedExit: 137, NegativeControlsWithAReplayOfItsOwn);
+
+    private static void AStoppedGateLeavesNoChild(
+        string signal, int expectedExit, Func<IReadOnlyList<ProcessRow>, bool> readyToStop)
     {
         var outDir = Path.Combine(Arbiter.RepoRoot, "build", "test-scratch", $"gate-{signal}-{Guid.NewGuid():N}"[..16]);
         Directory.CreateDirectory(outDir);
@@ -64,24 +80,33 @@ public sealed class ChildProcessLifetimeTests
         using var gate = Process.Start(startInfo)!;
         var output = gate.StandardOutput.ReadToEndAsync();
         var error = gate.StandardError.ReadToEndAsync();
+        // Every descendant seen before the signal, so a reparented one is still swept.
+        var known = new List<ProcessRow>();
         try
         {
-            var descendants = WaitForALongChild(gate.Id);
+            var descendants = WaitForALongChild(gate.Id, readyToStop);
             Assert.NotEmpty(descendants);
+            known.AddRange(descendants);
 
             Signal(gate.Id, signal);
             Assert.True(gate.WaitForExit(GoneWithin), "The gate did not stop on the signal.");
-            Assert.Equal(expectedExit, gate.ExitCode);
 
             var deadline = Stopwatch.StartNew();
             while (descendants.Any(IsAlive))
             {
                 Assert.True(
                     deadline.Elapsed < GoneWithin,
-                    $"Descendants of the {signal}ed gate are still running: " +
-                    string.Join("; ", descendants.Where(IsAlive).Select(Describe)));
+                    $"Descendants of the {signal}ed gate are still there: " +
+                    string.Join("; ", descendants.Where(IsAlive).Select(DescribeLive)));
                 Thread.Sleep(100);
             }
+
+            // A stopped gate reached no verdict; one written here would name a
+            // condition that never ran to its end as failed.
+            Assert.False(
+                File.Exists(Path.Combine(outDir, "publication-gate.json")),
+                $"The {signal}ed gate wrote a verdict: {ReadVerdict(outDir)}");
+            Assert.Equal(expectedExit, gate.ExitCode);
         }
         finally
         {
@@ -91,7 +116,7 @@ public sealed class ChildProcessLifetimeTests
             if (!gate.HasExited) gate.Kill(entireProcessTree: true);
             for (var sweep = 0; sweep < 10; sweep++)
             {
-                var stragglers = Descendants(gate.Id);
+                var stragglers = Descendants(gate.Id).Concat(known.Where(IsAlive)).ToList();
                 if (stragglers.Count == 0) break;
                 foreach (var straggler in stragglers) Signal(straggler.Pid, "KILL");
                 Thread.Sleep(100);
@@ -99,17 +124,18 @@ public sealed class ChildProcessLifetimeTests
         }
     }
 
-    private sealed record ProcessRow(int Pid, int ParentPid, string Args);
+    private sealed record ProcessRow(int Pid, int ParentPid, string State, string Args);
 
     /// <summary>Every descendant of the gate once one of them is a long child, and
     /// the whole tree at that moment, which is what a kill has to take.</summary>
-    private static IReadOnlyList<ProcessRow> WaitForALongChild(int gatePid)
+    private static IReadOnlyList<ProcessRow> WaitForALongChild(
+        int gatePid, Func<IReadOnlyList<ProcessRow>, bool> readyToStop)
     {
         var deadline = Stopwatch.StartNew();
         while (deadline.Elapsed < LongChildWithin)
         {
             var descendants = Descendants(gatePid);
-            if (descendants.Any(row => IsArbiter(row) && !ShortChildren.Any(row.Args.Contains)))
+            if (readyToStop(descendants))
             {
                 return descendants;
             }
@@ -122,10 +148,42 @@ public sealed class ChildProcessLifetimeTests
             string.Join("; ", Descendants(gatePid).Select(Describe)));
     }
 
+    private static bool ALongChild(IReadOnlyList<ProcessRow> descendants) =>
+        descendants.Any(row => IsArbiter(row) && !ShortChildren.Any(row.Args.Contains));
+
+    /// <summary>The negative-controls child with a replay child of its own: the tree
+    /// as it stood when the orphan was found.</summary>
+    private static bool NegativeControlsWithAReplayOfItsOwn(IReadOnlyList<ProcessRow> descendants) =>
+        descendants.Any(row => IsArbiter(row)
+            && row.Args.Contains(" negative-controls ", StringComparison.Ordinal)
+            && descendants.Any(child => child.ParentPid == row.Pid && IsArbiter(child)
+                && child.Args.Contains(" replay ", StringComparison.Ordinal)));
+
     private static bool IsArbiter(ProcessRow row) => row.Args.Contains("sts2-arbiter.dll", StringComparison.Ordinal);
+
+    private static string ReadVerdict(string outDir)
+    {
+        try
+        {
+            return File.ReadAllText(Path.Combine(outDir, "publication-gate.json"));
+        }
+        catch (IOException)
+        {
+            return "(unreadable)";
+        }
+    }
 
     private static string Describe(ProcessRow row) =>
         $"{row.Pid.ToString(CultureInfo.InvariantCulture)} ({row.Args})";
+
+    /// <summary>The row as the table shows it now: parent and state, because an
+    /// orphan reparented to init and left stopped is a different finding from one
+    /// still running.</summary>
+    private static string DescribeLive(ProcessRow row)
+    {
+        var now = ProcessTable().FirstOrDefault(current => current.Pid == row.Pid);
+        return now is null ? Describe(row) : $"{Describe(row)} [ppid {now.ParentPid}, stat {now.State}]";
+    }
 
     private static bool IsAlive(ProcessRow row)
     {
@@ -165,17 +223,18 @@ public sealed class ChildProcessLifetimeTests
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
-        foreach (var arg in new[] { "-eo", "pid=,ppid=,args=" }) ps.ArgumentList.Add(arg);
+        foreach (var arg in new[] { "-eo", "pid=,ppid=,stat=,args=" }) ps.ArgumentList.Add(arg);
         using var process = Process.Start(ps)!;
         var rows = new List<ProcessRow>();
         foreach (var line in process.StandardOutput.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
-            var parts = line.Trim().Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2) continue;
+            var parts = line.Trim().Split(' ', 4, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3) continue;
             rows.Add(new ProcessRow(
                 int.Parse(parts[0], CultureInfo.InvariantCulture),
                 int.Parse(parts[1], CultureInfo.InvariantCulture),
-                parts.Length > 2 ? parts[2] : string.Empty));
+                parts[2],
+                parts.Length > 3 ? parts[3] : string.Empty));
         }
 
         process.WaitForExit();
