@@ -288,14 +288,16 @@ public static class Arbiter
         results.AddRange(Evaluate(checkpointsBySeq[-1], session));
 
         var state = CanonicalStateProjection.Project(session.RunState);
+        digests[-1] = state.Digest();
         steps.Add(new ReplayStep
         {
             Seq = -1,
             Verb = "run_start",
             Before = Sample(state),
             After = Sample(state),
+            BeforeDigest = digests[-1],
+            AfterDigest = digests[-1],
         });
-        digests[-1] = state.Digest();
 
         var ordered = manifest.Actions.OrderBy(a => a.Seq).ToList();
         for (var index = 0; index < ordered.Count; index++)
@@ -307,7 +309,9 @@ public static class Arbiter
             // way to it that is not a decision - the chest a treasure room opens on a
             // click, before anything about it is decided.
             driver.Approach(action);
-            var before = Sample(CanonicalStateProjection.Project(session.RunState));
+            var beforeState = CanonicalStateProjection.Project(session.RunState);
+            var before = Sample(beforeState);
+            var beforeDigest = beforeState.Digest();
             try
             {
                 driver.Apply(action, Upcoming(ordered, index, stopAfterSeq));
@@ -328,6 +332,8 @@ public static class Arbiter
                     Args = action.Args,
                     Before = before,
                     After = Sample(refusedState),
+                    BeforeDigest = beforeDigest,
+                    AfterDigest = refusedState.Digest(),
                 });
                 return new ArbiterOutcome(
                     new VerificationReport
@@ -346,6 +352,7 @@ public static class Arbiter
             // A run the game ended inside this action is read where it ended it,
             // before the player creature is killed for the ending
             var after = RunEnding.Reading ?? CanonicalStateProjection.Project(session.RunState);
+            digests[action.Seq] = after.Digest();
             steps.Add(new ReplayStep
             {
                 Seq = action.Seq,
@@ -353,8 +360,9 @@ public static class Arbiter
                 Args = action.Args,
                 Before = before,
                 After = Sample(after),
+                BeforeDigest = beforeDigest,
+                AfterDigest = digests[action.Seq],
             });
-            digests[action.Seq] = after.Digest();
 
             results.AddRange(Evaluate(checkpointsBySeq[action.Seq], after));
         }

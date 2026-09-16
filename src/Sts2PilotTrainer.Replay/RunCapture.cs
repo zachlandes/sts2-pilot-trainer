@@ -116,14 +116,7 @@ public sealed class RunCapture
         Continuity = continuity;
         Opening = opening;
 
-        var sample = ReplayTrace.Sample(opening.State);
-        _steps.Add(new ReplayStep
-        {
-            Seq = -1,
-            Verb = RunStartVerb,
-            Before = sample,
-            After = sample,
-        });
+        _steps.Add(opening.AsStep());
         _digests[-1] = opening.Digest;
         _clocks[-1] = opening.RunClockMs;
     }
@@ -537,8 +530,7 @@ public sealed class RunCapture
 
     /// <summary>Whether a decision began inside a fight and settled with it over:
     /// the killing play, whose settled reading precedes the rewards the client rolls.</summary>
-    private static bool EndedAFight(RunJournalEntry entry) =>
-        entry.Before is { } before && InCombat(before) && !InCombat(entry.State);
+    private static bool EndedAFight(RunJournalEntry entry) => entry.Before is not null && entry.AsStep().EndsAFight;
 
     /// <summary>
     /// Whether a return to <paramref name="target"/> is the game's own rollback: its
@@ -1135,14 +1127,7 @@ public sealed class RunCapture
                 "it began from.");
         var after = entry.State;
 
-        _steps.Add(new ReplayStep
-        {
-            Seq = entry.Seq,
-            Verb = entry.Verb,
-            Args = entry.Args,
-            Before = before,
-            After = after,
-        });
+        _steps.Add(entry.AsStep());
 
         _actions.Add(new ActionRecord
         {

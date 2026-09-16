@@ -254,6 +254,8 @@ The two lines stay distinct by colour and marker shape, and the panel states dif
 See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md); [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) is the `Runmobile` session, and [docs/mod-ui-direction.md](docs/mod-ui-direction.md) owns what those surfaces are.
 
 The mod also records the player's own runs, on unless `settings.json` in its store says otherwise: every run played becomes a manifest of the same kind under `user://Runmobile/recordings/`, which `gate` judges by the same standard as one transcribed from a video.
+The recorder itself is held to a standard of its own, `./scripts/arbiter parity`: a fresh replay of a recording has to reproduce the journal the recorder wrote beside it decision for decision, sample and complete digest either side of every one, and the first decision where it does not is named with the field.
+Over a corpus - `manifests/`, or a copy of a player's own recordings - it prints the figure with every recording that holds nothing named by why, so the two committed native recordings, made before their journals were kept in a schema this build reads, count in the denominator rather than disappearing from it.
 [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps for producing one and checking it.
 
 ```bash

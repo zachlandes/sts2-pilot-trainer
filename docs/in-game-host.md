@@ -1289,6 +1289,10 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
 5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, integrity complete, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
 6. The recording is under the store: `~/Library/Application Support/SlayTheSpire2/Runmobile/<the game's own profile scope>/recordings/`. The scope mirrors what the game resolved for its own saves, so two accounts and two profiles do not share a library.
 7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
+   `./scripts/arbiter parity <that file>` is the recorder's own standard: it replays the recording and holds it to the `.journal.jsonl` beside it at every decision, sample and complete digest either side, and names the first decision and field where the replay left the journal.
+   The gate compares boundaries and answers whether the recording may be published; parity compares decisions and answers whether the recorder wrote down what the engine does, which is the question a recorder defect is found by.
+   `./scripts/arbiter parity --corpus <a copy of recordings/>` runs it over every recording in a directory, each replay in a fresh process, and prints the figure with every recording that holds nothing named by why - no journal, a journal in a schema this build does not read, a reconstruction from a video.
+   Copy the directory rather than naming the store: the command is handed a path and derives none, and nothing it reads is written back.
 8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.
 
 To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
