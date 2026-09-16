@@ -292,6 +292,49 @@ public sealed class ParityTests
         });
     }
 
+    /// <summary>A replay the driver refused is not at parity whatever its trace says:
+    /// the refused step reads the same either side as the journal's only by accident of
+    /// what the decision changed, and the refusal is the verdict.</summary>
+    [GameFact]
+    public void ARefusedReplayNeverReadsParity()
+    {
+        InScratch(directory =>
+        {
+            var (manifestPath, _) = RecordingWithAJournal(directory);
+            var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!;
+            var last = manifest["actions"]!.AsArray().Single(action => action!["seq"]!.GetValue<int>() == 49)!;
+            last["args"]!["card_id"] = "CARD.DEFEND_IRONCLAD";
+            File.WriteAllText(manifestPath, manifest.ToJsonString());
+
+            var result = Arbiter.Run("parity", manifestPath, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains("REFUSED - the replay was rejected", result.Output, StringComparison.Ordinal);
+            Assert.Contains("action 49 (PlayCard)", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("PARITY - every decision replays", result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
+        });
+    }
+
+    [GameFact]
+    public void AnEmptyCorpusIsRefusedRatherThanReadAsAtParity()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "Runmobile");
+            Directory.CreateDirectory(corpus);
+            var outDir = Path.Combine(directory, "evidence");
+
+            var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains("No *.replay.json was found in ", result.All, StringComparison.Ordinal);
+            Assert.Contains("so nothing was verified; a player's recordings live under Runmobile/<profile scope>/recordings/", result.All, StringComparison.Ordinal);
+            Assert.DoesNotContain("AT PARITY", result.Output, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(outDir, "parity.json")));
+        });
+    }
+
     /// <summary>
     /// The committed short recording and a journal its own fresh replay would have
     /// written: the replay's trace, every reading and both digests, recorded through

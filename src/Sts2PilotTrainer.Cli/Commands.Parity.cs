@@ -44,6 +44,14 @@ internal static partial class Commands
             ? RecordingCorpus.Enumerate(corpora).Select(recording => ParityInAChildProcess(recording, outDir)).ToList()
             : [ParityOfOne(Args.Positional(args, 0, "manifest path"), Args.Value(args, "--journal"), print: true)];
 
+        if (corpora.Count > 0 && entries.Count == 0)
+        {
+            throw new ManifestException(
+                $"No *{RecordingLibrary.ManifestExtension} was found in {string.Join(", ", corpora.Select(Paths.Display))}, " +
+                "so nothing was verified; a player's recordings live under Runmobile/<profile scope>/recordings/, " +
+                "and that is the directory to copy and name with --corpus.");
+        }
+
         if (corpora.Count > 0)
         {
             foreach (var entry in entries) PrintLine(entry);
@@ -229,12 +237,13 @@ internal static partial class Commands
         }
 
         var report = outcome.Report;
-        if (report.Trace is null)
+        if (report.Status != VerificationStatus.Verified || report.Trace is null)
         {
             return entry with
             {
                 Status = ParityStatus.Refused,
-                Detail = $"the replay was {report.Status.ToString().ToLowerInvariant()} before any decision ran",
+                Detail = $"the replay was {report.Status.ToString().ToLowerInvariant()}, so it did not reproduce " +
+                         "the journal whatever its trace says",
                 ReplayDiagnostics = report.Diagnostics,
             };
         }
