@@ -319,12 +319,13 @@ internal static class RunBrowserScreen
             var kind = (int)row.Kind;
             var id = runId;
             // A refused Submit says why on hover: the plate has no line under a ribbon
-            // to say it in, and a third fact line was room the relics and the strip need
+            // to say it in, and a third fact line was room the relics and the strip need.
+            // No glyph on any of them: at the ribbon's own width the label spans it,
+            // and a mark at the row's end sat on the word
             plate.Add(new ScreenRow(
                 row.Label,
                 row.Enabled,
                 () => PressPlate(id, kind),
-                Glyph: row.Kind == PaneRowKind.Remove ? LibraryGlyph.Bin : null,
                 Tooltip: row.Kind == PaneRowKind.Submit && !row.Enabled ? pane.PlateReason : null));
         }
 

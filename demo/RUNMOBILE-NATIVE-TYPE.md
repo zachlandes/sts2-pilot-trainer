@@ -40,11 +40,25 @@ Both settings captures predate the change that put the row under a `Runmobile` h
 They show the captions under the short extent that hid View Credits and the settings below it, and the community-runs control under an earlier caption.
 What they still stand for is the roles and the column width, which that change did not move; `demo/RUNMOBILE-SETTINGS-SECTION.md` holds the section as it stands.
 
-## What changed since these captures
+## The library after the run-history sizing pass
 
-The captures above predate the change that sized the run strip's markers to the run-history entry's own icon, made the Community tab's lock a half-size badge hung off the tab's corner with the label untouched, moved "Open the run" onto the popup's primary ribbon, put the deck count on the relic row, paged the relic and deck rows, measured the body and the band, and set a list row's second line at the dense-line role - the run-history hover tip's own card listing.
-They show the strip's markers capped at a multiple of the floor numeral, the lock centred across the Community label, the pane's own "Open the run" ribbon, and the row note at the secondary role.
-`docs/mod-ui-direction.md` owns the layout as it now stands; an in-client capture of the Mine tab at the new sizes is still owed.
+Taken 2026-09-16 on the v0.111.0 retail client, launched with `--force-steam=off` on the isolated non-Steam save tree's third profile, fullscreen on the 1512 × 982 display, with this branch built and installed through `scripts/install-mod.sh`.
+Every click checked that the game was the frontmost application first and refused otherwise; `scripts/protected-files.sh compare` afterwards reported the installed mod, that profile's own settings and the game's logs, and nothing under `user://Runmobile/`.
+
+![Mine tab: native-size floor markers, the deck on the relic row, the plate under the facts, Open the run on the panel's ribbon](runmobile-library-mine-fitted.png)
+
+The floor markers are the run-history entry's own icon at its own size, with the strip paged at the paginator's arrow.
+The deck tiles and their counts sit above the two fact lines, the Share and Remove ribbons sit under them at the ribbon's own width, and "Open the run" is the panel's primary ribbon below the pane.
+The list's second line is at the dense-line role and trims with an ellipsis; the footer's two lines clear the Back ribbon.
+The Community tab's lock is a half-size badge on the tab's corner, and the line over the tabs names the cause: no sharing service is configured.
+
+![Community tab: locked with the badge on the tab's corner and the per-cause sentence](runmobile-library-community-fitted.png)
+
+![Opened run: the play-from rows beside the relics and the strip](runmobile-library-open-run-fitted.png)
+
+The captures above them predate this pass and show the strip's markers capped at a multiple of the floor numeral, the lock centred across the Community label, the pane's own "Open the run" ribbon, and the row note at the secondary role; what they still stand for is the named-role typography, which the pass did not move.
+`docs/mod-ui-direction.md` owns the layout as it now stands.
+The pass's first retail capture found one more collision: the Remove ribbon's bin glyph, placed at the row's end, sat on the word "this" once the ribbon was drawn at its own width rather than the pane's, so the plate's ribbons carry no glyph, as the game's own do.
 
 ## What these captures prove
 
