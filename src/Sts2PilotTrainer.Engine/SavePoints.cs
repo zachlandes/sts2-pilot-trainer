@@ -2,9 +2,8 @@ using System.Reflection;
 using System.Text;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Saves;
-using Sts2PilotTrainer.Engine;
 
-namespace Sts2PilotTrainer.Arbiter.Tests;
+namespace Sts2PilotTrainer.Engine;
 
 /// <summary>
 /// The game's own save contract, read from the assembly rather than assumed: every

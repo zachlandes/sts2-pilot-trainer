@@ -117,7 +117,7 @@ public sealed class RunRecorderTests
     public void EveryChoiceEntryPointOnThisBuildIsWatchedOrExcusedByName()
     {
         var entryPoints = ChoiceEntryPoints.All();
-        var patched = ChoiceEntryPoints.Patched();
+        var patched = RecorderPatches.Patched();
         var bySignature = entryPoints.ToDictionary(ChoiceEntryPoints.Signature, StringComparer.Ordinal);
 
         var problems = new List<string>();

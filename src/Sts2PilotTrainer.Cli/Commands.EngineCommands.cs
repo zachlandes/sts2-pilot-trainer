@@ -1,3 +1,4 @@
+using System.Globalization;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 
@@ -49,6 +50,16 @@ internal static partial class Commands
         }
 
         var problems = EngineCommands.Verify().ToList();
+
+        // What the build offers as well as what the table names: the denominator the
+        // coverage number counts against, per kind
+        Console.WriteLine();
+        Console.WriteLine("decision points this build offers (./scripts/arbiter coverage counts recordings against them):");
+        foreach (var kind in DecisionKinds.All)
+        {
+            Console.WriteLine(
+                $"  {kind,-24} {DecisionSurface.Identities(kind).Count.ToString(CultureInfo.InvariantCulture),3}");
+        }
 
         Console.WriteLine();
         Console.WriteLine("restored retail branches (docs/headless-fidelity.md):");

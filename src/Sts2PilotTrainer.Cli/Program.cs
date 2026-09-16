@@ -25,6 +25,7 @@ internal static class Program
             {
                 "gate" => Commands.Gate(args[1..]),
                 "parity" => Commands.Parity(args[1..]),
+                "coverage" => Commands.Coverage(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
                 "engine-commands" => Commands.EngineCommandsCommand(args[1..]),
                 "migrate-manifest" => Commands.MigrateManifest(args[1..]),
@@ -94,6 +95,16 @@ internal static class Program
               a journal this build does not read, a video reconstruction) counted in
               the denominator rather than either way. Exit 0 only when every
               recording with a journal is at parity and every integrity is complete.
+
+          coverage        --corpus <dir> [--corpus <dir> ...] [--out <dir>] [--update]
+              The recorder's other number: for every decision point this build can
+              offer - every verb, reward kind, card-reward alternative, shop shelf,
+              rest option, event and prompt entry point, walked off the game assembly
+              rather than written by anybody - how many recordings in the corpus
+              exercise it. Every point is printed by name with its count, its written
+              excusal, or the reason this format cannot count it. Exit 0 only when no
+              point is uncovered. --update rewrites scripts/decision-coverage.txt,
+              the committed record of the denominator on this build.
 
           validate        <manifest> [--show-rejections]
               Check a manifest's structure and its account of where the recording came

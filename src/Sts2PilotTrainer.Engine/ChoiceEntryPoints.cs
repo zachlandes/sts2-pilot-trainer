@@ -4,22 +4,19 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
-using Sts2PilotTrainer.Engine;
-using Sts2PilotTrainer.Mod;
 
-namespace Sts2PilotTrainer.Arbiter.Tests;
+namespace Sts2PilotTrainer.Engine;
 
 /// <summary>
 /// The game's own player-choice entry points and who reaches them, read from the game
 /// assembly's IL rather than from a list anybody writes.
 ///
 /// Three questions <c>RunRecorderTests</c> asks of a build, all of them about whether
-/// the funnel <see cref="CardPrompts"/> is built on still holds: which public members
+/// the funnel the recorder's <c>CardPrompts</c> is built on still holds: which public members
 /// of <see cref="CardSelectCmd"/> and <see cref="RelicSelectCmd"/> hand back a chosen
 /// card, cards or relic; which method bodies anywhere in the game create or show a
 /// card-selection screen, or put the hand into its selection mode; and which model
@@ -81,32 +78,15 @@ internal static class ChoiceEntryPoints
             .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
             .Where(method => ReturnsAChoice(method.ReturnType))
             .OrderBy(method => method.DeclaringType!.Name, StringComparer.Ordinal)
-            .ThenBy(CardPrompts.Signature, StringComparer.Ordinal)
+            .ThenBy(EntryPointSignature.Of, StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>An entry point named the way <see cref="CardPrompts.Forwarders"/> names one.</summary>
-    internal static string Signature(MethodBase method) => CardPrompts.Signature(method);
+    /// <summary>An entry point named the way the recorder's forwarder table names one.</summary>
+    internal static string Signature(MethodBase method) => EntryPointSignature.Of(method);
 
     /// <summary>The same, with the declaring type in front.</summary>
     internal static string QualifiedSignature(MethodBase method) =>
         $"{method.DeclaringType!.Name}.{Signature(method)}";
-
-    /// <summary>
-    /// Every method a Harmony patch class in the shell or the recorder attaches to,
-    /// resolved on this build. A class whose targets are computed rather than declared
-    /// contributes nothing, which is correct for the question asked here: none of those
-    /// are entry points.
-    /// </summary>
-    internal static IReadOnlySet<MethodBase> Patched() =>
-        RunRecorder.PatchClasses
-            .Concat(CardScreensUp.PatchClasses)
-            .Concat(CardPrompts.PatchClasses)
-            .SelectMany(patchClass => patchClass
-                .GetCustomAttributes(typeof(HarmonyPatch), inherit: false)
-                .OfType<HarmonyPatch>()
-                .Select(attribute => Resolve(attribute.info)))
-            .OfType<MethodBase>()
-            .ToHashSet();
 
     /// <summary>
     /// The entry points a method's own body calls - the body, its async state machine's
@@ -292,6 +272,56 @@ internal static class ChoiceEntryPoints
     }
 
     /// <summary>
+    /// Every string literal a body loads, in the order it loads them: the same walk
+    /// over the same opcode table, reading <c>ldstr</c> tokens where the callee walk
+    /// reads call tokens. Refuses rather than answers where the body cannot be read,
+    /// because a walk that names a decision's identities off a body it read half of
+    /// would be a denominator with a hole nobody could see.
+    /// </summary>
+    internal static IReadOnlyList<string> StringLiterals(MethodBase method) =>
+        OperandsOf(method).Select(operand => operand.Literal).OfType<string>().ToList();
+
+    /// <summary>
+    /// The literal each construction of <paramref name="constructed"/> in a body is
+    /// named with: the last string loaded before each <c>newobj</c> of that type, in
+    /// order. How an id is read off a body that writes <c>new Thing("ID", ...)</c>
+    /// without executing it, and without taking every other literal the body loads -
+    /// an exception message, a log line - for an id.
+    /// </summary>
+    internal static IReadOnlyList<string> LiteralsConstructing(MethodBase method, Type constructed)
+    {
+        var named = new List<string>();
+        string? last = null;
+        foreach (var operand in OperandsOf(method))
+        {
+            if (operand.Literal is { } literal) last = literal;
+            if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
+                callee.DeclaringType == constructed && last is not null)
+            {
+                named.Add(last);
+            }
+        }
+
+        return named;
+    }
+
+    private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
+    {
+        if (!TryReadOperands(method, out var operands))
+        {
+            throw new InvalidOperationException(
+                $"{method.DeclaringType?.FullName}.{method.Name} could not be read whole against the vendored " +
+                "stubs, so what it loads cannot be enumerated.");
+        }
+
+        return operands;
+    }
+
+    /// <summary>One operand a body's instruction carries: a method token resolved, a
+    /// string token resolved, and whether the instruction constructs.</summary>
+    private sealed record Operand(MethodBase? Callee, string? Literal, bool IsConstruction);
+
+    /// <summary>
     /// The member the game's author wrote, for a method the compiler wrote on their
     /// behalf: an async state machine's <c>MoveNext</c> resolves to the method that
     /// declares the state machine, and a lambda to the method whose body takes its
@@ -323,17 +353,6 @@ internal static class ChoiceEntryPoints
         if (inner == typeof(CardModel) || inner == typeof(RelicModel)) return true;
         return inner.IsGenericType && inner.GetGenericTypeDefinition() == typeof(IEnumerable<>)
                && inner.GetGenericArguments()[0] == typeof(CardModel);
-    }
-
-    private static MethodBase? Resolve(HarmonyMethod patch)
-    {
-        if (patch.declaringType is null) return null;
-        if (patch.methodType == MethodType.Constructor || patch.methodName is null)
-        {
-            return AccessTools.Constructor(patch.declaringType, patch.argumentTypes);
-        }
-
-        return AccessTools.Method(patch.declaringType, patch.methodName, patch.argumentTypes);
     }
 
     private static Type Outermost(Type type)
@@ -482,7 +501,14 @@ internal static class ChoiceEntryPoints
     /// </summary>
     private static bool TryReadCallees(MethodBase method, out List<MethodBase> callees)
     {
-        callees = [];
+        var readable = TryReadOperands(method, out var operands);
+        callees = operands.Select(operand => operand.Callee).OfType<MethodBase>().ToList();
+        return readable;
+    }
+
+    private static bool TryReadOperands(MethodBase method, out List<Operand> operands)
+    {
+        operands = [];
         byte[]? il;
         try
         {
@@ -519,7 +545,9 @@ internal static class ChoiceEntryPoints
             {
                 try
                 {
-                    callees.Add(module.ResolveMethod(BitConverter.ToInt32(il, at), typeArguments, methodArguments)!);
+                    operands.Add(new Operand(
+                        module.ResolveMethod(BitConverter.ToInt32(il, at), typeArguments, methodArguments)!,
+                        null, op == OpCodes.Newobj));
                 }
 #pragma warning disable CA1031
                 catch (Exception)
@@ -527,6 +555,10 @@ internal static class ChoiceEntryPoints
                     readable = false;
                 }
 #pragma warning restore CA1031
+            }
+            else if (op.OperandType is OperandType.InlineString)
+            {
+                operands.Add(new Operand(null, module.ResolveString(BitConverter.ToInt32(il, at)), false));
             }
 
             at += operandSize;
