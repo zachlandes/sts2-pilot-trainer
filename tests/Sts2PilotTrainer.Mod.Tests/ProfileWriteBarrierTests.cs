@@ -413,27 +413,61 @@ public sealed class ProfileWriteBarrierTests
             recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!.ToString());
     }
 
+    /// <summary>
+    /// Save and Quit, Abandon Run and the game's own teardown all reach the clean-up
+    /// patch while the fight is still being fought, and none of them asked to see a
+    /// result. The first build queued the "left before it ended" notice from here and
+    /// showed it over the main menu after a Save and Quit; this holds the teardown to
+    /// releasing the run and queuing nothing.
+    /// </summary>
     [BarrierFact]
-    public void LeavingATrainerFightQueuesItsResultAndLowersTheBarrier()
+    public void SavingAndQuittingATrainerFightQueuesNoResultAndLowersTheBarrier()
     {
         var barrier = BarrierType();
         var recordedRun = barrier.Assembly.GetType("Sts2PilotTrainer.Mod.RecordedFightRun")!;
         var phase = recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!;
-
-        // Set through the field the phase is held in rather than through the property.
-        // The phase enum lives in the Trainer assembly and a static field of a sibling
-        // assembly's value type takes the whole mod down at load, so the mod holds it
-        // as a number and reads it back as a cast. See RecordedFightRun._phase.
-        var phaseField = recordedRun.GetField("_phase", BindingFlags.Static | BindingFlags.NonPublic)!;
         var teardown = recordedRun.GetNestedType("TrainerRunTeardown", BindingFlags.NonPublic)!;
         var pendingResult = recordedRun.GetField(
             "_resultAfterMainMenu", BindingFlags.Static | BindingFlags.NonPublic)!;
 
         barrier.GetMethod("Raise", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-        phaseField.SetValue(null, (int)Enum.Parse(phase.PropertyType, "InFight"));
+        PhaseField(recordedRun).SetValue(null, (int)Enum.Parse(phase.PropertyType, "InFight"));
         try
         {
             teardown.GetMethod("AfterRunEnds", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+
+            Assert.Null(pendingResult.GetValue(null));
+            Assert.False((bool)barrier.GetProperty(
+                "IsActive", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!);
+            Assert.Equal("None", phase.GetValue(null)!.ToString());
+        }
+        finally
+        {
+            pendingResult.SetValue(null, null);
+            recordedRun.GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        }
+    }
+
+    /// <summary>
+    /// The one route to that notice is the player's own Jump to the end, whose handler
+    /// queues it before it tears the run down. Without a game there is no run to clean
+    /// up and no menu to return to, so this holds the handler alone to queuing the
+    /// notice and finishing the journey.
+    /// </summary>
+    [BarrierFact]
+    public void JumpingToTheEndIsTheOneRouteToTheLeftNotice()
+    {
+        var barrier = BarrierType();
+        var recordedRun = barrier.Assembly.GetType("Sts2PilotTrainer.Mod.RecordedFightRun")!;
+        var phase = recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var pendingResult = recordedRun.GetField(
+            "_resultAfterMainMenu", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        barrier.GetMethod("Raise", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        PhaseField(recordedRun).SetValue(null, (int)Enum.Parse(phase.PropertyType, "InFight"));
+        try
+        {
+            recordedRun.GetMethod("LeaveTheFightNow", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
 
             var screen = Assert.IsType<FightResultScreen>(pendingResult.GetValue(null));
             Assert.Equal(TrainerCopy.LeftNote, screen.Notice);
@@ -448,6 +482,13 @@ public sealed class ProfileWriteBarrierTests
             recordedRun.GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
         }
     }
+
+    // Set through the field the phase is held in rather than through the property.
+    // The phase enum lives in the Trainer assembly and a static field of a sibling
+    // assembly's value type takes the whole mod down at load, so the mod holds it
+    // as a number and reads it back as a cast. See RecordedFightRun._phase.
+    private static FieldInfo PhaseField(Type recordedRun) =>
+        recordedRun.GetField("_phase", BindingFlags.Static | BindingFlags.NonPublic)!;
 
     private static class WriteBoundary
     {

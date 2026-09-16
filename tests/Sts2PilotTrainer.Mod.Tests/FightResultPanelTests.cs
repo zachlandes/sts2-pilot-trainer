@@ -317,8 +317,13 @@ public sealed class FightResultPanelTests
         Assert.Equal(19, panel.Done.GetThemeFontSize("font_size", "Button"));
     }
 
+    /// <summary>
+    /// The notice a fight left before it ended gets when the player asks for it by
+    /// Jump to the end - the only route that draws it; a fight left through the
+    /// game's own menu draws nothing, which RecordedFightRun's teardown test holds.
+    /// </summary>
     [Fact]
-    public void AFightWithNoComparisonIsTheNoticeAndTheButton()
+    public void AFightLeftByJumpingToTheEndIsTheNoticeAndTheButton()
     {
         var panel = Build(FightResultScreen.Left());
 
