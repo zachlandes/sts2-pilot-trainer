@@ -61,8 +61,8 @@ internal static partial class Commands
                     standard =
                         "Every recording with a journal this build reads replays through the real engine to " +
                         "the journal's own sample and complete digest either side of every decision, and " +
-                        "every recording's integrity is complete. A recording without a journal is counted " +
-                        "in the denominator and holds nothing.",
+                        "every recording's integrity is complete. A recording without a journal, or whose " +
+                        "continuity is broken, is counted in the denominator and holds nothing.",
                     corpus = corpora.Count > 0 ? corpora.Select(Paths.Display).ToList() : null,
                     at_parity = summary.Holds,
                     summary,
@@ -77,8 +77,15 @@ internal static partial class Commands
     /// <summary>One recording, replayed here: the shape a corpus run spawns per recording.</summary>
     private static ParityEntry ParityOfOne(string manifestPath, string? journalArg, bool print)
     {
-        var journalPath = journalArg ?? JournalBeside(manifestPath);
-        var classified = Classify(manifestPath, File.Exists(journalPath) ? journalPath : null);
+        if (journalArg is not null && !File.Exists(journalArg))
+        {
+            throw new ManifestException(
+                $"Journal '{journalArg}' does not exist. Name a journal that is on hand, or leave --journal off " +
+                "to read the manifest's own sibling where there is one.");
+        }
+
+        var sibling = JournalBeside(manifestPath);
+        var classified = Classify(manifestPath, journalArg ?? (File.Exists(sibling) ? sibling : null));
         var entry = classified.Entry;
         if (entry.Status == ParityStatus.Comparable)
         {
@@ -150,6 +157,16 @@ internal static partial class Commands
                          (native.Unmapped is { Count: > 0 } unmapped
                              ? $": {ManifestValidator.Describe(unmapped[0])}"
                              : ""),
+            });
+        }
+
+        if (string.Equals(native.Continuity, NativeSource.BrokenContinuity, StringComparison.Ordinal))
+        {
+            return new Classified(entry with
+            {
+                Status = ParityStatus.Continuity,
+                Detail = $"continuity is '{native.Continuity}', so the recorder stopped watching this run and " +
+                         "started again; a journal with a hole in it is not held to a replay",
             });
         }
 
@@ -242,9 +259,10 @@ internal static partial class Commands
         if (classified.Status != ParityStatus.Comparable) return classified;
 
         var childOut = Path.Combine(outDir, "parity", classified.RunId);
+        var childArtifact = Path.Combine(childOut, "parity.json");
+        if (File.Exists(childArtifact)) File.Delete(childArtifact);
         var child = SelfProcess.Run(
             "parity", recording.ManifestPath, "--journal", recording.JournalPath!, "--out", childOut);
-        var childArtifact = Path.Combine(childOut, "parity.json");
         if (!File.Exists(childArtifact))
         {
             Console.Error.Write(child.StandardError);
@@ -289,6 +307,10 @@ internal static partial class Commands
         JournalUnreadable,
         NotNative,
         Integrity,
+
+        /// <summary>A recording the recorder stopped watching and picked up again;
+        /// counted, never held, because the journal cannot account for the run.</summary>
+        Continuity,
         Refused,
     }
 
@@ -336,6 +358,7 @@ internal static partial class Commands
             ParityStatus.JournalUnreadable => "unread",
             ParityStatus.NotNative => "not native",
             ParityStatus.Integrity => "INTEGRITY",
+            ParityStatus.Continuity => "broken",
             ParityStatus.Refused => "REFUSED",
             _ => Status.ToString(),
         };
@@ -351,6 +374,7 @@ internal static partial class Commands
             ParityStatus.JournalUnreadable => $"JOURNAL NOT READ - {Detail}",
             ParityStatus.NotNative => $"NOT COMPARED - {Detail}",
             ParityStatus.Integrity => $"INTEGRITY - {Detail}",
+            ParityStatus.Continuity => $"NOT COMPARED - {Detail}",
             ParityStatus.Refused => $"REFUSED - {Detail}",
             _ => Detail,
         };
@@ -375,6 +399,7 @@ internal static partial class Commands
         [property: JsonPropertyName("without_journal")] int WithoutJournal,
         [property: JsonPropertyName("journal_unreadable")] int JournalUnreadable,
         [property: JsonPropertyName("integrity_not_complete")] int IntegrityNotComplete,
+        [property: JsonPropertyName("continuity_broken")] int ContinuityBroken,
         [property: JsonPropertyName("refused")] int Refused,
         [property: JsonPropertyName("not_native")] int NotNative)
     {
@@ -389,6 +414,7 @@ internal static partial class Commands
                 entries.Count(entry => entry.Status == ParityStatus.NoJournal),
                 entries.Count(entry => entry.Status == ParityStatus.JournalUnreadable),
                 entries.Count(entry => entry.Status == ParityStatus.Integrity),
+                entries.Count(entry => entry.Status == ParityStatus.Continuity),
                 entries.Count(entry => entry.Status == ParityStatus.Refused),
                 entries.Count(entry => entry.Status == ParityStatus.NotNative));
 
@@ -400,6 +426,7 @@ internal static partial class Commands
                          $"{n(WithoutJournal)} without a journal, " +
                          $"{n(JournalUnreadable)} with a journal it cannot read, " +
                          $"{n(IntegrityNotComplete)} with an integrity other than complete, " +
+                         $"{n(ContinuityBroken)} with a broken continuity, " +
                          $"{n(Refused)} refused; {n(NotNative)} not native)";
             yield return Holds
                 ? "AT PARITY - every recording with a journal replays decision for decision, and none is incomplete"

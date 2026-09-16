@@ -151,6 +151,128 @@ public sealed class ParityTests
         });
     }
 
+
+    /// <summary>
+    /// The corpus form over recordings that have a replay to run: each is replayed in
+    /// a child process and its answer read back from the child's artifact, so this is
+    /// the one place the round trip through that artifact runs. Three recordings under
+    /// three run ids - one at parity, one whose journal was edited, one whose continuity
+    /// the recorder marked broken - and the printed figure counts all three while the
+    /// broken one is neither replayed nor held against the bar.
+    /// </summary>
+    [GameFact]
+    public void ACorpusIsReplayedRecordingByRecordingInChildProcessesAndEachAnswerIsReadBack()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "corpus");
+            Directory.CreateDirectory(corpus);
+            var (manifestPath, journalPath) = RecordingWithAJournal(corpus);
+
+            const string divergedRun = "native-9F8CY60C5BK7-20260906-005738";
+            var divergedJournal = CopyUnder(manifestPath, journalPath, corpus, divergedRun);
+            var verb = Rewrite(divergedJournal, seq: 5, entry => entry["before"]!["player.hp"] = "1");
+
+            const string brokenRun = "native-9F8CY60C5BK7-20260906-005739";
+            var brokenManifest = Path.Combine(corpus, $"{brokenRun}{RecordingLibrary.ManifestExtension}");
+            CopyUnder(manifestPath, journalPath, corpus, brokenRun);
+            var broken = JsonNode.Parse(File.ReadAllText(brokenManifest))!;
+            broken["source"]!["native"]!["continuity"] = NativeSource.BrokenContinuity;
+            File.WriteAllText(brokenManifest, broken.ToJsonString());
+
+            var outDir = Path.Combine(directory, "evidence");
+            var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains($"PARITY     {ShortRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"DIVERGED   {divergedRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"decision 5 ({verb}) before: player.hp: 1 -> ", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"broken     {brokenRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "parity: 1 of 3 native recording(s) (2 with a journal this build reads, 0 without a journal, " +
+                "0 with a journal it cannot read, 0 with an integrity other than complete, 1 with a broken continuity, " +
+                "0 refused; 0 not native)",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
+
+            var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
+            Assert.False(artifact.GetProperty("at_parity").GetBoolean());
+            var summary = artifact.GetProperty("summary");
+            Assert.Equal(3, summary.GetProperty("native_recordings").GetInt32());
+            Assert.Equal(1, summary.GetProperty("at_parity").GetInt32());
+            Assert.Equal(1, summary.GetProperty("diverged").GetInt32());
+            Assert.Equal(1, summary.GetProperty("continuity_broken").GetInt32());
+
+            var recordings = artifact.GetProperty("recordings").EnumerateArray().ToList();
+            Assert.Equal(
+                [ShortRun, divergedRun, brokenRun],
+                recordings.Select(recording => recording.GetProperty("run_id").GetString()));
+            Assert.Equal(
+                ["parity", "diverged", "continuity"],
+                recordings.Select(recording => recording.GetProperty("status").GetString()));
+            Assert.Equal(51, recordings[0].GetProperty("decisions").GetInt32());
+            Assert.Equal(51, recordings[0].GetProperty("replayed_decisions").GetInt32());
+            var divergence = recordings[1].GetProperty("divergence");
+            Assert.Equal(5, divergence.GetProperty("seq").GetInt32());
+            Assert.Equal(verb, divergence.GetProperty("verb").GetString());
+            Assert.False(divergence.GetProperty("hidden_state_only").GetBoolean());
+            Assert.StartsWith("player.hp: 1 -> ", divergence.GetProperty("differences")[0].GetString(), StringComparison.Ordinal);
+            Assert.False(recordings[2].TryGetProperty("divergence", out _));
+            Assert.False(Directory.Exists(Path.Combine(outDir, "parity", brokenRun)));
+        });
+    }
+
+    /// <summary>A stale child artifact is never a verdict: the parent clears it before
+    /// the child runs, so a child that dies before writing leaves nothing to read as
+    /// the previous run's answer.</summary>
+    [GameFact]
+    public void AChildThatWritesNoArtifactIsRefusedRatherThanReadFromTheLastRun()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "corpus");
+            Directory.CreateDirectory(corpus);
+            RecordingWithAJournal(corpus);
+            var outDir = Path.Combine(directory, "evidence");
+
+            var first = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
+            Assert.True(first.Verified, first.All);
+            var childArtifact = Path.Combine(outDir, "parity", ShortRun, "parity.json");
+            Assert.True(File.Exists(childArtifact));
+
+            var second = Arbiter.RunWithEnvironment(
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE"] = "parity-child",
+                },
+                "parity", "--corpus", corpus, "--out", outDir);
+
+            Assert.False(second.Verified, second.All);
+            Assert.Contains($"REFUSED    {ShortRun}", second.Output, StringComparison.Ordinal);
+            Assert.Contains("exited 1 without writing its result", second.Output, StringComparison.Ordinal);
+            Assert.Contains("Required engine initialization failed", second.All, StringComparison.Ordinal);
+            Assert.DoesNotContain($"PARITY     {ShortRun}", second.Output, StringComparison.Ordinal);
+            Assert.False(File.Exists(childArtifact));
+        });
+    }
+
+    [GameFact]
+    public void AnExplicitJournalThatDoesNotExistIsRefusedRatherThanReadAsNone()
+    {
+        InScratch(directory =>
+        {
+            var (manifestPath, _) = RecordingWithAJournal(directory);
+            var missing = Path.Combine(directory, "typo.journal.jsonl");
+
+            var result = Arbiter.Run(
+                "parity", manifestPath, "--journal", missing, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains($"Journal '{missing}' does not exist", result.All, StringComparison.Ordinal);
+            Assert.DoesNotContain("NO JOURNAL", result.Output, StringComparison.Ordinal);
+        });
+    }
+
     /// <summary>
     /// The committed short recording and a journal its own fresh replay would have
     /// written: the replay's trace, every reading and both digests, recorded through
@@ -200,6 +322,18 @@ public sealed class ParityTests
         File.Copy(source, manifestPath);
         File.WriteAllText(journalPath, capture.Journal.Render());
         return (manifestPath, journalPath);
+    }
+
+
+    /// <summary>The same recording under another run id, manifest and journal both,
+    /// so a scratch corpus can hold it twice without the child artifacts colliding.</summary>
+    private static string CopyUnder(string manifestPath, string journalPath, string directory, string runId)
+    {
+        var manifestCopy = Path.Combine(directory, $"{runId}{RecordingLibrary.ManifestExtension}");
+        var journalCopy = Path.Combine(directory, $"{runId}{RunJournal.FileExtension}");
+        File.WriteAllText(manifestCopy, File.ReadAllText(manifestPath).Replace(ShortRun, runId, StringComparison.Ordinal));
+        File.WriteAllText(journalCopy, File.ReadAllText(journalPath).Replace(ShortRun, runId, StringComparison.Ordinal));
+        return journalCopy;
     }
 
     /// <summary>Edits one decision's line in place and returns its verb.</summary>
