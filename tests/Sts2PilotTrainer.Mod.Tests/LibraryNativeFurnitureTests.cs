@@ -159,7 +159,7 @@ public sealed class LibraryNativeFurnitureTests
             CardCaption: NativeScenes.DesignSize(RoleScene(NativeTextRole.CardCaption), RoleNode(NativeTextRole.CardCaption)),
             Numeral: NativeScenes.DesignSize(RoleScene(NativeTextRole.FloorNumeral), RoleNode(NativeTextRole.FloorNumeral)),
             Body: NativeScenes.DesignSize(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody)),
-            Ribbon: NativeScenes.Vector2(NativeScenes.RootProperties(RoleScene(NativeTextRole.ButtonCaption))!["custom_minimum_size"]).Y,
+            Ribbon: Ribbon(NativeScenes.Vector2(NativeScenes.RootProperties(RoleScene(NativeTextRole.ButtonCaption))!["custom_minimum_size"])),
             BodyTop: float.Parse(
                 NativeScenes.Properties(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody))!["offset_top"],
                 System.Globalization.CultureInfo.InvariantCulture),
@@ -169,6 +169,8 @@ public sealed class LibraryNativeFurnitureTests
         Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
         LibraryPaneArtTests.AssertMinePaneFits(sizes);
     }
+
+    private static Vector2 Ribbon((float X, float Y) size) => new(size.X, size.Y);
 
     /// <summary>The holder's box and its icon's side, read the way
     /// <see cref="RelicHolderArt"/> reads the live scene: the root's minimum size, less

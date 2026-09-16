@@ -32,11 +32,14 @@ namespace Sts2PilotTrainer.Mod;
 /// <param name="ActReached">The recording-derived value under the Act reached column.</param>
 /// <param name="Trailing">What the row says at its right-hand end, in the teal that
 /// means "something you did": the Last floor replayed column.</param>
+/// <param name="Tooltip">The sentence behind the whole row on hover, or null. A
+/// refused plate ribbon says why it is refused here rather than under itself, because
+/// a ribbon at the pane's foot has no line under it to say anything in.</param>
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
     bool Pinned = false, string? MarkTooltip = null, LibraryGlyph? Glyph = null,
     bool Selected = false, string? ActReached = null, string? Trailing = null,
-    string? Character = null, bool Heading = false);
+    string? Character = null, bool Heading = false, string? Tooltip = null);
 
 /// <summary>One tab across the top band: the game's own settings tab.</summary>
 /// <param name="LockTooltip">The sentence behind the lock drawn over the tab, or null
@@ -57,9 +60,16 @@ internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
 /// <param name="Verdict">The eligibility green line. Null draws none.</param>
 /// <param name="Facts">Lines under the strip, in the supporting colour: what a fight
 /// is against, the health it starts at, the floor pane's one sentence.</param>
-/// <param name="Plate">The flat plate under the pane. Rows, drawn as ribbons.</param>
-/// <param name="Ribbon">The pane's own way forward - "Open the run" - or null.</param>
+/// <param name="Plate">The flat plate under the pane. Rows, drawn as ribbons side by
+/// side at the panel's own ribbon size.</param>
+/// <param name="Ribbon">The pane's own way forward - "Open the run" - or null. Drawn
+/// on the panel's own primary ribbon rather than in the pane, so the pane's room is
+/// the run's and the confirm key opens the run.</param>
 /// <param name="VerdictPassed">Whether the verdict is affirmative.</param>
+/// <param name="RelicPage">Which page of relic rows the pane shows where they do not
+/// all fit beside the strip; null is the first.</param>
+/// <param name="SelectRelicPage">Re-shows the screen at another relic page, or null
+/// where the pane cannot page them.</param>
 internal sealed record ScreenPane(
     string Heading,
     string? Subtitle,
@@ -74,7 +84,9 @@ internal sealed record ScreenPane(
     IReadOnlyList<string> Facts,
     IReadOnlyList<ScreenRow> Plate,
     ScreenRow? Ribbon,
-    bool VerdictPassed = true);
+    bool VerdictPassed = true,
+    int? RelicPage = null,
+    Action<int>? SelectRelicPage = null);
 
 /// <summary>
 /// What one library screen is: the band, the list, and the pane beside it.
@@ -267,6 +279,12 @@ internal static class LibraryScreen
             ReservePageRoom(content, page);
 
             ShareFields? share = null;
+            // The panel's primary ribbon is the pane's own way forward where the pane
+            // has one: "Open the run" on the confirm key, at the popup's foot, rather
+            // than a third ribbon in the pane taking the room the relics and the strip
+            // need. The way back then takes the cancel ribbon, as it does on the share
+            // form.
+            var forward = page.ShareSubmitted is null ? page.Pane?.Ribbon : null;
             content.InitYesButton(
                 PlaceholderConfirm,
                 _ =>
@@ -277,6 +295,10 @@ internal static class LibraryScreen
                             shownSurface, share.Name.Text, share.Description.Text,
                             share.DisplayName.Text, share.Consent.ButtonPressed);
                     }
+                    else if (forward is { } ribbon)
+                    {
+                        Callable.From(() => Press(ribbon)).CallDeferred();
+                    }
                     else if (page.Back is { } back)
                     {
                         Callable.From(() => Reopen(back)).CallDeferred();
@@ -286,8 +308,18 @@ internal static class LibraryScreen
                         Dismiss();
                     }
                 });
-            content.YesButton.SetText(page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit);
-            if (page.ShareSubmitted is null)
+            content.YesButton.SetText(
+                forward?.Label ?? (page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit));
+            if (forward is { Enabled: false } refused)
+            {
+                // Deferred, after the registration that setting IsYes deferred: the
+                // confirm key must not open a run the ribbon refuses
+                var yes = content.YesButton;
+                Callable.From(() => yes.DisconnectHotkeys()).CallDeferred();
+                Refuse(yes, refused.Reason);
+            }
+
+            if (page.ShareSubmitted is null && forward is null)
             {
                 content.HideNoButton();
             }
@@ -706,8 +738,12 @@ internal static class LibraryScreen
     /// Widened to the pane it is in rather than left at the ribbon's own width, because
     /// a list row carries a run's identity and a ribbon is sized for a word.
     /// </summary>
+    /// <param name="prototype">The panel ribbon to duplicate: its cancel ribbon, or
+    /// the primary one for a row that is not a refusal. Left at its own width where
+    /// <paramref name="width"/> is that width, so its art is the game's untouched.</param>
     internal static Control? AddRow(
-        NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width)
+        NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width,
+        NPopupYesNoButton? prototype = null)
     {
         if (row.Heading)
         {
@@ -715,7 +751,9 @@ internal static class LibraryScreen
             return null;
         }
 
-        var button = Duplicate(content, content.NoButton, name, width);
+        var source = prototype ?? content.NoButton;
+        var button = Duplicate(
+            content, source, name, Math.Abs(width - source.Size.X) < 0.5f ? null : width);
         if (button is null) return null;
 
         button.Position = at;
@@ -753,14 +791,10 @@ internal static class LibraryScreen
         }
         else
         {
-            // Refused rows keep their place and their reason and take no input.
-            // Absent is the only state that hides a row here, and a row that is
-            // there is a row a player has been told about.
-            button.Modulate = new Color(1f, 1f, 1f, 0.45f);
-            button.MouseFilter = Control.MouseFilterEnum.Ignore;
-            button.FocusMode = Control.FocusModeEnum.None;
+            Refuse(button, row.Tooltip);
         }
 
+        if (row.Enabled && row.Tooltip is { Length: > 0 } hover) AddHover(button, hover);
         if (row.Character is { Length: > 0 } character) AddCharacterPortrait(button, character);
         if (row.Selected) AddSelectionRing(button);
         if (SupportingText(row) is { } supporting) AddNote(content, button, supporting);
@@ -769,6 +803,37 @@ internal static class LibraryScreen
         if (row.Glyph is { } glyph) AddGlyph(button, glyph, LibraryPalette.Muted);
         if (row.MarkTooltip is { Length: > 0 } tooltip) AddMark(button, tooltip);
         return button;
+    }
+
+    /// <summary>
+    /// A refused ribbon keeps its place and takes no input. Absent is the only state
+    /// that hides a row here, and a row that is there is a row a player has been told
+    /// about - by the line under it where it has one, and by the sentence on hover
+    /// where it has not.
+    /// </summary>
+    private static void Refuse(Control button, string? tooltip)
+    {
+        button.Modulate = new Color(1f, 1f, 1f, 0.45f);
+        button.MouseFilter = Control.MouseFilterEnum.Ignore;
+        button.FocusMode = Control.FocusModeEnum.None;
+        if (tooltip is { Length: > 0 } sentence) AddHover(button, sentence);
+    }
+
+    /// <summary>
+    /// The sentence behind a ribbon on hover, on a clear control over it rather than on
+    /// the ribbon: a refused ribbon ignores the mouse so it cannot light up, and a
+    /// tooltip needs a control that does not.
+    /// </summary>
+    private static void AddHover(Control button, string tooltip)
+    {
+        button.AddChild(new Control
+        {
+            Name = $"{button.Name}Hover",
+            Position = Vector2.Zero,
+            Size = button.Size,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            TooltipText = tooltip,
+        });
     }
 
     /// <summary>Keeps a refusal's reason under the row rather than shrinking its action.</summary>
