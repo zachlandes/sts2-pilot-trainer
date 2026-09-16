@@ -189,7 +189,7 @@ public sealed class ParityTests
             Assert.Contains($"decision 5 ({verb}) before: player.hp: 1 -> ", result.Output, StringComparison.Ordinal);
             Assert.Contains($"broken     {brokenRun}", result.Output, StringComparison.Ordinal);
             Assert.Contains(
-                "parity: 1 of 3 native recording(s) (2 with a journal this build reads, 0 without a journal, " +
+                "parity: 1 of 3 native recording(s) (2 compared, 0 without a journal, " +
                 "0 with a journal it cannot read, 0 with an integrity other than complete, 1 with a broken continuity, " +
                 "0 refused; 0 not native)",
                 result.Output, StringComparison.Ordinal);

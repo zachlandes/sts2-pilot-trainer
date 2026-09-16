@@ -307,7 +307,7 @@ public sealed class RunCapture
             "which run it began watching.");
 
         var sample = ReplayTrace.Sample(start.State);
-        if (InCombat(sample))
+        if (ReplayStep.InALiveFight(sample))
         {
             throw new ManifestException(
                 "This run is already in a fight, so the recorder did not see it begin. A history recorded from " +
@@ -1162,7 +1162,7 @@ public sealed class RunCapture
     {
         if (_fight is null)
         {
-            if (!InCombat(after)) return;
+            if (!ReplayStep.InALiveFight(after)) return;
 
             _fight = FightCapture.Begin(
                 $"{FightSourceIdPrefix}{(_fights.Count + 1).ToString(CultureInfo.InvariantCulture)}",
@@ -1315,11 +1315,6 @@ public sealed class RunCapture
     {
         if (!condition) throw new ManifestException(refusal);
     }
-
-    private const string InProgress = "in_progress";
-
-    private static bool InCombat(IReadOnlyDictionary<string, string> sample) =>
-        string.Equals(sample.GetValueOrDefault("combat.outcome", "none"), InProgress, StringComparison.Ordinal);
 
     private static int? Floor(IReadOnlyDictionary<string, string> sample) =>
         sample.TryGetValue("run.total_floor", out var value) &&

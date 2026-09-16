@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Cli;
@@ -266,7 +267,9 @@ internal static partial class Commands
         var classified = Classify(recording.ManifestPath, recording.JournalPath).Entry;
         if (classified.Status != ParityStatus.Comparable) return classified;
 
-        var childOut = Path.Combine(outDir, "parity", classified.RunId);
+        var childOut = WorktreePath.RequireChild(
+            Path.Combine(outDir, "parity"),
+            Path.GetFileName(recording.ManifestPath)[..^RecordingLibrary.ManifestExtension.Length]);
         var childArtifact = Path.Combine(childOut, "parity.json");
         if (File.Exists(childArtifact)) File.Delete(childArtifact);
         var child = SelfProcess.Run(
@@ -357,10 +360,6 @@ internal static partial class Commands
         [JsonPropertyName("replay_diagnostics")]
         public IReadOnlyList<string> ReplayDiagnostics { get; init; } = [];
 
-        /// <summary>Whether this recording counts against the bar.</summary>
-        [JsonIgnore]
-        public bool Fails => Status is ParityStatus.Diverged or ParityStatus.Integrity or ParityStatus.Refused;
-
         [JsonIgnore]
         internal string Mark => Status switch
         {
@@ -434,7 +433,7 @@ internal static partial class Commands
         {
             var n = (int value) => value.ToString(CultureInfo.InvariantCulture);
             yield return $"parity: {n(AtParity)} of {n(NativeRecordings)} native recording(s) " +
-                         $"({n(AtParity + Diverged)} with a journal this build reads, " +
+                         $"({n(AtParity + Diverged)} compared, " +
                          $"{n(WithoutJournal)} without a journal, " +
                          $"{n(JournalUnreadable)} with a journal it cannot read, " +
                          $"{n(IntegrityNotComplete)} with an integrity other than complete, " +
