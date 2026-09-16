@@ -11,6 +11,8 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        ParentProcess.WatchIfStartedByOne();
+
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
             Usage();
