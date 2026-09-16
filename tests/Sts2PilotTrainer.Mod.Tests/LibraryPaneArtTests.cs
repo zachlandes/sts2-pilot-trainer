@@ -160,7 +160,8 @@ public sealed class LibraryPaneArtTests
             Assert.Equal(1, layout.RelicPage.Pages);
         }
 
-        Assert.Equal(pane.Height - pane.Ribbon.Y, roomy.PlateTop!.Value, 3);
+        Assert.Equal(pane.Height - LibraryPaneArt.PlateHeight(2, pane.Ribbon.Y), roomy.PlateTop!.Value, 3);
+        Assert.True(roomy.PlateTop.Value + pane.Ribbon.Y < pane.Height, "air under the plate before the panel's own ribbon");
     }
 
     /// <summary>
@@ -337,7 +338,7 @@ public sealed class LibraryPaneArtTests
         Assert.Equal(0f, columns[0]);
         Assert.Equal(pane.Width - pane.Ribbon.X, columns[1], 3);
         Assert.True(columns[1] >= pane.Ribbon.X, "the ribbons do not overlap");
-        Assert.Equal(pane.Ribbon.Y, LibraryPaneArt.PlateHeight(2, pane.Ribbon.Y));
+        Assert.Equal(pane.Ribbon.Y * (1f + LibraryPaneArt.PlateAir), LibraryPaneArt.PlateHeight(2, pane.Ribbon.Y), 3);
         Assert.Empty(LibraryPaneArt.PlateColumns(0, pane.Width, pane.Ribbon.X));
         Assert.Throws<InvalidOperationException>(() => LibraryPaneArt.PlateColumns(3, pane.Width, pane.Ribbon.X));
     }

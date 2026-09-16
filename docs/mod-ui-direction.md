@@ -219,7 +219,7 @@ The played tick is the mod's own, filled and on a disc, hung off the icon's top-
 `LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.
 
 **The pane is measured against its room, and the plate keeps the bottom.**
-`LibraryPaneArt.Lay` is the one place the pane's parts are placed against each other: the identity over the relic rows, the deck count on the first row's line, the strip under them, the facts and the verdict under it, and the plate's ribbons at the pane's foot, side by side at the panel's own ribbon size, the first at the pane's left edge and the last at its right.
+`LibraryPaneArt.Lay` is the one place the pane's parts are placed against each other: the identity over the relic rows, the deck count on the first row's line, the strip under them, the facts and the verdict under it, and the plate's ribbons at the pane's foot, side by side at the panel's own ribbon size, the first at the pane's left edge and the last at its right, with `PlateAir` under them so the last is not flush against the panel's own primary ribbon below.
 The pane's own way forward - "Open the run" - is not in the pane at all: it is the panel's primary ribbon, on the confirm key, and the way back takes the cancel ribbon beside it; a third ribbon stacked in the pane was the room the relics and the strip needed.
 Two parts give, in order.
 The relic rows give first and never in size: the pane draws as many rows as fit beside the strip at the game's own marker and pages the rest behind the run-history screen's own arrows in the first and last place of the page, exactly as the strip pages its floors, so every relic is a page away at the holder's own size and nothing is scrolled or clipped.
@@ -229,7 +229,7 @@ The popup is the game's own 16:9 canvas tall and cannot grow, so the room is wha
 `LibraryScreen.RibbonTop`, `BodyRoom` and `BandBottom` are those three placements, and the client and the fit tests compose the same three, so the height a test holds the pane to is the height the client computes.
 Every line's height is `LibraryScreen.LineHeight`, wrapped in its font where there is one, so the height summed before drawing is the height drawn.
 Why a plate ribbon is refused - a rewound run's Submit - is that ribbon's own hover, through `ScreenRow.Tooltip`, never a third fact line, and a refused ribbon anywhere on this surface is the same `Refuse`: dimmed, out of the focus column, and saying why on hover where it has no line under it.
-On v0.111.0 the Mine pane is 532 units, its plate 72, and beside the strip at the game's marker it holds three relic rows - sixteen relics with the deck count on the first row - before it pages.
+On v0.111.0 the Mine pane is 532 units, its plate 81, and beside the strip at the game's marker it holds two relic rows - ten relics with the deck count on the first row - before it pages.
 `LibraryPaneArtTests` hold the Mine and Community panes to that at v0.111.0's sizes with the strip at the game's marker at every relic count, and `LibraryNativeFurnitureTests` reads those sizes off the shipped scenes so the fit is held to the build rather than to numbers copied into a test.
 
 **The relic rows are the run-history screen's own flow.**

@@ -32,9 +32,10 @@ namespace Sts2PilotTrainer.Mod;
 /// <param name="ActReached">The recording-derived value under the Act reached column.</param>
 /// <param name="Trailing">What the row says at its right-hand end, in the teal that
 /// means "something you did": the Last floor replayed column.</param>
-/// <param name="Tooltip">The sentence behind the whole row on hover, or null. A
-/// refused plate ribbon says why it is refused here rather than under itself, because
-/// a ribbon at the pane's foot has no line under it to say anything in.</param>
+/// <param name="Tooltip">Why a refused row is refused, said on hover, or null. Read
+/// only where <c>Enabled</c> is false: a refused plate ribbon says it here rather than
+/// under itself, because a ribbon at the pane's foot has no line under it to say
+/// anything in, and an enabled row carries no hover.</param>
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
     bool Pinned = false, string? MarkTooltip = null, LibraryGlyph? Glyph = null,
@@ -310,15 +311,6 @@ internal static class LibraryScreen
                 });
             content.YesButton.SetText(
                 forward?.Label ?? (page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit));
-            if (forward is { Enabled: false } refused)
-            {
-                // Deferred, after the registration that setting IsYes deferred: the
-                // confirm key must not open a run the ribbon refuses
-                var yes = content.YesButton;
-                Callable.From(() => yes.DisconnectHotkeys()).CallDeferred();
-                Refuse(yes, refused.Reason);
-            }
-
             if (page.ShareSubmitted is null && forward is null)
             {
                 content.HideNoButton();
@@ -366,6 +358,17 @@ internal static class LibraryScreen
                 }
 
                 first ??= paneFocus;
+            }
+
+            // After the pane, whose plate ribbons are duplicates of this one: a
+            // refusal applied first would be copied into Share and Remove. Deferred
+            // after the registration that setting IsYes deferred, so the confirm key
+            // cannot open a run the ribbon refuses
+            if (forward is { Enabled: false } refused)
+            {
+                var yes = content.YesButton;
+                Callable.From(() => yes.DisconnectHotkeys()).CallDeferred();
+                Refuse(yes, refused.Reason);
             }
 
             var bodyFocus = first ?? share?.Name ?? (Control)content.YesButton;
@@ -794,7 +797,6 @@ internal static class LibraryScreen
             Refuse(button, row.Tooltip);
         }
 
-        if (row.Enabled && row.Tooltip is { Length: > 0 } hover) AddHover(button, hover);
         if (row.Character is { Length: > 0 } character) AddCharacterPortrait(button, character);
         if (row.Selected) AddSelectionRing(button);
         if (SupportingText(row) is { } supporting) AddNote(content, button, supporting);

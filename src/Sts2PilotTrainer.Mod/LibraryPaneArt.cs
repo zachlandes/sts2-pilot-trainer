@@ -100,6 +100,11 @@ internal static class LibraryPaneArt
     /// how the run-history screen's own flow lays its holders.</summary>
     private const float RelicRowSpace = 0.3f;
 
+    /// <summary>The air under the plate's ribbons before the panel's own, as a share
+    /// of a ribbon: the pane's foot is the panel's primary ribbon's top edge, and a
+    /// plate ribbon flush against it read as one ribbon stacked on another.</summary>
+    internal const float PlateAir = 0.12f;
+
     /// <summary>Clear space between the last relic on the first row and the deck
     /// count that shares its line, as a share of a relic's box.</summary>
     internal const float CountGapShare = 0.25f;
@@ -223,8 +228,9 @@ internal static class LibraryPaneArt
             plateRows == 0 ? null : height - plate);
     }
 
-    /// <summary>The plate's height: one row of ribbons side by side.</summary>
-    internal static float PlateHeight(int rows, float ribbon) => rows == 0 ? 0f : ribbon;
+    /// <summary>The plate's height: one row of ribbons side by side, and the air
+    /// under them.</summary>
+    internal static float PlateHeight(int rows, float ribbon) => rows == 0 ? 0f : ribbon * (1f + PlateAir);
 
     /// <summary>
     /// Where each of the plate's ribbons starts across the pane, at the ribbon's own
