@@ -160,17 +160,22 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 154
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 239 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 160
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 245 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 239.
+datum where it runs, so a run with the game reports more cases than 245.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
 only. A test that skips there and is broken inside is caught by the local gate, which
 runs everything.
+
+**Every engine run the command line makes is a fresh process, and none outlives the command that made it.**
+`SelfProcess` in `Sts2PilotTrainer.Cli` is the one place a child is started: a terminated parent kills every live child's tree before the signal ends it, and a child started there watches its parent through `ParentProcess` and stops when the parent is gone, because a parent killed outright never gets to say so.
+A gate stopped twelve seconds in once left its negative-controls child replaying for a quarter of an hour into the gate's evidence directory; `ChildProcessLifetimeTests` holds both halves against the real gate.
+Do not start a child of this tool any other way.
 
 **Read [docs/environment-identity.md](docs/environment-identity.md) before touching run setup or preflight.**
 Two fields on that list are there because a replay looked correct and was not: the act variant and the player's unlock state.

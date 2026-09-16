@@ -151,7 +151,7 @@ The same question a card reward asks, answered past the cards. The id names whic
 | `option_id` | required | non-empty string |
 | `option_index` | required | non-negative integer, canonical and within Int32 |
 
-`ICardSelector.GetSelectedCardReward`, answered rather than called. The same question a card reward asks, answered past the cards. The id names which alternative, because a build can reorder them. On this build every alternative ends the selection, so the record is the loot-screen decision itself rather than an answer that follows a TakeCard.
+`ICardSelector.GetSelectedCardReward`, answered rather than called. The same question a card reward asks, answered past the cards. The id names which alternative, because a build can reorder them. Every alternative this build records ends the selection - the loot screen's Skip leaves the reward unclaimed, a relic's alternative completes it - so the record is the loot-screen decision itself rather than an answer that follows a TakeCard.
 
 ## `SkipRewards`
 

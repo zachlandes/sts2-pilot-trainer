@@ -206,6 +206,45 @@ public sealed class ResidueVerbTests
             StringComparison.Ordinal);
     });
 
+    /// <summary>
+    /// What an alternative does to the reward is read off the alternative, as the
+    /// engine reads it. The loot screen's Skip ends the selection and leaves the reward
+    /// unclaimed, and is answered; the reroll keeps the selection open for an answer the
+    /// recorder never writes, and is refused by name with nothing answered, which is
+    /// the engine's own "declined" path out of the selection.
+    /// </summary>
+    [GameFact]
+    public void AnAlternativesEffectOnTheRewardIsTheAlternativesOwn() => HeadlessRuns.WithARun(session =>
+    {
+        var player = session.RunState.Players[0];
+        var options = player.Deck.Cards.Take(3).Select(card => new CardCreationResult(card)).ToList();
+        var alternatives = new List<CardRewardAlternative>
+        {
+            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
+            new("REROLL", () => Task.CompletedTask, PostAlternateCardRewardAction.DoNothing),
+        };
+
+        var selector = new ManifestCardSelector();
+        selector.Enqueue(new ManifestCardSelector.AlternativePick(1, "Skip", 3));
+        var skipped = selector.GetSelectedCardReward(options, alternatives);
+
+        Assert.Same(alternatives[0], skipped.alternative);
+        Assert.Same(alternatives[0], selector.AnsweredAlternative);
+        Assert.Null(selector.Refusal);
+
+        var refusing = new ManifestCardSelector();
+        refusing.Enqueue(new ManifestCardSelector.AlternativePick(2, "REROLL", 4));
+        var rerolled = refusing.GetSelectedCardReward(options, alternatives);
+
+        Assert.Null(rerolled.alternative);
+        Assert.Null(rerolled.card);
+        Assert.Null(refusing.AnsweredAlternative);
+        Assert.Contains(
+            "alternative 'REROLL', which keeps the reward's selection open on this build (DoNothing)",
+            refusing.Refusal,
+            StringComparison.Ordinal);
+    });
+
     // ── The Crystal Sphere's own screen ───────────────────────────────────
 
     /// <summary>The Crystal Sphere's screen is stood in for, its reveals go through

@@ -1,6 +1,7 @@
 using System.Globalization;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.TestSupport;
 
@@ -102,6 +103,21 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     /// <summary>Why the last selection could not be answered, if it could not be.</summary>
     internal string? Refusal { get; private set; }
+
+    /// <summary>
+    /// The alternative the last card reward was answered with, or null where the last
+    /// answer was a card or a refusal.
+    ///
+    /// Kept because what an alternative does to the reward is the alternative's own
+    /// business and not the driver's guess: the engine reads its
+    /// <see cref="CardRewardAlternative.AfterSelected"/> to decide whether the reward is
+    /// completed, left on the loot screen, or asked again, so the driver reads the same
+    /// field to decide what the engine's answer should have been. On this build the
+    /// loot screen's own Skip is an alternative that ends the selection and leaves the
+    /// reward unclaimed, and a driver that expected every alternative to complete the
+    /// reward refused a recording of a player declining a card.
+    /// </summary>
+    internal CardRewardAlternative? AnsweredAlternative { get; private set; }
 
     internal void Enqueue(CardAnswer answer) => _pending.Enqueue(answer);
 
@@ -253,6 +269,8 @@ internal sealed class ManifestCardSelector : ICardSelector
     public CardRewardSelection GetSelectedCardReward(
         IReadOnlyList<CardCreationResult> options, IReadOnlyList<CardRewardAlternative> alternatives)
     {
+        AnsweredAlternative = null;
+
         // An alternative is answered past the cards. The id names which one, because
         // a build can reorder them, and the index is the screen's own - the count of
         // cards offered plus the alternative's position - so both are checked.
@@ -286,6 +304,23 @@ internal sealed class ManifestCardSelector : ICardSelector
                 return default;
             }
 
+            // An alternative that keeps the selection open - the reroll - would have
+            // the engine ask this seam again for an answer the recorder never wrote,
+            // because it refuses a second answer to one reward. Refused here by name,
+            // and answered with nothing so the engine ends the selection rather than
+            // asking on: an answer of nothing is the engine's own "declined" path.
+            var afterSelected = alternatives[position].AfterSelected;
+            if (afterSelected is not (PostAlternateCardRewardAction.EndSelectionAndCompleteReward
+                or PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward))
+            {
+                Refuse(
+                    $"Action {alternative.Seq} answers a card reward with alternative '{alternative.OptionId}', " +
+                    $"which keeps the reward's selection open on this build ({afterSelected}). What was " +
+                    "answered after it is a decision this history has no record of.");
+                return default;
+            }
+
+            AnsweredAlternative = alternatives[position];
             return new CardRewardSelection { alternative = alternatives[position] };
         }
 

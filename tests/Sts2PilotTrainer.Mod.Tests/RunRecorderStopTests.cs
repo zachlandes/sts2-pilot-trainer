@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Reflection;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
@@ -520,6 +522,90 @@ public sealed class RunRecorderStopTests : IDisposable
             "The recorder met: member PlayCardAction (PlayCard) with card_id=CARD.BASH",
             problems, StringComparison.Ordinal);
         Assert.DoesNotContain("stopped and started again", problems, StringComparison.Ordinal);
+    }
+
+    // ── Whose answer a card reward's is ──────────────────────────────────────────
+
+    /// <summary>
+    /// A card reward's answer is the card-reward decision's and nobody else's. A
+    /// decision of another kind committed while one is on the shelf leaves it there
+    /// and writes nothing of it - the pump commits behind a settle, and the answer can
+    /// arrive while an earlier decision is still settling - and the card-reward
+    /// decision then takes it as its own verb and arguments.
+    /// </summary>
+    [GameFact]
+    public void ACardRewardsAnswerWaitsForTheCardRewardDecision()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var offered = ModelDb.AllCards.Take(3).ToList();
+        var alternatives = new List<CardRewardAlternative>
+        {
+            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
+        };
+
+        recorder.HoldCardRewardAnswer(offered, alternatives, 3);
+        recorder.Commit(
+            nameof(ActionVerb.ClaimReward), Args(("reward_type", "gold")),
+            Reading(Floor(2), Digest(1), 4200), Reading(Floor(2, hp: 60), Digest(2), 4600));
+        recorder.Commit(
+            nameof(ActionVerb.TakeCard), Args(),
+            Reading(Floor(2, hp: 60), Digest(2), 4700), Reading(Floor(2, hp: 60), Digest(2), 4900));
+
+        Assert.Null(capture.Stop);
+        Assert.Empty(capture.Refusals);
+        capture.Finish("abandoned");
+        var actions = capture.ToManifest().Actions;
+        Assert.Equal(
+            [ActionVerb.ChooseNeowBlessing, ActionVerb.ClaimReward, ActionVerb.TakeCardRewardAlternative],
+            actions.Select(action => action.Verb));
+        Assert.Equal("Skip", actions[^1].Args["option_id"]);
+        Assert.Equal("3", actions[^1].Args["option_index"]);
+    }
+
+    /// <summary>
+    /// Exactly one thing comes off a card reward per click, so a second answer on the
+    /// shelf when the decision commits is refused rather than written: a duplicate
+    /// would replay as a decision nobody made. A player who presses Skip and opens the
+    /// same reward again is two clicks and two decisions, each with its one answer.
+    /// </summary>
+    [GameFact]
+    public void ASecondAnswerToOneCardRewardIsRefused()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var offered = ModelDb.AllCards.Take(3).ToList();
+        var alternatives = new List<CardRewardAlternative>
+        {
+            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
+        };
+
+        recorder.HoldCardRewardAnswer(offered, alternatives, 3);
+        recorder.HoldCardRewardAnswer(offered, alternatives, 3);
+        recorder.Commit(
+            nameof(ActionVerb.TakeCard), Args(),
+            Reading(Floor(2), Digest(1), 4200), Reading(Floor(2), Digest(1), 4600));
+
+        Assert.Contains(
+            capture.Refusals,
+            refusal => refusal.Reason.Contains("saw 2 answer(s) to it", StringComparison.Ordinal));
+        Assert.Equal(NativeSource.BrokenContinuity, capture.Continuity);
+
+        var (again, twice, _) = Recording();
+        again.HoldCardRewardAnswer(offered, alternatives, 3);
+        again.Commit(
+            nameof(ActionVerb.TakeCard), Args(),
+            Reading(Floor(2), Digest(1), 4200), Reading(Floor(2), Digest(1), 4600));
+        again.HoldCardRewardAnswer(offered, alternatives, 3);
+        again.Commit(
+            nameof(ActionVerb.TakeCard), Args(),
+            Reading(Floor(2), Digest(1), 4700), Reading(Floor(2), Digest(1), 4900));
+
+        Assert.Empty(twice.Refusals);
+        twice.Finish("abandoned");
+        Assert.Equal(
+            [ActionVerb.TakeCardRewardAlternative, ActionVerb.TakeCardRewardAlternative],
+            twice.ToManifest().Actions.TakeLast(2).Select(action => action.Verb));
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────────

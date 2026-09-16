@@ -452,7 +452,8 @@ The class travels on the journal line as `watch_continues` rather than being rea
 This was found by playing: a Neow blessing answered, a quit and continue, the blessing offered again, and an overlay reading RECORDING STOPPED over a journal that was still recording decisions underneath it; the overlay now goes on reading RECORDING, because what changed is said where sharing is offered and not in a column of short capitals.
 
 **Where the recorder stops, it says so.**
-A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
+A reward kind the format has no verb for, a card reward the recorder saw other than exactly one answer to, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
+A card reward answered with one of its alternatives is not on that list: the loot screen's own Skip is one, and `docs/headless-fidelity.md` owns how it is recorded and replayed.
 The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
 
 **An integrity claim is a reading, and four of them were assumptions before review caught them.**
