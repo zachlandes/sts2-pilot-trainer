@@ -513,9 +513,11 @@ internal static class LibraryPaneArt
             : [];
 
         // One column to walk down, group by group - the relic arrows, the strip, the
-        // deck arrows, the plate: every control in a group steps down to the next
-        // group's first and up to the previous group's last, so a press down from any
-        // floor leaves the strip rather than landing on its own last cell
+        // deck arrows, the plate, and the panel's own primary ribbon under them all:
+        // every control in a group steps down to the next group's first and up to the
+        // previous group's last, so a press down from any floor leaves the strip rather
+        // than landing on its own last cell, and a press down from the last group
+        // reaches "Open the run" the way the list's last row does
         var groups = new List<IReadOnlyList<Control>> { relicControls, strip, deckControls, plate };
         var walked = groups.Where(group => group.Count > 0).ToList();
         for (var index = 0; index + 1 < walked.Count; index++)
@@ -524,6 +526,11 @@ internal static class LibraryPaneArt
             var lower = walked[index + 1];
             foreach (var control in upper) control.FocusNeighborBottom = lower[0].GetPath();
             foreach (var control in lower) control.FocusNeighborTop = upper[^1].GetPath();
+        }
+
+        if (walked.Count > 0)
+        {
+            foreach (var control in walked[^1]) control.FocusNeighborBottom = content.YesButton.GetPath();
         }
 
         return walked.FirstOrDefault()?[0];
