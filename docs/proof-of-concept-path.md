@@ -520,7 +520,8 @@ the recording's replay - and that is what the headless test pins.
 **A finished fight is compared whether it was won or lost; an abandoned one is not.**
 The projection treats a defeat as a completed line, so a lost fight compares Lost
 against Won. A fight left before it ended has no completed line to set beside the
-recording's, and its own screen says so rather than showing a comparison. Comparing
+recording's, and where the player asked to see a result, its own screen says so rather
+than showing a comparison; a fight left through the game's own menu shows nothing. Comparing
 two losses is not a thing the comparison refuses, it is a thing no recording here has.
 
 **The transport carries only the two decision kinds this path uses.** An opening

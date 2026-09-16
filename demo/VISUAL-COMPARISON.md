@@ -168,6 +168,7 @@ game-free capture and screen only. Both appeared in this session.
 A fight left before it ended: the run was given up from the game's own pause menu, and
 the trainer's notice came up over the main menu once the return finished, on a panel the
 size of its sentence.
+That route no longer draws it: leaving through the game's own menu is silent, and the notice is shown only when the player asks for it by Jump to the end - [docs/in-game-host.md](../docs/in-game-host.md) owns the rule, and the panel is unchanged.
 
 ```bash {image}
 ![The Combat Trainer notice over the darkened main menu: a compact dark panel titled "Combat Trainer" reading "This fight was left before it ended, so there is nothing to compare." with a gold Done button.](in-game-result-notice.png)
