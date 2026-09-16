@@ -407,8 +407,9 @@ public sealed class LibraryPaneArtTests
 
     /// <summary>
     /// The Mine pane at v0.111.0's own sizes, on the popup as the library expands it,
-    /// holds the most relic rows it can beside the strip at the game's own marker, and
-    /// pages the rest - the numbers the captain's screen was drawn from.
+    /// draws an ordinary run's deck under the strip at the game's own marker, keeps a
+    /// relic row beside them and pages the rest - the numbers the captain's screen was
+    /// drawn from - and without a deck gives the relics the room.
     /// <see cref="NativePaneSizes"/> holds them to the shipped scenes where the game is
     /// installed; this holds the arithmetic where it is not, so a spacing change that
     /// would re-collide fails here first.
@@ -421,35 +422,56 @@ public sealed class LibraryPaneArtTests
 
     /// <summary>The Community pane carries a creator line and no plate; its way
     /// forward is the panel's own ribbon, so its room is the pane's height less its
-    /// lines, and it too keeps the strip at the game's marker with dozens of relics.</summary>
+    /// lines, and it too draws an ordinary deck under the strip at the game's marker
+    /// and pages dozens of relics beside them.</summary>
     [Fact]
     public void TheCommunityPaneFitsAtThisBuildsSizes()
     {
         var pane = MinePane() with { SubtitleLines = 1 };
-        var dozens = pane.Lay(relics: 36, plateRows: 0, height: pane.Height);
+        var dozens = pane.Lay(relics: 36, plateRows: 0, height: pane.Height, cards: OrdinaryDeck);
+        var noDeck = pane.Lay(relics: 36, plateRows: 0, height: pane.Height);
 
-        Assert.Equal(LibraryPaneArt.NativeCell, dozens.Strip!.Value.Cell, 3);
-        AssertNothingOverlaps(pane, dozens, 36);
-        Assert.True(dozens.RelicRows >= 3, $"{dozens.RelicRows} relic rows beside the strip");
-        Assert.True(dozens.RelicPage.Pages > 1, "dozens of relics page");
+        foreach (var (layout, cards) in new[] { (dozens, OrdinaryDeck), (noDeck, 0) })
+        {
+            Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+            AssertNothingOverlaps(pane, layout, 36, cards);
+            Assert.True(layout.RelicRows >= 1, $"{layout.RelicRows} relic rows beside the strip");
+            Assert.True(layout.RelicPage.Pages > 1, "dozens of relics page");
+        }
+
+        Assert.True(dozens.DeckRows >= 1, "a row of the deck under the strip");
+        Assert.True(noDeck.RelicRows >= 3, $"{noDeck.RelicRows} relic rows without a deck");
     }
+
+    /// <summary>The deck an ordinary run carries. The browser pane draws it under the
+    /// strip and the deck takes its rows first, so a fit held with no deck holds a pane
+    /// the retail client never draws.</summary>
+    internal const int OrdinaryDeck = 20;
 
     internal static void AssertMinePaneFits(NativePaneSizes pane)
     {
-        // The most relics the pane shows on one page, and a run past that
-        var most = pane.Lay(relics: 60, plateRows: 2, height: pane.Height);
+        // The most relics the pane shows on one page beside an ordinary deck, and a run past that
+        var most = pane.Lay(relics: 60, plateRows: 2, height: pane.Height, cards: OrdinaryDeck);
         var admitted = pane.RelicBlock(60).PlacesIn(most.RelicRows);
-        var full = pane.Lay(relics: admitted, plateRows: 2, height: pane.Height);
+        var full = pane.Lay(relics: admitted, plateRows: 2, height: pane.Height, cards: OrdinaryDeck);
 
-        Assert.True(most.RelicRows >= 2, $"the pane holds {most.RelicRows} relic rows beside the strip");
+        Assert.True(most.RelicRows >= 1, $"the pane holds {most.RelicRows} relic rows beside the strip");
         foreach (var (layout, relics) in new[] { (most, 60), (full, admitted) })
         {
             Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
-            AssertNothingOverlaps(pane, layout, relics);
+            Assert.True(layout.DeckRows >= 1, "a row of the deck under the strip");
+            Assert.True(layout.DeckPage.Drawn > 0, "tiles are drawn on it");
+            AssertNothingOverlaps(pane, layout, relics, OrdinaryDeck);
         }
 
         Assert.Equal(1, full.RelicPage.Pages);
         Assert.True(most.RelicPage.Pages > 1);
+
+        // A recording without a deck gives the relics the room: two rows before it pages
+        var noDeck = pane.Lay(relics: 60, plateRows: 2, height: pane.Height);
+        Assert.True(noDeck.RelicRows >= 2, $"the pane holds {noDeck.RelicRows} relic rows without a deck");
+        Assert.Equal(0, noDeck.DeckRows);
+        AssertNothingOverlaps(pane, noDeck, 60);
     }
 
     /// <summary>Every part under the one before it, and the plate under them all.</summary>

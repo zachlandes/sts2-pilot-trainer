@@ -233,7 +233,7 @@ The popup is the game's own 16:9 canvas tall and cannot grow, so the room is wha
 `LibraryScreen.RibbonTop`, `BodyRoom` and `BandBottom` are those three placements, and the client and the fit tests compose the same three, so the height a test holds the pane to is the height the client computes.
 Every line's height is `LibraryScreen.LineHeight`, wrapped in its font where there is one, so the height summed before drawing is the height drawn.
 Why a plate ribbon is refused - a rewound run's Submit - is that ribbon's own hover, through `ScreenRow.Tooltip`, never a third fact line, and a refused ribbon anywhere on this surface is the same `Refuse`: dimmed, out of the focus column, and saying why on hover where it has no line under it.
-On v0.111.0 the Mine pane is 532 units, its plate 81, and beside the strip at the game's marker it holds two relic rows - ten relics with the deck count on the first row - before it pages.
+On v0.111.0 the Mine pane is 532 units, its plate 81, and beside the strip at the game's marker an ordinary twenty-card deck takes one tile row and leaves the relics one row - four relics beside the deck count - before they page; a recording without a deck gives them two rows, ten relics, before they page.
 `LibraryPaneArtTests` hold the Mine, Community and opened-run panes to laying out without refusing or overlapping at v0.111.0's sizes with the strip at the game's marker at every relic and deck count, and `LibraryNativeFurnitureTests` reads those sizes off the shipped scenes so the fit is held to the build rather than to numbers copied into a test.
 
 **The relic rows are the run-history screen's own flow.**
