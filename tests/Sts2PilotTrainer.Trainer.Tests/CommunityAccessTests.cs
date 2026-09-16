@@ -18,11 +18,10 @@ public sealed class CommunityAccessTests
         var locked = CommunityLock.For(sharingAvailable: true, showCommunityRuns: false);
 
         Assert.NotNull(locked);
-        Assert.Equal(LibraryCopy.CommunityOff, locked.Tooltip);
-        Assert.Equal(locked.Tooltip, locked.Body);
-        Assert.StartsWith("Community runs are off.", locked.Body);
-        Assert.Contains("Settings > General > Runmobile", locked.Body);
-        Assert.EndsWith(LibraryCopy.ShowCommunityRuns, locked.Body);
+        Assert.Equal(LibraryCopy.CommunityOff, locked.Sentence);
+        Assert.StartsWith("Community runs are off.", locked.Sentence);
+        Assert.Contains("Settings > General > Runmobile", locked.Sentence);
+        Assert.EndsWith(LibraryCopy.ShowCommunityRuns, locked.Sentence);
     }
 
     /// <summary>No service is the other cause and gets the other sentence: the
@@ -34,10 +33,9 @@ public sealed class CommunityAccessTests
         var locked = CommunityLock.For(sharingAvailable: false, showCommunityRuns: true);
 
         Assert.NotNull(locked);
-        Assert.Equal(LibraryCopy.CommunityUnavailable, locked.Body);
-        Assert.Equal(locked.Tooltip, locked.Body);
-        Assert.DoesNotContain("Settings", locked.Body);
-        Assert.DoesNotContain("Toggle", locked.Body);
+        Assert.Equal(LibraryCopy.CommunityUnavailable, locked.Sentence);
+        Assert.DoesNotContain("Settings", locked.Sentence);
+        Assert.DoesNotContain("Toggle", locked.Sentence);
     }
 
     /// <summary>A switch that changes nothing is not what to point a player at: with no
@@ -50,9 +48,9 @@ public sealed class CommunityAccessTests
         var locked = CommunityLock.For(sharingAvailable: false, showCommunityRuns);
 
         Assert.NotNull(locked);
-        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
-        Assert.Contains("sharing service", locked.Tooltip);
-        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Body);
+        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Sentence);
+        Assert.Contains("sharing service", locked.Sentence);
+        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Sentence);
     }
 
     /// <summary>Every lock says its reason in one sentence: the tooltip behind the
@@ -68,10 +66,9 @@ public sealed class CommunityAccessTests
         var locked = CommunityLock.For(sharingAvailable, showCommunityRuns);
 
         Assert.NotNull(locked);
-        Assert.NotEmpty(locked.Tooltip);
-        Assert.DoesNotContain('\n', locked.Tooltip);
-        Assert.NotEmpty(locked.Body);
-        Assert.DoesNotContain('\n', locked.Body);
+        Assert.NotEmpty(locked.Sentence);
+        Assert.DoesNotContain('\n', locked.Sentence);
+        Assert.DoesNotContain('\n', locked.Sentence);
     }
 
     [Fact]

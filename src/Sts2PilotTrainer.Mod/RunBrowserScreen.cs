@@ -120,7 +120,7 @@ internal static class RunBrowserScreen
     /// a service or the setting, with the reason behind it.</summary>
     private static IReadOnlyList<ScreenTab> Tabs(bool community, CommunityLock? locked) =>
     [
-        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community), locked?.Tooltip),
+        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community), locked?.Sentence),
         new(LibraryCopy.MyRunsTab, !community, () => OpenTab(LibraryTab.MyRuns)),
     ];
 
@@ -232,7 +232,7 @@ internal static class RunBrowserScreen
     /// </summary>
     private static string? BrowserStatus(CommunityLock? locked)
     {
-        if (locked is { } reason) return LibraryMarkup.Dim(reason.Body);
+        if (locked is { } reason) return LibraryMarkup.Dim(reason.Sentence);
         if (!RunLibrary.SharingAvailable)
             return LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
 

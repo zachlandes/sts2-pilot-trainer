@@ -13,12 +13,11 @@ namespace Sts2PilotTrainer.Trainer;
 /// by code are still there and still pressable, and the lock accounts for what is
 /// missing rather than covering what is not.
 /// </summary>
-/// <param name="Tooltip">The one sentence behind the lock on the tab.</param>
-/// <param name="Body">The same reason over the tabs, where a player who never hovers
-/// still reads it. One line, drawn whole. It is the tooltip's own sentence: the two
-/// used to be two wordings of one cause, and the line's wording was the one a player
-/// quoted back as wrong.</param>
-public sealed record CommunityLock(string Tooltip, string Body)
+/// <param name="Sentence">The one sentence the lock says: behind the lock on the tab
+/// on hover, and drawn whole over the tabs where a player who never hovers still
+/// reads it. One sentence, one field: the two places used to carry two wordings of
+/// one cause, and the line's wording was the one a player quoted back as wrong.</param>
+public sealed record CommunityLock(string Sentence)
 {
     /// <summary>
     /// The lock for these facts, and the cause it names.
@@ -36,11 +35,11 @@ public sealed record CommunityLock(string Tooltip, string Body)
     {
         if (!sharingAvailable)
         {
-            return new CommunityLock(LibraryCopy.CommunityUnavailable, LibraryCopy.CommunityUnavailable);
+            return new CommunityLock(LibraryCopy.CommunityUnavailable);
         }
 
         return showCommunityRuns
             ? null
-            : new CommunityLock(LibraryCopy.CommunityOff, LibraryCopy.CommunityOff);
+            : new CommunityLock(LibraryCopy.CommunityOff);
     }
 }

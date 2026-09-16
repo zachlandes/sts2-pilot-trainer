@@ -104,15 +104,14 @@ internal static class LibraryTabArt
         // The scene sorts its own children on entering the tree and may clamp again
         tab.Size = at.Size;
 
-        // The label's box gives up the lock's column before the word is set, so the
-        // tab's own auto-size measures the room it will actually have
-        if (lockTooltip is { Length: > 0 })
-        {
-            var word = tab.GetNodeOrNull<Control>("Label")
-                ?? throw new InvalidOperationException(
-                    $"This build's '{Scene}' has no 'Label' to keep clear of the lock.");
-            word.OffsetRight = -LabelInsetForLock;
-        }
+        // Every label's box gives up the lock's column before its word is set, locked
+        // or not, so the tab's own auto-size measures the same room on both tabs and
+        // the two words stand at one size; inset only the locked tab and "Community"
+        // read smaller than "Mine" beside it
+        var word = tab.GetNodeOrNull<Control>("Label")
+            ?? throw new InvalidOperationException(
+                $"This build's '{Scene}' has no 'Label' to keep clear of the lock.");
+        word.OffsetRight = -LabelInsetForLock;
 
         tab.SetLabel(label);
         if (current) tab.Select();
