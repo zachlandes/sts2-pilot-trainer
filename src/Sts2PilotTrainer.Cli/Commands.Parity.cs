@@ -184,9 +184,17 @@ internal static partial class Commands
         {
             journal = RunJournal.Parse(File.ReadAllText(journalPath));
         }
-        catch (ManifestException ex)
+        catch (UnreadableJournalSchemaException ex)
         {
             return new Classified(entry with { Status = ParityStatus.JournalUnreadable, Detail = ex.Message });
+        }
+        catch (ManifestException ex)
+        {
+            return new Classified(entry with
+            {
+                Status = ParityStatus.Refused,
+                Detail = $"the journal is in this build's own schema and cannot be read: {ex.Message}",
+            });
         }
 
         if (!string.Equals(journal.RunId, manifest.RunId, StringComparison.Ordinal))
@@ -282,7 +290,11 @@ internal static partial class Commands
 
     private static void PrintLine(ParityEntry entry)
     {
-        Console.WriteLine($"  {entry.Mark,-10} {entry.RunId}");
+        var counts = entry.Decisions is { } decisions
+            ? $"  {decisions.ToString(CultureInfo.InvariantCulture)} in the journal, " +
+              $"{(entry.ReplayedDecisions ?? 0).ToString(CultureInfo.InvariantCulture)} replayed"
+            : "";
+        Console.WriteLine($"  {entry.Mark,-10} {entry.RunId}{counts}");
         foreach (var line in entry.Detail.Split('\n').Where(line => line.Length > 0))
         {
             Console.WriteLine($"             {line}");

@@ -184,8 +184,8 @@ public sealed class ParityTests
             var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
 
             Assert.False(result.Verified, result.All);
-            Assert.Contains($"PARITY     {ShortRun}", result.Output, StringComparison.Ordinal);
-            Assert.Contains($"DIVERGED   {divergedRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"PARITY     {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"DIVERGED   {divergedRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
             Assert.Contains($"decision 5 ({verb}) before: player.hp: 1 -> ", result.Output, StringComparison.Ordinal);
             Assert.Contains($"broken     {brokenRun}", result.Output, StringComparison.Ordinal);
             Assert.Contains(
@@ -270,6 +270,25 @@ public sealed class ParityTests
             Assert.False(result.Verified, result.All);
             Assert.Contains($"Journal '{missing}' does not exist", result.All, StringComparison.Ordinal);
             Assert.DoesNotContain("NO JOURNAL", result.Output, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>A journal in this build's own schema that is malformed is a recorder
+    /// defect or corruption, and fails the bar rather than holding nothing.</summary>
+    [GameFact]
+    public void AMalformedJournalOfThisSchemaIsRefusedAndFailsTheBar()
+    {
+        InScratch(directory =>
+        {
+            var (manifestPath, journalPath) = RecordingWithAJournal(directory);
+            Rewrite(journalPath, seq: 7, entry => entry.Remove("before"));
+
+            var result = Arbiter.Run("parity", manifestPath, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains("REFUSED - the journal is in this build's own schema and cannot be read: ", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("JOURNAL NOT READ", result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
         });
     }
 

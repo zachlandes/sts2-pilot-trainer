@@ -416,7 +416,7 @@ public sealed record RunJournal
 
         if (!ReadableSchemas.Contains(header.SchemaId, StringComparer.Ordinal))
         {
-            throw new ManifestException(
+            throw new UnreadableJournalSchemaException(
                 $"This run journal declares schema '{header.SchemaId}', and this build reads " +
                 $"'{string.Join("', '", ReadableSchemas)}'. Refusing rather than reading it partially.");
         }
