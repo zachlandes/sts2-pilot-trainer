@@ -20,14 +20,14 @@ public sealed class LibraryPaneArtTests
 
         var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, LineSize);
 
-        // Six to a page at the history entry's own 60-unit box, not fifteen specks
-        Assert.Equal(6, layout.Count);
-        Assert.Equal(9, layout.Pages);
+        // Four to a page beside the two arrows, each at the history entry's own
+        // marker, not fifteen specks
+        Assert.Equal(4, layout.Count);
+        Assert.Equal(13, layout.Pages);
         Assert.False(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.True(layout.Pitch >= 60f);
-        Assert.True(layout.Cell >= 32f);
-        Assert.Equal(6, layout.NextSlot);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(4, layout.NextSlot);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class LibraryPaneArtTests
     {
         var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize);
 
-        Assert.Equal(8, layout.Index);
+        Assert.Equal(12, layout.Index);
         Assert.Equal(48, layout.First);
         Assert.Equal(2, layout.Count);
         Assert.True(layout.HasPrevious);
@@ -49,11 +49,11 @@ public sealed class LibraryPaneArtTests
         var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize, requestedPage: 1);
 
         Assert.Equal(1, layout.Index);
-        Assert.Equal(6, layout.First);
-        Assert.Equal(6, layout.Count);
+        Assert.Equal(4, layout.First);
+        Assert.Equal(4, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.Equal(7, layout.NextSlot);
+        Assert.Equal(5, layout.NextSlot);
     }
 
     /// <summary>
@@ -108,11 +108,16 @@ public sealed class LibraryPaneArtTests
     /// the history screen is 44.8 units on a side, and that is the side the strip draws
     /// it at wherever the pane is wide enough. It used to be capped at a multiple of
     /// the numeral's font size, which drew a marker half again the game's and cost the
-    /// pane the room the plate then took from it.
+    /// pane the room the plate then took from it; and a strip that paged - every real
+    /// run's - drew it at the entry's 60-unit column, which is a 37-unit marker, so
+    /// the paged case is held here too, down to the narrowest strip that still pages.
     /// </summary>
     [Theory]
     [InlineData(5, 456f, 22)]
     [InlineData(3, 900f, 30)]
+    [InlineData(48, 456f, 22)]
+    [InlineData(48, 900f, 30)]
+    [InlineData(48, 216f, 22)]
     public void TheStripsMarkerIsTheRunHistoryEntrysOwnSize(int floors, float width, int lineSize)
     {
         var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);

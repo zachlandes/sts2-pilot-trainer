@@ -214,7 +214,7 @@ The lock is the icon, its hover tooltip and one line over the tabs, and the tool
 `CommunityLock.For` is the one derivation of that sentence, and `LibraryTabArt.LockBounds` the one placement of the lock; `LibraryNativeFurnitureTests` holds it clear of the word's band at every tab size.
 
 **The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
-They are drawn at the history entry's own size: `map_point_history_entry.tscn` is a 60-unit box whose icon is drawn at 0.7 of 64, and `FloorMarkerArt.EntryIconSide` carries that 44.8 as the strip's marker and the tab lock's side, held to the shipped scene by a native-scene fact.
+They are drawn at the history entry's own size: `map_point_history_entry.tscn` is a 60-unit box whose icon is drawn at 0.7 of 64, and `FloorMarkerArt.EntryIconSide` carries that 44.8 as the strip's marker - on a paged strip as on one that fits, because the strip pages at the column that carries it - and half of it as the tab lock's side, held to the shipped scene by a native-scene fact.
 The marker used to be capped at a multiple of the numeral's font size, which tied a picture to a font and drew it half again the game's.
 The played tick is the mod's own, filled and on a disc, hung off the icon's top-right corner where the history entry hangs its quest badge, and the numeral is under the marker with clear space rather than on it.
 `LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.

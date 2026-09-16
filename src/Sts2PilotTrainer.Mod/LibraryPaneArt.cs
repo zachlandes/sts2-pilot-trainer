@@ -36,17 +36,19 @@ internal static class LibraryPaneArt
     /// <summary>How many card tiles a row of the deck holds before it wraps.</summary>
     private const int TilesPerRow = 8;
 
-    /// <summary>
-    /// The narrowest a strip column may be: the run-history screen's own 60-unit floor
-    /// entry. A marker narrower than the game draws it stops being the game's icon and
-    /// becomes a speck - measured in the client at 46, where the played badge was a dot -
-    /// so the strip pages sooner rather than draw one.
-    /// </summary>
-    private const float MinimumStripPitch = FloorMarkerArt.EntryBox;
-
     /// <summary>The icon box as a share of the column. The rest is the gap between
     /// neighbours, so two markers never touch.</summary>
     private const float IconShare = 0.78f;
+
+    /// <summary>
+    /// The narrowest a strip column may be: the column whose icon box is
+    /// <see cref="NativeCell"/>, so the marker in it is the run-history entry's own.
+    /// A strip that pages at a narrower column drew markers under the game's size on
+    /// every run long enough to page, which is every real run; the strip pages sooner
+    /// rather than draw one. It used to be the entry's own 60-unit box, which carried
+    /// a 37-unit marker.
+    /// </summary>
+    private const float MinimumStripPitch = NativeCell / IconShare;
 
     /// <summary>
     /// The icon box at which the marker inside it is the run-history screen's own size:
@@ -484,21 +486,22 @@ internal static class LibraryPaneArt
             ? AddPlate(content, pane, new Vector2(at.Position.X, at.Position.Y + plateTop), at.Size.X)
             : null;
 
-        // One column to walk down: the relic arrows, the strip, the deck arrows, the plate
-        var stops = new List<Control>();
-        if (relicControls.Last is { } relicLast) stops.Add(relicLast);
-        if (strip.Focus is { } stripFirst) stops.Add(stripFirst);
-        if (strip.Last is { } stripLast && stripLast != strip.Focus) stops.Add(stripLast);
-        if (deckControls.Focus is { } deckFirst) stops.Add(deckFirst);
-        if (deckControls.Last is { } deckLast && deckLast != deckControls.Focus) stops.Add(deckLast);
-        if (plateFocus is not null) stops.Add(plateFocus);
-        for (var index = 0; index + 1 < stops.Count; index++)
+        // One column to walk down, group by group - the relic arrows, the strip, the
+        // deck arrows, the plate: every control in a group steps down to the next
+        // group's first and up to the previous group's last, so a press down from any
+        // floor leaves the strip rather than landing on its own last cell
+        var groups = new List<IReadOnlyList<Control>> { relicControls, strip, deckControls };
+        if (plateFocus is not null) groups.Add([plateFocus]);
+        var walked = groups.Where(group => group.Count > 0).ToList();
+        for (var index = 0; index + 1 < walked.Count; index++)
         {
-            stops[index].FocusNeighborBottom = stops[index + 1].GetPath();
-            stops[index + 1].FocusNeighborTop = stops[index].GetPath();
+            var upper = walked[index];
+            var lower = walked[index + 1];
+            foreach (var control in upper) control.FocusNeighborBottom = lower[0].GetPath();
+            foreach (var control in lower) control.FocusNeighborTop = upper[^1].GetPath();
         }
 
-        return relicControls.Focus ?? strip.Focus ?? deckControls.Focus ?? plateFocus;
+        return walked.FirstOrDefault()?[0];
     }
 
     /// <summary>The relic block across this width, with the count's measured width
@@ -526,7 +529,7 @@ internal static class LibraryPaneArt
     /// scrolling or drawing over the strip; the count stays on the first row's line
     /// whichever page is up, because it is about the deck and not about a page.
     /// </summary>
-    private static (Control? Focus, Control? Last) AddRelics(
+    private static IReadOnlyList<Control> AddRelics(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width, PaneLayout layout,
         RelicHolderMetrics holder, string? count, GameTextStyle line, GameTextStyle fact)
     {
@@ -610,7 +613,7 @@ internal static class LibraryPaneArt
             controls[index].FocusNeighborBottom = controls[index].GetPath();
         }
 
-        return (controls.FirstOrDefault(), controls.LastOrDefault());
+        return controls;
     }
 
     /// <summary>The floor the strip opens on: the selected one, else the last played.</summary>
@@ -637,11 +640,11 @@ internal static class LibraryPaneArt
     /// the strip says what the run did, and where a player can be stood is the rows'
     /// answer.
     /// </summary>
-    private static (Control? Focus, Control? Last) AddStrip(
+    private static IReadOnlyList<Control> AddStrip(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line,
         StripLayout? laidOut)
     {
-        if (pane.Strip.Count == 0 || laidOut is not { } layout) return (null, null);
+        if (pane.Strip.Count == 0 || laidOut is not { } layout) return [];
 
         var controls = new List<Control>();
         if (layout.HasPrevious && pane.SelectStripPage is { } previousPage)
@@ -760,7 +763,7 @@ internal static class LibraryPaneArt
             controls[index].FocusNeighborBottom = controls[index].GetPath();
         }
 
-        return (controls.FirstOrDefault(), controls.LastOrDefault());
+        return controls;
     }
 
     /// <summary>
@@ -854,11 +857,11 @@ internal static class LibraryPaneArt
     /// empty frame, because "no deck was recorded here" and "the deck was empty" are
     /// different facts and a frame would state the second.
     /// </summary>
-    private static (Control? Focus, Control? Last) AddDeck(
+    private static IReadOnlyList<Control> AddDeck(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width, PaneLayout layout,
         GameTextStyle line)
     {
-        if (pane.Deck is not { Count: > 0 } deck) return (null, null);
+        if (pane.Deck is not { Count: > 0 } deck) return [];
 
         var tile = width / TilesPerRow;
         var height = tile * 0.82f;
@@ -944,7 +947,7 @@ internal static class LibraryPaneArt
             controls[index].FocusNeighborBottom = controls[index].GetPath();
         }
 
-        return (controls.FirstOrDefault(), controls.LastOrDefault());
+        return controls;
     }
 
     internal static float DeckRowPitch(float tile, int captionSize)

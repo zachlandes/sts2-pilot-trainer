@@ -367,10 +367,8 @@ internal static class LibraryScreen
                 first ??= paneFocus;
             }
 
-            // After the pane, whose plate ribbons are duplicates of this one: a
-            // refusal applied first would be copied into Share and Remove. Deferred
-            // after the registration that setting IsYes deferred, so the confirm key
-            // cannot open a run the ribbon refuses
+            // The hotkey removal is deferred after the registration that setting IsYes
+            // deferred, so the confirm key cannot open a run the ribbon refuses
             if (forward is { Enabled: false } refused)
             {
                 var yes = content.YesButton;

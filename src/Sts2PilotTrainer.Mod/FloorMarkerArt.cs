@@ -28,9 +28,10 @@ internal static class FloorMarkerArt
     /// the strip sizes its markers by. <c>map_point_history_entry.tscn</c> is a 60-unit
     /// box whose icon fills it plus a 4-unit overhang - 64 square - and is drawn at 0.7
     /// of that, so the marker a player sees on the history screen is 44.8 units on a
-    /// side. The strip draws its markers at that side and paces its columns at that
-    /// box, which is what "the run-history entry's own icon size" means in numbers;
-    /// <c>NativeSceneFact</c> holds the three figures to the shipped scene.</summary>
+    /// side. The strip draws its markers at that side and paces its columns wide
+    /// enough to carry one, which is what "the run-history entry's own icon size"
+    /// means in numbers; <c>NativeSceneFact</c> holds the three figures to the shipped
+    /// scene.</summary>
     internal const string EntryScene = "res://scenes/screens/run_history_screen/map_point_history_entry.tscn";
 
     internal const float EntryBox = 60f;
