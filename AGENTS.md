@@ -16,7 +16,8 @@ not released yet. See [README.md](README.md).
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
-./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
+./scripts/arbiter parity --corpus manifests/   # the recorder's standard, one figure
+./scripts/arbiter <command> # gate | parity | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | floor-snapshot | combat-compare |
                             # enter-fight | recorded-fight |
