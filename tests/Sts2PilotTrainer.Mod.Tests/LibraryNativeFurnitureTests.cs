@@ -165,13 +165,46 @@ public sealed class LibraryNativeFurnitureTests
                 NativeScenes.Properties(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody))!["offset_top"],
                 System.Globalization.CultureInfo.InvariantCulture),
             RelicBox: box,
-            RelicIcon: icon);
+            RelicIcon: icon,
+            Arrow: ArrowWidthOnThisBuild());
 
         Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
         LibraryPaneArtTests.AssertMinePaneFits(sizes);
     }
 
     private static Vector2 Ribbon((float X, float Y) size) => new(size.X, size.Y);
+
+    /// <summary>The paginator's arrow column, read the way <see cref="NativePaginatorArt.ArrowWidth"/>
+    /// reads the live scene: the control's right offset less its left.</summary>
+    private static float ArrowWidthOnThisBuild()
+    {
+        var paginator = NativeScenes.Read(NativePaginatorArt.PaginatorScene);
+        Assert.NotNull(paginator);
+        var arrow = NativeScenes.Properties(paginator, NativePaginatorArt.ArrowNode);
+        Assert.NotNull(arrow);
+        return float.Parse(arrow["offset_right"], System.Globalization.CultureInfo.InvariantCulture)
+            - float.Parse(arrow["offset_left"], System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// The strip's page arrows stand in the column the game's own paginator gives its
+    /// arrows, which is narrower than a marker's column, and the strip's marker between
+    /// them is the run-history entry's own; on this build's 456-wide pane that is four
+    /// floors a page, and a fifth from 475. A build that redraws its paginator moves the
+    /// arrows here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheStripsPageArrowsTakeThePaginatorsOwnColumn()
+    {
+        var sizes = LibraryPaneArtTests.MinePane() with { Arrow = ArrowWidthOnThisBuild() };
+        var layout = LibraryPaneArt.LayoutStrip(50, sizes.Width, sizes.Arrow, anchor: 0, sizes.Numeral);
+
+        Assert.Equal(LibraryPaneArtTests.MinePane().Arrow, sizes.Arrow);
+        Assert.Equal(sizes.Arrow, layout.Arrow);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(4, layout.Count);
+        Assert.Equal(5, LibraryPaneArt.LayoutStrip(50, 475f, sizes.Arrow, anchor: 0, sizes.Numeral).Count);
+    }
 
     /// <summary>The holder's box and its icon's side, read the way
     /// <see cref="RelicHolderArt"/> reads the live scene: the root's minimum size, less

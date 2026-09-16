@@ -12,48 +12,54 @@ public sealed class LibraryPaneArtTests
     /// this size.</summary>
     private const int LineSize = 16;
 
+    /// <summary>The paginator's own arrow column on v0.111.0, which
+    /// <see cref="NativePaneSizes"/> holds to the shipped scene.</summary>
+    private const float Arrow = 58f;
+
     [Fact]
     public void FullRunStripPagesIntoReadableWindows()
     {
         const int floors = 50;
         const float width = 500f;
 
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, LineSize);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, LineSize);
 
-        // Four to a page beside the two arrows, each at the history entry's own
-        // marker, not fifteen specks
-        Assert.Equal(4, layout.Count);
-        Assert.Equal(13, layout.Pages);
+        // Five to a page between the two arrows at the paginator's own column, each
+        // at the history entry's own marker, not fifteen specks
+        Assert.Equal(5, layout.Count);
+        Assert.Equal(10, layout.Pages);
         Assert.False(layout.HasPrevious);
         Assert.True(layout.HasNext);
         Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
-        Assert.Equal(4, layout.NextSlot);
+        Assert.Equal(Arrow, layout.Arrow);
+        Assert.Equal(Arrow, layout.ColumnX(0), 3);
+        Assert.Equal(width - Arrow, layout.NextX, 3);
+        Assert.True(layout.ColumnX(4) + layout.Pitch <= layout.NextX + 0.01f, "the last floor ends before the Next arrow");
     }
 
     [Fact]
     public void FullRunStripOpensOnTheAnchoredPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, Arrow, anchor: 49, LineSize);
 
-        Assert.Equal(12, layout.Index);
-        Assert.Equal(48, layout.First);
-        Assert.Equal(2, layout.Count);
+        Assert.Equal(9, layout.Index);
+        Assert.Equal(45, layout.First);
+        Assert.Equal(5, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.False(layout.HasNext);
-        Assert.Equal(1, layout.SlotOf(48));
+        Assert.Equal(Arrow, layout.ColumnX(45), 3);
     }
 
     [Fact]
     public void FullRunStripCanMoveToAnAdjacentPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize, requestedPage: 1);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, Arrow, anchor: 49, LineSize, requestedPage: 1);
 
         Assert.Equal(1, layout.Index);
-        Assert.Equal(4, layout.First);
-        Assert.Equal(4, layout.Count);
+        Assert.Equal(5, layout.First);
+        Assert.Equal(5, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.Equal(5, layout.NextSlot);
     }
 
     /// <summary>
@@ -70,7 +76,7 @@ public sealed class LibraryPaneArtTests
     [InlineData(3, 900f, 30)]
     public void StripCellPartsDoNotOverlapAndStayInsideTheCell(int floors, float width, int lineSize)
     {
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, lineSize);
         var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
 
         Assert.True(cell.Numeral.Position.Y >= cell.Icon.End.Y, "the numeral sits under the marker");
@@ -120,7 +126,7 @@ public sealed class LibraryPaneArtTests
     [InlineData(48, 216f, 22)]
     public void TheStripsMarkerIsTheRunHistoryEntrysOwnSize(int floors, float width, int lineSize)
     {
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, lineSize);
         var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
 
         Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
@@ -429,7 +435,7 @@ public sealed class LibraryPaneArtTests
     /// </summary>
     internal sealed record NativePaneSizes(
         int RowTitle, int Secondary, int Fact, int CardCaption, int Numeral, int Body, Vector2 Ribbon,
-        float BodyTop, float RelicBox, float RelicIcon, int SubtitleLines = 0, int FactLines = 2)
+        float BodyTop, float RelicBox, float RelicIcon, float Arrow, int SubtitleLines = 0, int FactLines = 2)
     {
         internal float Width => (LibraryScreen.PopupWidth - 140f) * (1f - 0.54f - 0.03f);
 
@@ -472,12 +478,12 @@ public sealed class LibraryPaneArtTests
             int? deckPage = null) =>
             LibraryPaneArt.Lay(
                 Above, RelicBlock(relics), RelicBox, LibraryPaneArt.LayoutDeck(cards), TilePitch, Below,
-                floors, Width, 0, Numeral, null, relicPage, deckPage, plateRows, Ribbon, height);
+                floors, Width, Arrow, 0, Numeral, null, relicPage, deckPage, plateRows, Ribbon, height);
     }
 
     internal static NativePaneSizes MinePane() => new(
         RowTitle: 28, Secondary: 24, Fact: 24, CardCaption: 24, Numeral: 22, Body: 26,
-        Ribbon: new Vector2(180f, 72f), BodyTop: 115f, RelicBox: 68f, RelicIcon: 60f);
+        Ribbon: new Vector2(180f, 72f), BodyTop: 115f, RelicBox: 68f, RelicIcon: 60f, Arrow: Arrow);
 
     private static float Line(int size) =>
         LibraryScreen.LineHeight("one line", 1000f, new GameTextStyle(null, size));

@@ -102,13 +102,23 @@ internal static class LibraryPaneArt
     /// count that shares its line, as a share of a relic's box.</summary>
     internal const float CountGapShare = 0.25f;
 
+    /// <summary>
+    /// One page of the strip across a width: which floors, at what column, and where
+    /// the arrows stand.
+    /// </summary>
+    /// <param name="Pitch">A floor's column.</param>
+    /// <param name="Arrow">The arrow columns' width at either end of a paged strip -
+    /// the paginator's own - and zero on a strip that fits.</param>
     internal readonly record struct StripLayout(
         int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages,
-        float Pitch, float Cell, float Height, float Offset)
+        float Width, float Pitch, float Cell, float Height, float Arrow)
     {
-        internal int SlotOf(int index) => (HasPrevious ? 1 : 0) + index - First;
+        /// <summary>Where a floor's column starts: after the Previous arrow's column,
+        /// which is kept whether or not this page draws the arrow, so the floors do
+        /// not shift from one page to the next.</summary>
+        internal float ColumnX(int index) => Arrow + ((index - First) * Pitch);
 
-        internal int NextSlot => (HasPrevious ? 1 : 0) + Count;
+        internal float NextX => Width - Arrow;
 
         /// <summary>The room the strip takes on the pane, air included.</summary>
         internal float Room => Height * StripBottomSpace;
@@ -176,18 +186,19 @@ internal static class LibraryPaneArt
     /// <param name="tilePitch">A tile row's pitch.</param>
     /// <param name="below">The height of everything between the deck and the plate:
     /// the facts and the verdict.</param>
+    /// <param name="arrow">The paginator's own arrow column, for a strip that pages.</param>
     /// <param name="plateRows">How many ribbons the plate holds side by side.</param>
     /// <param name="ribbon">A ribbon's size, measured off the panel's own.</param>
     /// <param name="height">The pane's height.</param>
     internal static PaneLayout Lay(
         float above, GridBlock relics, float box, GridBlock deck, float tilePitch, float below,
-        int stripCount, float width, int anchor, int numeralSize, int? stripPage, int? relicPage,
-        int? deckPage, int plateRows, Vector2 ribbon, float height)
+        int stripCount, float width, float arrow, int anchor, int numeralSize, int? stripPage,
+        int? relicPage, int? deckPage, int plateRows, Vector2 ribbon, float height)
     {
         var plate = PlateHeight(plateRows, ribbon.Y);
         PlateColumns(plateRows, width, ribbon.X);
         var strip = stripCount > 0
-            ? LayoutStrip(stripCount, width, anchor, numeralSize, stripPage)
+            ? LayoutStrip(stripCount, width, arrow, anchor, numeralSize, stripPage)
             : (StripLayout?)null;
         var room = height - above - below - plate - (strip?.Room ?? 0f);
 
@@ -357,25 +368,38 @@ internal static class LibraryPaneArt
 
     /// <summary>
     /// The strip's page and cell for this many floors across this width: the marker
-    /// at the run-history entry's own size wherever the column allows it.
+    /// at the run-history entry's own size on every page.
+    ///
+    /// A strip that fits at the marker's column is one page. One that does not pages
+    /// with an arrow column at either end - the paginator's own width, which is
+    /// narrower than a marker's column - and as many marker columns between them as
+    /// the rest of the width holds; the arrow columns are kept on every page, whether
+    /// or not the page draws both arrows, so a floor's column is the same on each.
     /// </summary>
+    /// <param name="arrow">The paginator's own arrow column, <see cref="NativePaginatorArt.ArrowWidth"/>.</param>
     internal static StripLayout LayoutStrip(
-        int count, float width, int anchor, int lineSize, int? requestedPage = null)
+        int count, float width, float arrow, int anchor, int lineSize, int? requestedPage = null)
     {
-        var places = Math.Max(
-            ScreenPage.MinimumPerPage,
-            (int)Math.Floor(width / MinimumStripPitch));
-        var page = requestedPage is { } requested
-            ? ScreenPage.For(count, places, requested)
-            : ScreenPage.Containing(count, places, anchor);
-        var pitch = page.Pages == 1 ? width / page.Count : width / places;
+        var fits = Math.Max(1, (int)Math.Floor(width / MinimumStripPitch));
+        if (count <= fits)
+        {
+            var single = width / count;
+            var singleCell = Math.Min(single * IconShare, NativeCell);
+            return new StripLayout(
+                0, count, false, false, 0, 1, width, single, singleCell,
+                CellGeometry(single, singleCell, lineSize).Numeral.End.Y, 0f);
+        }
+
+        var room = width - (2f * arrow);
+        var perPage = Math.Max(1, (int)Math.Floor(room / MinimumStripPitch));
+        var pages = ((count - 1) / perPage) + 1;
+        var index = Math.Clamp(requestedPage ?? anchor / perPage, 0, pages - 1);
+        var first = index * perPage;
+        var pitch = room / perPage;
         var cell = Math.Min(pitch * IconShare, NativeCell);
-        var geometry = CellGeometry(pitch, cell, lineSize);
-        var height = geometry.Numeral.End.Y;
-        var offset = (width - (page.Drawn * pitch)) / 2f;
         return new StripLayout(
-            page.First, page.Count, page.HasPrevious, page.HasNext, page.Index,
-            page.Pages, pitch, cell, height, offset);
+            first, Math.Min(perPage, count - first), index > 0, index < pages - 1, index, pages,
+            width, pitch, cell, CellGeometry(pitch, cell, lineSize).Numeral.End.Y, arrow);
     }
 
     internal static StripCellGeometry CellGeometry(StripLayout layout, int lineSize) =>
@@ -463,7 +487,8 @@ internal static class LibraryPaneArt
         var deck = LayoutDeck(pane.Deck?.Count ?? 0);
         var layout = Lay(
             y - at.Position.Y, relics, holder.Box, deck, DeckRowPitch(tile, card.Size), below,
-            pane.Strip.Count, at.Size.X, StripAnchor(pane), floor.Size, pane.StripPage, pane.RelicPage,
+            pane.Strip.Count, at.Size.X, NativePaginatorArt.ArrowWidth(), StripAnchor(pane), floor.Size,
+            pane.StripPage, pane.RelicPage,
             pane.DeckPage, pane.Plate.Count, content.NoButton.Size, at.Size.Y);
 
         var relicControls = AddRelics(
@@ -482,16 +507,15 @@ internal static class LibraryPaneArt
                 content, text, new Vector2(at.Position.X, y), at.Size.X, colour, factStyle);
         }
 
-        var plateFocus = layout.PlateTop is { } plateTop
+        var plate = layout.PlateTop is { } plateTop
             ? AddPlate(content, pane, new Vector2(at.Position.X, at.Position.Y + plateTop), at.Size.X)
-            : null;
+            : [];
 
         // One column to walk down, group by group - the relic arrows, the strip, the
         // deck arrows, the plate: every control in a group steps down to the next
         // group's first and up to the previous group's last, so a press down from any
         // floor leaves the strip rather than landing on its own last cell
-        var groups = new List<IReadOnlyList<Control>> { relicControls, strip, deckControls };
-        if (plateFocus is not null) groups.Add([plateFocus]);
+        var groups = new List<IReadOnlyList<Control>> { relicControls, strip, deckControls, plate };
         var walked = groups.Where(group => group.Count > 0).ToList();
         for (var index = 0; index + 1 < walked.Count; index++)
         {
@@ -651,8 +675,8 @@ internal static class LibraryPaneArt
         {
             controls.Add(AddStripPageButton(
                 content, LibraryCopy.PreviousPage, "Previous", true,
-                new Vector2(at.X + layout.Offset, at.Y),
-                layout.Pitch, layout.Height, NativePaginatorArt.RunHistoryTexture,
+                new Vector2(at.X, at.Y),
+                layout.Arrow, layout.Height, NativePaginatorArt.RunHistoryTexture,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
@@ -661,7 +685,7 @@ internal static class LibraryPaneArt
         for (var index = layout.First; index < layout.First + layout.Count; index++)
         {
             var floor = pane.Strip[index];
-            var x = at.X + layout.Offset + (layout.SlotOf(index) * layout.Pitch);
+            var x = at.X + layout.ColumnX(index);
             var y = at.Y;
             var box = new Control
             {
@@ -746,9 +770,8 @@ internal static class LibraryPaneArt
         {
             controls.Add(AddStripPageButton(
                 content, LibraryCopy.NextPage, "Next", false,
-                new Vector2(
-                    at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
-                layout.Pitch, layout.Height, NativePaginatorArt.RunHistoryTexture,
+                new Vector2(at.X + layout.NextX, at.Y),
+                layout.Arrow, layout.Height, NativePaginatorArt.RunHistoryTexture,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }
@@ -969,10 +992,10 @@ internal static class LibraryPaneArt
     /// untouched and a destructive Remove never wears the affirmative ribbon's colour.
     /// Where it sits is <see cref="Lay"/>'s answer; this draws it there.
     /// </summary>
-    private static Control? AddPlate(
+    private static IReadOnlyList<Control> AddPlate(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
     {
-        if (pane.Plate.Count == 0) return null;
+        if (pane.Plate.Count == 0) return [];
 
         var ribbon = content.NoButton.Size;
         var columns = PlateColumns(pane.Plate.Count, width, ribbon.X);
@@ -1001,6 +1024,6 @@ internal static class LibraryPaneArt
                 (index + 1 < focusable.Count ? focusable[index + 1] : focusable[index]).GetPath();
         }
 
-        return focusable.FirstOrDefault();
+        return focusable;
     }
 }
