@@ -1198,6 +1198,9 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/package-mod.sh                 # build the distributable package without game content
 ./scripts/install-mod.sh                 # package, prepare, and install the mod
 ./scripts/install-mod.sh --uninstall     # remove it again
+./scripts/retail-client.sh launch        # the retail client, --force-steam=off, one owner; never through Steam
+./scripts/retail-client.sh status        # whose client is running, if any
+./scripts/retail-client.sh release       # TERM the owned client and wait; never a forced kill
 ./scripts/protected-files.sh snapshot before.ledger   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  before.ledger   # ... and say what a session changed
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
@@ -1206,6 +1209,40 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/arbiter recorded-fight <manifest> --out manifests/<id>.recorded-fights.json
                                          # regenerate the recording's shipped lines after the manifest changes
 ```
+
+### Launching the retail client
+
+```bash
+./scripts/retail-client.sh launch --owner "<who you are>"   # from any worktree; one client per machine
+./scripts/retail-client.sh status                           # whose client is running, if any
+./scripts/retail-client.sh release                          # TERM, then wait; never a forced kill
+```
+
+That script is the one way a retail client is started here, and it exists because two launch failures kept coming back during retail testing.
+Asking Steam to launch - `open "steam://rungameid/2868840"`, or the library - while a client already exists gets Steam's `Game already running`, one worker's client against another worker's request.
+Opening the executable by hand gets the game's `No appID found`: Steamworks initialises, finds no app id, and the client stops on an error popup having loaded nothing.
+The helper asks Steam nothing, refuses first while any Slay the Spire 2 client exists, and launches the retail executable with MegaCrit's own `--force-steam=off` and an explicit `--clientId`, from a working directory that is empty by construction.
+
+That launch was proved end to end on v0.111.0, with the Steam client running and logged in throughout.
+`--force-steam=off` takes the skip branch in `NGame.InitializePlatform`, so `SteamInitializer.Initialize` is never called and no cloud store is constructed; the session lives in the isolated non-Steam tree `user://default/<clientId>/`, `modded/profile1` under it once the mod loads, and the player's own `steam/<account>/` tree is never read or written.
+Across the measured launches Steam's own records stayed flat - no tracked-process line in its `gameprocess_log.txt`, no cloud sync, no logon event, and the Steam process set identical pid for pid - and this build never calls `SteamAPI_RestartAppIfNecessary`, the one function that could start Steam or relaunch through it.
+The captain confirmed it from the other side on 2026-09-05: a client launched this way did not disturb his Steam-logged-in game on another machine.
+
+Ownership is a record rather than a convention.
+A successful launch writes `owner` under `~/Library/Application Support/sts2-pilot-trainer/retail-client/` - pid, executable, arguments, save tree, working directory, who launched it and from which directory, and when - and `status` prints it beside every client the process table shows, so a second worker learns whose client is running instead of finding out from Steam.
+The client's stdout and stderr go to `client.log` beside it.
+A launch takes a lock so two workers cannot both see no client and both start one, and a record whose process is gone is reported as stale and cleared on the next launch or release rather than trusted.
+The process table is read by executable name and never by argument list, because a check that reads arguments counts its own grep, its own waiting shell and the helper's own `--game`; that is the `ps -Ao comm` reading the investigation settled on, and the one the helper's own commands cannot trip.
+
+`release` sends TERM to exactly the process the record names, after checking it is still the game, and waits for it - sixty seconds by default, `--wait` for longer.
+The retail client always accepts TERM and takes anywhere from three seconds with only this mod loaded to forty minutes with three mods loaded to finish tearing down, every measured session inside `exit()` throughout, so a slow exit is slow and not hung: a release that runs out of patience exits 3 and keeps the record, and a later release waits on without signalling again.
+Nothing sends any other signal, and a client the record does not name is never signalled at all - whoever launched it releases it.
+
+Once per save tree, the game itself needs two clicks that no script does for it: accepting the mods warning in the Mods screen, which is what lets any mod load in that tree, and disabling every mod the recording did not have, which is what keeps a session from re-saving other mods' defaults into the shared `mod_configs/` and what makes the teardown a matter of seconds.
+`--client-id` picks the tree - `default/1/` by default, the one every retail proof so far ran in - and a fresh id is a fresh tree with both clicks owed again.
+A double-click launcher on a machine is a `.command` file that calls the helper, so it inherits the refusal and the record instead of launching beside them; anything it wants set up first, a profile pointer say, it does before that call.
+
+`RetailClientLaunchTests` holds all of it without the game, against a stand-in executable that stops on `No appID found` without the flag and runs until TERM with it, a stand-in process table, and a stand-in `open` that records any attempt to hand the launch to Steam.
 
 ### Producing a recording, and checking it
 
@@ -1223,7 +1260,7 @@ That is the direction it fails in on purpose: the only thing this file can say i
 The same file says how many runs are kept and how to remove them all; "Keeping runs, and removing them" below has both.
 
 1. `./scripts/protected-files.sh snapshot before.ledger`, so what the session changed can be measured rather than asserted.
-2. `./scripts/install-mod.sh`, then launch the game **through Steam** - `open "steam://rungameid/2868840"` or the library - because launched on its own the client cannot initialise Steam and stops on an error popup.
+2. `./scripts/install-mod.sh`, then `./scripts/retail-client.sh launch --owner "<who you are>"` - never through Steam and never by opening the executable by hand; "Launching the retail client" above says why, and what the launch writes down.
 3. Check the game's log says the mod is there: `[Runmobile] Recorder installed` and `--- RUNNING MODDED! --- Loaded 1 mods`. The log is `~/Library/Application Support/SlayTheSpire2/logs/godot.log`.
 4. Play a run. `[Runmobile] recording this run as native-<seed>-<date>-<time>` says it attached.
    The gate's rejection condition requires every one of the ten negative controls to find the decision it damages, so a run meant as evidence has to have made each of them: the opening blessing, a card screen opened by one of exactly two options - the rest site's **Smith**, or the **Waterlogged Scriptorium** event's third option, its 99-gold enchantment - holding a second copy of the card that gets picked, which an early deck satisfies because the starting deck holds several Strikes and Defends, a map move from a node with more than one child, a turn **opened with two plays** that differ in the card played or the enemy it is aimed at, one of them aimed at an enemy while another was alive and one made from a hand holding another card of the same energy cost that aims the same way - both attacks, or neither, a claimed gold or potion reward, and a card reward that offered more than one card.

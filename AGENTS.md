@@ -11,6 +11,7 @@ not released yet. See [README.md](README.md).
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
 ./scripts/package-mod.sh    # build the platform package without game content
 ./scripts/install-mod.sh    # package and install the mod, preparing game inputs locally
+./scripts/retail-client.sh launch|status|release   # the retail client: --force-steam=off, one owner record, TERM and wait; never through Steam
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
@@ -160,11 +161,11 @@ that quietly does something plausible is the failure mode this whole project exi
 to prevent.
 
 **What CI cannot run is recorded by name.** On a runner without the game, the 154
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 218 cases
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 239 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 217.
+datum where it runs, so a run with the game reports more cases than 239.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -270,6 +271,12 @@ it may not implement.
 `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
+
+**A retail client is started by `./scripts/retail-client.sh` and by nothing else, never through Steam.**
+Asking Steam to launch beside an existing client is refused with `Game already running`, and the executable opened by hand stops on `No appID found`; both recurred until the launch had one owner.
+The helper refuses while any Slay the Spire 2 client exists, launches the retail executable with MegaCrit's own `--force-steam=off` and an explicit `--clientId` from an empty working directory - the launch proved on v0.111.0 to initialise no Steamworks, touch no Steam save tree and disturb no Steam session elsewhere - and writes the one ownership record every worker on the machine reads.
+`release` sends TERM to exactly that process and waits, because the client's teardown is anywhere from seconds to forty minutes; nothing here force-kills, and nothing signals a client the record does not name.
+`RetailClientLaunchTests` holds both failure paths against a stand-in executable without the game; [docs/in-game-host.md](docs/in-game-host.md), "Launching the retail client", owns the procedure and its evidence.
 
 **The run library is the entry module, and browsing is after the fact.**
 `RunLibraryModule` owns a row on the game's own main menu (`NMainMenu`), the Compendium button (`NCompendiumSubmenu`), the browser behind both, one run opened, and the plate under the game's own run history (`NMapPointHistoryEntry.Released`).
