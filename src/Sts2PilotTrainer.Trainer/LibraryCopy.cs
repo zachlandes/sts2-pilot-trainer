@@ -157,7 +157,7 @@ public static class LibraryCopy
     /// the line over the tabs alike: one sentence naming the setting by its own label
     /// and the path to it, in the captain's words.</summary>
     public const string CommunityOff =
-        $"Community runs are off. Toggle sharing in Settings > General > Runmobile: {ShowCommunityRuns}";
+        $"Community runs are off. Toggle sharing in Settings->General->Runmobile: {ShowCommunityRuns}";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the line say what is missing rather than pointing

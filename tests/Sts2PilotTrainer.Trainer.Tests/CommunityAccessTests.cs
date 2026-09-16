@@ -20,7 +20,7 @@ public sealed class CommunityAccessTests
         Assert.NotNull(locked);
         Assert.Equal(LibraryCopy.CommunityOff, locked.Sentence);
         Assert.StartsWith("Community runs are off.", locked.Sentence);
-        Assert.Contains("Settings > General > Runmobile", locked.Sentence);
+        Assert.Contains("Settings->General->Runmobile", locked.Sentence);
         Assert.EndsWith(LibraryCopy.ShowCommunityRuns, locked.Sentence);
     }
 

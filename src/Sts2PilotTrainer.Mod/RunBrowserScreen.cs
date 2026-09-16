@@ -384,7 +384,7 @@ internal static class RunBrowserScreen
     /// </summary>
     internal static void OpenRun(
         string runId, int? floor = null, bool fromMyRuns = false, bool compatibleOnly = true,
-        int? stripPage = null)
+        int? stripPage = null, int? relicPage = null, int? deckPage = null)
     {
         try
         {
@@ -410,7 +410,7 @@ internal static class RunBrowserScreen
                 ListHeader: null,
                 EnteringRows(
                     view, runId, RecordingIdentity.CreditOrNull(recording, isPlayersOwn), isPlayersOwn),
-                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage),
+                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage, relicPage, deckPage),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
                     mine ? LibraryTab.MyRuns : LibraryTab.Community,
@@ -433,7 +433,7 @@ internal static class RunBrowserScreen
     /// </summary>
     private static ScreenPane ViewPane(
         ReplayManifest recording, RunView view, string runId, bool fromMyRuns,
-        bool compatibleOnly, int? stripPage)
+        bool compatibleOnly, int? stripPage, int? relicPage, int? deckPage)
     {
         var facts = new List<string>();
         if (view.Reading.Enemies.FirstOrDefault() is { } enemy)
@@ -468,11 +468,17 @@ internal static class RunBrowserScreen
             SelectFloor: atFloor => OpenRun(id, atFloor, mine, compatibleOnly),
             StripPage: stripPage,
             SelectStripPage: page => OpenRun(
-                id, selectedFloor, mine, compatibleOnly, page),
+                id, selectedFloor, mine, compatibleOnly, page, relicPage, deckPage),
             Verdict: null,
             facts,
             Plate: [],
-            Ribbon: null);
+            Ribbon: null,
+            RelicPage: relicPage,
+            SelectRelicPage: page => OpenRun(
+                id, selectedFloor, mine, compatibleOnly, stripPage, page, deckPage),
+            DeckPage: deckPage,
+            SelectDeckPage: page => OpenRun(
+                id, selectedFloor, mine, compatibleOnly, stripPage, relicPage, page));
     }
 
     /// <summary>

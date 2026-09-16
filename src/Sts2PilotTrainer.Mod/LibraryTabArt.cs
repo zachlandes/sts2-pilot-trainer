@@ -43,32 +43,28 @@ internal static class LibraryTabArt
     /// them, so the plate is never squashed.</summary>
     internal const float Aspect = 256f / 90f;
 
-    /// <summary>The lock's side: the run-history entry's own marker, which is the size
-    /// the captain asked these displays to be judged against.</summary>
-    internal const float LockSide = FloorMarkerArt.EntryIconSide;
+    /// <summary>The lock's side: half the run-history entry's own marker. A small
+    /// badge off the tab's corner rather than a marker beside its word, because the
+    /// word keeps the whole tab: its box is not narrowed for the lock, so the tab's own
+    /// auto-size draws it at the size the other tab's word stands at.</summary>
+    internal const float LockSide = FloorMarkerArt.EntryIconSide / 2f;
 
-    /// <summary>The air either side of the lock, as a share of its side.</summary>
-    private const float LockInset = 0.1f;
+    /// <summary>How far past the tab's top-right corner the lock hangs, as a share of
+    /// its side: the way the run-history entry hangs its quest badge off an icon's
+    /// corner, so the lock sits over the tab's edge and not over its word.</summary>
+    private const float LockOverhang = 0.4f;
 
     /// <summary>
-    /// Where the lock sits on a tab this size: a <see cref="LockSide"/> square at the
-    /// tab's right end, centred on its height, inset by its own air. The stats scene
-    /// centres a lock taller than the tab over a label it has dimmed; this tab's label
-    /// is read, so the lock keeps to a column of its own.
+    /// Where the lock sits on a tab this size: a <see cref="LockSide"/> square hung off
+    /// the tab's top-right corner. The stats scene centres a lock taller than the tab
+    /// over a label it has dimmed; this tab's label is read, so the lock keeps to the
+    /// corner, above the band the word is drawn in, and the word's box is untouched.
     /// </summary>
     internal static Rect2 LockBounds(Vector2 tab)
     {
-        var inset = LockSide * LockInset;
-        return new Rect2(tab.X - inset - LockSide, (tab.Y - LockSide) / 2f, LockSide, LockSide);
+        var overhang = LockSide * LockOverhang;
+        return new Rect2(tab.X - LockSide + overhang, -overhang, LockSide, LockSide);
     }
-
-    /// <summary>
-    /// The width the lock's column takes off the label's box on a locked tab: the lock
-    /// and the air either side of it. The label is anchored to the whole tab and
-    /// centred, so ending its box here re-centres the word in the room that is left,
-    /// and the tab's own auto-size fits it there. The two cannot then overlap.
-    /// </summary>
-    internal static float LabelInsetForLock => LockSide * (1f + (2f * LockInset));
 
     /// <summary>
     /// Adds one tab, sized to the box it was given.
@@ -103,15 +99,6 @@ internal static class LibraryTabArt
         parent.AddChild(tab);
         // The scene sorts its own children on entering the tree and may clamp again
         tab.Size = at.Size;
-
-        // Every label's box gives up the lock's column before its word is set, locked
-        // or not, so the tab's own auto-size measures the same room on both tabs and
-        // the two words stand at one size; inset only the locked tab and "Community"
-        // read smaller than "Mine" beside it
-        var word = tab.GetNodeOrNull<Control>("Label")
-            ?? throw new InvalidOperationException(
-                $"This build's '{Scene}' has no 'Label' to keep clear of the lock.");
-        word.OffsetRight = -LabelInsetForLock;
 
         tab.SetLabel(label);
         if (current) tab.Select();

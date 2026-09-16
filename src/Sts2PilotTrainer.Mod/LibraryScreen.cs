@@ -71,6 +71,10 @@ internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
 /// all fit beside the strip; null is the first.</param>
 /// <param name="SelectRelicPage">Re-shows the screen at another relic page, or null
 /// where the pane cannot page them.</param>
+/// <param name="DeckPage">Which page of deck tiles the pane shows where they do not
+/// all fit under the strip; null is the first.</param>
+/// <param name="SelectDeckPage">Re-shows the screen at another deck page, or null
+/// where the pane cannot page them.</param>
 internal sealed record ScreenPane(
     string Heading,
     string? Subtitle,
@@ -87,7 +91,9 @@ internal sealed record ScreenPane(
     ScreenRow? Ribbon,
     bool VerdictPassed = true,
     int? RelicPage = null,
-    Action<int>? SelectRelicPage = null);
+    Action<int>? SelectRelicPage = null,
+    int? DeckPage = null,
+    Action<int>? SelectDeckPage = null);
 
 /// <summary>
 /// What one library screen is: the band, the list, and the pane beside it.

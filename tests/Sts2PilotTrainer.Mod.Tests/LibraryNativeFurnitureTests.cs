@@ -14,29 +14,30 @@ public sealed class LibraryNativeFurnitureTests
 {
     /// <summary>
     /// The lock was the stats screen's 109-square centred on the tab, which drew it
-    /// across the middle of "Community". It is now the run-history entry's own marker
-    /// size, in a column of its own at the tab's right end, and the label's box ends
-    /// where that column begins - so the word and the lock cannot meet at any tab
-    /// size, and the tab's own auto-size fits the word to what is left.
+    /// across the middle of "Community". It is now a small badge - half the
+    /// run-history entry's marker - hung off the tab's top-right corner, above the band
+    /// the word is drawn in, and the word's box is left whole: narrowing it for the
+    /// lock made the tab's own auto-size draw "Community" smaller than "Mine".
     /// </summary>
     [Theory]
     [InlineData(256f, 90f)]
     [InlineData(205f, 72f)]
     [InlineData(170f, 60f)]
-    public void TheLockKeepsToItsOwnColumnAtTheRunHistoryMarkersSize(float width, float height)
+    public void TheLockHangsOffTheTabsCornerClearOfTheWord(float width, float height)
     {
         var tab = new Vector2(width, height);
         var lockBounds = LibraryTabArt.LockBounds(tab);
+        var maxFontSize = NativeScenes.Here.State is NativeScenes.AvailabilityState.Run
+            ? NativeScenes.DesignSize(NativeScenes.Read(LibraryTabArt.Scene)!, "Label")
+            : 32;
 
-        Assert.Equal(FloorMarkerArt.EntryIconSide, lockBounds.Size.X, 3);
+        Assert.Equal(FloorMarkerArt.EntryIconSide / 2f, lockBounds.Size.X, 3);
         Assert.Equal(lockBounds.Size.X, lockBounds.Size.Y);
-        Assert.True(lockBounds.Position.X >= 0f && lockBounds.End.X <= width, "the lock is inside the tab");
-        Assert.True(lockBounds.Position.Y >= 0f && lockBounds.End.Y <= height, "the lock is inside the tab");
-        Assert.Equal(height / 2f, lockBounds.Position.Y + (lockBounds.Size.Y / 2f), 3);
+        Assert.True(lockBounds.Position.Y < 0f && lockBounds.End.Y > 0f, "the lock hangs off the top edge");
+        Assert.True(lockBounds.Position.X < width && lockBounds.End.X > width, "the lock hangs off the right edge");
         Assert.True(
-            lockBounds.Position.X >= width - LibraryTabArt.LabelInsetForLock,
-            "the label's box ends before the lock's column");
-        Assert.True(lockBounds.Position.X > width / 2f, "the lock is at the tab's right end");
+            lockBounds.End.Y <= (height - maxFontSize) / 2f,
+            $"the lock ends at {lockBounds.End.Y}, over the band a {maxFontSize} word is centred in");
     }
 
     [Fact]
