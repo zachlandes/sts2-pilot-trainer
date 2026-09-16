@@ -28,6 +28,7 @@ public sealed class RewoundRunPlaybackTests
 
         var validation = ManifestValidator.Validate(rewound);
         Assert.True(validation.IsValid, validation.Describe());
+        Assert.False(rewound.Source.Native!.KeptOnly);
         Assert.Contains(RunView.PositionsIn(rewound), position => position.Playable && position.Fight == 1);
         Assert.Equal("Recording is not eligible to share", ShareRunForm.For(rewound).IntegritySeal);
     }

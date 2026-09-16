@@ -42,18 +42,16 @@ public sealed record PlateRow(
 /// </summary>
 /// <param name="HasRecording">Whether a recording of this run exists at all. The plate
 /// is absent when it does not - not empty, absent.</param>
-/// <param name="HistoryWhole">Whether the recording holds every decision from run
-/// start - a continuous watch, or one a reload rewound and that went on recording.
-/// False is the recording saying so about itself. Whether it may be shared is a
-/// different question and the submit row's.</param>
+/// <param name="KeptOnly">Whether the recording is kept on disk and nothing more -
+/// neither played from nor submitted - as the recording says of itself through
+/// <see cref="NativeSource.KeptOnly"/>: a history with a hole in it, a run the console
+/// was used in, a recorder that stopped at a decision it could not name. The one
+/// reading the recorded-fight entry's own refusal mirrors, so a plate that refuses on
+/// it never offers a row the press would abort on.</param>
 /// <param name="Rewound">Whether a reload rewound the run behind what was recorded and
 /// the recorder went on from there. The recording says so about itself as
 /// <c>continuity = rewound</c>: whole and playable, and never shareable, so it gates the
-/// submit row alone, the way a console command does.</param>
-/// <param name="ConsoleUsed">Whether a console command was used during the run, or
-/// null when nothing established it. Null is not "no": it gates the submit row alone,
-/// and a plate claiming a clean run it never checked would be evidence nobody can
-/// check.</param>
+/// submit row alone.</param>
 /// <param name="RecordedBuild">The build the recording was made on.</param>
 /// <param name="ThisBuild">The build this game is.</param>
 /// <param name="RunInProgress">Whether a run is being played right now. Play-from is
@@ -78,9 +76,8 @@ public sealed record PlateRow(
 /// drawn.</param>
 public sealed record RunHistoryFacts(
     bool HasRecording,
-    bool HistoryWhole,
+    bool KeptOnly,
     bool Rewound,
-    bool? ConsoleUsed,
     string RecordedBuild,
     string ThisBuild,
     bool RunInProgress,
@@ -137,11 +134,14 @@ public sealed record RunHistoryPlate(
     {
         if (!facts.HasRecording) return null;
 
-        if (!facts.HistoryWhole)
+        // Kept and nothing more: every row refused, in the one sentence every surface
+        // uses for it. Ahead of the build check because it is the more particular
+        // thing true of this recording - it is refused on every build.
+        if (facts.KeptOnly)
         {
             return Refused(
                 PlateMark.Warning, LibraryCopy.PlateCantBeReplayed, facts,
-                LibraryCopy.PlateContinuityBroken);
+                LibraryCopy.KeptOnly);
         }
 
         if (!string.Equals(facts.RecordedBuild, facts.ThisBuild, StringComparison.Ordinal))
@@ -159,21 +159,17 @@ public sealed record RunHistoryPlate(
 
         if (facts.RunInProgress) return Refused(mark: null, head: null, facts, LibraryCopy.PlateDuringARun);
 
-        // A console command changes what the run was, so it stops the run being
-        // published and stops nothing else: the fights really were fought and playing
-        // from one is still playing from what happened. A reload that rewound the run
-        // is the same shape - the run as it stands is the player's to play from and
-        // not one anybody else could have played. Both are named ahead of the missing
-        // flow because they are the more particular thing true of this run - the
-        // flow's absence is true of every run on this build.
-        var consoleUsed = facts.ConsoleUsed == true;
-        var submittable = !consoleUsed && !facts.Rewound && facts.SubmitAvailable;
+        // A reload that rewound the run stops the run being published and stops
+        // nothing else: the run as it stands is the player's to play from and not one
+        // anybody else could have played. Named ahead of the missing flow because it
+        // is the more particular thing true of this run - the flow's absence is true
+        // of every run on this build.
+        var submittable = !facts.Rewound && facts.SubmitAvailable;
         return new RunHistoryPlate(
             Mark: null,
             Head: null,
             RowsFor(facts, floorEnabled: facts.LastFloor is not null, submitEnabled: submittable),
-            consoleUsed ? LibraryCopy.PlateConsoleUsed
-                : facts.Rewound ? LibraryCopy.PlateRewound
+            facts.Rewound ? LibraryCopy.PlateRewound
                 : submittable ? null : LibraryCopy.PlateSubmitComing,
             facts.LastFloor is not null ? LibraryCopy.NotSaved : null);
     }

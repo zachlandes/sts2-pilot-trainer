@@ -181,7 +181,8 @@ public sealed record RunBrowser(
         if (mine)
         {
             plate.Add(new PaneRow(
-                PaneRowKind.Submit, LibraryCopy.SubmitThisRun, submitAvailable && !run.Rewound));
+                PaneRowKind.Submit, LibraryCopy.SubmitThisRun,
+                submitAvailable && !run.KeptOnly && !run.Rewound));
             plate.Add(new PaneRow(
                 PaneRowKind.Remove, LibraryCopy.RemoveThisRun, Enabled: true, Confirms: true));
         }
@@ -211,7 +212,11 @@ public sealed record RunBrowser(
             LibraryCopy.OpenTheRun,
             run.Listed,
             plate,
-            mine && run.Rewound ? LibraryCopy.PlateRewound : null);
+            // The plate's own order: kept-only ahead of rewound, because it is the
+            // more particular thing true of the run and refuses the strip's cells too.
+            mine && run.KeptOnly ? LibraryCopy.KeptOnly
+                : mine && run.Rewound ? LibraryCopy.PlateRewound
+                : null);
     }
 
     /// <summary>

@@ -398,6 +398,24 @@ public sealed record NativeSource
     public bool StatesSomethingOtherThanComplete =>
         !string.Equals(Integrity, CompleteIntegrity, StringComparison.Ordinal);
 
+    /// <summary>
+    /// Whether this recording is kept on disk and nothing more: neither played from nor
+    /// shared, because the validator refuses it and the recorded-fight entry asks the
+    /// validator before it stands anybody in a fight.
+    ///
+    /// The one reading every offering surface makes - the run-history plate, the Mine
+    /// pane and the run view - so no row can offer what the entry refuses. It is the
+    /// mirror of what <c>ManifestValidator</c> refuses on continuity and on integrity: a
+    /// history with a hole in it, a run the console was used in, a recorder that stopped
+    /// at a decision it could not name, and a recording stating no integrity at all,
+    /// which is not a clean run under another name. A rewound recording is whole and
+    /// states <see cref="CompleteIntegrity"/>, so it is not kept only: it is played from
+    /// and never shared, which is <see cref="IsRewound"/>'s question.
+    /// <c>RunCaptureTests</c> holds this to the validator's own verdict.
+    /// </summary>
+    [JsonIgnore]
+    public bool KeptOnly => !HistoryIsWhole || StatesSomethingOtherThanComplete;
+
     /// <summary>Whether this file was migrated from a format older than the one that
     /// introduced a field, so that field's absence is the migration's rather than a
     /// recorder's omission.</summary>

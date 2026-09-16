@@ -1690,6 +1690,60 @@ public sealed class RunCaptureTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    /// <summary>
+    /// <see cref="NativeSource.KeptOnly"/> is what every offering surface reads before
+    /// it offers play-from or Submit, and it claims to mirror the validator's verdict on
+    /// continuity and integrity. Held here over what the recorder can write: a clean
+    /// run, a run the console was used in, a hole in the watch, and a recorder that
+    /// stopped at a decision it could not name. A recording is kept only exactly where
+    /// the validator refuses it, so no surface offers what the entry refuses.
+    /// </summary>
+    [Fact]
+    public void ARecordingIsKeptOnlyExactlyWhereTheValidatorRefusesIt()
+    {
+        var clean = Played();
+        RecordStableRosterAtRunEnd(clean);
+        clean.Finish("abandoned");
+
+        var console = Played();
+        console.MarkNonStandard();
+        RecordStableRosterAtRunEnd(console);
+        console.Finish("abandoned");
+
+        var hole = Played();
+        hole.MarkBroken("the recorder stopped and started again");
+        RecordStableRosterAtRunEnd(hole);
+        hole.Finish("abandoned");
+
+        var stopped = Played();
+        RecordStableRosterAtRunEnd(stopped);
+        stopped.MarkUnmapped(
+            new UnmappedDecision
+            {
+                Seq = stopped.NextSeq,
+                Seam = UnmappedDecision.NetActionSeam,
+                Name = "NetMysteryAction",
+                Discriminator = "Mystery",
+                Args = new SortedDictionary<string, string>(StringComparer.Ordinal) { ["target"] = "3" },
+                Evidence = FactEvidence.AtActionOrdinal(stopped.NextSeq, 9_000),
+            },
+            new StateReading(Floor(2), Digest(stopped.NextSeq)));
+        stopped.Finish("abandoned");
+
+        foreach (var capture in new[] { clean, console, hole, stopped })
+        {
+            var manifest = capture.ToManifest();
+            var validation = ManifestValidator.Validate(manifest);
+            Assert.True(
+                !validation.IsValid == manifest.Source.Native!.KeptOnly,
+                $"integrity {manifest.Source.Native.Integrity}, continuity {manifest.Source.Native.Continuity}: " +
+                validation.Describe());
+        }
+
+        Assert.False(clean.ToManifest().Source.Native!.KeptOnly);
+        Assert.True(console.ToManifest().Source.Native!.KeptOnly);
+    }
+
     [Fact]
     public void ARecordingWithAHoleInItIsRefusedByTheValidator()
     {

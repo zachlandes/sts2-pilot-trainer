@@ -34,22 +34,30 @@ namespace Sts2PilotTrainer.Trainer;
 /// floor's fight. A fact about the run and not about the person viewing it, read from
 /// the recording, so it is drawn in every strip: the opened run, the Mine pane and the
 /// Community pane alike.</param>
+/// <param name="KeptOnly">Whether the recording this is a place in is kept and nothing
+/// more, as it says of itself through <see cref="NativeSource.KeptOnly"/>. A fact about
+/// the whole recording rather than this place, carried on every position so that
+/// <see cref="Playable"/> stays the one rule every surface reads: the entry refuses such
+/// a recording before it looks at a boundary, so no place in it is one to stand.
+/// Defaults to false for a caller building a position by hand;
+/// <see cref="RunView.PositionsIn"/> always asks.</param>
 public sealed record RunViewPosition(
     int Floor, int? Fight, FloorKind Kind, bool Unfinished, bool IsRunStart, int AfterSeq,
-    bool Reachable = true, bool Bookmarked = false)
+    bool Reachable = true, bool Bookmarked = false, bool KeptOnly = false)
 {
     /// <summary>
     /// Whether the play-from row will stand a player here.
     ///
     /// The rule in one place, read by the row and by every strip that draws this
     /// position - the run view's own and the browser pane's - so a cell drawn as
-    /// playable is a cell the row offers. The run's own start is refused because
-    /// "Start the run over" already puts a player there, an unfinished fight because
-    /// there is no finished recorded line to set one against, and a place the client
-    /// has no route to because offering it would build the run, show a decision or two
-    /// and then abort in front of the player.
+    /// playable is a cell the row offers. A recording that is kept only is refused
+    /// everywhere because the entry refuses it before it looks at a boundary; the
+    /// run's own start because "Start the run over" already puts a player there; an
+    /// unfinished fight because there is no finished recorded line to set one against;
+    /// and a place the client has no route to because offering it would build the run,
+    /// show a decision or two and then abort in front of the player.
     /// </summary>
-    public bool Playable => !IsRunStart && !Unfinished && Reachable;
+    public bool Playable => !KeptOnly && !IsRunStart && !Unfinished && Reachable;
 }
 
 /// <summary>
@@ -237,6 +245,7 @@ public sealed record RunView(
     /// </summary>
     public static IReadOnlyList<RunViewPosition> PositionsIn(ReplayManifest recording)
     {
+        var keptOnly = KeptOnly(recording);
         var floorEntries = recording.Boundaries
             .Where(boundary => boundary.IsFloorEntry && boundary.Floor is not null)
             .GroupBy(boundary => boundary.Floor!.Value)
@@ -278,10 +287,20 @@ public sealed record RunView(
                     index == 0,
                     entry.AfterSeq,
                     RetailPlayback.RouteTo(recording, entry.AfterSeq).Reachable,
-                    fight is { } marked && (recording.Source.Native?.IsBookmarked(marked) ?? false));
+                    fight is { } marked && (recording.Source.Native?.IsBookmarked(marked) ?? false),
+                    keptOnly);
             }),
         ];
     }
+
+    /// <summary>
+    /// Whether this recording is kept and nothing more - neither played from nor
+    /// shared - which is <see cref="NativeSource.KeptOnly"/>'s answer about a native
+    /// recording. A reconstruction from a video carries no native source and states
+    /// nothing of a watch, so it is not kept only on that account; whether it
+    /// reproduces is the gate's question and was answered before it was committed.
+    /// </summary>
+    public static bool KeptOnly(ReplayManifest recording) => recording.Source.Native?.KeptOnly ?? false;
 
     /// <summary>
     /// Whether the recording fought between two points in its own history without ever
@@ -326,14 +345,16 @@ public sealed record RunView(
             // Refused rather than moved on to the next fight this build can reach.
             // "the next fight you have not played from" is what the row means, and a
             // row that quietly named a different one would be answering a question
-            // nobody asked.
-            var reachable = at?.Reachable ?? true;
+            // nobody asked. A kept-only recording is refused ahead of that, in the one
+            // sentence every surface says it in.
+            var keptOnly = at?.KeptOnly ?? false;
+            var reachable = !keptOnly && (at?.Reachable ?? true);
             rows.Add(new RunViewRow(
                 RunViewRowKind.Continue,
                 LibraryCopy.ContinueFromNextUnplayed,
                 at is null || !reachable ? null : LibraryCopy.FloorLine(at.Floor),
                 Enabled: reachable,
-                Reason: reachable ? null : LibraryCopy.EarlierFightNotReplayable,
+                Reason: reachable ? null : keptOnly ? LibraryCopy.KeptOnly : LibraryCopy.EarlierFightNotReplayable,
                 Fight: next,
                 Floor: at?.Floor,
                 Enemy: at is null ? null : RunReading.At(recording, at.AfterSeq).Enemies.FirstOrDefault()?.Model,
@@ -348,11 +369,12 @@ public sealed record RunView(
         if (fights.Contains(1))
         {
             var start = positions.FirstOrDefault(position => position.Fight == 1);
-            var reachable = start?.Reachable ?? true;
+            var keptOnly = start?.KeptOnly ?? false;
+            var reachable = !keptOnly && (start?.Reachable ?? true);
             rows.Add(new RunViewRow(
                 RunViewRowKind.StartOver, LibraryCopy.StartTheRunOver, null,
                 Enabled: reachable,
-                Reason: reachable ? null : LibraryCopy.EarlierFightNotReplayable,
+                Reason: reachable ? null : keptOnly ? LibraryCopy.KeptOnly : LibraryCopy.EarlierFightNotReplayable,
                 Fight: 1, Floor: start?.Floor));
         }
 
@@ -360,7 +382,8 @@ public sealed record RunView(
     }
 
     /// <summary>
-    /// The one play-from row, over the four cases the design gives it.
+    /// The one play-from row, over the four cases the design gives it and the one
+    /// refusal that outranks them - a recording that is kept and nothing more.
     ///
     /// The label never changes; the second line does, and it is what tells a player
     /// where pressing goes. Two of the four cases are refusals and the second line is
@@ -375,6 +398,15 @@ public sealed record RunView(
             return new RunViewRow(
                 RunViewRowKind.PlayFrom, LibraryCopy.PlayFromThisFloor, null, Enabled: false,
                 Reason: LibraryCopy.RunStartsHere);
+        }
+
+        // Ahead of every other refusal: nothing in a kept-only recording is a place
+        // to stand, and a reason about this floor would suggest another floor is.
+        if (selected.KeptOnly)
+        {
+            return new RunViewRow(
+                RunViewRowKind.PlayFrom, LibraryCopy.PlayFromThisFloor, null, Enabled: false,
+                Reason: LibraryCopy.KeptOnly, Floor: selected.Floor);
         }
 
         if (selected.IsRunStart)
