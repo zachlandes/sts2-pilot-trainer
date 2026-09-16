@@ -50,20 +50,35 @@ internal static class ModelArt
         }
     }
 
+    /// <summary>
+    /// The model whose art an id wears: an upgraded card is written <c>CARD.X+1</c>,
+    /// the way <c>CanonicalStateProjection</c> and the recorder write it, and the
+    /// database knows the card as <c>CARD.X</c>. The portrait is the same card's at
+    /// any upgrade level, so the suffix is dropped before the database is asked;
+    /// before it was, every upgraded card in a deck drew as its name in place of its
+    /// picture.
+    /// </summary>
+    internal static string ArtId(string modelId)
+    {
+        var upgrade = modelId.IndexOf('+');
+        return upgrade < 0 ? modelId : modelId[..upgrade];
+    }
+
     /// <summary>The artwork for a card, potion or relic model id, or null where this
     /// build has none.</summary>
     internal static Texture2D? Of(string modelId)
     {
         if (Known.TryGetValue(modelId, out var known)) return known;
 
+        var id = ArtId(modelId);
         Texture2D? art = null;
         try
         {
-            art = modelId.StartsWith(PotionPrefix, StringComparison.Ordinal)
-                ? ModelDb.AllPotions.FirstOrDefault(potion => potion.Id.ToString() == modelId)?.Image
-                : modelId.StartsWith(RelicPrefix, StringComparison.Ordinal)
-                    ? ModelDb.AllRelics.FirstOrDefault(relic => relic.Id.ToString() == modelId)?.Icon
-                    : ModelDb.AllCards.FirstOrDefault(card => card.Id.ToString() == modelId)?.Portrait;
+            art = id.StartsWith(PotionPrefix, StringComparison.Ordinal)
+                ? ModelDb.AllPotions.FirstOrDefault(potion => potion.Id.ToString() == id)?.Image
+                : id.StartsWith(RelicPrefix, StringComparison.Ordinal)
+                    ? ModelDb.AllRelics.FirstOrDefault(relic => relic.Id.ToString() == id)?.Icon
+                    : ModelDb.AllCards.FirstOrDefault(card => card.Id.ToString() == id)?.Portrait;
         }
         catch (Exception ex)
         {

@@ -439,7 +439,7 @@ A resume whose live digest matches an earlier decision in the recorder's own his
 The decisions past that point were played and then abandoned, and they go where the game's own rollback puts what it unwound: `RunCapture.RollBack` cuts the history back to the decision the game came back to - the opening reading included - and keeps what it removed as a discarded branch, written to the journal with `reload` on it so `RunJournal.Parse` reads it without the latest-save rule the game's own rollback is held to.
 The recorder can account for every decision from there on exactly as it could before, so it goes on recording: `RunRefusal.Continuing` leaves `RunCapture.State` at `Recording` and the recording is `continuity = rewound`.
 Rewound is whole - every decision from run start was watched and the reload's branch is kept beside them - so `ManifestValidator` takes it, `RecordedFightEntry` stands a player in any of its fights, and the run-history plate offers them; a bookmark pressed at a decision the rewind removed goes with the branch, dropped by `RunJournal.Parse` at the rollback line as well as in memory, because the continued run deals that ordinal to a different fight and a press read back onto it would mark a fight nobody bookmarked.
-What it can never be is shared: the run-history plate and the library's Mine pane both refuse their submit row with the same reason line, read from `LibraryRun.Rewound` on the pane the way the plate reads `RunHistoryFacts.Rewound`, the share form seals it, and the gate's `continuity` condition refuses it; none of that lives in the validator because the validator is what the entry asks.
+What it can never be is shared: the run-history plate and the library's Mine pane both refuse their submit row with the same reason - a line under the plate's rows, the refused ribbon's own hover on the pane - read from `LibraryRun.Rewound` on the pane the way the plate reads `RunHistoryFacts.Rewound`, the share form seals it, and the gate's `continuity` condition refuses it; none of that lives in the validator because the validator is what the entry asks.
 That reason line is `LibraryCopy.PlateRewound`, said in the player's terms - the run was put back to an earlier point, behind decisions already made - and is read off `continuity` and off nothing else: how long the run sat between the quit and the Continue is nothing to the placing, which compares the complete digest and reads no clock, so a Continue at the game's latest save is continuous and shareable weeks later exactly as it is a minute later.
 `RunCaptureTests.AReturnToTheLatestSaveWeeksLaterIsStillTheGamesOwnRollback` holds the recorder to that and `RunBrowserTests.ARunHoweverOldStaysShareableUnlessItsRecordingSaysItWasRewound` holds the pane to it.
 The refusal line is appended before the rollback receipt, so a crash between the two leaves a journal the next session resumes and rolls back again rather than one it cannot read.
@@ -1035,7 +1035,7 @@ Browser rows are absolutely positioned siblings, not a scrolling list, so `Scree
 The last two places of a paged list become Previous and Next rows, and focus joins only the controls on screen.
 The scrolling body is bounded first to reserve the measured controls below it, and room for fewer than a page is refused rather than allowing a row to overlap the popup's ribbons.
 A browser with no listed runs still keeps its tab band, compatibility control and direct code lookup without inventing empty rows.
-The run strip uses the same paging contract with a readable minimum cell width.
+The run strip, the relic rows and the deck tiles use the same paging contract; the strip pages at the column that carries the run-history entry's marker at its own size, with its arrows in the settings paginator's own arrow column, and [mod-ui-direction.md](mod-ui-direction.md) owns those sizes.
 It opens on the page containing the selected floor, or the last replayed floor when no floor is selected.
 Its Previous and Next controls take focus and explicitly accept the game's confirm and select actions, so the retail keyboard and controller bindings page the strip as well as a mouse press.
 Paging is presentation: `RunBrowser` and `RunView` still return every row and floor, while `LibraryScreen` and `LibraryPaneArt` decide which page is visible.
@@ -1126,7 +1126,7 @@ Index fetching and exact-code lookup use that same configured service boundary; 
 
 **The accepted parchment design is the implemented furniture.**
 The browser draws the game's own squared tabs on its parchment, headed groups, the two-line filter header, character portraits, the selected run's act reached, the run strip, relic icons and the recorded deck count.
-The opened run uses the same pane drawing, adds deck tiles where the recording carries them, and keeps the selected floor ringed and loaded floors ticked.
+The opened run uses the same pane drawing, deck tiles included, and keeps the selected floor ringed and loaded floors ticked.
 `RunHistoryPlateArt` hangs the flat plate beneath the game's own history pane.
 The list keeps the settled compatibility filter and online sharing behavior rather than introducing another owner for either.
 

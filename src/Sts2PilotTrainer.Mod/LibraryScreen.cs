@@ -32,11 +32,15 @@ namespace Sts2PilotTrainer.Mod;
 /// <param name="ActReached">The recording-derived value under the Act reached column.</param>
 /// <param name="Trailing">What the row says at its right-hand end, in the teal that
 /// means "something you did": the Last floor replayed column.</param>
+/// <param name="Tooltip">Why a refused row is refused, said on hover, or null. Read
+/// only where <c>Enabled</c> is false: a refused plate ribbon says it here rather than
+/// under itself, because a ribbon at the pane's foot has no line under it to say
+/// anything in, and an enabled row carries no hover.</param>
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
     bool Pinned = false, string? MarkTooltip = null, LibraryGlyph? Glyph = null,
     bool Selected = false, string? ActReached = null, string? Trailing = null,
-    string? Character = null, bool Heading = false);
+    string? Character = null, bool Heading = false, string? Tooltip = null);
 
 /// <summary>One tab across the top band: the game's own settings tab.</summary>
 /// <param name="LockTooltip">The sentence behind the lock drawn over the tab, or null
@@ -57,9 +61,20 @@ internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
 /// <param name="Verdict">The eligibility green line. Null draws none.</param>
 /// <param name="Facts">Lines under the strip, in the supporting colour: what a fight
 /// is against, the health it starts at, the floor pane's one sentence.</param>
-/// <param name="Plate">The flat plate under the pane. Rows, drawn as ribbons.</param>
-/// <param name="Ribbon">The pane's own way forward - "Open the run" - or null.</param>
+/// <param name="Plate">The flat plate under the pane. Rows, drawn as ribbons side by
+/// side at the panel's own ribbon size.</param>
+/// <param name="Ribbon">The pane's own way forward - "Open the run" - or null. Drawn
+/// on the panel's own primary ribbon rather than in the pane, so the pane's room is
+/// the run's and the confirm key opens the run.</param>
 /// <param name="VerdictPassed">Whether the verdict is affirmative.</param>
+/// <param name="RelicPage">Which page of relic rows the pane shows where they do not
+/// all fit beside the strip; null is the first.</param>
+/// <param name="SelectRelicPage">Re-shows the screen at another relic page, or null
+/// where the pane cannot page them.</param>
+/// <param name="DeckPage">Which page of deck tiles the pane shows where they do not
+/// all fit under the strip; null is the first.</param>
+/// <param name="SelectDeckPage">Re-shows the screen at another deck page, or null
+/// where the pane cannot page them.</param>
 internal sealed record ScreenPane(
     string Heading,
     string? Subtitle,
@@ -74,7 +89,11 @@ internal sealed record ScreenPane(
     IReadOnlyList<string> Facts,
     IReadOnlyList<ScreenRow> Plate,
     ScreenRow? Ribbon,
-    bool VerdictPassed = true);
+    bool VerdictPassed = true,
+    int? RelicPage = null,
+    Action<int>? SelectRelicPage = null,
+    int? DeckPage = null,
+    Action<int>? SelectDeckPage = null);
 
 /// <summary>
 /// What one library screen is: the band, the list, and the pane beside it.
@@ -199,13 +218,63 @@ internal static class LibraryScreen
     /// <summary>The gap between the panes, where the divider runs.</summary>
     private const float SeamShare = 0.03f;
 
+    /// <summary>The popup, expanded: the library's two panes need the width, and the
+    /// height is the game's own 16:9 canvas less nothing to spare, so every part laid
+    /// out inside it is measured against what is left rather than given a size of its
+    /// own.</summary>
+    internal const float PopupWidth = 1200f;
+    internal const float PopupHeight = 850f;
+
+    /// <summary>Where the panes begin under the band, as a multiple of a ribbon's
+    /// height: the tabs stand at that height, and the rest is the air under them.</summary>
+    private const float BandStep = 1.3f;
+
+    /// <summary>A label's box as a multiple of its font size, and the advance to the
+    /// line after it. Every line of the mod's own text on this surface stands at these,
+    /// so a height computed here is the height drawn.</summary>
+    internal const float LabelLineRatio = 1.3f;
+    internal const float LineAdvanceRatio = 1.45f;
+
+    /// <summary>The air the body keeps under its last line, as a share of its size,
+    /// before the band starts.</summary>
+    private const float BodyBreath = 0.15f;
+
+    /// <summary>
+    /// The three placements the pane's height follows from, each the one the client
+    /// draws by: the ribbons at the expanded popup's foot, the body as tall as its
+    /// wrapped text and a breath, and the panes under the band. A test composes these
+    /// the way <see cref="Show"/> does - expand, measure the area, add the band - so
+    /// what it holds the pane to is what the client computes, not a restatement of it.
+    /// </summary>
+    internal static float RibbonTop(float ribbon) => PopupHeight - ribbon;
+
+    /// <summary>
+    /// Where the area ends: the panel ribbon's drawn top, not its box. The retail
+    /// button paints its art above its own box - <see cref="RibbonOverhang"/> - so a
+    /// foot at the box put the pane's plate and the list's footer on the ribbon's art.
+    /// </summary>
+    internal static float AreaFoot(float ribbonTop, float overhang) => ribbonTop - overhang;
+
+    /// <summary>How far above its own box the panel's ribbon paints, read off the
+    /// ribbon's own visuals node - 8 units on v0.111.0's 72-unit box - and refused by
+    /// name where a build's ribbon has lost the node.</summary>
+    internal static float RibbonOverhang(Control ribbon) =>
+        -ribbon.GetNode<Control>("%Visuals").Position.Y;
+
+    /// <inheritdoc cref="RibbonTop"/>
+    internal static float BodyRoom(GameTextStyle style, float wrapped) => wrapped + (style.Size * BodyBreath);
+
+    /// <inheritdoc cref="RibbonTop"/>
+    internal static float BandBottom(float areaTop, float ribbon) => areaTop + (ribbon * BandStep);
+
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
     ///
-    /// One ribbon at the foot. There is no affirmative ribbon there because everything
-    /// on this surface is pressed where it is: the pane has its own "Open the run"
-    /// ribbon, and a panel-level ribbon meaning "the one you highlighted" would be a
-    /// second way to press the thing already under the cursor.
+    /// The panel's own two ribbons at the foot: where the screen carries a pane with a
+    /// way forward, the primary ribbon is that way forward - "Open the run", on the
+    /// confirm key - and the cancel ribbon is the way back; a screen with no such pane
+    /// keeps one ribbon, the way back, because everything else on it is pressed where
+    /// it is.
     /// </summary>
     internal static long Show(LibraryPage page)
     {
@@ -231,6 +300,12 @@ internal static class LibraryScreen
             ReservePageRoom(content, page);
 
             ShareFields? share = null;
+            // The panel's primary ribbon is the pane's own way forward where the pane
+            // has one: "Open the run" on the confirm key, at the popup's foot, rather
+            // than a third ribbon in the pane taking the room the relics and the strip
+            // need. The way back then takes the cancel ribbon, as it does on the share
+            // form.
+            var forward = page.ShareSubmitted is null ? page.Pane?.Ribbon : null;
             content.InitYesButton(
                 PlaceholderConfirm,
                 _ =>
@@ -241,6 +316,10 @@ internal static class LibraryScreen
                             shownSurface, share.Name.Text, share.Description.Text,
                             share.DisplayName.Text, share.Consent.ButtonPressed);
                     }
+                    else if (forward is { } ribbon)
+                    {
+                        Callable.From(() => Press(ribbon)).CallDeferred();
+                    }
                     else if (page.Back is { } back)
                     {
                         Callable.From(() => Reopen(back)).CallDeferred();
@@ -250,8 +329,9 @@ internal static class LibraryScreen
                         Dismiss();
                     }
                 });
-            content.YesButton.SetText(page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit);
-            if (page.ShareSubmitted is null)
+            content.YesButton.SetText(
+                forward?.Label ?? (page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit));
+            if (page.ShareSubmitted is null && forward is null)
             {
                 content.HideNoButton();
             }
@@ -298,6 +378,15 @@ internal static class LibraryScreen
                 }
 
                 first ??= paneFocus;
+            }
+
+            // The hotkey removal is deferred after the registration that setting IsYes
+            // deferred, so the confirm key cannot open a run the ribbon refuses
+            if (forward is { Enabled: false } refused)
+            {
+                var yes = content.YesButton;
+                Callable.From(() => yes.DisconnectHotkeys()).CallDeferred();
+                Refuse(yes, refused.Reason);
             }
 
             var bodyFocus = first ?? share?.Name ?? (Control)content.YesButton;
@@ -405,7 +494,7 @@ internal static class LibraryScreen
     {
         // Keep the one-column popup centred while making room for both panes
         var oldSize = content.Size;
-        var newSize = new Vector2(1200f, 850f);
+        var newSize = new Vector2(PopupWidth, PopupHeight);
         // The native root is a TextureRect; keep-aspect leaves the paper behind its controls
         content.Set("expand_mode", (int)TextureRect.ExpandModeEnum.IgnoreSize);
         content.Set("stretch_mode", (int)TextureRect.StretchModeEnum.Scale);
@@ -421,12 +510,20 @@ internal static class LibraryScreen
             newSize.X - 140f,
             newSize.Y - description.Position.Y - content.YesButton.Size.Y - 12f);
 
-        var buttonY = newSize.Y - content.YesButton.Size.Y;
+        var buttonY = RibbonTop(content.YesButton.Size.Y);
         content.NoButton.Position = new Vector2(70f, buttonY);
         content.YesButton.Position = new Vector2(newSize.X - content.YesButton.Size.X - 70f, buttonY);
     }
 
-    /// <summary>Bounds the popup's scrolling body above the library furniture.</summary>
+    /// <summary>
+    /// Bounds the popup's scrolling body above the library furniture, at the height its
+    /// text needs.
+    ///
+    /// Measured in the body's own font rather than capped at a ribbon's height: the cap
+    /// gave a one-line banner a ribbon's worth of room, and on a pane already short of
+    /// it that room came out of the strip. A body the game cannot measure - which is
+    /// a test, and nothing in the client - keeps the cap.
+    /// </summary>
     private static void ReservePageRoom(NVerticalPopup content, LibraryPage page)
     {
         if (page.Rows.Count == 0 && page.Pane is null && page.Tabs.Count == 0) return;
@@ -434,9 +531,16 @@ internal static class LibraryScreen
         var label = content.BodyLabel();
         label.FitContent = false;
         label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
-        label.Size = new Vector2(
-            label.Size.X,
-            string.IsNullOrEmpty(page.Body) ? 0f : Math.Min(label.Size.Y, content.NoButton.Size.Y));
+        var height = 0f;
+        if (!string.IsNullOrEmpty(page.Body))
+        {
+            var capped = Math.Min(label.Size.Y, content.NoButton.Size.Y);
+            height = GameText.Of(label) is { } style
+                ? BodyRoom(style, style.WrappedHeight(label.GetParsedText(), label.Size.X, capped))
+                : capped;
+        }
+
+        label.Size = new Vector2(label.Size.X, height);
     }
 
     /// <summary>
@@ -450,7 +554,7 @@ internal static class LibraryScreen
     {
         var label = content.BodyLabel();
         var top = label.Position.Y + label.Size.Y;
-        var bottom = content.NoButton.Position.Y;
+        var bottom = AreaFoot(content.NoButton.Position.Y, RibbonOverhang(content.NoButton));
         if (bottom <= top)
         {
             throw new InvalidOperationException(
@@ -509,7 +613,7 @@ internal static class LibraryScreen
                 new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height)));
         }
 
-        return area.Position.Y + (height * 1.65f);
+        return BandBottom(area.Position.Y, height);
     }
 
     /// <summary>The line between the panes. It runs the whole height of the content
@@ -578,7 +682,7 @@ internal static class LibraryScreen
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= footerText.Size * LineStep;
+            bottom -= FooterRoom(footer, at.Size.X, footerText);
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
                 LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
@@ -629,6 +733,15 @@ internal static class LibraryScreen
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
     }
 
+    /// <summary>
+    /// The room the list keeps for its footer above the area's foot: every line of it
+    /// and the step's own breath. It used to keep one line whatever the footer said,
+    /// and the Mine list's second line - "Keep or remove them in Settings" - was drawn
+    /// under the foot, where the Back ribbon is.
+    /// </summary>
+    internal static float FooterRoom(string footer, float width, GameTextStyle style) =>
+        LineHeight(footer, width, style) + (style.Size * (LineStep - LineAdvanceRatio));
+
     private static CheckBox AddFilter(
         NVerticalPopup content, ScreenFilter filter, Vector2 at, float width, GameTextStyle text)
     {
@@ -653,7 +766,9 @@ internal static class LibraryScreen
     /// One row, as a duplicate of the panel's own second ribbon.
     ///
     /// Widened to the pane it is in rather than left at the ribbon's own width, because
-    /// a list row carries a run's identity and a ribbon is sized for a word.
+    /// a list row carries a run's identity and a ribbon is sized for a word. Left at
+    /// the ribbon's own width where <paramref name="width"/> is that width - the
+    /// pane's plate - so its art is the game's untouched.
     /// </summary>
     internal static Control? AddRow(
         NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width)
@@ -664,7 +779,9 @@ internal static class LibraryScreen
             return null;
         }
 
-        var button = Duplicate(content, content.NoButton, name, width);
+        var source = content.NoButton;
+        var button = Duplicate(
+            content, source, name, Math.Abs(width - source.Size.X) < 0.5f ? null : width);
         if (button is null) return null;
 
         button.Position = at;
@@ -702,12 +819,7 @@ internal static class LibraryScreen
         }
         else
         {
-            // Refused rows keep their place and their reason and take no input.
-            // Absent is the only state that hides a row here, and a row that is
-            // there is a row a player has been told about.
-            button.Modulate = new Color(1f, 1f, 1f, 0.45f);
-            button.MouseFilter = Control.MouseFilterEnum.Ignore;
-            button.FocusMode = Control.FocusModeEnum.None;
+            Refuse(button, row.Tooltip);
         }
 
         if (row.Character is { Length: > 0 } character) AddCharacterPortrait(button, character);
@@ -718,6 +830,37 @@ internal static class LibraryScreen
         if (row.Glyph is { } glyph) AddGlyph(button, glyph, LibraryPalette.Muted);
         if (row.MarkTooltip is { Length: > 0 } tooltip) AddMark(button, tooltip);
         return button;
+    }
+
+    /// <summary>
+    /// A refused ribbon keeps its place and takes no input. Absent is the only state
+    /// that hides a row here, and a row that is there is a row a player has been told
+    /// about - by the line under it where it has one, and by the sentence on hover
+    /// where it has not.
+    /// </summary>
+    private static void Refuse(Control button, string? tooltip)
+    {
+        button.Modulate = new Color(1f, 1f, 1f, 0.45f);
+        button.MouseFilter = Control.MouseFilterEnum.Ignore;
+        button.FocusMode = Control.FocusModeEnum.None;
+        if (tooltip is { Length: > 0 } sentence) AddHover(button, sentence);
+    }
+
+    /// <summary>
+    /// The sentence behind a ribbon on hover, on a clear control over it rather than on
+    /// the ribbon: a refused ribbon ignores the mouse so it cannot light up, and a
+    /// tooltip needs a control that does not.
+    /// </summary>
+    private static void AddHover(Control button, string tooltip)
+    {
+        button.AddChild(new Control
+        {
+            Name = $"{button.Name}Hover",
+            Position = Vector2.Zero,
+            Size = button.Size,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            TooltipText = tooltip,
+        });
     }
 
     /// <summary>Keeps a refusal's reason under the row rather than shrinking its action.</summary>
@@ -858,15 +1001,21 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
-        var style = GameText.Scene(NativeTextRole.Secondary);
+        // The dense-line role: the run-history hover tip's own card listing, which is
+        // the smallest text the run-history screen sets. A row's note is a list of
+        // relics and a card count, the same kind of line.
+        var style = GameText.Scene(NativeTextRole.DenseLine);
         var label = new Label
         {
             Name = $"{row.Name}Note",
             Text = note,
             Position = new Vector2(0f, row.Size.Y * NoteDrop),
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
-            Size = new Vector2(row.Size.X, style.Size * 1.3f),
+            Size = new Vector2(row.Size.X, style.Size * LabelLineRatio),
             ClipText = true,
+            // Trimmed at the end with an ellipsis: a centred line that is only clipped
+            // loses both its ends, and a run with several relics read "ing Rod ... 31 ca"
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             TooltipText = note,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -887,11 +1036,10 @@ internal static class LibraryScreen
     /// is the only line on this surface that does - a numeral is what a player scans and
     /// the sentence is what they ask for.</param>
     internal static float AddLine(
-        NVerticalPopup content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
+        Control content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
         HorizontalAlignment alignment = HorizontalAlignment.Left, string? tooltip = null)
     {
-        var lineCount = text.Count(character => character == '\n') + 1;
-        var height = style.Size * 1.3f * lineCount;
+        var height = LabelHeight(text, width, style);
         var label = new Label
         {
             Name = "RunmobileLine",
@@ -910,7 +1058,27 @@ internal static class LibraryScreen
         style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", colour);
         content.AddChild(label);
-        return at.Y + (style.Size * 1.45f * lineCount);
+        return at.Y + LineHeight(text, width, style);
+    }
+
+    /// <summary>
+    /// The room one line of the mod's text takes: its label's box and the air to the
+    /// next line. What <see cref="AddLine"/> advances by, so a layout that sums these
+    /// before drawing places the lines where they are then drawn.
+    /// </summary>
+    internal static float LineHeight(string text, float width, GameTextStyle style) =>
+        LabelHeight(text, width, style) + (style.Size * (LineAdvanceRatio - LabelLineRatio));
+
+    /// <summary>
+    /// The label's box: the text wrapped to the width in its own font where the font is
+    /// there to measure with, and a line per newline where it is not. A sentence that
+    /// wraps is a sentence that takes two lines, and a box sized for one clipped it.
+    /// </summary>
+    private static float LabelHeight(string text, float width, GameTextStyle style)
+    {
+        var lineCount = text.Count(character => character == '\n') + 1;
+        var estimate = style.Size * LabelLineRatio * lineCount;
+        return Math.Max(estimate, style.WrappedHeight(text, width, estimate));
     }
 
     /// <summary>

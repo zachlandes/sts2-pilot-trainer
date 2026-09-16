@@ -12,21 +12,32 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class LibraryNativeFurnitureTests
 {
-    /// <summary>The stats scene puts a 109-square lock centred on a 256 by 90
-    /// Achievements tab, overhanging its top and bottom. The same proportions at any
-    /// tab size.</summary>
+    /// <summary>
+    /// The lock was the stats screen's 109-square centred on the tab, which drew it
+    /// across the middle of "Community". It is now a small badge - half the
+    /// run-history entry's marker - hung off the tab's top-right corner, above the band
+    /// the word is drawn in, and the word's box is left whole: narrowing it for the
+    /// lock made the tab's own auto-size draw "Community" smaller than "Mine".
+    /// </summary>
     [Theory]
     [InlineData(256f, 90f)]
     [InlineData(205f, 72f)]
-    public void TheLockSitsWhereTheStatsScreenPutsIt(float width, float height)
+    [InlineData(170f, 60f)]
+    public void TheLockHangsOffTheTabsCornerClearOfTheWord(float width, float height)
     {
-        var lockBounds = LibraryTabArt.LockBounds(new Vector2(width, height));
+        var tab = new Vector2(width, height);
+        var lockBounds = LibraryTabArt.LockBounds(tab);
+        var maxFontSize = NativeScenes.Here.State is NativeScenes.AvailabilityState.Run
+            ? NativeScenes.DesignSize(NativeScenes.Read(LibraryTabArt.Scene)!, "Label")
+            : 32;
 
+        Assert.Equal(FloorMarkerArt.EntryIconSide / 2f, lockBounds.Size.X, 3);
         Assert.Equal(lockBounds.Size.X, lockBounds.Size.Y);
-        Assert.Equal(height * 109f / 90f, lockBounds.Size.Y, 3);
-        Assert.Equal(width / 2f, lockBounds.Position.X + (lockBounds.Size.X / 2f), 3);
-        Assert.Equal(height / 2f, lockBounds.Position.Y + (lockBounds.Size.Y / 2f), 3);
-        Assert.True(lockBounds.Position.Y < 0f);
+        Assert.True(lockBounds.Position.Y < 0f && lockBounds.End.Y > 0f, "the lock hangs off the top edge");
+        Assert.True(lockBounds.Position.X < width && lockBounds.End.X > width, "the lock hangs off the right edge");
+        Assert.True(
+            lockBounds.End.Y <= (height - maxFontSize) / 2f,
+            $"the lock ends at {lockBounds.End.Y}, over the band a {maxFontSize} word is centred in");
     }
 
     [Fact]
@@ -87,6 +98,142 @@ public sealed class LibraryNativeFurnitureTests
         Assert.Equal($"res://images/ui/run_history/{icon}.png", FloorMarkerArt.IconPath(icon));
         Assert.Equal($"res://images/ui/run_history/{icon}_outline.png", FloorMarkerArt.OutlinePath(icon));
     }
+
+    /// <summary>
+    /// The three numbers the strip and the tab lock size themselves by, read off the
+    /// run-history entry's own scene: a 60 box, an icon 4 units over it, drawn at 0.7.
+    /// A build that redraws its history entry moves the marker here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheMarkerSizeIsTheRunHistoryEntrysOwn()
+    {
+        var scene = NativeScenes.Read(FloorMarkerArt.EntryScene);
+        Assert.NotNull(scene);
+
+        var root = NativeScenes.RootProperties(scene);
+        Assert.NotNull(root);
+        Assert.Equal($"Vector2({FloorMarkerArt.EntryBox:0}, {FloorMarkerArt.EntryBox:0})", root["custom_minimum_size"]);
+
+        var icon = NativeScenes.Properties(scene, "Icon");
+        Assert.NotNull(icon);
+        Assert.Equal($"{FloorMarkerArt.EntryIconOverhang:0.0}", icon["offset_right"]);
+        Assert.Equal($"Vector2({FloorMarkerArt.EntryIconScale:0.0}, {FloorMarkerArt.EntryIconScale:0.0})", icon["scale"]);
+    }
+
+    /// <summary>
+    /// The relic holder the run-history screen flows its relics with, read off its own
+    /// scene: a box, and an icon inset from it by its own offsets. The rows' pitch is
+    /// that box because the flow puts nothing between holders, and that is held here
+    /// too - a build that separates them moves the rows by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheRelicRowsAreTheRunHistoryHoldersOwnSizeAndFlow()
+    {
+        var (box, icon) = RelicHolderOnThisBuild();
+        Assert.Equal(LibraryPaneArtTests.MinePane().RelicBox, box);
+        Assert.Equal(LibraryPaneArtTests.MinePane().RelicIcon, icon);
+
+        var history = NativeScenes.Read(GameText.Declarations.Single(d => d.Role == NativeTextRole.Fact).Scene);
+        Assert.NotNull(history);
+        var flow = NativeScenes.Properties(
+            history, "ScreenContents/Content/Container/RelicHistory/MarginContainer/RelicsContainer");
+        Assert.NotNull(flow);
+        Assert.Equal("0", flow["theme_override_constants/h_separation"]);
+        Assert.Equal("0", flow["theme_override_constants/v_separation"]);
+    }
+
+    /// <summary>
+    /// The Mine pane holds a run of dozens of relics on this build, from the sizes the
+    /// shipped scenes actually set: each role the pane draws with, the relic holder,
+    /// the panel's ribbon and the popup's body. The arithmetic is
+    /// <see cref="LibraryPaneArtTests.AssertMinePaneFits"/>'s; this is what holds it to
+    /// a build rather than to numbers copied into a test.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheMinePaneFitsOnThisBuildWithDozensOfRelics()
+    {
+        var (box, icon) = RelicHolderOnThisBuild();
+        var sizes = new LibraryPaneArtTests.NativePaneSizes(
+            RowTitle: NativeScenes.DesignSize(RoleScene(NativeTextRole.RowTitle), RoleNode(NativeTextRole.RowTitle)),
+            Secondary: NativeScenes.DesignSize(RoleScene(NativeTextRole.Secondary), RoleNode(NativeTextRole.Secondary)),
+            Fact: NativeScenes.DesignSize(RoleScene(NativeTextRole.Fact), RoleNode(NativeTextRole.Fact)),
+            CardCaption: NativeScenes.DesignSize(RoleScene(NativeTextRole.CardCaption), RoleNode(NativeTextRole.CardCaption)),
+            Numeral: NativeScenes.DesignSize(RoleScene(NativeTextRole.FloorNumeral), RoleNode(NativeTextRole.FloorNumeral)),
+            Body: NativeScenes.DesignSize(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody)),
+            Ribbon: Ribbon(NativeScenes.Vector2(NativeScenes.RootProperties(RoleScene(NativeTextRole.ButtonCaption))!["custom_minimum_size"])),
+            BodyTop: float.Parse(
+                NativeScenes.Properties(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody))!["offset_top"],
+                System.Globalization.CultureInfo.InvariantCulture),
+            RelicBox: box,
+            RelicIcon: icon,
+            Arrow: ArrowWidthOnThisBuild(),
+            Overhang: -float.Parse(
+                NativeScenes.Properties(RoleScene(NativeTextRole.ButtonCaption), "Visuals")!["offset_top"],
+                System.Globalization.CultureInfo.InvariantCulture));
+
+        Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
+        LibraryPaneArtTests.AssertMinePaneFits(sizes);
+    }
+
+    private static Vector2 Ribbon((float X, float Y) size) => new(size.X, size.Y);
+
+    /// <summary>The paginator's arrow column, read the way <see cref="NativePaginatorArt.ArrowWidth"/>
+    /// reads the live scene: the control's right offset less its left.</summary>
+    private static float ArrowWidthOnThisBuild()
+    {
+        var paginator = NativeScenes.Read(NativePaginatorArt.PaginatorScene);
+        Assert.NotNull(paginator);
+        var arrow = NativeScenes.Properties(paginator, NativePaginatorArt.ArrowNode);
+        Assert.NotNull(arrow);
+        return float.Parse(arrow["offset_right"], System.Globalization.CultureInfo.InvariantCulture)
+            - float.Parse(arrow["offset_left"], System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// The strip's page arrows stand in the column the game's own paginator gives its
+    /// arrows, which is narrower than a marker's column, and the strip's marker between
+    /// them is the run-history entry's own; on this build's 456-wide pane that is four
+    /// floors a page, and a fifth from 475. A build that redraws its paginator moves the
+    /// arrows here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheStripsPageArrowsTakeThePaginatorsOwnColumn()
+    {
+        var sizes = LibraryPaneArtTests.MinePane() with { Arrow = ArrowWidthOnThisBuild() };
+        var layout = LibraryPaneArt.LayoutStrip(50, sizes.Width, sizes.Arrow, anchor: 0, sizes.Numeral);
+
+        Assert.Equal(LibraryPaneArtTests.MinePane().Arrow, sizes.Arrow);
+        Assert.Equal(sizes.Arrow, layout.Arrow);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(4, layout.Count);
+        Assert.Equal(5, LibraryPaneArt.LayoutStrip(50, 475f, sizes.Arrow, anchor: 0, sizes.Numeral).Count);
+    }
+
+    /// <summary>The holder's box and its icon's side, read the way
+    /// <see cref="RelicHolderArt"/> reads the live scene: the root's minimum size, less
+    /// the icon's left offset in and its right offset back.</summary>
+    private static (float Box, float Icon) RelicHolderOnThisBuild()
+    {
+        var holder = NativeScenes.Read(RelicHolderArt.HolderScene);
+        Assert.NotNull(holder);
+        var box = NativeScenes.Vector2(NativeScenes.RootProperties(holder)!["custom_minimum_size"]).X;
+
+        var relicScene = NativeScenes.InstancedScene(holder, "Relic");
+        Assert.NotNull(relicScene);
+        var relicText = NativeScenes.Read(relicScene);
+        Assert.NotNull(relicText);
+        var iconNode = NativeScenes.Properties(relicText, "Icon");
+        Assert.NotNull(iconNode);
+        var left = float.Parse(iconNode["offset_left"], System.Globalization.CultureInfo.InvariantCulture);
+        var right = float.Parse(iconNode["offset_right"], System.Globalization.CultureInfo.InvariantCulture);
+        return (box, box - left + right);
+    }
+
+    private static string RoleScene(NativeTextRole role) =>
+        NativeScenes.Read(GameText.Declarations.Single(d => d.Role == role).Scene)!;
+
+    private static string RoleNode(NativeTextRole role) =>
+        GameText.Declarations.Single(d => d.Role == role).Node.TrimStart('%');
 
     /// <summary>A process with no game has none of the icons, and the strip then draws
     /// the mod's own glyph rather than nothing.</summary>

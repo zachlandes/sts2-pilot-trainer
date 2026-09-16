@@ -53,10 +53,6 @@ public static class LibraryCopy
     /// <summary>Runs of the player's own, which the recorder wrote.</summary>
     public const string MyRunsTab = "Mine";
 
-    /// <summary>The recordings that travel inside the mod, present with no network
-    /// and no index.</summary>
-    public const string IncludedGroup = "Included with Runmobile";
-
     /// <summary>Curated runs from the index, in the curator's order.</summary>
     public const string FeaturedGroup = "Featured";
 
@@ -157,23 +153,17 @@ public static class LibraryCopy
 
     public const string ShowCommunityRuns = "Show community runs";
 
-    /// <summary>Behind the lock on the Community tab while the setting is off. One
-    /// sentence, because a tooltip is read in passing; it names the setting by its own
-    /// label and says where it is.</summary>
-    public const string CommunityOffTooltip =
-        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under General, in the Runmobile section to see them here.";
-
-    /// <summary>The one line over the tabs while the setting is off: the whole
-    /// instruction in a sentence, because a line the panel may have to shorten is a
-    /// line whose second half a player never reads.</summary>
-    public const string CommunityOffBody =
-        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under General, in the Runmobile section to see them.";
+    /// <summary>The Community lock while the setting is off, behind the lock and on
+    /// the line over the tabs alike: one sentence naming the setting by its own label
+    /// and the path to it, in the captain's words.</summary>
+    public const string CommunityOff =
+        $"Community runs are off. Toggle sharing in Settings->General->Runmobile: {ShowCommunityRuns}";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
-    /// can change, so the tooltip and the body line say what is missing rather than
-    /// pointing at a switch.</summary>
-    public const string CommunityUnavailableTooltip =
-        "Community runs are unavailable: no authorized sharing service is configured.";
+    /// can change, so the tooltip and the line say what is missing rather than pointing
+    /// at a switch that would change nothing.</summary>
+    public const string CommunityUnavailable =
+        "Community runs are unavailable: no sharing service is configured.";
 
     /// <summary>
     /// The main-menu row itself: the mod's own name, the same word the Compendium card
@@ -191,8 +181,10 @@ public static class LibraryCopy
     public const string FetchRunIndexFailed =
         "The run index could not be fetched. Direct run-code lookup is still available.";
 
+    /// <summary>Why a run cannot be shared from this build, over the Mine tab and in
+    /// the share form's refusal: a service is what is missing, and no setting adds one.</summary>
     public const string SharingServiceUnavailable =
-        "Online sharing is unavailable because no authorized service is configured.";
+        "Sharing is unavailable: no sharing service is configured.";
 
     public const string LookingUpRunCode = "Looking up that run code…";
 

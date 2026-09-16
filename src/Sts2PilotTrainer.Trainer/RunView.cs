@@ -114,8 +114,8 @@ public sealed record RunViewRow(
 /// One run, opened: the strip of every floor it reached, what the recording says at
 /// the selected one, and the ways in.
 ///
-/// Reached one way. The browser's pane has an "Open the run" ribbon in either tab and
-/// that is the only thing that opens this; run history's plate goes straight to a
+/// Reached one way. The browser puts "Open the run" on the panel's primary ribbon
+/// under the pane in either tab and that is the only thing that opens this; run history's plate goes straight to a
 /// floor, and its "Choose another floor" row drills in here about the run it was
 /// already showing. Back returns to whichever of those opened it, with the selection
 /// kept.

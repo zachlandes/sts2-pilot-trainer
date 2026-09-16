@@ -12,48 +12,54 @@ public sealed class LibraryPaneArtTests
     /// this size.</summary>
     private const int LineSize = 16;
 
+    /// <summary>The paginator's own arrow column on v0.111.0, which
+    /// <see cref="NativePaneSizes"/> holds to the shipped scene.</summary>
+    private const float Arrow = 58f;
+
     [Fact]
     public void FullRunStripPagesIntoReadableWindows()
     {
         const int floors = 50;
         const float width = 500f;
 
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, LineSize);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, LineSize);
 
-        // Six to a page at the history entry's own 60-unit box, not fifteen specks
-        Assert.Equal(6, layout.Count);
-        Assert.Equal(9, layout.Pages);
+        // Five to a page between the two arrows at the paginator's own column, each
+        // at the history entry's own marker, not fifteen specks
+        Assert.Equal(5, layout.Count);
+        Assert.Equal(10, layout.Pages);
         Assert.False(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.True(layout.Pitch >= 60f);
-        Assert.True(layout.Cell >= 32f);
-        Assert.Equal(6, layout.NextSlot);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(Arrow, layout.Arrow);
+        Assert.Equal(Arrow, layout.ColumnX(0), 3);
+        Assert.Equal(width - Arrow, layout.NextX, 3);
+        Assert.True(layout.ColumnX(4) + layout.Pitch <= layout.NextX + 0.01f, "the last floor ends before the Next arrow");
     }
 
     [Fact]
     public void FullRunStripOpensOnTheAnchoredPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, Arrow, anchor: 49, LineSize);
 
-        Assert.Equal(8, layout.Index);
-        Assert.Equal(48, layout.First);
-        Assert.Equal(2, layout.Count);
+        Assert.Equal(9, layout.Index);
+        Assert.Equal(45, layout.First);
+        Assert.Equal(5, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.False(layout.HasNext);
-        Assert.Equal(1, layout.SlotOf(48));
+        Assert.Equal(Arrow, layout.ColumnX(45), 3);
     }
 
     [Fact]
     public void FullRunStripCanMoveToAnAdjacentPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize, requestedPage: 1);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, Arrow, anchor: 49, LineSize, requestedPage: 1);
 
         Assert.Equal(1, layout.Index);
-        Assert.Equal(6, layout.First);
-        Assert.Equal(6, layout.Count);
+        Assert.Equal(5, layout.First);
+        Assert.Equal(5, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.Equal(7, layout.NextSlot);
     }
 
     /// <summary>
@@ -70,7 +76,7 @@ public sealed class LibraryPaneArtTests
     [InlineData(3, 900f, 30)]
     public void StripCellPartsDoNotOverlapAndStayInsideTheCell(int floors, float width, int lineSize)
     {
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, lineSize);
         var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
 
         Assert.True(cell.Numeral.Position.Y >= cell.Icon.End.Y, "the numeral sits under the marker");
@@ -102,6 +108,464 @@ public sealed class LibraryPaneArtTests
             Assert.True(part.Position.X >= 0f && part.End.X <= layout.Pitch + 0.01f, $"the {name} is inside the column");
         }
     }
+
+    /// <summary>
+    /// The strip's marker is the run-history entry's own: the icon a player sees on
+    /// the history screen is 44.8 units on a side, and that is the side the strip draws
+    /// it at wherever the pane is wide enough. It used to be capped at a multiple of
+    /// the numeral's font size, which drew a marker half again the game's and cost the
+    /// pane the room the plate then took from it; and a strip that paged - every real
+    /// run's - drew it at the entry's 60-unit column, which is a 37-unit marker, so
+    /// the paged case is held here too, down to the narrowest strip that still pages.
+    /// </summary>
+    [Theory]
+    [InlineData(5, 456f, 22)]
+    [InlineData(3, 900f, 30)]
+    [InlineData(48, 456f, 22)]
+    [InlineData(48, 900f, 30)]
+    [InlineData(48, 216f, 22)]
+    public void TheStripsMarkerIsTheRunHistoryEntrysOwnSize(int floors, float width, int lineSize)
+    {
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, Arrow, anchor: 0, lineSize);
+        var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
+
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(FloorMarkerArt.EntryIconSide, cell.Icon.Size.X * 0.8f, 3);
+    }
+
+    /// <summary>
+    /// What the captain saw: "Open the run" across the floor numerals and the version
+    /// line under "Share this run". The plate keeps the pane's bottom, the strip keeps
+    /// the game's marker, everything else is measured, and the relics page before
+    /// anything overlaps.
+    /// </summary>
+    [Fact]
+    public void AShortPanePagesTheRelicsRatherThanDrawingThePlateOverThem()
+    {
+        var pane = MinePane();
+        var roomy = pane.Lay(relics: 10, plateRows: 2, height: pane.Height);
+        var short_ = pane.Lay(relics: 10, plateRows: 2, height: pane.Height - 100f);
+
+        Assert.Equal(1, roomy.RelicPage.Pages);
+        Assert.Equal(LibraryPaneArt.NativeCell, roomy.Strip!.Value.Cell, 3);
+        Assert.Equal(LibraryPaneArt.NativeCell, short_.Strip!.Value.Cell, 3);
+        Assert.True(short_.RelicRows < roomy.RelicRows, "the relics gave a row");
+        Assert.True(short_.RelicPage.Pages > 1, "the rows that gave are a page away");
+        foreach (var layout in new[] { roomy, short_ })
+        {
+            AssertNothingOverlaps(pane, layout, relics: 10);
+        }
+
+        Assert.Equal(pane.Height - LibraryPaneArt.PlateHeight(2, pane.Ribbon.Y), roomy.PlateTop!.Value, 3);
+        Assert.True(roomy.PlateTop.Value + pane.Ribbon.Y < pane.Height, "air under the plate before the panel's own ribbon");
+    }
+
+    /// <summary>
+    /// A run with ten relics made a second relic row, and the second row left the
+    /// strip less than its smallest marker, so the pane refused - and the library
+    /// vanished when that run was pressed. The relic rows now page: they keep the
+    /// holder's own size, the pane shows as many rows as fit beside the strip at the
+    /// game's own marker, and the rest are a page away behind the game's own arrows.
+    /// Nothing is drawn over anything, whatever the count.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(10)]
+    [InlineData(16)]
+    [InlineData(24)]
+    [InlineData(36)]
+    [InlineData(60)]
+    public void TheMinePaneHoldsAnyRelicCountAtTheGamesOwnMarker(int relics)
+    {
+        var pane = MinePane();
+        var layout = pane.Lay(relics, plateRows: 2, height: pane.Height);
+
+        AssertNothingOverlaps(pane, layout, relics);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+        var block = pane.RelicBlock(relics);
+        if (block.Rows <= layout.RelicRows)
+        {
+            Assert.Equal(1, layout.RelicPage.Pages);
+            Assert.Equal(relics, layout.RelicPage.Count);
+        }
+        else
+        {
+            Assert.True(layout.RelicPage.Pages > 1, $"{relics} relics in {block.Rows} rows page on this pane");
+            Assert.True(layout.RelicPage.HasNext);
+            Assert.True(layout.RelicPage.Drawn <= block.PlacesIn(layout.RelicRows), "the page's places fit its rows");
+        }
+    }
+
+    /// <summary>
+    /// The opened run's pane draws the deck under the strip and has no plate, and it is
+    /// held to its height like the browser's: at the run-history holder's size a
+    /// mid-act run's relics and an ordinary deck ran past the panel's ribbon, so the
+    /// deck pages the way the relics do, and the relics keep a row for it. Every card
+    /// and every relic is a page away at full size, whatever the counts.
+    /// </summary>
+    [Theory]
+    [InlineData(2, 10)]
+    [InlineData(15, 20)]
+    [InlineData(36, 40)]
+    [InlineData(60, 80)]
+    public void TheOpenedRunPaneHoldsAnyDeckAndRelicCountWithoutOverflowing(int relics, int cards)
+    {
+        var pane = MinePane() with { SubtitleLines = 1, FactLines = 4 };
+        var layout = pane.Lay(relics, plateRows: 0, height: pane.ViewHeight, cards: cards);
+
+        AssertNothingOverlaps(pane, layout, relics, cards);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+        Assert.True(layout.RelicRows >= 1);
+        Assert.True(layout.DeckRows >= 1);
+        Assert.True(layout.AfterDeck + pane.Below <= pane.ViewHeight + 0.01f, "the facts end inside the pane");
+        var deck = LibraryPaneArt.LayoutDeck(cards);
+        if (deck.Rows > layout.DeckRows)
+        {
+            Assert.True(layout.DeckPage.Pages > 1, "the deck pages");
+            Assert.True(layout.DeckPage.Drawn <= deck.PlacesIn(layout.DeckRows));
+            Assert.Equal(1, layout.RelicRows);
+        }
+        else
+        {
+            Assert.Equal(cards, layout.DeckPage.Count);
+        }
+    }
+
+    /// <summary>
+    /// The deck takes its rows before the relics do: a mid-act run with fifteen
+    /// relics and a twenty-card deck, under the four fact lines the opened run can
+    /// carry, used to give the relics three rows and leave the deck one - six tiles a
+    /// page, four pages to read a deck the pane exists to show. The deck is drawn
+    /// whole and the relics page instead.
+    /// </summary>
+    [Fact]
+    public void TheOpenedRunPaneShowsTheDeckWholeAndPagesTheRelics()
+    {
+        var pane = MinePane() with { SubtitleLines = 1, FactLines = 4 };
+        var layout = pane.Lay(relics: 15, plateRows: 0, height: pane.ViewHeight, cards: 20);
+
+        Assert.Equal(LibraryPaneArt.LayoutDeck(20).Rows, layout.DeckRows);
+        Assert.Equal(1, layout.DeckPage.Pages);
+        Assert.Equal(20, layout.DeckPage.Count);
+        Assert.True(layout.RelicRows < pane.RelicBlock(15).Rows, "the relics gave the deck its rows");
+        Assert.True(layout.RelicPage.Pages > 1, "the relics page");
+        AssertNothingOverlaps(pane, layout, 15, 20);
+    }
+
+    /// <summary>Every relic page of a long run is reachable, holds whole places, and
+    /// the last one ends on the last relic.</summary>
+    [Fact]
+    public void RelicPagesWalkEveryRelic()
+    {
+        var pane = MinePane();
+        const int relics = 60;
+        var first = pane.Lay(relics, plateRows: 2, height: pane.Height);
+        var seen = 0;
+        for (var index = 0; index < first.RelicPage.Pages; index++)
+        {
+            var page = pane.Lay(relics, plateRows: 2, height: pane.Height, relicPage: index).RelicPage;
+            Assert.Equal(seen, page.First);
+            Assert.Equal(index > 0, page.HasPrevious);
+            Assert.Equal(index < first.RelicPage.Pages - 1, page.HasNext);
+            seen += page.Count;
+        }
+
+        Assert.Equal(relics, seen);
+    }
+
+    /// <summary>A pane that cannot give its relics and its deck one row each beside
+    /// the strip at the game's marker refuses by name rather than drawing one part over
+    /// another, or a marker smaller than the game's. So does one with no strip and no
+    /// room for its lines.</summary>
+    [Fact]
+    public void APaneTooShortForOneRowOfEachRefusesRatherThanOverlapping()
+    {
+        var pane = MinePane();
+
+        var refused = Assert.Throws<InvalidOperationException>(() =>
+            pane.Lay(relics: 5, plateRows: 2, height: pane.Height - 200f));
+        Assert.Contains("run strip", refused.Message);
+
+        var noStrip = Assert.Throws<InvalidOperationException>(() =>
+            pane.Lay(relics: 1, plateRows: 2, height: pane.Above + pane.Below, floors: 0));
+        Assert.Contains("refuses", noStrip.Message);
+    }
+
+    /// <summary>
+    /// The relic rows are the run-history screen's own flow: one holder box per relic,
+    /// nothing between, wrapped at the width. The first row keeps the deck count's
+    /// measured width clear - it used to fill the row edge to edge and the count was
+    /// drawn over its last icons - and a count too wide to share a row with even one
+    /// relic takes a line of its own over the rows.
+    /// </summary>
+    [Fact]
+    public void TheFirstRelicRowKeepsTheDeckCountsWidthClear()
+    {
+        var pane = MinePane();
+        var width = pane.Width;
+        var box = pane.RelicBox;
+        var perRow = (int)Math.Floor(width / box);
+        const float countWidth = 100f;
+
+        var block = LibraryPaneArt.LayoutRelics(20, width, box, countWidth, countLine: 34.8f);
+
+        Assert.Equal(perRow, block.PerRow);
+        Assert.True(block.FirstRow < perRow, "the first row gave the count its room");
+        var gap = box * LibraryPaneArt.CountGapShare;
+        Assert.True((block.FirstRow * box) + gap + countWidth <= width, "the count fits beside the first row's relics with air");
+        Assert.True(((block.FirstRow + 1) * box) + gap + countWidth > width, "the first row holds every relic that leaves the count clear");
+        Assert.Equal(0f, block.CountLine);
+        Assert.Equal(1 + (int)Math.Ceiling((20 - block.FirstRow) / (float)perRow), block.Rows);
+        Assert.Equal(0, block.RowOf(block.FirstRow - 1));
+        Assert.Equal(1, block.RowOf(block.FirstRow));
+        Assert.Equal(0, block.ColumnOf(block.FirstRow));
+        Assert.Equal(perRow - 1, block.ColumnOf(block.FirstRow + perRow - 1));
+        Assert.Equal(block.FirstRow + perRow, block.PlacesIn(2));
+
+        var ownLine = LibraryPaneArt.LayoutRelics(3, width, box, width - (box / 2f), countLine: 34.8f);
+        Assert.Equal(perRow, ownLine.FirstRow);
+        Assert.Equal(34.8f, ownLine.CountLine, 3);
+        Assert.Equal(1, ownLine.Rows);
+        Assert.Equal(34.8f + box + (box * 0.3f), LibraryPaneArt.RelicRowsHeight(ownLine, 1, box), 3);
+
+        var none = LibraryPaneArt.LayoutRelics(0, width, box, countWidth, countLine: 34.8f);
+        Assert.Equal(0, none.Rows);
+        Assert.Equal(34.8f, LibraryPaneArt.RelicRowsHeight(none, 0, box), 3);
+        var nothing = LibraryPaneArt.LayoutRelics(0, width, box, null, countLine: 34.8f);
+        Assert.Equal(0f, LibraryPaneArt.RelicRowsHeight(nothing, 0, box));
+    }
+
+    /// <summary>The plate's ribbons stand side by side at the ribbon's own width, the
+    /// first at the pane's left edge and the last at its right, and a pane too narrow
+    /// for them refuses rather than stacking two controls under one press.</summary>
+    [Fact]
+    public void ThePlatesRibbonsStandSideBySideAtTheirOwnWidth()
+    {
+        var pane = MinePane();
+        var columns = LibraryPaneArt.PlateColumns(2, pane.Width, pane.Ribbon.X);
+
+        Assert.Equal(2, columns.Count);
+        Assert.Equal(0f, columns[0]);
+        Assert.Equal(pane.Width - pane.Ribbon.X, columns[1], 3);
+        Assert.True(columns[1] >= pane.Ribbon.X, "the ribbons do not overlap");
+        Assert.Equal(pane.Ribbon.Y * (1f + LibraryPaneArt.PlateAir), LibraryPaneArt.PlateHeight(2, pane.Ribbon.Y), 3);
+        Assert.Empty(LibraryPaneArt.PlateColumns(0, pane.Width, pane.Ribbon.X));
+        Assert.Throws<InvalidOperationException>(() => LibraryPaneArt.PlateColumns(3, pane.Width, pane.Ribbon.X));
+    }
+
+    /// <summary>
+    /// The plate's ribbons end above the panel ribbon's art, not merely above its box:
+    /// the retail ribbon paints 8 units above its own box, and a plate whose air
+    /// cleared the box alone drew "Remove this run" onto "Open the run". The pane's
+    /// height is measured to the art, so the plate's foot and its air stand off it.
+    /// </summary>
+    [Fact]
+    public void ThePlateStandsOffThePanelRibbonsArtRatherThanItsBox()
+    {
+        var pane = MinePane();
+        var layout = pane.Lay(relics: 10, plateRows: 2, height: pane.Height);
+        var plateBottom = layout.PlateTop!.Value + pane.Ribbon.Y;
+        var artTop = pane.Height + pane.Overhang;
+
+        Assert.Equal(LibraryScreen.RibbonTop(pane.Ribbon.Y) - pane.Overhang, pane.Foot, 3);
+        Assert.Equal(pane.Height - (pane.Ribbon.Y * LibraryPaneArt.PlateAir), plateBottom, 3);
+        Assert.True(
+            artTop - plateBottom >= pane.Overhang + (pane.Ribbon.Y * LibraryPaneArt.PlateAir) - 0.01f,
+            $"the plate's foot is {artTop - plateBottom} above the panel ribbon's art");
+    }
+
+    /// <summary>
+    /// The list keeps room for every line its footer says: the Mine footer is a
+    /// numeral and, under it, where to keep or remove the runs, and a reservation of
+    /// one line drew the second under the area's foot, through the Back ribbon.
+    /// </summary>
+    [Fact]
+    public void TheListReservesEveryLineOfItsFooter()
+    {
+        var footer = new GameTextStyle(null, 24);
+        var oneLine = LibraryScreen.FooterRoom("4 runs · 5 MB on this computer", 500f, footer);
+        var twoLines = LibraryScreen.FooterRoom(
+            "4 runs · 5 MB on this computer\nKeep or remove them in Settings", 500f, footer);
+
+        Assert.Equal(24f * 1.6f, oneLine, 3);
+        Assert.Equal(oneLine + (24f * LibraryScreen.LabelLineRatio), twoLines, 3);
+    }
+
+    /// <summary>An upgraded card is written <c>CARD.X+1</c> and wears <c>CARD.X</c>'s
+    /// portrait; a relic or an unupgraded card is asked for as written.</summary>
+    [Theory]
+    [InlineData("CARD.STRIKE_IRONCLAD+1", "CARD.STRIKE_IRONCLAD")]
+    [InlineData("CARD.SEARING_BLOW+7", "CARD.SEARING_BLOW")]
+    [InlineData("CARD.STRIKE_IRONCLAD", "CARD.STRIKE_IRONCLAD")]
+    [InlineData("RELIC.BURNING_BLOOD", "RELIC.BURNING_BLOOD")]
+    public void AnUpgradedCardWearsItsBaseCardsArt(string modelId, string artId)
+    {
+        Assert.Equal(artId, ModelArt.ArtId(modelId));
+    }
+
+    /// <summary>
+    /// The Mine pane at v0.111.0's own sizes, on the popup as the library expands it,
+    /// draws an ordinary run's deck under the strip at the game's own marker, keeps a
+    /// relic row beside them and pages the rest - the numbers the captain's screen was
+    /// drawn from - and without a deck gives the relics the room.
+    /// <see cref="NativePaneSizes"/> holds them to the shipped scenes where the game is
+    /// installed; this holds the arithmetic where it is not, so a spacing change that
+    /// would re-collide fails here first.
+    /// </summary>
+    [Fact]
+    public void TheMinePaneFitsAtThisBuildsSizesWithTheStripAtTheGamesOwnMarker()
+    {
+        AssertMinePaneFits(MinePane());
+    }
+
+    /// <summary>The Community pane carries a creator line and no plate; its way
+    /// forward is the panel's own ribbon, so its room is the pane's height less its
+    /// lines, and it too draws an ordinary deck under the strip at the game's marker
+    /// and pages dozens of relics beside them.</summary>
+    [Fact]
+    public void TheCommunityPaneFitsAtThisBuildsSizes()
+    {
+        var pane = MinePane() with { SubtitleLines = 1 };
+        var dozens = pane.Lay(relics: 36, plateRows: 0, height: pane.Height, cards: OrdinaryDeck);
+        var noDeck = pane.Lay(relics: 36, plateRows: 0, height: pane.Height);
+
+        foreach (var (layout, cards) in new[] { (dozens, OrdinaryDeck), (noDeck, 0) })
+        {
+            Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+            AssertNothingOverlaps(pane, layout, 36, cards);
+            Assert.True(layout.RelicRows >= 1, $"{layout.RelicRows} relic rows beside the strip");
+            Assert.True(layout.RelicPage.Pages > 1, "dozens of relics page");
+        }
+
+        Assert.True(dozens.DeckRows >= 1, "a row of the deck under the strip");
+        Assert.True(noDeck.RelicRows >= 3, $"{noDeck.RelicRows} relic rows without a deck");
+    }
+
+    /// <summary>The deck an ordinary run carries. The browser pane draws it under the
+    /// strip and the deck takes its rows first, so a fit held with no deck holds a pane
+    /// the retail client never draws.</summary>
+    internal const int OrdinaryDeck = 20;
+
+    internal static void AssertMinePaneFits(NativePaneSizes pane)
+    {
+        // The most relics the pane shows on one page beside an ordinary deck, and a run past that
+        var most = pane.Lay(relics: 60, plateRows: 2, height: pane.Height, cards: OrdinaryDeck);
+        var admitted = pane.RelicBlock(60).PlacesIn(most.RelicRows);
+        var full = pane.Lay(relics: admitted, plateRows: 2, height: pane.Height, cards: OrdinaryDeck);
+
+        Assert.True(most.RelicRows >= 1, $"the pane holds {most.RelicRows} relic rows beside the strip");
+        foreach (var (layout, relics) in new[] { (most, 60), (full, admitted) })
+        {
+            Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+            Assert.True(layout.DeckRows >= 1, "a row of the deck under the strip");
+            Assert.True(layout.DeckPage.Drawn > 0, "tiles are drawn on it");
+            AssertNothingOverlaps(pane, layout, relics, OrdinaryDeck);
+        }
+
+        Assert.Equal(1, full.RelicPage.Pages);
+        Assert.True(most.RelicPage.Pages > 1);
+
+        // A recording without a deck gives the relics the room: two rows before it pages
+        var noDeck = pane.Lay(relics: 60, plateRows: 2, height: pane.Height);
+        Assert.True(noDeck.RelicRows >= 2, $"the pane holds {noDeck.RelicRows} relic rows without a deck");
+        Assert.Equal(0, noDeck.DeckRows);
+        AssertNothingOverlaps(pane, noDeck, 60);
+    }
+
+    /// <summary>Every part under the one before it, and the plate under them all.</summary>
+    private static void AssertNothingOverlaps(
+        NativePaneSizes pane, LibraryPaneArt.PaneLayout layout, int relics, int cards = 0)
+    {
+        Assert.Equal(pane.Above, layout.RelicsTop, 3);
+        var block = pane.RelicBlock(relics);
+        Assert.True(layout.RelicRows <= block.Rows, "no more rows than the run has");
+        Assert.Equal(LibraryPaneArt.RelicRowsHeight(block, layout.RelicRows, pane.RelicBox), layout.RelicsWindow, 3);
+        Assert.True(layout.RelicPage.Drawn <= block.PlacesIn(Math.Max(layout.RelicRows, block.Rows == 0 ? 0 : 1)), "every place drawn is on a drawn row");
+        Assert.Equal(layout.RelicsTop + layout.RelicsWindow, layout.StripTop, 3);
+        Assert.Equal(layout.StripTop + layout.StripRoom, layout.AfterStrip, 3);
+        var deck = LibraryPaneArt.LayoutDeck(cards);
+        Assert.True(layout.DeckRows <= deck.Rows, "no more tile rows than the deck has");
+        Assert.Equal(LibraryPaneArt.DeckRowsHeight(layout.DeckRows, pane.TilePitch), layout.DeckWindow, 3);
+        Assert.True(layout.DeckPage.Drawn <= deck.PlacesIn(layout.DeckRows), "every tile drawn is on a drawn row");
+        Assert.Equal(layout.AfterStrip + layout.DeckWindow, layout.AfterDeck, 3);
+        if (layout.PlateTop is { } plateTop)
+        {
+            Assert.True(layout.AfterDeck + pane.Below <= plateTop + 0.01f, "the plate starts under the facts");
+        }
+    }
+
+    /// <summary>
+    /// The sizes the library reads off v0.111.0's scenes, as the client reads them:
+    /// the design size of each native role the Mine pane draws with, the relic
+    /// holder's box and icon, the panel's ribbon and the popup's body. The pane's height
+    /// is composed the way <see cref="LibraryScreen.Show"/> composes it - the ribbons
+    /// at <see cref="LibraryScreen.RibbonTop"/>, the body at
+    /// <see cref="LibraryScreen.BodyRoom"/> under its scene offset, the panes under
+    /// <see cref="LibraryScreen.BandBottom"/> - rather than restated.
+    /// </summary>
+    /// <param name="Overhang">How far above its box the panel's ribbon paints its
+    /// art, which is where the area ends.</param>
+    internal sealed record NativePaneSizes(
+        int RowTitle, int Secondary, int Fact, int CardCaption, int Numeral, int Body, Vector2 Ribbon,
+        float BodyTop, float RelicBox, float RelicIcon, float Arrow, float Overhang,
+        int SubtitleLines = 0, int FactLines = 2)
+    {
+        internal float Width => (LibraryScreen.PopupWidth - 140f) * (1f - 0.54f - 0.03f);
+
+        /// <summary>Where the area ends: the ribbon's drawn top.</summary>
+        internal float Foot => LibraryScreen.AreaFoot(LibraryScreen.RibbonTop(Ribbon.Y), Overhang);
+
+        /// <summary>The browser's pane: under a body line and the tab band.</summary>
+        internal float Height
+        {
+            get
+            {
+                var body = new GameTextStyle(null, Body);
+                var areaTop = BodyTop + LibraryScreen.BodyRoom(body, Body * LibraryScreen.LabelLineRatio);
+                return Foot - LibraryScreen.BandBottom(areaTop, Ribbon.Y);
+            }
+        }
+
+        /// <summary>The opened run's pane: no body, no band, so the area's own top.</summary>
+        internal float ViewHeight => Foot - BodyTop;
+
+        /// <summary>The heading, and the creator line where the pane has one.</summary>
+        internal float Above => Line(RowTitle) + (SubtitleLines * Line(Secondary));
+
+        /// <summary>The fact lines under the strip: reached floor and the version line
+        /// on the browser's pane, the fight's facts on the opened run's.</summary>
+        internal float Below => FactLines * Line(Fact);
+
+        internal float TilePitch => LibraryPaneArt.DeckRowPitch(Width / 8f, CardCaption);
+
+        /// <summary>The relic rows with the deck count on the first, the count's width
+        /// estimated the way a fontless style estimates it.</summary>
+        internal LibraryPaneArt.GridBlock RelicBlock(int relics)
+        {
+            var count = "16 cards";
+            var fact = new GameTextStyle(null, Fact);
+            return LibraryPaneArt.LayoutRelics(
+                relics, Width, RelicBox, fact.Width(count, Fact * 0.6f * count.Length),
+                LibraryScreen.LineHeight(count, Width, fact));
+        }
+
+        internal LibraryPaneArt.PaneLayout Lay(
+            int relics, int plateRows, float height, int? relicPage = null, int floors = 5, int cards = 0,
+            int? deckPage = null) =>
+            LibraryPaneArt.Lay(
+                Above, RelicBlock(relics), RelicBox, LibraryPaneArt.LayoutDeck(cards), TilePitch, Below,
+                floors, Width, Arrow, 0, Numeral, null, relicPage, deckPage, plateRows, Ribbon, height);
+    }
+
+    internal static NativePaneSizes MinePane() => new(
+        RowTitle: 28, Secondary: 24, Fact: 24, CardCaption: 24, Numeral: 22, Body: 26,
+        Ribbon: new Vector2(180f, 72f), BodyTop: 115f, RelicBox: 68f, RelicIcon: 60f, Arrow: Arrow,
+        Overhang: 8f);
+
+    private static float Line(int size) =>
+        LibraryScreen.LineHeight("one line", 1000f, new GameTextStyle(null, size));
 
     [Fact]
     public void DeckRowsLeaveRoomForNativeCardCounts()

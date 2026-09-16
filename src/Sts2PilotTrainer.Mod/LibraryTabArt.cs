@@ -14,12 +14,16 @@ namespace Sts2PilotTrainer.Mod;
 /// whole tab. A ribbon duplicated from the popup's cancel button read as a button and
 /// not a tab, which is what this replaces.
 ///
-/// <para><b>The lock is the game's own too.</b> The stats screen lays
-/// <c>submenu_lock.png</c> over its Achievements tab while that tab is disabled; the
-/// same image over the Community tab says the same thing in the same place, with a
-/// tooltip naming what is short. The tab stays pressable under it because what is
-/// behind it - the runs included with Runmobile and a run looked up by code - is
-/// still there, and a locked tab a player cannot open would hide them.</para>
+/// <para><b>The lock is the game's own image, in the mod's own place.</b> The stats
+/// screen lays <c>submenu_lock.png</c> across the middle of its Achievements tab while
+/// that tab is disabled and its label dimmed. The Community tab stays pressable and its
+/// label has to read, so the same image is a small badge instead - half the
+/// run-history entry's marker - hung off the tab's top-right corner above the band the
+/// word is drawn in, and the label's box is left whole: the tab's own auto-sizing label
+/// draws its word at the size the other tab's word stands at, and nothing runs under
+/// the lock. What is behind the tab - the runs included with Runmobile and a run looked
+/// up by code - is still there, and a locked tab a player cannot open would hide
+/// them.</para>
 ///
 /// <para>The tab's hover materials are declared local to its scene, so every instance
 /// animates its own; nothing here shares a material with a row or a ribbon.</para>
@@ -40,15 +44,27 @@ internal static class LibraryTabArt
     /// them, so the plate is never squashed.</summary>
     internal const float Aspect = 256f / 90f;
 
+    /// <summary>The lock's side: half the run-history entry's own marker. A small
+    /// badge off the tab's corner rather than a marker beside its word, because the
+    /// word keeps the whole tab: its box is not narrowed for the lock, so the tab's own
+    /// auto-size draws it at the size the other tab's word stands at.</summary>
+    internal const float LockSide = FloorMarkerArt.EntryIconSide / 2f;
+
+    /// <summary>How far past the tab's top-right corner the lock hangs, as a share of
+    /// its side: the way the run-history entry hangs its quest badge off an icon's
+    /// corner, so the lock sits over the tab's edge and not over its word.</summary>
+    private const float LockOverhang = 0.4f;
+
     /// <summary>
-    /// Where the lock sits, from the stats scene: a square a little taller than the
-    /// tab, centred on it, so it overhangs the plate's top and bottom edges the way the
-    /// game's does (offsets 73..182 by -5.5..103.5 on a 256 by 90 tab).
+    /// Where the lock sits on a tab this size: a <see cref="LockSide"/> square hung off
+    /// the tab's top-right corner. The stats scene centres a lock taller than the tab
+    /// over a label it has dimmed; this tab's label is read, so the lock keeps to the
+    /// corner, above the band the word is drawn in, and the word's box is untouched.
     /// </summary>
     internal static Rect2 LockBounds(Vector2 tab)
     {
-        var side = tab.Y * (109f / 90f);
-        return new Rect2((tab.X - side) / 2f, (tab.Y - side) / 2f, side, side);
+        var overhang = LockSide * LockOverhang;
+        return new Rect2(tab.X - LockSide + overhang, -overhang, LockSide, LockSide);
     }
 
     /// <summary>

@@ -133,7 +133,10 @@ public sealed record RunBrowser(
             ? Group(null, Newest(visible))
             :
             [
-                .. Group(LibraryCopy.IncludedGroup, Newest(Of(visible, RunOrigin.Included))),
+                // The included runs head nothing: they are what a Community list holds
+                // before any service is configured, and a heading over them said so at
+                // the cost of a row. The index's own groups keep theirs.
+                .. Group(null, Newest(Of(visible, RunOrigin.Included))),
                 .. Group(LibraryCopy.FeaturedGroup, Of(visible, RunOrigin.Featured)),
                 .. Group(LibraryCopy.RecentGroup, Newest(Of(visible, RunOrigin.Recent))),
             ];

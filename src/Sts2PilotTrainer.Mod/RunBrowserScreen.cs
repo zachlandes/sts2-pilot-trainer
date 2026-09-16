@@ -21,8 +21,8 @@ namespace Sts2PilotTrainer.Mod;
 /// The visible compatibility control can reveal those runs only as disabled rows, and
 /// the run-code field does the same for an exact incompatible result.</para>
 ///
-/// <para><b>The run view is reached one way.</b> The pane's "Open the run" ribbon, in
-/// either tab. Back returns to the browser with the same run still selected, so the
+/// <para><b>The run view is reached one way.</b> "Open the run" on the panel's own
+/// primary ribbon under the pane, in either tab. Back returns to the browser with the same run still selected, so the
 /// list a player was reading does not move under them. Run history never opens it
 /// except through its own "Choose another floor" row, which is about the run it was
 /// already showing.</para>
@@ -56,7 +56,7 @@ internal static class RunBrowserScreen
     /// </summary>
     internal static void OpenTab(
         LibraryTab tab, bool compatibleOnly = true, string? selected = null,
-        bool skipIndexFetch = false, int? stripPage = null)
+        bool skipIndexFetch = false, int? stripPage = null, int? relicPage = null)
     {
         try
         {
@@ -93,7 +93,7 @@ internal static class RunBrowserScreen
                 Tabs(community, locked),
                 LibraryCopy.ListHeader(),
                 rows,
-                Pane(browser, community, stripPage),
+                Pane(browser, community, stripPage, relicPage),
                 LibraryCopy.Back,
                 ListFilter: new ScreenFilter(
                     LibraryCopy.CompatibleFilter,
@@ -120,7 +120,7 @@ internal static class RunBrowserScreen
     /// a service or the setting, with the reason behind it.</summary>
     private static IReadOnlyList<ScreenTab> Tabs(bool community, CommunityLock? locked) =>
     [
-        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community), locked?.Tooltip),
+        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community), locked?.Sentence),
         new(LibraryCopy.MyRunsTab, !community, () => OpenTab(LibraryTab.MyRuns)),
     ];
 
@@ -232,7 +232,7 @@ internal static class RunBrowserScreen
     /// </summary>
     private static string? BrowserStatus(CommunityLock? locked)
     {
-        if (locked is { } reason) return LibraryMarkup.Dim(reason.Body);
+        if (locked is { } reason) return LibraryMarkup.Dim(reason.Sentence);
         if (!RunLibrary.SharingAvailable)
             return LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
 
@@ -306,7 +306,7 @@ internal static class RunBrowserScreen
     /// what keeps "which rows does a My-runs pane carry" answerable by reading
     /// <c>RunBrowser</c>.
     /// </summary>
-    private static ScreenPane? Pane(RunBrowser browser, bool community, int? stripPage)
+    private static ScreenPane? Pane(RunBrowser browser, bool community, int? stripPage, int? relicPage)
     {
         if (browser.Pane is not { } pane) return null;
 
@@ -318,11 +318,15 @@ internal static class RunBrowserScreen
         {
             var kind = (int)row.Kind;
             var id = runId;
+            // A refused Submit says why on hover: the plate has no line under a ribbon
+            // to say it in, and a third fact line was room the relics and the strip need.
+            // No glyph on any of them: at the ribbon's own width the label spans it,
+            // and a mark at the row's end sat on the word
             plate.Add(new ScreenRow(
                 row.Label,
                 row.Enabled,
                 () => PressPlate(id, kind),
-                Glyph: row.Kind == PaneRowKind.Remove ? LibraryGlyph.Bin : null));
+                Tooltip: row.Kind == PaneRowKind.Submit && !row.Enabled ? pane.PlateReason : null));
         }
 
         return new ScreenPane(
@@ -341,7 +345,8 @@ internal static class RunBrowserScreen
                 compatibleOnly,
                 selected: runId,
                 skipIndexFetch: true,
-                stripPage: page),
+                stripPage: page,
+                relicPage: relicPage),
             pane.Verdict,
             PaneFacts(pane),
             plate,
@@ -349,19 +354,22 @@ internal static class RunBrowserScreen
                 pane.Open, pane.OpenEnabled, () => OpenRun(
                     runId, fromMyRuns: mine, compatibleOnly: compatibleOnly),
                 Reason: pane.OpenEnabled ? null : pane.Verdict),
-            VerdictPassed: pane.Run.Listed);
+            VerdictPassed: pane.Run.Listed,
+            RelicPage: relicPage,
+            SelectRelicPage: page => OpenTab(
+                mine ? LibraryTab.MyRuns : LibraryTab.Community,
+                compatibleOnly,
+                selected: runId,
+                skipIndexFetch: true,
+                stripPage: stripPage,
+                relicPage: page));
     }
 
-    /// <summary>The pane's supporting lines: how far the run itself went - how far
-    /// this player has replayed is the list's own column - and why a plate row is
-    /// refused, where one is.</summary>
-    private static IReadOnlyList<string> PaneFacts(RunPane pane)
-    {
-        var facts = new List<string>();
-        if (pane.Run.LastFloor is { } reached) facts.Add(LibraryCopy.RunReached(reached));
-        if (pane.PlateReason is { } reason) facts.Add(reason);
-        return facts;
-    }
+    /// <summary>The pane's supporting line: how far the run itself went - how far
+    /// this player has replayed is the list's own column. Why a plate ribbon is
+    /// refused is that ribbon's own hover.</summary>
+    private static IReadOnlyList<string> PaneFacts(RunPane pane) =>
+        pane.Run.LastFloor is { } reached ? [LibraryCopy.RunReached(reached)] : [];
 
     /// <summary>
     /// One run, opened at a floor.
@@ -377,7 +385,7 @@ internal static class RunBrowserScreen
     /// </summary>
     internal static void OpenRun(
         string runId, int? floor = null, bool fromMyRuns = false, bool compatibleOnly = true,
-        int? stripPage = null)
+        int? stripPage = null, int? relicPage = null, int? deckPage = null)
     {
         try
         {
@@ -403,7 +411,7 @@ internal static class RunBrowserScreen
                 ListHeader: null,
                 EnteringRows(
                     view, runId, RecordingIdentity.CreditOrNull(recording, isPlayersOwn), isPlayersOwn),
-                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage),
+                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage, relicPage, deckPage),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
                     mine ? LibraryTab.MyRuns : LibraryTab.Community,
@@ -426,7 +434,7 @@ internal static class RunBrowserScreen
     /// </summary>
     private static ScreenPane ViewPane(
         ReplayManifest recording, RunView view, string runId, bool fromMyRuns,
-        bool compatibleOnly, int? stripPage)
+        bool compatibleOnly, int? stripPage, int? relicPage, int? deckPage)
     {
         var facts = new List<string>();
         if (view.Reading.Enemies.FirstOrDefault() is { } enemy)
@@ -461,11 +469,17 @@ internal static class RunBrowserScreen
             SelectFloor: atFloor => OpenRun(id, atFloor, mine, compatibleOnly),
             StripPage: stripPage,
             SelectStripPage: page => OpenRun(
-                id, selectedFloor, mine, compatibleOnly, page),
+                id, selectedFloor, mine, compatibleOnly, page, relicPage, deckPage),
             Verdict: null,
             facts,
             Plate: [],
-            Ribbon: null);
+            Ribbon: null,
+            RelicPage: relicPage,
+            SelectRelicPage: page => OpenRun(
+                id, selectedFloor, mine, compatibleOnly, stripPage, page, deckPage),
+            DeckPage: deckPage,
+            SelectDeckPage: page => OpenRun(
+                id, selectedFloor, mine, compatibleOnly, stripPage, relicPage, page));
     }
 
     /// <summary>

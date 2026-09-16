@@ -93,6 +93,9 @@ public sealed class RunBrowserTests
             Listed(RunBrowser.For(LibraryTab.MyRuns, runs, Build)).Select(run => run.RunId));
     }
 
+    /// <summary>The included runs head nothing - a heading over them cost a row and
+    /// said what a Community list with no service already is - and the index's own
+    /// groups keep theirs.</summary>
     [Fact]
     public void CommunityIsGroupedByWhereARunCameFromAndAnEmptyGroupIsNotDrawn()
     {
@@ -102,8 +105,9 @@ public sealed class RunBrowserTests
             Build);
 
         Assert.Equal(
-            [LibraryCopy.IncludedGroup, LibraryCopy.RecentGroup],
+            [null, LibraryCopy.RecentGroup],
             browser.Groups.Select(group => group.Heading));
+        Assert.Equal(["shipped", "recent"], Listed(browser).Select(run => run.RunId));
     }
 
     /// <summary>My runs is one set and does not head itself.</summary>

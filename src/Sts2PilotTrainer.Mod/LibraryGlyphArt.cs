@@ -67,9 +67,6 @@ internal enum LibraryGlyph
     /// thing. Hollow, because drilling in only looks.</summary>
     Chevron,
 
-    /// <summary>Removes something, through the game's own confirm.</summary>
-    Bin,
-
     /// <summary>
     /// A bookmark tab: a ribbon left in a book at this page. Filled, in gold, because
     /// the recording's own player marked this fight - a fact about the run, and the one
@@ -190,13 +187,6 @@ internal static class LibraryGlyphArt
         ],
 
         LibraryGlyph.Chevron => [GlyphArt.Shape.Outline("Chevron", [new(12, 6), new(22, 16), new(12, 26)])],
-
-        LibraryGlyph.Bin =>
-        [
-            GlyphArt.Shape.Outline("Body", [new(8, 10), new(24, 10), new(22, 27), new(10, 27)], closed: true),
-            GlyphArt.Shape.Fill("Lid", GlyphArt.Rect(5, 7, 22, 2.6f)),
-            GlyphArt.Shape.Fill("Handle", GlyphArt.Rect(13, 4, 6, 2.6f)),
-        ],
 
         // A vertical tab with a swallow-tail foot, about 14 wide by 24 tall in the box
         LibraryGlyph.Bookmark => [GlyphArt.Shape.Fill("Tab", BookmarkTab)],

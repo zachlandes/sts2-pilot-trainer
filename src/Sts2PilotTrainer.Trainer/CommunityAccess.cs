@@ -13,30 +13,33 @@ namespace Sts2PilotTrainer.Trainer;
 /// by code are still there and still pressable, and the lock accounts for what is
 /// missing rather than covering what is not.
 /// </summary>
-/// <param name="Tooltip">The one sentence behind the lock on the tab.</param>
-/// <param name="Body">The same reason over the tabs, where a player who never hovers
-/// still reads it. One line, drawn whole.</param>
-public sealed record CommunityLock(string Tooltip, string Body)
+/// <param name="Sentence">The one sentence the lock says: behind the lock on the tab
+/// on hover, and drawn whole over the tabs where a player who never hovers still
+/// reads it. One sentence, one field: the two places used to carry two wordings of
+/// one cause, and the line's wording was the one a player quoted back as wrong.</param>
+public sealed record CommunityLock(string Sentence)
 {
     /// <summary>
-    /// The lock for these facts.
+    /// The lock for these facts, and the cause it names.
     ///
-    /// No service outranks the setting: a switch that cannot change anything is not
-    /// the thing to point a player at. There is no third case for a settings file this
-    /// build could not read, because such a file names no sharing service either, so it
-    /// arrives here as no service and gets that lock. With a service and the setting on
-    /// there is nothing to say and the tab is an ordinary tab.
+    /// Two causes, two sentences, never one for both: the setting being off is cured
+    /// by the setting, and the sentence says where it is; no service is cured by
+    /// nothing a player can toggle, and a sentence pointing them at the switch would
+    /// send them to a control that changes nothing. No service outranks the setting for
+    /// that reason. There is no third case for a settings file this build could not
+    /// read, because such a file names no sharing service either, so it arrives here as
+    /// no service and gets that lock. With a service and the setting on there is
+    /// nothing to say and the tab is an ordinary tab.
     /// </summary>
     public static CommunityLock? For(bool sharingAvailable, bool showCommunityRuns)
     {
         if (!sharingAvailable)
         {
-            return new CommunityLock(
-                LibraryCopy.CommunityUnavailableTooltip, LibraryCopy.SharingServiceUnavailable);
+            return new CommunityLock(LibraryCopy.CommunityUnavailable);
         }
 
         return showCommunityRuns
             ? null
-            : new CommunityLock(LibraryCopy.CommunityOffTooltip, LibraryCopy.CommunityOffBody);
+            : new CommunityLock(LibraryCopy.CommunityOff);
     }
 }
