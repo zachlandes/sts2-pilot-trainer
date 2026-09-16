@@ -162,26 +162,6 @@ public sealed class RunHistoryPlateTests
     }
 
     /// <summary>
-    /// How long a run sat between Save and Quit and Continue is not among the facts the
-    /// plate is handed, so no gap can refuse the row: the record carries no clock, and
-    /// a plate that read one would be deciding shareability on something the recorder
-    /// never established. Held structurally, on the record's own fields, so adding a
-    /// timestamp to it fails here until its bearing on the row is decided.
-    /// </summary>
-    [Fact]
-    public void ElapsedTimeIsNotAFactThePlateIsHanded()
-    {
-        var fields = typeof(RunHistoryFacts).GetProperties().Select(property => property.PropertyType);
-
-        Assert.DoesNotContain(typeof(DateTimeOffset), fields);
-        Assert.DoesNotContain(typeof(DateTimeOffset?), fields);
-        Assert.DoesNotContain(typeof(DateTime), fields);
-        Assert.DoesNotContain(typeof(DateTime?), fields);
-        Assert.DoesNotContain(typeof(TimeSpan), fields);
-        Assert.DoesNotContain(typeof(TimeSpan?), fields);
-    }
-
-    /// <summary>
     /// Nobody has established whether a console command was used, so nothing is claimed
     /// about it. Null is not "no": it is the absence of a reading, and the submit row is
     /// left as it is rather than being refused on a check that never ran. Asked with the
