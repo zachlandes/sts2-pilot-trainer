@@ -44,19 +44,22 @@ public sealed class ChildProcessLifetimeTests
     public void AKilledGatesChildrenStopOnTheirOwn() => AStoppedGateLeavesNoChild("KILL", expectedExit: 137, ALongChild);
 
     /// <summary>
-    /// The scenario the orphan was found in: the gate stopped while its
-    /// negative-controls child has a replay of its own running, so the tree is three
-    /// deep and the last condition is the one interrupted. A grandchild is what a
-    /// best-effort tree kill can miss, and a gate whose last child was killed can
-    /// finish its report as though that child had answered.
+    /// The shape the orphan was found in: the gate stopped while a child has a child
+    /// of its own running, so the tree is three deep and a condition mid-flight is the
+    /// one interrupted. A grandchild is what a best-effort tree kill can miss, and a
+    /// gate whose child was killed can finish its report as though that child had
+    /// answered. The orphan was a replay under negative-controls, but that is the
+    /// gate's last condition and minutes away; the first three-deep tree it reaches -
+    /// a probe under mode-discrimination or baselib-reachability, or a replay under
+    /// determinism - is the same shape and is stopped the same way.
     /// </summary>
     [UnixGameFact]
     public void ATerminatedGateTakesItsGrandchildrenWithIt() =>
-        AStoppedGateLeavesNoChild("TERM", expectedExit: 143, NegativeControlsWithAReplayOfItsOwn);
+        AStoppedGateLeavesNoChild("TERM", expectedExit: 143, AChildWithAChildOfItsOwn);
 
     [UnixGameFact]
     public void AKilledGatesGrandchildrenStopOnTheirOwn() =>
-        AStoppedGateLeavesNoChild("KILL", expectedExit: 137, NegativeControlsWithAReplayOfItsOwn);
+        AStoppedGateLeavesNoChild("KILL", expectedExit: 137, AChildWithAChildOfItsOwn);
 
     private static void AStoppedGateLeavesNoChild(
         string signal, int expectedExit, Func<IReadOnlyList<ProcessRow>, bool> readyToStop)
@@ -151,13 +154,11 @@ public sealed class ChildProcessLifetimeTests
     private static bool ALongChild(IReadOnlyList<ProcessRow> descendants) =>
         descendants.Any(row => IsArbiter(row) && !ShortChildren.Any(row.Args.Contains));
 
-    /// <summary>The negative-controls child with a replay child of its own: the tree
-    /// as it stood when the orphan was found.</summary>
-    private static bool NegativeControlsWithAReplayOfItsOwn(IReadOnlyList<ProcessRow> descendants) =>
+    /// <summary>An arbiter child with an arbiter child of its own: the three-deep
+    /// tree the orphan was found in, whichever condition is running it.</summary>
+    private static bool AChildWithAChildOfItsOwn(IReadOnlyList<ProcessRow> descendants) =>
         descendants.Any(row => IsArbiter(row)
-            && row.Args.Contains(" negative-controls ", StringComparison.Ordinal)
-            && descendants.Any(child => child.ParentPid == row.Pid && IsArbiter(child)
-                && child.Args.Contains(" replay ", StringComparison.Ordinal)));
+            && descendants.Any(child => child.ParentPid == row.Pid && IsArbiter(child)));
 
     private static bool IsArbiter(ProcessRow row) => row.Args.Contains("sts2-arbiter.dll", StringComparison.Ordinal);
 
