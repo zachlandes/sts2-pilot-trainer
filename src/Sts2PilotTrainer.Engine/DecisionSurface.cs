@@ -159,14 +159,16 @@ public static class DecisionSurface
     /// the one ancient left out, by name: every Neow decision is the recorder's
     /// <c>ChooseNeowBlessing</c>, a verb of its own carrying no event id, so the point
     /// it is counted under is that verb and an event point for it would be one no
-    /// recording can ever project.
+    /// recording can ever project. The two lists are concatenated and not
+    /// de-duplicated: an event and an ancient shipped under one id on a later build
+    /// are two points with one name, which fails <c>DecisionSurfaceTests</c> by count
+    /// rather than being folded into one and thinning the denominator silently.
     /// </summary>
     public static IReadOnlyList<string> Events()
     {
         EngineHost.Start();
         return ModelDb.AllEvents.Select(model => model.Id.ToString())
             .Concat(ModelDb.AllAncients.Where(model => model is not Neow).Select(model => model.Id.ToString()))
-            .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
     }
