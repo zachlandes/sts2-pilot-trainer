@@ -1474,8 +1474,18 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
+            // The answer names what came back and the loot click names which card
+            // reward it came off, so the position travels from the click to the
+            // answer's own verb
             verb = Enum.Parse<ActionVerb>(reward[0].Verb);
-            args = reward[0].Args;
+            var answered = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var (name, value) in reward[0].Args) answered[name] = value;
+            if (args.TryGetValue(RewardKinds.IndexArgument, out var position))
+            {
+                answered[RewardKinds.IndexArgument] = position;
+            }
+
+            args = answered;
             answers.Remove(reward[0]);
         }
 
@@ -2926,9 +2936,29 @@ internal sealed class RunRecorder : IDisposable
         private static Task? _set;
         private static long _during;
 
+        /// <summary>Every set begun for the local player with the task that completes
+        /// when it does, in the order begun: the synchronizer's own stack, which it
+        /// keeps private, pops a set exactly when that task completes.</summary>
+        private static readonly List<(RewardsSet Set, Task Completion)> _begun = [];
+
         /// <summary>Whether the player has a rewards set on offer right now that was
         /// begun inside the work of the decision holding <paramref name="ticket"/>.</summary>
         internal static bool OnOfferSince(long ticket) => _set is { IsCompleted: false } && _during == ticket;
+
+        /// <summary>The set a reward clicked now is taken off: the latest begun and not
+        /// yet completed, which is the top of the synchronizer's own stack and the list
+        /// it reads the click's <c>rewardIndex</c> from. Null where none is open.</summary>
+        internal static RewardsSet? OnOffer
+        {
+            get
+            {
+                lock (_begun)
+                {
+                    _begun.RemoveAll(entry => entry.Completion.IsCompleted);
+                    return _begun.Count == 0 ? null : _begun[^1].Set;
+                }
+            }
+        }
 
         [HarmonyPostfix]
         internal static void After(RewardsSet set, Task __result)
@@ -2936,12 +2966,18 @@ internal sealed class RunRecorder : IDisposable
             if (!MegaCrit.Sts2.Core.Context.LocalContext.IsMe(set.Player)) return;
             _set = __result;
             _during = Active?.LatestOpenTicket ?? 0;
+            lock (_begun)
+            {
+                _begun.RemoveAll(entry => entry.Completion.IsCompleted);
+                _begun.Add((set, __result));
+            }
         }
 
         internal static void Forget()
         {
             _set = null;
             _during = 0;
+            lock (_begun) _begun.Clear();
         }
     }
 
@@ -3049,7 +3085,9 @@ internal sealed class RunRecorder : IDisposable
         /// Which columns the node the run is standing on leads to.
         ///
         /// Reachability is decided exactly the way <c>RunDriver.MoveToMapNode</c>
-        /// decides it - a child of the current point whose type is not
+        /// decides it - through <see cref="MapTravelRule"/>, the game's own travel rule,
+        /// which is the whole next row under a free-travel hook and the current point's
+        /// children otherwise, less any node whose type is
         /// <see cref="MapPointType.Unassigned"/> - so a nominated node is one a replay
         /// can actually enter. Empty where the run has no current node yet, which is a
         /// move with nothing to nominate rather than a failure.
@@ -3060,7 +3098,7 @@ internal sealed class RunRecorder : IDisposable
             if (run.CurrentMapCoord is not { } current) return [];
             if (map.GetPoint(current.col, current.row) is not { } point) return [];
 
-            return point.Children
+            return MapTravelRule.TravelableFrom(run, map, point)
                 .Where(child => child is { PointType: not MapPointType.Unassigned })
                 .Select(child => child.coord.col)
                 .ToList();
@@ -3095,12 +3133,28 @@ internal sealed class RunRecorder : IDisposable
                 // The kind by the one reader the driver uses too, and the id beside it
                 // for the kinds that name a thing a build could have changed.
                 var kind = LootRewards.KindOf(reward);
+
+                // The position is the reward's place in the set the engine is about to
+                // read the click's own rewardIndex off, never a position on the screen,
+                // and it is what tells two rewards of one kind apart. A reward that is
+                // not on the set the recorder saw offered has no position it can write.
+                var position = RewardsOffered.OnOffer?.Rewards.IndexOf(reward) ?? -1;
+                if (position < 0)
+                {
+                    StopAtDecision(MetAtMember(
+                        typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), kind,
+                        "The reward is not on the rewards set the recorder saw offered, so the recording cannot " +
+                        "say which reward of the set was taken.",
+                        ("reward", reward.GetType().Name)));
+                    return;
+                }
+
                 IReadOnlyDictionary<string, string>? args = null;
                 var verb = nameof(ActionVerb.ClaimReward);
                 if (reward is CardReward)
                 {
                     verb = nameof(ActionVerb.TakeCard);
-                    args = Args();
+                    args = Args((RewardKinds.IndexArgument, Number(position)));
                 }
                 else if (RewardKinds.All.Contains(kind, StringComparer.Ordinal))
                 {
@@ -3117,8 +3171,8 @@ internal sealed class RunRecorder : IDisposable
                     }
 
                     args = idArgument is null
-                        ? Args(("reward_type", kind))
-                        : Args(("reward_type", kind), (idArgument, id!));
+                        ? Args(("reward_type", kind), (RewardKinds.IndexArgument, Number(position)))
+                        : Args(("reward_type", kind), (idArgument, id!), (RewardKinds.IndexArgument, Number(position)));
                 }
 
                 if (args is null)

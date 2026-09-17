@@ -110,15 +110,16 @@ The event id is required and the opening blessing's is not: which event a floor 
 
 ## `ClaimReward`
 
-The id is required for the two kinds that claim a thing a build could have changed and refused for the rest, which is checked below where the kind is known.
+The id is required for the two kinds that claim a thing a build could have changed and refused for the rest, which is checked below where the kind is known. The position is the reward's place in the set the engine holds, the game's own rewardIndex, and is what tells two rewards of one kind apart; a recording written before it carries none, and a replay of one refuses a set offering two of the kind.
 
 | Argument | Presence | Value |
 |---|---|---|
 | `reward_type` | required | one of `gold`, `potion`, `relic`, `card_removal`, `special_card` |
 | `relic_id` | optional | non-empty string |
 | `card_id` | optional | non-empty string |
+| `reward_index` | optional | non-negative integer, canonical and within Int32 |
 
-`RewardsSetSynchronizer.SelectLocalReward`, called by the driver. The reward is found by the kind the loot screen names, never by position.
+`RewardsSetSynchronizer.SelectLocalReward`, called by the driver. The reward is found by the kind the loot screen names, and by its position in the set the engine holds where the recording carries one, because a set can offer two of a kind.
 
 What a claim must name depends on what it claimed.
 An argument a kind does not have is refused as firmly as a missing one.
@@ -133,10 +134,13 @@ An argument a kind does not have is refused as firmly as a missing one.
 
 ## `TakeCard`
 
+The position is the card reward's place in the set the engine holds, for a set that offers two card rewards; optional for the reason a claim's is.
+
 | Argument | Presence | Value |
 |---|---|---|
 | `card_id` | required | non-empty string |
 | `option_index` | required | non-negative integer, canonical and within Int32 |
+| `reward_index` | optional | non-negative integer, canonical and within Int32 |
 | `negative_control_alternative_card_id` | negative control | string |
 | `negative_control_alternative_option_index` | negative control | non-negative integer, canonical and within Int32 |
 
@@ -144,12 +148,13 @@ An argument a kind does not have is refused as firmly as a missing one.
 
 ## `TakeCardRewardAlternative`
 
-The same question a card reward asks, answered past the cards. The id names which alternative, because a build can reorder them; the index is the one the screen reports, the count of cards offered plus the alternative's own position.
+The same question a card reward asks, answered past the cards. The id names which alternative, because a build can reorder them; the index is the one the screen reports, the count of cards offered plus the alternative's own position. The position is the card reward's place in the set, as a TakeCard carries it.
 
 | Argument | Presence | Value |
 |---|---|---|
 | `option_id` | required | non-empty string |
 | `option_index` | required | non-negative integer, canonical and within Int32 |
+| `reward_index` | optional | non-negative integer, canonical and within Int32 |
 
 `ICardSelector.GetSelectedCardReward`, answered rather than called. The same question a card reward asks, answered past the cards. The id names which alternative, because a build can reorder them. Every alternative this build records ends the selection - the loot screen's Skip leaves the reward unclaimed, a relic's alternative completes it - so the record is the loot-screen decision itself rather than an answer that follows a TakeCard.
 
