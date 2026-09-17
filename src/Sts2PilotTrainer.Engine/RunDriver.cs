@@ -659,6 +659,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     internal IReadOnlyList<string> OfferedCardIds =>
         OpenCardReward?.Cards.Select(card => card.Id.ToString()).ToList() ?? [];
 
+    /// <summary>The relic the loot screen's unclaimed relic reward offers, or null when
+    /// it has none: a claim names the relic it took, and a generated history has to be
+    /// able to name it before the claim is made.</summary>
+    internal string? OfferedRelicId =>
+        _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
+            ? set.Rewards.OfType<RelicReward>().Where(reward => !reward.SuccessfullySelected)
+                .Select(LootRewards.IdOf).FirstOrDefault()
+            : null;
+
     /// <summary>The loot screen's unclaimed card reward itself, or null when there is
     /// none: what a test that holds an answer to the alternatives the engine generates
     /// for it asks, so the list it answers is the reward's own.</summary>
