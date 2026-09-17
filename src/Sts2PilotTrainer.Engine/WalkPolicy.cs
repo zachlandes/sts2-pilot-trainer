@@ -54,6 +54,29 @@ public sealed record WalkPolicy
     /// chest as the ask met.</summary>
     public bool TakeTheChest { get; init; }
 
+    /// <summary>Take the opening blessing that grants the relic with this id where
+    /// Neow offers it, in place of the first option; an opening that does not offer it
+    /// takes today's rule. What a walk after Winged Boots' free travel asks for.</summary>
+    public string? NeowRelic { get; init; }
+
+    /// <summary>At the first map move where the game's own travel rule offers a node
+    /// the node being left does not lead to - the whole next row under Winged Boots
+    /// or the Flight modifier - walk to the cheapest such node the journey has rules
+    /// for, leftmost first, and count that as the ask met; the route is planned again
+    /// from there.</summary>
+    public bool TravelFreely { get; init; }
+
+    /// <summary>Count the first loot screen that offers two unclaimed rewards of one
+    /// kind, both of which the walk claims by position, as the ask met. The walk
+    /// claims every gold reward a screen offers under any policy; this one says
+    /// reaching a screen with two is what the walk is for.</summary>
+    public bool ClaimTwoOfAKind { get; init; }
+
+    /// <summary>The node types the route has to pass through on a walk that otherwise
+    /// only has to reach the boss, from the journey's own required set; null leaves
+    /// that to the walk's <c>visitEveryRoomType</c>.</summary>
+    public IReadOnlyList<MegaCrit.Sts2.Core.Map.MapPointType>? RouteThrough { get; init; }
+
     /// <summary>Stop the walk at the end of the floor on which the policy's ask was
     /// first met, without going on to the boss or the act's transition: a walk that
     /// is after one decision rather than a finished act, on a run the journey's

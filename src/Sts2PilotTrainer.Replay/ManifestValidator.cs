@@ -1788,24 +1788,37 @@ public static partial class ManifestValidator
             case ActionVerb.ClaimReward:
                 // The id is required for the two kinds that claim a thing a build could
                 // have changed and refused for the rest, which is checked below where
-                // the kind is known.
+                // the kind is known. The position is the reward's place in the set the
+                // engine holds, the game's own rewardIndex, and is what tells two
+                // rewards of one kind apart; a recording written before it carries
+                // none, and a replay of one refuses a set offering two of the kind.
                 required = ["reward_type"];
-                allowed = ["reward_type", "relic_id", "card_id"];
-                nonNegativeIntegers = [];
+                allowed = ["reward_type", "relic_id", "card_id", RewardKinds.IndexArgument];
+                nonNegativeIntegers = [RewardKinds.IndexArgument];
                 break;
             case ActionVerb.TakeCard:
+                // The position is the card reward's place in the set the engine holds,
+                // for a set that offers two card rewards; optional for the reason a
+                // claim's is.
                 required = ["card_id", "option_index"];
-                allowed = [.. required, Corruption.AlternativeCardId, Corruption.AlternativeOptionIndex];
-                nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                allowed =
+                [
+                    .. required,
+                    RewardKinds.IndexArgument,
+                    Corruption.AlternativeCardId,
+                    Corruption.AlternativeOptionIndex,
+                ];
+                nonNegativeIntegers = ["option_index", RewardKinds.IndexArgument, Corruption.AlternativeOptionIndex];
                 break;
             case ActionVerb.TakeCardRewardAlternative:
                 // The same question a card reward asks, answered past the cards. The id
                 // names which alternative, because a build can reorder them; the index
                 // is the one the screen reports, the count of cards offered plus the
-                // alternative's own position.
+                // alternative's own position. The position is the card reward's place
+                // in the set, as a TakeCard carries it.
                 required = ["option_id", "option_index"];
-                allowed = required;
-                nonNegativeIntegers = ["option_index"];
+                allowed = [.. required, RewardKinds.IndexArgument];
+                nonNegativeIntegers = ["option_index", RewardKinds.IndexArgument];
                 break;
             case ActionVerb.SkipRewards:
                 required = [];

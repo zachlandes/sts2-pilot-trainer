@@ -59,6 +59,7 @@ public static partial class SyntheticFixtureGenerator
     private static bool _declinedACardReward;
     private static bool _drankOnTheMap;
     private static bool _discardedOnTheMap;
+    private static bool _travelledFreely;
     private static bool _askMet;
 
     private static ReplayManifest GenerateWholeAct()
@@ -144,9 +145,13 @@ public static partial class SyntheticFixtureGenerator
     {
         var actions = new List<ActionRecord>();
         var previous = (_afterEachDecision, _requiredCoverage, _policy);
-        (_afterEachDecision, _requiredCoverage, _policy) =
-            (afterEachDecision, visitEveryRoomType ? RequiredCoverage : 0, policy ?? WalkPolicy.Default);
-        (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _askMet) = (false, false, false, false);
+        _policy = policy ?? WalkPolicy.Default;
+        (_afterEachDecision, _requiredCoverage) =
+            (afterEachDecision, _policy.RouteThrough is { } through
+                ? through.Aggregate(0, (covered, type) => covered | Coverage(type))
+                : visitEveryRoomType ? RequiredCoverage : 0);
+        (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _travelledFreely, _askMet) =
+            (false, false, false, false, false);
         try
         {
             WalkTheActFrom(session, driver, actions, checkpoints);
@@ -165,19 +170,24 @@ public static partial class SyntheticFixtureGenerator
     private static void WalkTheActFrom(
         GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
     {
-        Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+        Apply(driver, actions, ActionVerb.ChooseNeowBlessing,
+            ("option_index", NeowOption(session).ToString(CultureInfo.InvariantCulture)));
 
-        var route = PlanRoute(session);
-        if (route.Count > MapMoveLimit)
+        var route = PlannedRoute(session);
+        while (route.Count > 0)
         {
-            throw new EngineException(
-                $"The planned act route is {route.Count.ToString(CultureInfo.InvariantCulture)} moves long, " +
-                $"past the {MapMoveLimit.ToString(CultureInfo.InvariantCulture)} this journey allows. An act " +
-                "is sixteen rows and its boss; anything longer is a routing defect rather than a long act.");
-        }
+            var next = route.Dequeue();
 
-        foreach (var next in route)
-        {
+            // A node the game offers and the planned route could not: the route is
+            // planned again from wherever the flight landed
+            var flown = FreeTravelTarget(session);
+            if (flown is not null)
+            {
+                next = flown;
+                _travelledFreely = true;
+                _askMet = true;
+            }
+
             Apply(driver, actions, ActionVerb.MapMove,
                 ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
                 ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
@@ -190,11 +200,61 @@ public static partial class SyntheticFixtureGenerator
             HandleRoom(driver, session, actions, checkpoints, next.PointType);
             UseTheBeltOnTheMap(driver, session, actions);
             if (_policy.StopOnceMet && _askMet) return;
+            if (flown is not null) route = PlannedRoute(session);
         }
 
         Apply(driver, actions, ActionVerb.ProceedToNextAct);
         checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
             "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
+    }
+
+    private static Queue<MapPoint> PlannedRoute(GameSession session)
+    {
+        var route = PlanRoute(session);
+        if (route.Count > MapMoveLimit)
+        {
+            throw new EngineException(
+                $"The planned act route is {route.Count.ToString(CultureInfo.InvariantCulture)} moves long, " +
+                $"past the {MapMoveLimit.ToString(CultureInfo.InvariantCulture)} this journey allows. An act " +
+                "is sixteen rows and its boss; anything longer is a routing defect rather than a long act.");
+        }
+
+        return new Queue<MapPoint>(route);
+    }
+
+    /// <summary>The opening blessing the walk takes: the option granting the relic the
+    /// policy names where Neow offers it, and the first option otherwise.</summary>
+    private static int NeowOption(GameSession session)
+    {
+        if (_policy.NeowRelic is not { } relic) return 0;
+        var options = RunManager.Instance.EventSynchronizer?.GetLocalEvent()?.CurrentOptions
+            ?? throw new EngineException("The act journey is not standing in the opening event.");
+        var index = options.ToList().FindIndex(option => option.Relic?.Id.ToString() == relic);
+        return index < 0 ? 0 : index;
+    }
+
+    /// <summary>
+    /// The node a free-travel policy walks to from where the run stands, or null.
+    ///
+    /// The nodes the game's own travel rule offers that the node being left does not
+    /// lead to, which is empty without a live free-travel hook; among them the
+    /// cheapest by the route's own weighting the journey has room rules for, leftmost
+    /// first, and never a question mark, an elite or the boss. Once per walk, because
+    /// the ask is one flight and the walk is after that decision.
+    /// </summary>
+    private static MapPoint? FreeTravelTarget(GameSession session)
+    {
+        if (!_policy.TravelFreely || _travelledFreely) return null;
+        if (session.RunState.Map is not { } map || session.RunState.CurrentMapCoord is not { } coord) return null;
+        if (map.GetPoint(coord.col, coord.row) is not { } current) return null;
+
+        return MapTravelRule.TravelableFrom(session.RunState, map, current)
+            .Where(point => !current.Children.Contains(point))
+            .Where(point => point.PointType is MapPointType.Monster or MapPointType.RestSite
+                or MapPointType.Shop or MapPointType.Treasure)
+            .OrderBy(point => Cost(point.PointType))
+            .ThenBy(point => point.coord.col)
+            .FirstOrDefault();
     }
 
     // ── The route ───────────────────────────────────────────────────────────
@@ -411,9 +471,20 @@ public static partial class SyntheticFixtureGenerator
     /// </summary>
     private static void TakeTheLoot(RunDriver driver, GameSession session, List<ActionRecord> actions)
     {
-        if (driver.UnclaimedRewardKinds.Contains("gold", StringComparer.Ordinal))
+        // Every gold reward, by position where the screen offers more than one - a
+        // relic's second beside the fight's own - and by kind alone otherwise, which is
+        // the one form a recording written before the position can hold
+        var gold = driver.UnclaimedRewardPositions(RewardKinds.Gold);
+        if (gold.Count > 1 && _policy.ClaimTwoOfAKind) _askMet = true;
+        foreach (var position in gold)
         {
-            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
+            Apply(driver, actions, ActionVerb.ClaimReward,
+            [
+                ("reward_type", RewardKinds.Gold),
+                .. gold.Count > 1
+                    ? new[] { (RewardKinds.IndexArgument, position.ToString(CultureInfo.InvariantCulture)) }
+                    : [],
+            ]);
         }
 
         if (_policy.ClaimTheRelicReward && driver.OfferedRelicId is { } relicId)

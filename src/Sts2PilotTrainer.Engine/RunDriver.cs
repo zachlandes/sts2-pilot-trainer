@@ -649,6 +649,21 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             : [];
 
     /// <summary>
+    /// The positions on the open loot screen of every unclaimed reward of a kind, in
+    /// the list the engine holds for the set, or empty when none is open.
+    ///
+    /// For the fixture generator, for the reason above: a set that offers two of a
+    /// kind is claimed by position, and a generated history has to be able to name the
+    /// position before the claim is made.
+    /// </summary>
+    internal IReadOnlyList<int> UnclaimedRewardPositions(string kind) =>
+        _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
+            ? Enumerable.Range(0, set.Rewards.Count)
+                .Where(index => !set.Rewards[index].SuccessfullySelected && KindOf(set.Rewards[index]) == kind)
+                .ToList()
+            : [];
+
+    /// <summary>
     /// The cards the loot screen's unclaimed card reward is offering, or empty when it
     /// has none.
     ///
@@ -820,9 +835,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     ///
     /// The card reward is deliberately not reachable here - it opens a second screen
     /// and so has its own verb, <see cref="ActionVerb.TakeCard"/>, which records which
-    /// card came back. Naming the kind rather than an index is what the video shows;
-    /// a set that offers two of a kind is refused rather than resolved by position,
-    /// because position on that screen is a layout detail and the choice would be ours.
+    /// card came back. Naming the kind is what the video shows, and the position beside
+    /// it is what tells two of a kind apart, through <see cref="RewardClaimed"/>.
     /// A relic and a fixed card are named as well, for the reason a played card is: a
     /// loot screen stocked differently means the run has already diverged. A card
     /// removal opens a screen over the deck, answered by the selections that follow.
@@ -832,23 +846,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         var set = OpenRewards(action);
         var kind = Arg.String(action, "reward_type");
 
-        var matches = set.Rewards.Where(reward => !reward.SuccessfullySelected && KindOf(reward) == kind).ToList();
-        if (matches.Count == 0)
-        {
-            throw new EngineException(
-                $"Action {action.Seq} claims a '{kind}' reward, but this loot screen offers " +
-                $"{DescribeRewards(set)}.");
-        }
-
-        if (matches.Count > 1)
-        {
-            throw new EngineException(
-                $"Action {action.Seq} claims a '{kind}' reward and {matches.Count} of them are on offer " +
-                $"({DescribeRewards(set)}). Which one was taken is not recorded, and choosing here would be " +
-                "inventing a decision the player made.");
-        }
-
-        var reward = matches[0];
+        var reward = RewardClaimed(action, set, kind);
         if (RewardKinds.IdArgument(kind) is { } idArgument)
         {
             var expectedId = Arg.String(action, idArgument);
@@ -885,10 +883,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     private void TakeCard(ActionRecord action)
     {
         var set = OpenRewards(action);
-        var cardReward = set.Rewards.OfType<CardReward>().FirstOrDefault(reward => !reward.SuccessfullySelected)
-            ?? throw new EngineException(
-                $"Action {action.Seq} takes a card, but this loot screen offers no unclaimed card reward " +
-                $"({DescribeRewards(set)}).");
+        var cardReward = (CardReward)RewardClaimed(action, set, LootRewards.CardRewardKind);
 
         _selector.Enqueue(new ManifestCardSelector.Pick(
             action.Seq, Arg.String(action, "card_id"), Arg.Int(action, "option_index")));
@@ -924,10 +919,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     private void TakeCardRewardAlternative(ActionRecord action)
     {
         var set = OpenRewards(action);
-        var cardReward = set.Rewards.OfType<CardReward>().FirstOrDefault(reward => !reward.SuccessfullySelected)
-            ?? throw new EngineException(
-                $"Action {action.Seq} answers a card reward with an alternative, but this loot screen offers " +
-                $"no unclaimed card reward ({DescribeRewards(set)}).");
+        var cardReward = (CardReward)RewardClaimed(action, set, LootRewards.CardRewardKind);
 
         var optionId = Arg.String(action, "option_id");
         _selector.Enqueue(new ManifestCardSelector.AlternativePick(action.Seq, optionId, Arg.Int(action, "option_index")));
@@ -1559,6 +1551,73 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         Settle(select(Arg.String(action, "card_id"), Arg.Int(action, "option_index")));
     }
 
+    /// <summary>
+    /// The reward a loot-screen decision names, on the set that is open.
+    ///
+    /// By position where the recording carries one - <see cref="RewardKinds.IndexArgument"/>,
+    /// the reward's place in the list the engine holds for the set, which is the game's
+    /// own <c>RewardSelectedMessage.rewardIndex</c> and is read here off the same list
+    /// the recorder read it off - held to the kind the decision claims, so a set stocked
+    /// differently refuses rather than hands over whatever sits there. By kind alone
+    /// otherwise, where the set offers exactly one unclaimed reward of it: a set that
+    /// offers two of the kind - a relic's second gold or second card reward, a power's
+    /// gold beside the fight's own - is refused rather than resolved by the first, because
+    /// which one was taken is not recorded and choosing here would be inventing a
+    /// decision the player made. The card reward is a kind here too, for the two verbs
+    /// that click it.
+    /// </summary>
+    private static Reward RewardClaimed(ActionRecord action, RewardsSet set, string kind)
+    {
+        var claim = kind == LootRewards.CardRewardKind ? "takes the card reward" : $"claims a '{kind}' reward";
+
+        if (action.Args.ContainsKey(RewardKinds.IndexArgument))
+        {
+            var index = Arg.Int(action, RewardKinds.IndexArgument);
+            if (index < 0 || index >= set.Rewards.Count)
+            {
+                throw new EngineException(
+                    $"Action {action.Seq} {claim} at position {index}, and this loot screen holds " +
+                    $"{set.Rewards.Count} reward(s) ({DescribeRewards(set)}). The replay has diverged from " +
+                    "the recorded history before this point.");
+            }
+
+            var atPosition = set.Rewards[index];
+            if (KindOf(atPosition) != kind)
+            {
+                throw new EngineException(
+                    $"Action {action.Seq} {claim} at position {index}, and the reward there is a " +
+                    $"{KindOf(atPosition)} ({DescribeRewards(set)}). The replay has diverged from the " +
+                    "recorded history before this point.");
+            }
+
+            if (atPosition.SuccessfullySelected)
+            {
+                throw new EngineException(
+                    $"Action {action.Seq} {claim} at position {index}, and that reward has already been " +
+                    $"taken ({DescribeRewards(set)}).");
+            }
+
+            return atPosition;
+        }
+
+        var matches = set.Rewards.Where(reward => !reward.SuccessfullySelected && KindOf(reward) == kind).ToList();
+        if (matches.Count == 0)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} {claim}, but this loot screen offers {DescribeRewards(set)}.");
+        }
+
+        if (matches.Count > 1)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} {claim} and {matches.Count} of them are on offer " +
+                $"({DescribeRewards(set)}). Which one was taken is not recorded - the recording carries no " +
+                $"'{RewardKinds.IndexArgument}' - and choosing here would be inventing a decision the player made.");
+        }
+
+        return matches[0];
+    }
+
     private void Select(ActionRecord action, RewardsSet set, Reward reward)
     {
         var taken = RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(reward)
@@ -1609,11 +1668,16 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             ?? throw new EngineException("The run has no current map node, so reachability cannot be established.");
         var currentPoint = map.GetPoint(currentCoord.col, currentCoord.row)
             ?? throw new EngineException($"The current map node {currentCoord} does not exist in this act.");
-        if (!currentPoint.Children.Contains(point))
+
+        // The game's own rule rather than the node's children: a free-travel hook
+        // opens the whole next row, and MapTravelRule is the one reader of it
+        var travelable = MapTravelRule.TravelableFrom(_session.RunState, map, currentPoint);
+        if (!travelable.Contains(point))
         {
             throw new EngineException(
                 $"Map node (row {row}, column {column}) is not reachable from " +
-                $"(row {currentCoord.row}, column {currentCoord.col}).");
+                $"(row {currentCoord.row}, column {currentCoord.col}); the game offers " +
+                $"{string.Join(", ", travelable.Select(reachable => $"(row {reachable.coord.row}, column {reachable.coord.col})"))}.");
         }
 
         var coord = new MapCoord(column, row);

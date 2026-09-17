@@ -1809,6 +1809,39 @@ public class ManifestValidatorTests
         Assert.True(named.IsValid, named.Describe());
     }
 
+    /// <summary>
+    /// Every loot-screen decision may carry the reward's position in the set the
+    /// engine holds, which is what tells two rewards of one kind apart, and none has
+    /// to: a recording written before the position carries none and still validates.
+    /// The position is a non-negative integer like every other index.
+    /// </summary>
+    [Fact]
+    public void ALootScreenDecisionMayCarryTheRewardsPosition()
+    {
+        var positioned = ManifestValidator.Validate(WithActions(
+            Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", "gold"), (RewardKinds.IndexArgument, "1")),
+            Fixtures.Action(1, ActionVerb.ClaimReward, ("reward_type", "gold"), (RewardKinds.IndexArgument, "0")),
+            Fixtures.Action(2, ActionVerb.TakeCard,
+                ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0"), (RewardKinds.IndexArgument, "2")),
+            Fixtures.Action(3, ActionVerb.TakeCardRewardAlternative,
+                ("option_id", "Skip"), ("option_index", "3"), (RewardKinds.IndexArgument, "3"))));
+        Assert.True(positioned.IsValid, positioned.Describe());
+
+        foreach (var verb in new[] { ActionVerb.ClaimReward, ActionVerb.TakeCard, ActionVerb.TakeCardRewardAlternative })
+        {
+            var args = verb switch
+            {
+                ActionVerb.ClaimReward => new[] { ("reward_type", "gold") },
+                ActionVerb.TakeCard => [("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0")],
+                _ => [("option_id", "Skip"), ("option_index", "3")],
+            };
+            var negative = ManifestValidator.Validate(
+                WithActions(Fixtures.Action(0, verb, [.. args, (RewardKinds.IndexArgument, "-1")])));
+            Assert.False(negative.IsValid, $"{verb} accepted a negative position");
+            Assert.Contains(negative.Problems, p => p.Contains($"'{RewardKinds.IndexArgument}'", StringComparison.Ordinal));
+        }
+    }
+
     [Theory]
     [InlineData(RewardKinds.Gold)]
     [InlineData(RewardKinds.Potion)]

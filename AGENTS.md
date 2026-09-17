@@ -77,6 +77,9 @@ directory outside the repository, never into it, and never commit anything you f
 there. `ilspycmd -p -o <scratch> build/lib/sts2.dll` does the job in about twenty
 seconds; on a Homebrew .NET it needs `DOTNET_ROOT` set to the `libexec` directory and
 `DOTNET_ROLL_FORWARD=Major`.
+The rule holds for what a verb checks as well as for what it calls: where the run may move next is `MapTravelRule.TravelableFrom`, the game's own `MapTravel.GetTravelablePointsFrom` under the map screen's two boss lines, read by the driver's map move and the recorder's negative-control nomination alike, because a driver that read the node's children refused a Winged Boots flight the game allows.
+Which reward of a loot screen a decision took is `reward_index`, the reward's position in the set the engine holds and the game's own `RewardSelectedMessage.rewardIndex`, written by the recorder on every loot-screen decision and read by the driver where a recording carries it; a set that offers two of a kind - a relic's second gold or second card reward - is claimed by it, and a recording without it is refused there rather than guessed, since which one was taken is not recorded.
+`ReplayRefusalRegressionTests` holds both paths as recordings played through the recorder and replayed to parity.
 The client's own command is found the same way and written in `ClientCommands` beside it: per verb the running client issues, the screen handler the retail button reaches, whether the driver calls the engine member or the host supplies the screen's command, and the lock that keeps the decision the recording's; its `Verify()` holds the table's verbs equal to `RetailPlayback.Verbs`, every handler and lock to this build, and every patch the journey hangs to a row or a written excuse, and `RecordedFightModule` refuses on it as the recorder refuses on a renamed member.
 
 **Provenance is not decoration.** Every value in a manifest records whether it was

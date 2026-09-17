@@ -60,6 +60,19 @@ public static class RewardKinds
 
     public static readonly string[] All = [Gold, Potion, Relic, CardRemoval, SpecialCard];
 
+    /// <summary>
+    /// The argument naming which reward of the set was taken, by its position in the
+    /// list the engine holds for the set - the game's own
+    /// <c>RewardSelectedMessage.rewardIndex</c>, which is what the retail client sends
+    /// for the click. Carried by every loot-screen decision - a claim, a card taken, a
+    /// card reward answered with an alternative - because a set can offer two of one
+    /// kind: a relic adds a second gold or a second card reward to every fight's loot,
+    /// and a power adds gold beside the fight's own. Optional, because a recording
+    /// written before it carries none; a replay of one refuses a set that offers two of
+    /// the kind claimed rather than guessing which was taken.
+    /// </summary>
+    public const string IndexArgument = "reward_index";
+
     /// <summary>The argument naming what was claimed, for the kinds that claim a
     /// thing a build could have changed.</summary>
     public static string? IdArgument(string kind) => kind switch

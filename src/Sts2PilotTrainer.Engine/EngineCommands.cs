@@ -190,7 +190,9 @@ public static class EngineCommands
             Type = typeof(RewardsSetSynchronizer),
             Member = nameof(RewardsSetSynchronizer.SelectLocalReward),
             Kind = EngineCommandKind.Issued,
-            Note = "The reward is found by the kind the loot screen names, never by position.",
+            Note =
+                "The reward is found by the kind the loot screen names, and by its position in the set the " +
+                "engine holds where the recording carries one, because a set can offer two of a kind.",
             Observes =
             [
                 new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), $"{nameof(RewardsSetSynchronizer.SelectLocalReward)}(reward)"),
