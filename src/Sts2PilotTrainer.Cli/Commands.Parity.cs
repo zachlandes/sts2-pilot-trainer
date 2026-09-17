@@ -240,7 +240,7 @@ internal static partial class Commands
             Detail = result.AtParity ? result.OpeningNote ?? "" : result.Describe(),
             Decisions = result.Decisions,
             ReplayedDecisions = result.ReplayedDecisions,
-            OpeningHiddenState = result.OpeningHiddenState,
+            OpeningDifferences = result.OpeningDifferences,
             Divergence = result.Divergence is { } divergence
                 ? new ParityDivergenceRecord(
                     divergence.Seq, divergence.Verb, divergence.Kind.ToString(), divergence.HiddenStateOnly,
@@ -345,11 +345,11 @@ internal static partial class Commands
         [JsonPropertyName("divergence")]
         public ParityDivergenceRecord? Divergence { get; init; }
 
-        /// <summary>The two opening digests where they differed with the opening
-        /// samples equal, as <c>recorded -> replayed</c>; reported and never counted,
-        /// for the reason <see cref="TraceParity"/> gives.</summary>
-        [JsonPropertyName("opening_hidden_state")]
-        public string? OpeningHiddenState { get; init; }
+        /// <summary>What differed at the opening reading, each sampled field and the
+        /// digest as <c>recorded -> replayed</c>; reported and never counted, for the
+        /// reason <see cref="TraceParity"/> gives.</summary>
+        [JsonPropertyName("opening_differences")]
+        public IReadOnlyList<string> OpeningDifferences { get; init; } = [];
 
         [JsonPropertyName("replay_diagnostics")]
         public IReadOnlyList<string> ReplayDiagnostics { get; init; } = [];

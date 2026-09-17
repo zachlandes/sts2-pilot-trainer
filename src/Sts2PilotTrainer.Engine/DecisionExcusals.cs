@@ -213,6 +213,26 @@ public static class DecisionExcusals
                 "per event would need a seed hunted per event");
         }
 
+        // An act's ancient is one of the act's own, rolled by the run's RNG at the act's
+        // start, and Darv is shared by every act; the fixture seed's route meets one per
+        // act and a row per ancient would need a seed hunted per ancient. Neow is not
+        // here because the walk leaves it out: its decision is ChooseNeowBlessing
+        foreach (var ancientId in new[]
+                 {
+                     "EVENT.DARV",
+                     "EVENT.NONUPEIPE",
+                     "EVENT.OROBAS",
+                     "EVENT.PAEL",
+                     "EVENT.TANX",
+                     "EVENT.TEZCATARA",
+                     "EVENT.VAKUU",
+                 })
+        {
+            excusals[new DecisionPoint(DecisionKinds.Event, ancientId)] = NotOnTheRoute(
+                "an act's ancient is rolled by the run's RNG from the act's own at the act's start, so a row " +
+                "per ancient would need a seed hunted per ancient");
+        }
+
         return excusals;
     }
 }

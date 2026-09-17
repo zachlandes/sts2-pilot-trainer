@@ -22,7 +22,7 @@ public sealed class TraceParityTests
         Assert.Equal("PARITY", result.Describe());
         Assert.Equal(3, result.Decisions);
         Assert.Equal(3, result.ReplayedDecisions);
-        Assert.Null(result.OpeningHiddenState);
+        Assert.Empty(result.OpeningDifferences);
     }
 
     [Fact]
@@ -188,19 +188,40 @@ public sealed class TraceParityTests
         var result = TraceParity.Compare(Recorded(), replayed);
 
         Assert.True(result.AtParity);
-        Assert.Equal($"{Digest(-1)} -> {Digest(99)}", result.OpeningHiddenState);
+        Assert.Equal([$"hidden state: {Digest(-1)} -> {Digest(99)}"], result.OpeningDifferences);
         Assert.Equal(
-            "PARITY\nopening reading: hidden state differs before any decision; every decision is held from its " +
-            $"own reading ({Digest(-1)} -> {Digest(99)})",
+            "PARITY\nopening reading: differs before any decision; every decision is held from its own reading " +
+            $"(hidden state: {Digest(-1)} -> {Digest(99)})",
             result.Describe());
     }
 
+    /// <summary>A sampled field that differs at the opening is reported the same way
+    /// and counted no more than the digest is: an ascension that starts the run
+    /// damaged takes the health after the retail recorder's opening reading and
+    /// before the replay's, and the first decision's own before-reading is where
+    /// both hosts are held. The first release measurement met exactly that.</summary>
     [Fact]
-    public void TheOpeningReadingsSampleIsHeld()
+    public void TheOpeningReadingsSampleIsReportedBesideTheVerdictAndNotCounted()
     {
         var replayed = With(Recorded(), seq: -1, step => step with { After = Changed(step.After, "player.hp", "1") });
 
-        Assert.Equal(ParityDivergenceKind.AfterSampleDiffers, TraceParity.Compare(Recorded(), replayed).Divergence!.Kind);
+        var result = TraceParity.Compare(Recorded(), replayed);
+
+        Assert.True(result.AtParity);
+        Assert.Equal(["player.hp: 60 -> 1"], result.OpeningDifferences);
+    }
+
+    /// <summary>What the opening reading does not hold, the first decision does: the
+    /// same field differing at decision 0's before-reading is the divergence.</summary>
+    [Fact]
+    public void TheFirstDecisionsBeforeReadingIsHeld()
+    {
+        var replayed = With(Recorded(), seq: 0, step => step with { Before = Changed(step.Before, "player.hp", "1") });
+
+        var divergence = TraceParity.Compare(Recorded(), replayed).Divergence!;
+
+        Assert.Equal(0, divergence.Seq);
+        Assert.Equal(ParityDivergenceKind.BeforeSampleDiffers, divergence.Kind);
     }
 
     /// <summary>A journal reads back as the trace its capture kept, digests and all,
