@@ -134,9 +134,9 @@ internal static class ProfileWriteBarrier
     /// and nowhere else.
     ///
     /// The game keeps one set, <c>Progress.FtueCompleted</c>, that
-    /// <c>MarkFtueAsComplete</c> adds to and <c>SeenFtue</c> and <c>SeenPopup</c> read.
-    /// Stopping the mark whole kept the set clean and left every read answering
-    /// false, so a player with tutorials on and a basic one unseen - map_select_ftue
+    /// <c>MarkFtueAsComplete</c> adds to and <c>SeenFtue</c> reads for the tutorials
+    /// a run reaches. Stopping the mark whole kept the set clean and left that read
+    /// answering false, so a player with tutorials on and a basic one unseen - map_select_ftue
     /// from NMapScreen, can_play_cards_ftue from NEndTurnButton - saw the popup again
     /// at every screen that asked, over a map the recording was driving. Marking the
     /// real set instead would not do either: the mark would outlive the run, and the
@@ -144,8 +144,8 @@ internal static class ProfileWriteBarrier
     /// SaveProgressFile - would persist a tutorial mark made inside somebody else's
     /// run, the measured sequence the seen-marks above record.
     ///
-    /// So the mark lands here while a trainer run is live, the reads answer from here
-    /// before they answer from the player's own set, and <see cref="Lower"/> drops it.
+    /// So the mark lands here while a trainer run is live, the read answers from here
+    /// before it answers from the player's own set, and <see cref="Lower"/> drops it.
     /// The stored progress is never touched, so nothing survives for a later write to
     /// persist; a tutorial the player has not dismissed in their own play is shown
     /// once per trainer run and is theirs to dismiss in their next run.
@@ -162,10 +162,11 @@ internal static class ProfileWriteBarrier
     /// <summary>The one mark the overlay stands in for.</summary>
     private const string TutorialMark = "MarkFtueAsComplete";
 
-    /// <summary>The game's two reads of the set that mark adds to. Both, because a
-    /// read the overlay skipped would be a second definition of what the run has
-    /// shown.</summary>
-    private static readonly string[] TutorialReads = ["SeenFtue", "SeenPopup"];
+    /// <summary>The read of that set the tutorials a trainer run reaches consult.
+    /// <c>SeenPopup</c> reads the same set and is not patched: its callers are the
+    /// character-select screen and the run lobby, neither of which is on screen while
+    /// a trainer run is live.</summary>
+    private const string TutorialRead = "SeenFtue";
 
     /// <summary>
     /// Installs the barrier. Called once, from mod start, before any trainer run can
@@ -265,26 +266,22 @@ internal static class ProfileWriteBarrier
         harmony.Patch(mark, prefix: new HarmonyMethod(typeof(ProfileWriteBarrier)
             .GetMethod(nameof(HoldTutorialMark), BindingFlags.NonPublic | BindingFlags.Static)!));
 
-        var answer = new HarmonyMethod(typeof(ProfileWriteBarrier)
-            .GetMethod(nameof(AnswerTutorialSeen), BindingFlags.NonPublic | BindingFlags.Static)!);
-        foreach (var readName in TutorialReads)
+        var read = SingleStringMethod(saveManager, TutorialRead);
+        if (read.ReturnType != typeof(bool))
         {
-            var read = SingleStringMethod(saveManager, readName);
-            if (read.ReturnType != typeof(bool))
-            {
-                throw new InvalidOperationException(
-                    $"{SaveManagerType}.{readName} returns {read.ReturnType.Name} on this build, and the " +
-                    "overlay can only answer a yes or no.");
-            }
-
-            harmony.Patch(read, prefix: answer);
+            throw new InvalidOperationException(
+                $"{SaveManagerType}.{TutorialRead} returns {read.ReturnType.Name} on this build, and the " +
+                "overlay can only answer a yes or no.");
         }
 
-        return 1 + TutorialReads.Length;
+        harmony.Patch(read, prefix: new HarmonyMethod(typeof(ProfileWriteBarrier)
+            .GetMethod(nameof(AnswerTutorialSeen), BindingFlags.NonPublic | BindingFlags.Static)!));
+
+        return 2;
     }
 
     /// <summary>The one member of that name taking one string, which is the shape
-    /// the mark and both reads have on this build; any other shape is refused by
+    /// the mark and the read have on this build; any other shape is refused by
     /// name rather than patched with a prefix that would not bind.</summary>
     private static MethodInfo SingleStringMethod(Type type, string name)
     {
@@ -335,7 +332,7 @@ internal static class ProfileWriteBarrier
         return false;
     }
 
-    /// <summary>The prefix on both reads. A tutorial the run has shown is answered
+    /// <summary>The prefix on the read. A tutorial the run has shown is answered
     /// seen from the overlay; anything else is the game's own answer off the player's
     /// own progress, live or not.</summary>
     private static bool AnswerTutorialSeen(string __0, ref bool __result)

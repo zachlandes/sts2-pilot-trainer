@@ -165,9 +165,8 @@ public sealed class ProfileWriteBarrierTests
                     Assert.False(Ask(saveManager, "SeenFtue", tutorial));
                     Invoke(saveManager, "MarkFtueAsComplete", tutorial);
 
-                    // Every later ask in the same run is answered seen, by both reads
+                    // Every later ask in the same run is answered seen
                     Assert.True(Ask(saveManager, "SeenFtue", tutorial));
-                    Assert.True(Ask(saveManager, "SeenPopup", tutorial));
                     Assert.DoesNotContain(tutorial, FtueCompleted(progress));
                 }
 
