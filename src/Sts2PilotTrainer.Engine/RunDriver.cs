@@ -657,10 +657,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// able to name the card it took before making that call.
     /// </summary>
     internal IReadOnlyList<string> OfferedCardIds =>
+        OpenCardReward?.Cards.Select(card => card.Id.ToString()).ToList() ?? [];
+
+    /// <summary>The loot screen's unclaimed card reward itself, or null when there is
+    /// none: what a test that holds an answer to the alternatives the engine generates
+    /// for it asks, so the list it answers is the reward's own.</summary>
+    internal CardReward? OpenCardReward =>
         _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
             ? set.Rewards.OfType<CardReward>().FirstOrDefault(reward => !reward.SuccessfullySelected)
-                ?.Cards.Select(card => card.Id.ToString()).ToList() ?? []
-            : [];
+            : null;
 
     /// <summary>The rewards set currently on offer, or a refusal naming the verb that
     /// needed one.</summary>
