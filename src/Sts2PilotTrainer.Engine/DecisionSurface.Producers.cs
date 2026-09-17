@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Rewards;
@@ -117,8 +118,8 @@ public static partial class DecisionSurface
     /// Doll Room's keys are the one place the recorded key is a title rather than an
     /// id: the retail client writes the player's localized title where this process,
     /// whose localization returns every key as itself, writes the title's key. The
-    /// walk lists what this process reads, as the driver here would; making the two
-    /// hosts agree is the driver's and the recorder's change, not the map's.
+    /// walk lists what this process reads, and <see cref="TitleKeyedConstructions"/>
+    /// is the reading that says no recording of those points can replay on this build.
     /// </summary>
     private static IReadOnlyList<string>? RuntimeBuiltOptionKeys(EventModel model) => model switch
     {
@@ -202,6 +203,39 @@ public static partial class DecisionSurface
             .ToList();
     }
 
+    /// <summary>
+    /// The events that key an option by a <c>LocString</c>'s raw text rather than by a
+    /// literal, each with the member that constructs it and the keys that member
+    /// produces: the reading behind <see cref="ExcusalClass.NotReplayable"/> for an
+    /// event option. A recorder writes such a key as the player's localized title and
+    /// this process reads the title's key, so <c>RunDriver.OptionKey</c> never matches
+    /// the recorded key on this build and no recording of the point can replay;
+    /// stabilizing the spelling in the recorder and the driver is a later stage. The
+    /// table is held to the IL both ways in <see cref="OptionKeysOf"/>: a construction
+    /// keyed through <c>GetRawText</c> in a member not named here is refused, and a
+    /// member named here that no longer constructs one is stale and refused.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<Type, (string Member, Func<EventModel, IReadOnlyList<string>> Keys)> TitleKeyedConstructions =
+        new Dictionary<Type, (string, Func<EventModel, IReadOnlyList<string>>)>
+        {
+            [typeof(DollRoom)] = ("OptionFromChoice", DollRoomKeys),
+        };
+
+    /// <summary>The option keys of an event that a recording carries as a localized
+    /// title, so none it carries can replay: every key the event's title-keyed
+    /// constructions produce, none for an event with no such construction.</summary>
+    public static IReadOnlyList<string> TitleKeyedOptions(string eventId)
+    {
+        EngineHost.Start();
+        var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId);
+        return model is not null && TitleKeyedConstructions.TryGetValue(model.GetType(), out var construction)
+            ? construction.Keys(model)
+            : [];
+    }
+
+    private static bool ReadsATitle(MethodBase member) =>
+        ChoiceEntryPoints.Callees(member).Any(callee => callee.DeclaringType == typeof(LocString) && callee.Name == nameof(LocString.GetRawText));
+
     /// <summary>The option keys a helper of the event's own returns: every literal its
     /// body loads.</summary>
     private static IReadOnlyList<string> LiteralsOf(EventModel model, string helper)
@@ -234,6 +268,8 @@ public static partial class DecisionSurface
             ?? throw new InvalidOperationException("EventModel.InitialOptionKey is not declared on this build.");
         var keys = new List<string>();
         var runtimeBuilt = RuntimeBuiltOptionKeys(model);
+        TitleKeyedConstructions.TryGetValue(model.GetType(), out var titleKeyed);
+        var titleKeyedMemberMet = false;
         foreach (var member in OwnMembersOf(model.GetType()))
         {
             keys.AddRange(ChoiceEntryPoints.StringLiterals(member).Where(literal => OptionKeyLiteral.IsMatch(literal)));
@@ -249,6 +285,20 @@ public static partial class DecisionSurface
             {
                 var explained = construction.Literals.Any(literal =>
                     OptionKeyLiteral.IsMatch(literal) || initialKeys.Contains(literal, StringComparer.Ordinal));
+                if (!explained && ReadsATitle(member))
+                {
+                    if (titleKeyed.Member != member.Name)
+                    {
+                        throw new InvalidOperationException(
+                            $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} keyed by a " +
+                            "LocString's raw text, which a recording carries as the player's localized title; add the " +
+                            "member and its keys to DecisionSurface.TitleKeyedConstructions.");
+                    }
+
+                    titleKeyedMemberMet = true;
+                    continue;
+                }
+
                 if (!explained && runtimeBuilt is null)
                 {
                     throw new InvalidOperationException(
@@ -273,6 +323,13 @@ public static partial class DecisionSurface
                         "this walk cannot name the option.");
                 }
             }
+        }
+
+        if (titleKeyed.Member is not null && !titleKeyedMemberMet)
+        {
+            throw new InvalidOperationException(
+                $"DecisionSurface.TitleKeyedConstructions names {model.GetType().Name}.{titleKeyed.Member}, and no such " +
+                "member constructs an option keyed by a LocString's raw text on this build; the entry is stale.");
         }
 
         return keys.Concat(runtimeBuilt ?? []).Distinct(StringComparer.Ordinal).ToList();
@@ -778,9 +835,11 @@ public static partial class DecisionSurface
                 else if (ActsReaching(point.Identity).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
                 break;
             case DecisionKinds.EventOption:
-                var eventId = point.Identity[..point.Identity.IndexOf(' ', StringComparison.Ordinal)];
+                var space = point.Identity.IndexOf(' ', StringComparison.Ordinal);
+                var eventId = point.Identity[..space];
                 if (eventId == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
                 else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
+                if (TitleKeyedOptions(eventId).Contains(point.Identity[(space + 1)..], StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
                 break;
             case DecisionKinds.Seam:
                 if (ProducerMap().FirstOrDefault(row => row.Point == point) is not { } seam) break;

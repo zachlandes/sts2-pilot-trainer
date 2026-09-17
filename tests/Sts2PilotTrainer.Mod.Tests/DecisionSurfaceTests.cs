@@ -272,7 +272,8 @@ public sealed class DecisionSurfaceTests
     /// the stand-in table, the relic screen and the linked set from nothing reaching
     /// them, the mend from the game's own player-count branch and the undo from the
     /// driver's list of what the client offers only with another player, the reroll
-    /// from the after-action its construction passes, the Architect and its options
+    /// from the after-action its construction passes and the dolls from the title
+    /// their options are keyed by, the Architect and its options
     /// and the seams it alone produces from the win, a seam from the screens its
     /// answers are all on - and derives none for a point content produces. A
     /// placeholder is admissible only where nothing is derived; a generated row is
@@ -308,6 +309,10 @@ public sealed class DecisionSurfaceTests
         Assert.Equal([ExcusalClass.ReachedByTheWin], Derived(DecisionKinds.EventOption, "EVENT.THE_ARCHITECT PROCEED"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.NEOW RELIC.WINGED_BOOTS"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.RELIC_TRADER PROCEED"));
+        Assert.Equal([ExcusalClass.NotReplayable], Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM relics.MR_STRUGGLES.title"));
+        Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM DOLL_ROOM.pages.INITIAL.options.EXAMINE"));
+        Assert.Equal(["relics.DAUGHTER_OF_THE_WIND.title", "relics.MR_STRUGGLES.title", "relics.BING_BONG.title"], DecisionSurface.TitleKeyedOptions("EVENT.DOLL_ROOM"));
+        Assert.Empty(DecisionSurface.TitleKeyedOptions("EVENT.BRAIN_LEECH"));
         Assert.Equal(
             [ExcusalClass.ScreenWithoutHeadlessHost],
             Derived(DecisionKinds.Seam, "card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained"));

@@ -222,17 +222,11 @@ public static class DecisionExcusals
             "DENSE_VEGETATION.pages.INITIAL.options.TRUDGE_ON",
             "DENSE_VEGETATION.pages.REST.options.FIGHT",
         ],
-        // The three dolls are keyed by their relic's title with no relic set, so the
-        // key is the title's localization key here and the player's localized title
-        // in the retail client (DecisionSurface.RuntimeBuiltOptionKeys)
         ["EVENT.DOLL_ROOM"] =
         [
             "DOLL_ROOM.pages.INITIAL.options.EXAMINE",
             "DOLL_ROOM.pages.INITIAL.options.RANDOM",
             "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME",
-            "relics.BING_BONG.title",
-            "relics.DAUGHTER_OF_THE_WIND.title",
-            "relics.MR_STRUGGLES.title",
         ],
         ["EVENT.DOORS_OF_LIGHT_AND_DARK"] =
         [
@@ -928,6 +922,18 @@ public static class DecisionExcusals
                 excusals[DecisionPoint.EventOption(eventId, key)] = NotOnTheRoute(
                     $"an option of {eventId}, and {EventOffTheRoute}");
             }
+        }
+
+        // The three dolls are keyed by their relic's title with no relic set, so a
+        // recording carries the player's localized title where this process and the
+        // driver read the title's key (DecisionSurface.TitleKeyedConstructions)
+        foreach (var key in new[] { "relics.BING_BONG.title", "relics.DAUGHTER_OF_THE_WIND.title", "relics.MR_STRUGGLES.title" })
+        {
+            excusals[DecisionPoint.EventOption("EVENT.DOLL_ROOM", key)] = new(
+                ExcusalClass.NotReplayable,
+                "keyed by the doll's relic title, a LocString's raw text, which the recorder writes as the player's " +
+                "localized title and RunDriver.OptionKey reads as the title's key on this build, so no recording of it " +
+                "can replay; stabilizing the spelling in the recorder and the driver is a later stage (excused 2026-09-17)");
         }
 
         foreach (var (eventId, keys) in OptionsOfAncientsOffTheRoute)

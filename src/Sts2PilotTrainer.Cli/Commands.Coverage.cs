@@ -101,7 +101,7 @@ internal static partial class Commands
         if (report.InadmissibleExcusals.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine("  excused in a class the map does not admit for the point, so the excusal is rewritten:");
+            Console.WriteLine("  excused in a class the map does not admit for the point, which fails the bar; each names what the map admits:");
             foreach (var excusal in report.InadmissibleExcusals) Console.WriteLine($"  {excusal.Describe()}");
         }
 
