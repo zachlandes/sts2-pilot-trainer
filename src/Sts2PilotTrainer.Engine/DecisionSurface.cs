@@ -232,26 +232,25 @@ public static class DecisionSurface
     /// that a build can add to without touching a member the recorder patches.</summary>
     public static readonly string[] LedgerKinds = ["net-action", "player-choice", "message", "overlay-screen", "room"];
 
-    /// <summary>The candidates of one ledger kind on this build.</summary>
-    public static IReadOnlyList<string> LedgerCandidates(string kind) => kind switch
-    {
-        "net-action" => NetActions(),
-        "player-choice" => PlayerChoices(),
-        "message" => Messages(),
-        "overlay-screen" => OverlayScreens(),
-        "room" => Rooms(),
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "not a ledger kind"),
-    };
-
     /// <summary>
     /// Every choice the client syncs, as (kind, member): each member whose body calls
     /// <c>PlayerChoiceSynchronizer.SyncLocalChoice</c>, crossed with the kinds the
     /// results that body constructs carry - read off which <c>PlayerChoiceResult.From*</c>
     /// factory it calls, since the kind is the factory's and never a runtime value on
     /// this build. A body that constructs its result through the kind-taking factory
-    /// is listed under every card kind.
+    /// is listed under every card kind. A caller that constructs through a factory
+    /// this reading does not know is listed under that factory's name, and one whose
+    /// own body constructs no result at all under <see cref="UnreadChoiceKind"/>, so
+    /// that neither is dropped: each is a candidate no row can claim until somebody
+    /// has read it. Walked once per process, since the assembly does not change under it.
     /// </summary>
-    public static IReadOnlyList<(string Kind, MethodBase Member)> PlayerChoiceSites()
+    public static IReadOnlyList<(string Kind, MethodBase Member)> PlayerChoiceSites() => PlayerChoiceSiteWalk.Value;
+
+    /// <summary>The kind a synced choice is listed under when the member syncing it
+    /// constructs its result nowhere this walk can read.</summary>
+    public const string UnreadChoiceKind = "?";
+
+    private static readonly Lazy<IReadOnlyList<(string Kind, MethodBase Member)>> PlayerChoiceSiteWalk = new(() =>
     {
         var sync = typeof(PlayerChoiceSynchronizer).GetMethod(
             nameof(PlayerChoiceSynchronizer.SyncLocalChoice), BindingFlags.Public | BindingFlags.Instance)
@@ -262,11 +261,7 @@ public static class DecisionSurface
             .SelectMany(caller => ChoiceKindsConstructedBy(caller).Select(kind => (Kind: kind, Member: caller)))
             .OrderBy(site => PlayerChoiceIdentity(site.Kind, site.Member), StringComparer.Ordinal)
             .ToList();
-    }
-
-    /// <summary>The same, by the ledger's name for each.</summary>
-    public static IReadOnlyList<string> PlayerChoices() =>
-        PlayerChoiceSites().Select(site => PlayerChoiceIdentity(site.Kind, site.Member)).ToList();
+    });
 
     /// <summary>How a synced choice is named in the ledger: its kind at the member that syncs it.</summary>
     public static string PlayerChoiceIdentity(string kind, MethodBase member) =>
@@ -279,6 +274,12 @@ public static class DecisionSurface
             .Select(callee => callee.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        if (factories.Count == 0)
+        {
+            yield return UnreadChoiceKind;
+            yield break;
+        }
+
         foreach (var factory in factories)
         {
             switch (factory)
@@ -307,6 +308,9 @@ public static class DecisionSurface
                     yield return nameof(PlayerChoiceType.DeckCard);
                     yield return nameof(PlayerChoiceType.MutableCard);
                     break;
+                default:
+                    yield return factory;
+                    break;
             }
         }
     }
@@ -314,41 +318,40 @@ public static class DecisionSurface
     /// <summary>
     /// Every message the client sends, as (message, sender): each member whose body
     /// calls <c>INetGameService.SendMessage</c>, with the message type it sends read
-    /// off the generic argument of the call.
+    /// off the generic argument of the call. Walked once per process.
     /// </summary>
-    public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() =>
+    public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() => MessageSiteWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<(Type Message, MethodBase Sender)>> MessageSiteWalk = new(() =>
         ChoiceEntryPoints.CallSites(callee =>
                 callee.DeclaringType == typeof(INetGameService) && callee.Name == nameof(INetGameService.SendMessage) &&
                 callee.IsGenericMethod)
             .Select(site => (Message: site.Callee.GetGenericArguments()[0], Sender: site.Caller))
             .Distinct()
             .OrderBy(site => MessageIdentity(site.Message, site.Sender), StringComparer.Ordinal)
-            .ToList();
-
-    /// <summary>The same, by the ledger's name for each.</summary>
-    public static IReadOnlyList<string> Messages() =>
-        MessageSites().Select(site => MessageIdentity(site.Message, site.Sender)).Distinct(StringComparer.Ordinal).ToList();
+            .ToList());
 
     /// <summary>How a sent message is named in the ledger: its type and the member that sends it.</summary>
     public static string MessageIdentity(Type message, MethodBase sender) =>
         $"{message.Name} <- {sender.DeclaringType!.Name}.{EntryPointSignature.Of(sender)}";
 
-    /// <summary>Every overlay screen this build draws.</summary>
-    public static IReadOnlyList<Type> OverlayScreenTypes() =>
+    /// <summary>Every overlay screen this build draws. Walked once per process.</summary>
+    public static IReadOnlyList<Type> OverlayScreenTypes() => OverlayScreenWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<Type>> OverlayScreenWalk = new(() =>
         ChoiceEntryPoints.AllLoadedTypes
             .Where(type => !type.IsAbstract && !type.IsInterface && typeof(IOverlayScreen).IsAssignableFrom(type))
             .OrderBy(type => type.Name, StringComparer.Ordinal)
-            .ToList();
-
-    /// <summary>The same, by name.</summary>
-    public static IReadOnlyList<string> OverlayScreens() => OverlayScreenTypes().Select(type => type.Name).ToList();
+            .ToList());
 
     /// <summary>Every room type the map can deal and every room class the run can
-    /// stand in, each by name.</summary>
-    public static IReadOnlyList<string> Rooms() =>
+    /// stand in, each by name. Walked once per process.</summary>
+    public static IReadOnlyList<string> Rooms() => RoomWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<string>> RoomWalk = new(() =>
         Enum.GetNames<RoomType>().Select(name => $"RoomType.{name}")
             .Concat(ConcreteSubclassesOf(typeof(AbstractRoom)).Select(type => type.Name))
-            .ToList();
+            .ToList());
 
     private static IReadOnlyList<Type> ConcreteSubclassesOf(Type baseType) =>
         ChoiceEntryPoints.AllLoadedTypes

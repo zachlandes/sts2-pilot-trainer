@@ -495,17 +495,17 @@ internal static class ChoiceEntryPoints
             unreadable);
     }
 
-    /// <summary>The callees of a method's own body, its async state machine's MoveNext,
-    /// and of each lambda either of those takes the address of, read the same way. Only
-    /// the lambdas this method's code reaches are followed: a closure class is shared by
-    /// every lambda its declaring member wrote, and the game's compiler-generated lambda
-    /// class is shared by every member of the type.</summary>
     /// <summary>The callees of a member's own body, its state machine and the lambdas
     /// it takes the address of, for a walk that reads what a caller constructs; a
     /// constructor has a body and no state machine.</summary>
     internal static IReadOnlyList<MethodBase> OwnCalleesOf(MethodBase member) =>
         member is MethodInfo method ? OwnCallees(method).Distinct().ToList() : Callees(member);
 
+    /// <summary>The callees of a method's own body, its async state machine's MoveNext,
+    /// and of each lambda either of those takes the address of, read the same way. Only
+    /// the lambdas this method's code reaches are followed: a closure class is shared by
+    /// every lambda its declaring member wrote, and the game's compiler-generated lambda
+    /// class is shared by every member of the type.</summary>
     private static IEnumerable<MethodBase> OwnCallees(MethodInfo method)
     {
         var own = BodyAndStateMachineCallees(method).ToList();

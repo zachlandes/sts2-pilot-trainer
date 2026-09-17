@@ -486,11 +486,39 @@ public static class EngineCommands
             }
         }
 
-        // The third question, the other way round: does every way a decision can reach
-        // the game on this build have a row that watches it or a written reason none
-        // does. A game update that adds a net action, a synced choice, a message, a
-        // screen or a room answers "neither" here before any recording meets it
-        foreach (var entry in DecisionLedger.Entries().Where(entry => !entry.IsClassified))
+        return problems;
+    }
+
+    /// <summary>
+    /// The third question, the other way round: does every way a decision can reach
+    /// the game on this build have a row that watches it or a written reason none
+    /// does. A game update that adds a net action, a synced choice, a message, a
+    /// screen or a room answers "neither" here before any recording meets it.
+    ///
+    /// Asked apart from <see cref="Verify"/> because answering it reads the IL of
+    /// every method body in the game assembly: the <c>engine-commands</c> command and
+    /// <c>DecisionLedgerTests</c> ask it, and the recorder's install gate inside the
+    /// retail client asks only the two questions above. A walk this build defeats -
+    /// a net action without <c>ToGameAction</c>, a compiler-generated method nothing
+    /// takes the address of - is a sentence here, never an exception out of the gate.
+    /// </summary>
+    public static IReadOnlyList<string> VerifyLedger()
+    {
+        var problems = new List<string>();
+        IReadOnlyList<DecisionLedger.Entry> entries;
+        try
+        {
+            entries = DecisionLedger.Entries();
+        }
+        catch (InvalidOperationException walk)
+        {
+            problems.Add(
+                $"The ways a decision can reach the game could not be walked off this build: {walk.Message} " +
+                "Until that reads, the ledger accounts for nothing.");
+            return problems;
+        }
+
+        foreach (var entry in entries.Where(entry => !entry.IsClassified))
         {
             problems.Add(
                 $"{entry.Candidate.Kind} {entry.Candidate.Identity} is a way a decision can reach the game on this " +
@@ -498,13 +526,7 @@ public static class EngineCommands
                 "the other, or a decision the recorder would meet without knowing what it was.");
         }
 
-        foreach (var stale in DecisionLedger.StaleExcusals())
-        {
-            problems.Add(
-                $"DecisionLedger excuses {stale}, which no walk of this build produces. An excusal for nothing " +
-                "is stale and comes out.");
-        }
-
+        problems.AddRange(DecisionLedger.StaleExcusals());
         return problems;
     }
 
@@ -538,7 +560,7 @@ public sealed record EngineCommand
     /// choices its member syncs, the messages it sends, the screens it answers, the
     /// rooms it is made in. <see cref="DecisionLedger"/> holds every candidate the
     /// build offers to some row's observations or a written excusal, which is
-    /// <see cref="EngineCommands.Verify"/>'s third question. Empty where the member
+    /// <see cref="EngineCommands.VerifyLedger"/>'s question. Empty where the member
     /// itself is the whole of what the decision touches.
     /// </summary>
     public IReadOnlyList<Observation> Observes { get; init; } = [];

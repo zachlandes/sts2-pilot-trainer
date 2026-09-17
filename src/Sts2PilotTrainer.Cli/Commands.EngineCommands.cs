@@ -50,7 +50,7 @@ internal static partial class Commands
             Console.WriteLine($"  {verb,-22} unmapped  {EngineCommands.UnmappedReason(verb)}");
         }
 
-        var problems = EngineCommands.Verify().ToList();
+        var problems = EngineCommands.Verify().Concat(EngineCommands.VerifyLedger()).ToList();
 
         // What the build offers as well as what the table names: the denominator the
         // coverage number counts against, per kind

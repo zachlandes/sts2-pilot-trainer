@@ -62,7 +62,7 @@ public sealed record RoomObservation(string Room) : Observation
 /// The recorder's account of every way a decision can reach the game on this build,
 /// candidate by candidate: claimed by a row of the command table, excused in writing,
 /// or unclassified, which is the state a game update leaves a new one in and the
-/// state <see cref="EngineCommands.Verify"/> refuses.
+/// state <see cref="EngineCommands.VerifyLedger"/> refuses.
 ///
 /// This is the standing per-build gate: the walks off the assembly are the
 /// candidates, the table's rows and <see cref="Excused"/> are the claims, and the
@@ -191,17 +191,13 @@ public static class DecisionLedger
             ["RoomType.Unassigned"] = ("no-room", "the map's placeholder type for a point no room has been dealt to"),
         };
 
-    /// <summary>Every candidate on this build with how it is accounted for, in the ledger's order.</summary>
-    public static IReadOnlyList<Entry> Entries()
-    {
-        var entries = new List<Entry>();
-        foreach (var kind in DecisionSurface.LedgerKinds)
-        {
-            foreach (var candidate in Candidates(kind)) entries.Add(Classify(candidate));
-        }
+    /// <summary>Every candidate on this build with how it is accounted for, in the
+    /// ledger's order. Classified once per process: the walks read the loaded assembly
+    /// and the table is a constant, so the answer cannot change under it.</summary>
+    public static IReadOnlyList<Entry> Entries() => Classified.Value;
 
-        return entries;
-    }
+    private static readonly Lazy<IReadOnlyList<Entry>> Classified = new(() =>
+        DecisionSurface.LedgerKinds.SelectMany(Candidates).Select(Classify).ToList());
 
     /// <summary>The candidates of one kind, structured for the observations to match.</summary>
     public static IReadOnlyList<LedgerCandidate> Candidates(string kind) => kind switch
@@ -253,15 +249,35 @@ public static class DecisionLedger
             : new Entry(candidate, Unclassified, "");
     }
 
-    /// <summary>Every excusal that names no candidate this build offers: a sentence
-    /// about nothing, which comes out.</summary>
+    /// <summary>Every excusal that is stale, as sentences: one naming no candidate this
+    /// build offers is a sentence about nothing, and one naming a candidate a row
+    /// already claims is a sentence nobody reads, since <see cref="Classify"/> asks the
+    /// rows first. Either comes out.</summary>
     public static IReadOnlyList<string> StaleExcusals()
     {
-        var offered = DecisionSurface.LedgerKinds
-            .SelectMany(Candidates)
-            .Select(candidate => candidate.Identity)
-            .ToHashSet(StringComparer.Ordinal);
-        return Excused.Keys.Where(identity => !offered.Contains(identity)).Order(StringComparer.Ordinal).ToList();
+        var entries = Entries();
+        var offered = entries.Select(entry => entry.Candidate.Identity).ToHashSet(StringComparer.Ordinal);
+        var stale = new List<string>();
+        foreach (var identity in Excused.Keys.Order(StringComparer.Ordinal))
+        {
+            if (!offered.Contains(identity))
+            {
+                stale.Add(
+                    $"DecisionLedger excuses {identity}, which no walk of this build produces. An excusal for " +
+                    "nothing is stale and comes out.");
+                continue;
+            }
+
+            var claimed = entries.FirstOrDefault(entry => entry.Candidate.Identity == identity && entry.Status == Claimed);
+            if (claimed is not null)
+            {
+                stale.Add(
+                    $"{identity} is both claimed by {claimed.Account} and excused in DecisionLedger. One of the " +
+                    "two is stale.");
+            }
+        }
+
+        return stale;
     }
 
     /// <summary>The committed record: one line per candidate under its kind.</summary>

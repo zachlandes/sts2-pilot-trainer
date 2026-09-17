@@ -8,9 +8,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 ///
 /// The walks are the candidates; the command table's observations and the written
 /// excusals are the claims; a candidate accounted for neither way is what a game
-/// update leaves behind, and <c>EngineCommands.Verify</c> refuses it. This holds the
-/// counts to v0.111.0, the ledger to the file, and the classification to its two
-/// answers on a candidate nothing claims.
+/// update leaves behind, and <c>EngineCommands.VerifyLedger</c> refuses it. This holds
+/// the counts to v0.111.0, the ledger to the file, and the classification to its two
+/// answers on a candidate nothing claims. <c>EngineCommands.Verify</c> is the
+/// recorder's install gate inside the retail client and is held apart, because the
+/// ledger's walks read every method body in the game assembly and that gate must not.
 /// </summary>
 public sealed class DecisionLedgerTests
 {
@@ -22,6 +24,7 @@ public sealed class DecisionLedgerTests
         Assert.All(entries, entry => Assert.True(entry.IsClassified, entry.Describe()));
         Assert.Empty(DecisionLedger.StaleExcusals());
         Assert.Empty(EngineCommands.Verify());
+        Assert.Empty(EngineCommands.VerifyLedger());
     }
 
     [GameFact]
@@ -58,17 +61,23 @@ public sealed class DecisionLedgerTests
 
     /// <summary>Every synced choice on this build is a card kind, an index or a
     /// player, and every card prompt entry point syncs exactly the kind its own
-    /// factory constructs.</summary>
+    /// factory constructs; no caller on this build syncs a result it constructed
+    /// nowhere the walk reads, which would be listed under the unread kind rather
+    /// than dropped.</summary>
     [GameFact]
     public void EverySyncedChoiceIsNamedByTheKindItsFactoryConstructs()
     {
-        var choices = DecisionSurface.PlayerChoices();
+        var choices = DecisionSurface.PlayerChoiceSites()
+            .Select(site => DecisionSurface.PlayerChoiceIdentity(site.Kind, site.Member))
+            .ToList();
 
         Assert.Contains("CombatCard @ CardSelectCmd.FromHand(context, player, prefs, filter, source)", choices);
         Assert.Contains("DeckCard @ CardSelectCmd.FromDeckForUpgrade(player, prefs)", choices);
         Assert.Contains("Index @ CardReward.OnSelect()", choices);
         Assert.Contains("Player @ MendRestSiteOption.OnSelect()", choices);
         Assert.DoesNotContain(choices, choice => choice.StartsWith("None @", StringComparison.Ordinal));
+        Assert.DoesNotContain(choices, choice => choice.StartsWith(DecisionSurface.UnreadChoiceKind + " @", StringComparison.Ordinal));
+        Assert.All(choices, choice => Assert.False(choice.StartsWith("From", StringComparison.Ordinal), choice));
     }
 
     [GameFact]
