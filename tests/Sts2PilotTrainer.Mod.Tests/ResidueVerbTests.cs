@@ -177,7 +177,7 @@ public sealed class ResidueVerbTests
     {
         var player = session.RunState.Players[0];
         RelicCmd.Obtain(ModelDb.Relic<PaelsWing>().ToMutable(), player).GetAwaiter().GetResult();
-        var reward = ACardReward(player);
+        var reward = HeadlessRuns.ACardReward(player);
         var options = OfferedCards(reward);
         var alternatives = CardRewardAlternative.Generate(reward);
         Assert.Equal(["Skip", "SACRIFICE"], alternatives.Select(alternative => alternative.OptionId));
@@ -223,7 +223,7 @@ public sealed class ResidueVerbTests
         // Driftwood is what lets a card reward be rerolled on this build; the reward's
         // own generator then offers the reroll after the skip
         var driftwood = RelicCmd.Obtain(ModelDb.Relic<Driftwood>().ToMutable(), player).GetAwaiter().GetResult();
-        var reward = ACardReward(player);
+        var reward = HeadlessRuns.ACardReward(player);
         Assert.True(driftwood.TryModifyRewardsLate(player, [reward], room: null));
         var options = OfferedCards(reward);
         var alternatives = CardRewardAlternative.Generate(reward);
@@ -349,22 +349,6 @@ public sealed class ResidueVerbTests
 
     /// <summary>The refusal a selector recorded for one asking, on a selector of its
     /// own because a selector keeps its first refusal.</summary>
-    /// <summary>
-    /// A card reward the engine would put on a loot screen for this player, built the
-    /// way the engine builds one, so what it offers past its cards is what
-    /// <c>CardRewardAlternative.Generate</c> and the player's relics say and not a list
-    /// written here. Its cards are the first three of the deck, which is enough for a
-    /// position past them to mean something.
-    /// </summary>
-    private static CardReward ACardReward(Player player)
-    {
-        var cards = player.Deck.Cards.Take(3).ToList();
-        var creation = new CardCreationOptions([], CardCreationSource.Encounter, CardRarityOddsType.Uniform);
-        var reward = new CardReward(cards, CardCreationSource.Encounter, player, creation);
-        Assert.Equal(3, reward.Cards.Count());
-        return reward;
-    }
-
     /// <summary>The cards a reward offers, as the engine hands them to the seam: the
     /// reward's own list, read through the field the engine reads it from, because
     /// the reward exposes the cards and not the creation results the seam is given.</summary>

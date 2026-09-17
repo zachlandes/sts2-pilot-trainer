@@ -534,15 +534,10 @@ public sealed class RunRecorderStopTests : IDisposable
     /// decision then takes it as its own verb and arguments.
     /// </summary>
     [GameFact]
-    public void ACardRewardsAnswerWaitsForTheCardRewardDecision()
+    public void ACardRewardsAnswerWaitsForTheCardRewardDecision() => HeadlessRuns.WithARun(session =>
     {
-        EngineHost.Start();
         var (recorder, capture, _) = Recording();
-        var offered = ModelDb.AllCards.Take(3).ToList();
-        var alternatives = new List<CardRewardAlternative>
-        {
-            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
-        };
+        var (offered, alternatives) = ACardRewardsOffer(session);
 
         recorder.HoldCardRewardAnswer(offered, alternatives, 3);
         recorder.Commit(
@@ -561,7 +556,7 @@ public sealed class RunRecorderStopTests : IDisposable
             actions.Select(action => action.Verb));
         Assert.Equal("Skip", actions[^1].Args["option_id"]);
         Assert.Equal("3", actions[^1].Args["option_index"]);
-    }
+    });
 
     /// <summary>
     /// Exactly one thing comes off a card reward per click, so a second answer on the
@@ -570,15 +565,10 @@ public sealed class RunRecorderStopTests : IDisposable
     /// same reward again is two clicks and two decisions, each with its one answer.
     /// </summary>
     [GameFact]
-    public void ASecondAnswerToOneCardRewardIsRefused()
+    public void ASecondAnswerToOneCardRewardIsRefused() => HeadlessRuns.WithARun(session =>
     {
-        EngineHost.Start();
         var (recorder, capture, _) = Recording();
-        var offered = ModelDb.AllCards.Take(3).ToList();
-        var alternatives = new List<CardRewardAlternative>
-        {
-            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
-        };
+        var (offered, alternatives) = ACardRewardsOffer(session);
 
         recorder.HoldCardRewardAnswer(offered, alternatives, 3);
         recorder.HoldCardRewardAnswer(offered, alternatives, 3);
@@ -606,6 +596,19 @@ public sealed class RunRecorderStopTests : IDisposable
         Assert.Equal(
             [ActionVerb.TakeCardRewardAlternative, ActionVerb.TakeCardRewardAlternative],
             twice.ToManifest().Actions.TakeLast(2).Select(action => action.Verb));
+    });
+
+    /// <summary>What a card reward the engine put together for the run's player
+    /// offers - its three cards and, from <c>CardRewardAlternative.Generate</c>, the
+    /// Skip a player with no relic over it gets - so position 3 is the engine's Skip
+    /// and not one written here.</summary>
+    private static (IReadOnlyList<CardModel> Offered, IReadOnlyList<CardRewardAlternative> Alternatives) ACardRewardsOffer(
+        GameSession session)
+    {
+        var reward = HeadlessRuns.ACardReward(session.RunState.Players[0]);
+        var alternatives = CardRewardAlternative.Generate(reward);
+        Assert.Equal(["Skip"], alternatives.Select(alternative => alternative.OptionId));
+        return (reward.Cards.ToList(), alternatives);
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,9 @@
 using System.Globalization;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Rewards;
+using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -44,6 +49,22 @@ internal static class HeadlessRuns
             ScreenStandIns.ForgetMinigame();
             HeadlessEngine.Forget();
         }
+    }
+
+    /// <summary>
+    /// A card reward the engine would put on a loot screen for this player, built the
+    /// way the engine builds one, so what it offers past its cards is what
+    /// <c>CardRewardAlternative.Generate</c> and the player's relics say and not a list
+    /// written in a test. Its cards are the first three of the deck, which is enough
+    /// for a position past them to mean something.
+    /// </summary>
+    internal static CardReward ACardReward(Player player)
+    {
+        var cards = player.Deck.Cards.Take(3).ToList();
+        var creation = new CardCreationOptions([], CardCreationSource.Encounter, CardRarityOddsType.Uniform);
+        var reward = new CardReward(cards, CardCreationSource.Encounter, player, creation);
+        Assert.Equal(3, reward.Cards.Count());
+        return reward;
     }
 
     internal static void EndAnyRun()

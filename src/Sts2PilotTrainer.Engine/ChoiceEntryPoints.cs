@@ -264,6 +264,25 @@ internal static class ChoiceEntryPoints
             .ToList();
     }
 
+    /// <summary>
+    /// Every method or constructor in <paramref name="assembly"/> whose body constructs
+    /// <paramref name="constructed"/>, read off the raw IL: every spelling C# has for a
+    /// construction - <c>new T(...)</c>, target-typed <c>new(...)</c>, a collection
+    /// initializer - is one <c>newobj</c> here, so a rule about who constructs a type
+    /// cannot be dodged by spelling. Every type is walked, the compiler-written closures
+    /// and state machines included, and a body that cannot be read refuses by name.
+    /// </summary>
+    internal static IReadOnlyList<MethodBase> MethodsConstructing(Assembly assembly, Type constructed)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        return assembly.GetTypes()
+            .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
+            .Where(method => OperandsOf(method).Any(operand =>
+                operand.IsConstruction && operand.Callee?.DeclaringType == constructed))
+            .ToList();
+    }
+
     /// <summary>Every method a body names, or none where it cannot be read.</summary>
     internal static IReadOnlyList<MethodBase> Callees(MethodBase method)
     {
