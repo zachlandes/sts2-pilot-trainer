@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Saves;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
 
@@ -121,6 +122,84 @@ public sealed class ProfileWriteBarrierTests
             {
                 Invoke(saveManager, "MarkFtueAsComplete", ftueId);
                 Assert.Contains(ftueId, FtueCompleted(progress));
+            });
+    }
+
+    /// <summary>
+    /// The repeat, driven: a player with tutorials on and a basic one unseen, in a
+    /// trainer run.
+    ///
+    /// Stopping the mark whole left <c>SeenFtue</c> answering false for the whole run,
+    /// so every screen that asked - NMapScreen over a map the recording was driving,
+    /// NEndTurnButton in the fight - showed the popup again. The overlay answers each
+    /// tutorial seen from the moment the run shows it, and nothing else changes: the
+    /// player's own progress holds no mark during the run, none once it ends, and none
+    /// after they quit - NGame.Quit calling SaveProgressFile with no trainer run live,
+    /// the ordinary write the barrier must not stop and the one that would persist a
+    /// mark left in the real Progress. That write is driven one call below
+    /// SaveProgressFile, at the ProgressSaveManager it delegates to, because the
+    /// headless host neutralises SaveProgressFile for the process once a test has
+    /// started it; the manager's SaveProgress is also the write the mark itself makes.
+    ///
+    /// That last write is read from the store the game writes progress through,
+    /// stood in for here, rather than asserted on the in-memory set alone: the
+    /// in-memory set is what a mark left in <c>Progress</c> would show up in, and the
+    /// file is what the player keeps.
+    /// </summary>
+    [BarrierFact]
+    public void WithTutorialsOnATrainerRunAnswersItsTutorialsSeenAndQuittingAfterItWritesNoMark()
+    {
+        string[] tutorials = ["map_select_ftue", "can_play_cards_ftue"];
+        var (saveManager, progress) = SaveManagerWithFreshProgress();
+        SetEnableFtues(progress, true);
+        var store = new CapturedSaveStore();
+        using var _ = WithProgressWrittenTo(saveManager, store);
+
+        WithTheBarrier(
+            raised: () =>
+            {
+                foreach (var tutorial in tutorials)
+                {
+                    // The screen asks, shows the tutorial and marks it, the way the
+                    // map screen and the end-turn button do
+                    Assert.False(Ask(saveManager, "SeenFtue", tutorial));
+                    Invoke(saveManager, "MarkFtueAsComplete", tutorial);
+
+                    // Every later ask in the same run is answered seen
+                    Assert.True(Ask(saveManager, "SeenFtue", tutorial));
+                    Assert.DoesNotContain(tutorial, FtueCompleted(progress));
+                }
+
+                // A tutorial the run has not shown is still the player's own answer
+                Assert.False(Ask(saveManager, "SeenFtue", "merchant_ftue"));
+                Assert.Empty(store.Writes);
+            },
+            lowered: () =>
+            {
+                // The run is over: the overlay went with it, and the player's own
+                // progress is what it was
+                foreach (var tutorial in tutorials)
+                {
+                    Assert.False(Ask(saveManager, "SeenFtue", tutorial));
+                    Assert.DoesNotContain(tutorial, FtueCompleted(progress));
+                }
+
+                // The player quits. NGame.Quit calls SaveManager.SaveProgressFile, which
+                // is ProgressSaveManager.SaveProgress one call up; the write is driven
+                // from the manager because the headless host neutralises
+                // SaveProgressFile for the whole process once any test here has
+                // started it, and a write that never left would pass this for the
+                // wrong reason
+                Invoke(ProgressManager(saveManager), "SaveProgress");
+
+                var written = Assert.Single(store.Writes);
+                Assert.EndsWith("progress.save", written.Path);
+                var saved = SaveManager.FromJson<SerializableProgress>(written.Content);
+                Assert.True(saved.Success, saved.ErrorMessage);
+                foreach (var tutorial in tutorials)
+                {
+                    Assert.DoesNotContain(tutorial, saved.SaveData!.FtueCompleted);
+                }
             });
     }
 
@@ -249,6 +328,77 @@ public sealed class ProfileWriteBarrierTests
             saveManager, Activator.CreateInstance(GameType("MegaCrit.Sts2.Core.Saves.ProgressState")));
         return (saveManager, progressProperty.GetValue(saveManager)!);
     }
+
+    /// <summary>
+    /// Routes the game's progress writes into <paramref name="store"/> until the
+    /// returned handle is disposed.
+    ///
+    /// <c>ProgressSaveManager.SaveProgress</c> serialises the progress and hands the
+    /// text to its <c>ISaveStore</c>, which in this process is Godot's file access
+    /// answered by the stubs with nothing - so the only way to read what the game
+    /// would have written is to be the store it writes to. The game's own manager
+    /// and its own serialisation do the writing; only the destination is stood in
+    /// for, and it is put back so the next test finds the process as it was.
+    /// </summary>
+    private static IDisposable WithProgressWrittenTo(object saveManager, ISaveStore store)
+    {
+        var progressManager = ProgressManager(saveManager);
+        var storeField = progressManager.GetType()
+            .GetField("_saveStore", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var original = storeField.GetValue(progressManager);
+        storeField.SetValue(progressManager, store);
+        return new Restore(() => storeField.SetValue(progressManager, original));
+    }
+
+    /// <summary>The <c>ProgressSaveManager</c> the game's <c>SaveManager</c> delegates
+    /// every progress read and write to.</summary>
+    private static object ProgressManager(object saveManager) =>
+        saveManager.GetType()
+            .GetField("_progressSaveManager", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(saveManager)!;
+
+    private sealed class Restore(Action undo) : IDisposable
+    {
+        public void Dispose() => undo();
+    }
+
+    /// <summary>The game's save store, keeping every text write and refusing every
+    /// other call by name, so a path this test did not expect fails rather than
+    /// answers.</summary>
+    private sealed class CapturedSaveStore : ISaveStore
+    {
+        public List<(string Path, string Content)> Writes { get; } = [];
+
+        public void WriteFile(string path, string content) => Writes.Add((path, content));
+
+        public string? ReadFile(string path) => throw Unexpected();
+        public Task<string?> ReadFileAsync(string path) => throw Unexpected();
+        public void WriteFile(string path, byte[] content) => throw Unexpected();
+        public Task WriteFileAsync(string path, string content) => throw Unexpected();
+        public Task WriteFileAsync(string path, byte[] content) => throw Unexpected();
+        public bool FileExists(string path) => throw Unexpected();
+        public bool DirectoryExists(string path) => throw Unexpected();
+        public void DeleteFile(string path) => throw Unexpected();
+        public void RenameFile(string sourcePath, string destinationPath) => throw Unexpected();
+        public string[] GetFilesInDirectory(string directoryPath) => throw Unexpected();
+        public string[] GetDirectoriesInDirectory(string directoryPath) => throw Unexpected();
+        public void CreateDirectory(string directoryPath) => throw Unexpected();
+        public void DeleteDirectory(string directoryPath) => throw Unexpected();
+        public void DeleteTemporaryFiles(string directoryPath) => throw Unexpected();
+        public DateTimeOffset GetLastModifiedTime(string path) => throw Unexpected();
+        public int GetFileSize(string path) => throw Unexpected();
+        public void SetLastModifiedTime(string path, DateTimeOffset time) => throw Unexpected();
+        public string GetFullPath(string filename) => throw Unexpected();
+
+        private static NotSupportedException Unexpected([System.Runtime.CompilerServices.CallerMemberName] string member = "") =>
+            new($"The progress save reached ISaveStore.{member}, which this store does not answer.");
+    }
+
+    /// <summary>A yes-or-no question on the game's own object, by name.</summary>
+    private static bool Ask(object target, string method, string argument) =>
+        (bool)target.GetType()
+            .GetMethod(method, BindingFlags.Public | BindingFlags.Instance)!
+            .Invoke(target, [argument])!;
 
     private static bool EnableFtues(object progress) =>
         (bool)Property(progress, "EnableFtues").GetValue(progress)!;
