@@ -17,17 +17,19 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// to. Each row points the whole-act journey at one decision through a
 /// <see cref="WalkPolicy"/> - decline a card reward on its own screen, take a named
 /// rest option, buy from a named shelf, discard or drink a potion on the map, skip
-/// the chest - plays the act through the recorder the way the won-run proof does,
+/// the chest, claim an elite's relic - plays the act through the recorder the way the won-run proof does,
 /// replays what the recorder wrote, holds the replay to the journal decision for
 /// decision through the same oracle <c>parity</c> uses, and asserts the recording
 /// projects to the point the row is for. The recordings are written to a temporary
 /// store and not committed, so <c>coverage --corpus manifests</c> still reads those
 /// points as excused; the excusal names this test as the thing that reaches them.
 ///
-/// What no row here can reach is what the headless host has no screen for, which
-/// <c>docs/headless-fidelity.md</c> names, and the undo of an ended turn, which the
-/// retail client offers only in the window before the enemy turn begins and this
-/// process runs the enemy turn inside the end-turn decision.
+/// A row asserts the walk met its ask as well as that the point was projected,
+/// because the verb alone cannot tell the map's potion drink from the fight's.
+///
+/// What no row here can reach is what <c>DecisionExcusals</c> leaves excused with a
+/// reason of its own: what the headless host has no screen for, the undo of an ended
+/// turn, and every point whose producer the fixture seed's route does not pass.
 /// </summary>
 public sealed class GeneratedCoverageTests : IDisposable
 {
@@ -67,6 +69,7 @@ public sealed class GeneratedCoverageTests : IDisposable
         ["shop relic", "shop-kind  relic", ""],
         ["shop potion", "shop-kind  potion", ""],
         ["shop colorless_card", "shop-kind  colorless_card", ""],
+        ["claim the relic reward", "reward-kind  relic", ""],
         ["skip the chest", "verb  SkipChestRelic", ""],
         ["take the chest", "verb  TakeChestRelic", ""],
         ["discard a potion on the map", "verb  DiscardPotion", ""],
@@ -81,7 +84,8 @@ public sealed class GeneratedCoverageTests : IDisposable
         RunRecorder.GameIdentitySource = () => EngineHost.Origin == EngineOrigin.HeadlessHost;
         RunRecorder.Clock = new PumpedSettleClock();
 
-        var (manifest, capture) = WalkTheActThroughTheRecorder(PolicyFor(row));
+        var (manifest, capture, askMet) = WalkTheActThroughTheRecorder(PolicyFor(row));
+        Assert.True(askMet, $"the walk finished without meeting the ask of row '{row}', so the point it reports was reached somewhere else");
 
         var native = manifest.Source.Native!;
         Assert.True(
@@ -127,6 +131,7 @@ public sealed class GeneratedCoverageTests : IDisposable
         "shop relic" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Relic },
         "shop potion" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Potion },
         "shop colorless_card" => new WalkPolicy { ShopKind = ShopPurchaseKinds.ColorlessCard },
+        "claim the relic reward" => new WalkPolicy { ClaimTheRelicReward = true },
         "skip the chest" => new WalkPolicy { SkipTheChest = true },
         "take the chest" => new WalkPolicy { TakeTheChest = true },
         "discard a potion on the map" => new WalkPolicy { DiscardAPotionOnTheMap = true },
@@ -139,7 +144,7 @@ public sealed class GeneratedCoverageTests : IDisposable
     /// <summary>The first act alone on the journey's route through every room type,
     /// through the recorder, ending in the victory room the Architect's PROCEED opens;
     /// the shape of the won-run proof in <c>HeadlessGameplayCaptureTests</c>.</summary>
-    private (ReplayManifest Manifest, RunCapture Capture) WalkTheActThroughTheRecorder(WalkPolicy policy)
+    private (ReplayManifest Manifest, RunCapture Capture, bool AskMet) WalkTheActThroughTheRecorder(WalkPolicy policy)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
@@ -149,7 +154,7 @@ public sealed class GeneratedCoverageTests : IDisposable
         driver.EnterFirstRoom();
         Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
 
-        SyntheticFixtureGenerator.WalkTheAct(
+        var walk = SyntheticFixtureGenerator.WalkTheAct(
             session, driver, [], DrainSettles, visitEveryRoomType: true, policy with { StopOnceMet = true });
 
         // Abandoned after the act, the way the natural-run proof abandons: the
@@ -167,7 +172,7 @@ public sealed class GeneratedCoverageTests : IDisposable
             $"; actions: {string.Join(" ", capture.Actions.Select(action => $"{action.Seq}:{action.Verb}"))}");
         var manifest = ManifestJson.Deserialize(File.ReadAllText(
             Path.Combine(_root, "recordings", $"{capture.RunId}.replay.json")));
-        return (manifest, capture);
+        return (manifest, capture, walk.AskMet);
     }
 
     private static ArbiterOutcome FreshReplay(ReplayManifest manifest)

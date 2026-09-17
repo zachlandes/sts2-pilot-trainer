@@ -376,7 +376,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         driver.EnterFirstRoom();
         Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
 
-        var walked = SyntheticFixtureGenerator.WalkTheAct(session, driver, [], DrainSettles, visitEveryRoomType: false);
+        var walked = SyntheticFixtureGenerator.WalkTheAct(session, driver, [], DrainSettles, visitEveryRoomType: false).Actions;
 
         Assert.True(session.RunState.CurrentRoom is { IsVictoryRoom: true }, "the last act's transition did not open the victory room");
         var recorder = RunRecorder.Active!;

@@ -4,7 +4,8 @@ namespace Sts2PilotTrainer.Engine;
 /// The choices the whole-act walk consults at the decisions it has a rule for, so the
 /// same journey can be pointed at a decision point the committed corpus never
 /// reaches: decline a card reward on its own screen, take a named rest option, buy
-/// from a named shelf, drink or discard a potion on the map, skip the chest.
+/// from a named shelf, drink or discard a potion on the map, skip the chest, claim an
+/// elite's relic.
 ///
 /// A record of choices rather than a second walker, because the journey's route,
 /// its fight rule and its survival are what make an act finishable, and a second copy
@@ -41,6 +42,10 @@ public sealed record WalkPolicy
     /// <summary>Discard the first potion the belt holds, on the map, at the first
     /// floor after a fight where there is one.</summary>
     public bool DiscardAPotionOnTheMap { get; init; }
+
+    /// <summary>Claim the relic a won fight offers - an elite's - instead of declining
+    /// it with the rest of the loot.</summary>
+    public bool ClaimTheRelicReward { get; init; }
 
     /// <summary>Leave the chest's relic where it is instead of taking it.</summary>
     public bool SkipTheChest { get; init; }

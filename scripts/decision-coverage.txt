@@ -10,16 +10,16 @@ ChooseNeowBlessing
 MapMove
 PlayCard
 EndTurn
-UndoEndTurn  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+UndoEndTurn  excused: the retail client offers the undo only in the window before the enemy turn begins, which the headless host runs inside the end-turn decision; no generated walk reaches it (excused 2026-09-16)
 ChooseEventOption
 ClaimReward
 TakeCard
 TakeCardRewardAlternative  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 SkipRewards
 SelectCardFromScreen
-ConfirmCardScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-SelectBundleFromScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-SelectRelicFromScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+ConfirmCardScreen  excused: no committed recording reaches it and the generated walk's route does not pass its producer - a range prompt, which on this build is the choose-a-card screen the Discovery family of cards, the card-choosing potions and four relics open, none of which the route deals; retired by a recording that does, from the retail soak (excused 2026-09-16)
+SelectBundleFromScreen  excused: a screen the headless host has no screen for (docs/headless-fidelity.md); no generated walk reaches it (excused 2026-09-16)
+SelectRelicFromScreen  excused: a screen the headless host has no screen for (docs/headless-fidelity.md); no generated walk reaches it (excused 2026-09-16)
 TakeChestRelic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 SkipChestRelic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 ChooseRestSiteOption
@@ -27,21 +27,21 @@ UsePotion  excused: reached by a GeneratedCoverageTests row, recorded through th
 DiscardPotion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 ShopPurchase
 ProceedToNextAct  excused: reached by HeadlessGameplayCaptureTests' won run, recorded through the real recorder and replayed on every merge; the recording is generated rather than committed
-RevealCrystalSphereCell  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+RevealCrystalSphereCell  excused: a screen the headless host has no screen for (docs/headless-fidelity.md); no generated walk reaches it (excused 2026-09-16)
 
 # reward-kind (7)
-card_removal  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+card_removal  excused: no committed recording reaches it and the generated walk's route does not pass its producer - put on the loot screen by Forbidden Grimoire's power, an ancient card the route never holds; retired by a recording that does, from the retail soak (excused 2026-09-16)
 card
 gold
 LinkedRewardSet  excused: a container over other rewards that no singleplayer path on this build constructs; the format has no kind for it on purpose (RewardKinds)
 potion
-relic  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-special_card  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+relic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
+special_card  excused: no committed recording reaches it and the generated walk's route does not pass its producer - put on the loot screen by a thief that dies holding a stolen card or by the Lantern Key event; the route's one thief fight ends without a theft; retired by a recording that does, from the retail soak (excused 2026-09-16)
 
 # card-reward-alternative (3)
 Skip  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
-REROLL  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-SACRIFICE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+REROLL  excused: keeps the reward's selection open on this build (DoNothing), which the driver refuses by name; a recording of it cannot replay (excused 2026-09-16)
+SACRIFICE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Pael's Wing; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
 
 # shop-kind (5)
 character_card
@@ -51,74 +51,74 @@ potion  excused: reached by a GeneratedCoverageTests row, recorded through the r
 relic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 
 # rest-option (9)
-CLONE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-COOK  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-DIG  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-HATCH  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+CLONE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Pael's Growth; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
+COOK  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Meat Cleaver; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
+DIG  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Shovel; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
+HATCH  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by a Byrdonis Egg in the deck, which the Byrdonis Nest event deals; retired by a recording that does, from the retail soak (excused 2026-09-16)
 HEAL  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
-KINDLE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-LIFT  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-MEND  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+KINDLE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Pumpkin Candle; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
+LIFT  excused: no committed recording reaches it and the generated walk's route does not pass its producer - added by Girya; the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted outside a recorded decision is state no replay of the recording reproduces; retired by a recording that does, from the retail soak (excused 2026-09-16)
+MEND  excused: offered only to a run with more than one player (RestSiteOption.Generate), which the recorder never records
 SMITH
 
 # event (57)
-EVENT.ABYSSAL_BATHS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.AMALGAMATOR  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.AROMA_OF_CHAOS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.BATTLEWORN_DUMMY  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+EVENT.ABYSSAL_BATHS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.AMALGAMATOR  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.AROMA_OF_CHAOS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.BATTLEWORN_DUMMY  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
 EVENT.BRAIN_LEECH
-EVENT.BUGSLAYER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.BYRDONIS_NEST  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.COLORFUL_PHILOSOPHERS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.COLOSSAL_FLOWER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.CRYSTAL_SPHERE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.DENSE_VEGETATION  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.DOLL_ROOM  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.DOORS_OF_LIGHT_AND_DARK  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.DROWNING_BEACON  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.ENDLESS_CONVEYOR  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.FAKE_MERCHANT  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.FIELD_OF_MAN_SIZED_HOLES  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.GRAVE_OF_THE_FORGOTTEN  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.HUNGRY_FOR_MUSHROOMS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.INFESTED_AUTOMATON  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.JUNGLE_MAZE_ADVENTURE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.LOST_WISP  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.LUMINOUS_CHOIR  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.MORPHIC_GROVE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.POTION_COURIER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.PUNCH_OFF  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.RANWID_THE_ELDER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.REFLECTIONS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.RELIC_TRADER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.ROOM_FULL_OF_CHEESE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.ROUND_TEA_PARTY  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SAPPHIRE_SEED  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SELF_HELP_BOOK  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SLIPPERY_BRIDGE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SPIRALING_WHIRLPOOL  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SPIRIT_GRAFTER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.STONE_OF_ALL_TIME  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SUNKEN_STATUE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SUNKEN_TREASURY  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.SYMBIOTE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.TABLET_OF_TRUTH  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.TEA_MASTER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.THE_FUTURE_OF_POTIONS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.THE_LANTERN_KEY  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.THE_LEGENDS_WERE_TRUE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.THIS_OR_THAT  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.TINKER_TIME  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.TRASH_HEAP  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.TRIAL  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.UNREST_SITE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.WAR_HISTORIAN_REPY  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+EVENT.BUGSLAYER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.BYRDONIS_NEST  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.COLORFUL_PHILOSOPHERS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.COLOSSAL_FLOWER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.CRYSTAL_SPHERE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.DENSE_VEGETATION  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.DOLL_ROOM  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.DOORS_OF_LIGHT_AND_DARK  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.DROWNING_BEACON  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.ENDLESS_CONVEYOR  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.FAKE_MERCHANT  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.FIELD_OF_MAN_SIZED_HOLES  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.GRAVE_OF_THE_FORGOTTEN  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.HUNGRY_FOR_MUSHROOMS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.INFESTED_AUTOMATON  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.JUNGLE_MAZE_ADVENTURE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.LOST_WISP  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.LUMINOUS_CHOIR  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.MORPHIC_GROVE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.POTION_COURIER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.PUNCH_OFF  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.RANWID_THE_ELDER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.REFLECTIONS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.RELIC_TRADER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.ROOM_FULL_OF_CHEESE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.ROUND_TEA_PARTY  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SAPPHIRE_SEED  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SELF_HELP_BOOK  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SLIPPERY_BRIDGE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SPIRALING_WHIRLPOOL  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SPIRIT_GRAFTER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.STONE_OF_ALL_TIME  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SUNKEN_STATUE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SUNKEN_TREASURY  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.SYMBIOTE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.TABLET_OF_TRUTH  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.TEA_MASTER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.THE_FUTURE_OF_POTIONS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.THE_LANTERN_KEY  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.THE_LEGENDS_WERE_TRUE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.THIS_OR_THAT  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.TINKER_TIME  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.TRASH_HEAP  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.TRIAL  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.UNREST_SITE  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.WAR_HISTORIAN_REPY  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
 EVENT.WATERLOGGED_SCRIPTORIUM
-EVENT.WELCOME_TO_WONGOS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.WELLSPRING  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.WHISPERING_HOLLOW  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.WOOD_CARVINGS  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-EVENT.ZEN_WEAVER  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+EVENT.WELCOME_TO_WONGOS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.WELLSPRING  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.WHISPERING_HOLLOW  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.WOOD_CARVINGS  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
+EVENT.ZEN_WEAVER  excused: no committed recording reaches it and the generated walk's route does not pass its producer - an event is reached only where the map rolls it, the route refuses question marks, and a row per event would need a seed hunted per event; retired by a recording that does, from the retail soak (excused 2026-09-16)
 
 # card-prompt (17): not projectable from this format: a card selection records the position picked in the list the prompt offered, not which entry point asked
 CardSelectCmd.FromChooseABundleScreen(player, bundles)

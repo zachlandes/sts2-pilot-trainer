@@ -72,7 +72,7 @@ public static partial class SyntheticFixtureGenerator
         driver.EnterFirstRoom();
 
         var checkpoints = new List<Checkpoint>();
-        var actions = WalkTheAct(session, driver, checkpoints);
+        var actions = WalkTheAct(session, driver, checkpoints).Actions;
 
         return new ReplayManifest
         {
@@ -135,7 +135,10 @@ public static partial class SyntheticFixtureGenerator
     /// cheapest route there instead.</param>
     /// <param name="policy">The choices the walk consults at the decisions it has a
     /// rule for; today's rules where none is given. See <see cref="WalkPolicy"/>.</param>
-    internal static List<ActionRecord> WalkTheAct(
+    /// <returns>The decisions made, and whether the policy's ask was met on the way:
+    /// a walk that finished without meeting it made the decision nowhere, and a
+    /// test that asked for one has to be told so rather than find the verb elsewhere.</returns>
+    internal static ActWalk WalkTheAct(
         GameSession session, RunDriver driver, List<Checkpoint> checkpoints,
         Action? afterEachDecision = null, bool visitEveryRoomType = true, WalkPolicy? policy = null)
     {
@@ -147,13 +150,17 @@ public static partial class SyntheticFixtureGenerator
         try
         {
             WalkTheActFrom(session, driver, actions, checkpoints);
-            return actions;
+            return new ActWalk(actions, _askMet);
         }
         finally
         {
             (_afterEachDecision, _requiredCoverage, _policy) = previous;
         }
     }
+
+    /// <summary>What a walk of the act produced: its decisions in order, and whether
+    /// the policy's one ask was met at any of them.</summary>
+    internal sealed record ActWalk(List<ActionRecord> Actions, bool AskMet);
 
     private static void WalkTheActFrom(
         GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
@@ -409,6 +416,12 @@ public static partial class SyntheticFixtureGenerator
             Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
         }
 
+        if (_policy.ClaimTheRelicReward && driver.OfferedRelicId is { } relicId)
+        {
+            _askMet = true;
+            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "relic"), ("relic_id", relicId));
+        }
+
         // The loot screen's Skip is the first alternative of every card reward that
         // can be skipped, past its cards; the reward stays on the screen for the
         // TakeCard that follows, which is what a player who changed their mind does
@@ -566,9 +579,10 @@ public static partial class SyntheticFixtureGenerator
 
     /// <summary>
     /// Drinks or discards a potion on the map when the policy asks for one and the
-    /// belt has it, once each: the two potion decisions a fight never carries. A
-    /// potion is drunk outside a fight only where the game lets it be, which is the
-    /// potion's own say.
+    /// belt has it, once each. A discard is a decision no fight carries; a drink on
+    /// the map is the same verb a fight's <see cref="DrinkPotions"/> issues, recorded
+    /// by the run recorder rather than the fight observer, and only where the game
+    /// lets the potion be drunk outside a fight, which is the potion's own say.
     /// </summary>
     private static void UseTheBeltOnTheMap(RunDriver driver, GameSession session, List<ActionRecord> actions)
     {

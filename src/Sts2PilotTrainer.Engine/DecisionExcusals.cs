@@ -15,14 +15,22 @@ namespace Sts2PilotTrainer.Engine;
 ///
 /// The release bar (<c>data/recording-completeness-architecture-audit</c>, section 5)
 /// does not accept "no recording reaches it" for a point a player can reach on this
-/// build; that sentence is a placeholder the generated-sequence and retail-soak
-/// slices retire, dated so its age is visible.
+/// build. The generated walks retire that sentence for every point the fixture seed's
+/// route can be pointed at; what is left is excused by what its producer is and why
+/// the route does not pass it, dated so its age is visible, for the retail soak.
 /// </summary>
 public static class DecisionExcusals
 {
-    private const string NotYetRecorded =
-        "no committed recording reaches it; retired by generated decision sequences or the retail soak " +
-        "(excused 2026-09-16)";
+    /// <summary>A point whose producer the generated walk's route does not pass, each
+    /// with what the producer is, so the retail soak knows what it is looking for and a
+    /// second fixture seed would know what to hunt.</summary>
+    private static string NotOnTheRoute(string producer) =>
+        $"no committed recording reaches it and the generated walk's route does not pass its producer - {producer}; " +
+        "retired by a recording that does, from the retail soak (excused 2026-09-16)";
+
+    private const string RelicGated =
+        "the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted " +
+        "outside a recorded decision is state no replay of the recording reproduces";
 
     /// <summary>A point no committed recording reaches and a generated walk does: a
     /// row of <c>GeneratedCoverageTests</c> plays the decision through the real
@@ -65,27 +73,53 @@ public static class DecisionExcusals
         excusals[new DecisionPoint(DecisionKinds.Verb, "ProceedToNextAct")] = GeneratedByTheWonRunProof;
 
         // The undo needs the window the retail client leaves open before the enemy
-        // turn begins, which this process runs inside the end-turn decision; the
-        // three screens are ones the headless host has no screen for
-        foreach (var verb in new[]
-                 {
-                     "UndoEndTurn", "SelectBundleFromScreen", "SelectRelicFromScreen", "ConfirmCardScreen",
-                     "RevealCrystalSphereCell",
-                 })
+        // turn begins, which this process runs inside the end-turn decision
+        excusals[new DecisionPoint(DecisionKinds.Verb, "UndoEndTurn")] =
+            "the retail client offers the undo only in the window before the enemy turn begins, which the " +
+            "headless host runs inside the end-turn decision; no generated walk reaches it (excused 2026-09-16)";
+
+        // The three screens the headless host has no screen for
+        foreach (var verb in new[] { "SelectBundleFromScreen", "SelectRelicFromScreen", "RevealCrystalSphereCell" })
         {
-            excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = NotYetRecorded;
+            excusals[new DecisionPoint(DecisionKinds.Verb, verb)] =
+                "a screen the headless host has no screen for (docs/headless-fidelity.md); no generated walk " +
+                "reaches it (excused 2026-09-16)";
         }
 
-        foreach (var kind in new[] { "relic", "card_removal", "special_card" })
-        {
-            excusals[new DecisionPoint(DecisionKinds.RewardKind, kind)] = NotYetRecorded;
-        }
+        // A range prompt on this build is the choose-a-card screen, opened by the
+        // Discovery family of cards, the card-choosing potions and four relics; the
+        // fixture seed's route deals none of them
+        excusals[new DecisionPoint(DecisionKinds.Verb, "ConfirmCardScreen")] = NotOnTheRoute(
+            "a range prompt, which on this build is the choose-a-card screen the Discovery family of cards, the " +
+            "card-choosing potions and four relics open, none of which the route deals");
+
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "relic")] = Generated;
+
+        // A card removal is put on the loot screen by Forbidden Grimoire's power, an
+        // ancient card; a special card by a thief that dies holding a stolen card or by
+        // the Lantern Key event. The route's one thief fight ends without a theft
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = NotOnTheRoute(
+            "put on the loot screen by Forbidden Grimoire's power, an ancient card the route never holds");
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = NotOnTheRoute(
+            "put on the loot screen by a thief that dies holding a stolen card or by the Lantern Key event; the " +
+            "route's one thief fight ends without a theft");
 
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
-        foreach (var alternative in new[] { "REROLL", "SACRIFICE" })
-        {
-            excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, alternative)] = NotYetRecorded;
-        }
+
+        // The reroll Driftwood adds keeps the reward's selection open for an answer no
+        // recording carries, and the driver refuses it by name (ResidueVerbTests)
+        excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "REROLL")] =
+            "keeps the reward's selection open on this build (DoNothing), which the driver refuses by name; a " +
+            "recording of it cannot replay (excused 2026-09-16)";
+
+        // Pael's Wing adds the sacrifice, and a rest option past heal and smith is one
+        // a relic or a quest card adds: Girya lifts, Pael's Growth clones, Pumpkin
+        // Candle kindles, Shovel digs, Meat Cleaver cooks, Byrdonis Egg hatches. The
+        // chest, the elite and the shops on the fixture seed's route deal none of
+        // them, and a relic granted outside a recorded decision is state a replay of
+        // the recording never reproduces, so it cannot be given to the walk's player
+        excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "SACRIFICE")] = NotOnTheRoute(
+            $"added by Pael's Wing; {RelicGated}");
 
         foreach (var kind in new[] { "colorless_card", "relic", "potion" })
         {
@@ -93,13 +127,28 @@ public static class DecisionExcusals
         }
 
         excusals[new DecisionPoint(DecisionKinds.RestOption, "HEAL")] = Generated;
-        foreach (var option in new[] { "CLONE", "COOK", "DIG", "HATCH", "KINDLE", "LIFT", "MEND" })
+        foreach (var (option, addedBy) in new[]
+                 {
+                     ("CLONE", "Pael's Growth"), ("COOK", "Meat Cleaver"), ("DIG", "Shovel"),
+                     ("KINDLE", "Pumpkin Candle"), ("LIFT", "Girya"),
+                 })
         {
-            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotYetRecorded;
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotOnTheRoute($"added by {addedBy}; {RelicGated}");
         }
 
+        excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(
+            "added by a Byrdonis Egg in the deck, which the Byrdonis Nest event deals");
+
+        // RestSiteOption.Generate adds the mend only to a run with more than one
+        // player, and the recorder records singleplayer runs only
+        excusals[new DecisionPoint(DecisionKinds.RestOption, "MEND")] =
+            "offered only to a run with more than one player (RestSiteOption.Generate), which the recorder " +
+            "never records";
+
         // Every event by id rather than "every event not reached", so an event a game
-        // update adds is uncovered until somebody excuses it here
+        // update adds is uncovered until somebody excuses it here. An event is reached
+        // only where the map rolls it, the route refuses question marks, and a row per
+        // event would need a seed hunted per event
         foreach (var eventId in new[]
                  {
                      "EVENT.ABYSSAL_BATHS",
@@ -159,7 +208,9 @@ public static class DecisionExcusals
                      "EVENT.ZEN_WEAVER",
                  })
         {
-            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = NotYetRecorded;
+            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = NotOnTheRoute(
+                "an event is reached only where the map rolls it, the route refuses question marks, and a row " +
+                "per event would need a seed hunted per event");
         }
 
         return excusals;
