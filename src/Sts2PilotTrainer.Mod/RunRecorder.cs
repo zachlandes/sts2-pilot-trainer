@@ -3756,8 +3756,8 @@ internal sealed class RunRecorder : IDisposable
         {
             if (CardPrompts.Open is not null || CardScreensUp.Count > 0) return true;
             if (CardSelectCmd.Selector is { } selector && CardPrompts.IsTheGamesOwn(selector)) return true;
-            if (EventOption.Reading || MapMove.Reading || RewardTaken.Reading || RestSiteOptionTaken.Reading ||
-                ShopPurchased.Reading || CrystalSphereCellRevealed.Reading)
+            if (MapMove.Reading || RewardTaken.Reading || RestSiteOptionTaken.Reading || ShopPurchased.Reading ||
+                CrystalSphereCellRevealed.Reading)
             {
                 return true;
             }

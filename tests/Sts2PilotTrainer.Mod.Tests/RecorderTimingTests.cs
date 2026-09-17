@@ -6,7 +6,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
@@ -35,6 +34,12 @@ public sealed class RecorderTimingTests : IDisposable
     /// opens no prompt of its own, so a fight to the loot screen is cards played and
     /// turns ended and nothing else.</summary>
     private const string Seed = "67L571H38L";
+
+    /// <summary>A seed whose first act, on v0.111.0, puts a question mark behind the
+    /// first fight and rolls Brain Leech there once that fight is played through
+    /// Neow's first blessing, first playable attacks and a declined loot screen; found
+    /// by walking seeds at random through that route until one rolled it.</summary>
+    private const string BrainLeechSeed = "3FJVKR7VFR";
     private const string Character = "CHARACTER.IRONCLAD";
     private static readonly string[] Acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
 
@@ -78,14 +83,32 @@ public sealed class RecorderTimingTests : IDisposable
     public void AnEventOptionThatRollsItsRewardAfterAnAnimationIsReadOnceTheRewardIsOnOffer()
     {
         using var recording = Patched();
-        var session = StartRun();
+        var session = StartRun(BrainLeechSeed);
         using var driver = new RunDriver(session);
+        driver.ImproviseUnrecordedCardSelections();
         driver.EnterFirstRoom();
         Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
         var capture = RunRecorder.Active!.Capture;
 
-        EnterEvent(ModelDb.Event<BrainLeech>());
-        var options = RunManager.Instance.EventSynchronizer!.GetLocalEvent().CurrentOptions;
+        // The recorded route to the question mark: the first fight, its loot declined
+        Apply(driver, capture, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+        var fight = NextNode(session, MapPointType.Monster, leadingTo: MapPointType.Unknown);
+        Apply(driver, capture, ActionVerb.MapMove,
+            ("act", N(session.RunState.CurrentActIndex)), ("row", N(fight.row)), ("column", N(fight.col)));
+        PlayToVictory(driver, capture, session);
+        if (driver.UnclaimedRewardKinds.Contains("gold", StringComparer.Ordinal))
+        {
+            Apply(driver, capture, ActionVerb.ClaimReward, ("reward_type", "gold"));
+        }
+        if (driver.UnclaimedRewardKinds.Count > 0) Apply(driver, capture, ActionVerb.SkipRewards);
+
+        var unknown = NextNode(session, MapPointType.Unknown);
+        Apply(driver, capture, ActionVerb.MapMove,
+            ("act", N(session.RunState.CurrentActIndex)), ("row", N(unknown.row)), ("column", N(unknown.col)));
+        Assert.IsType<EventRoom>(session.RunState.CurrentRoom);
+        var model = RunManager.Instance.EventSynchronizer!.GetLocalEvent();
+        Assert.Equal("EVENT.BRAIN_LEECH", model.Id.ToString());
+        var options = model.CurrentOptions;
         var rip = options.ToList().FindIndex(option => RunDriver.OptionKey(option) == "BRAIN_LEECH.pages.INITIAL.options.RIP");
         Assert.True(rip >= 0, "Brain Leech offers no RIP option on this build");
         var healthBefore = Field(session, "player.hp");
@@ -118,6 +141,15 @@ public sealed class RecorderTimingTests : IDisposable
         var step = capture.Trace.Steps[^1];
         Assert.Equal(nameof(ActionVerb.ChooseEventOption), step.Verb);
         Assert.Equal(onOffer, step.AfterDigest);
+
+        // The standard's own question: a fresh replay's drain past the option reaches
+        // the reading the recorder wrote, which is where the store run diverged
+        var manifest = FinishAsAbandoned(RunRecorder.Active!);
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+        var parity = TraceParity.Compare(capture.Trace, FreshReplay(manifest));
+        Assert.True(parity.AtParity, parity.Describe());
+        Assert.Empty(parity.OpeningDifferences);
     }
 
     /// <summary>
@@ -196,26 +228,12 @@ public sealed class RecorderTimingTests : IDisposable
 
     // ── The run ─────────────────────────────────────────────────────────────────
 
-    private static GameSession StartRun()
+    private static GameSession StartRun(string seed = Seed)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
-        session.StartRun(Seed, Character, 0, "standard", Acts);
+        session.StartRun(seed, Character, 0, "standard", Acts);
         return session;
-    }
-
-    /// <summary>Enters the given event's room from wherever the run stands, through
-    /// the game's own debug entry, so a test can put a chosen event in front of the
-    /// recorder without a seed whose map rolls it. The event is a parameter rather
-    /// than a type argument: a generic constraint naming a game type is read at test
-    /// discovery, before the game assembly can be resolved, and takes the whole test
-    /// assembly down with it.</summary>
-    private static void EnterEvent(EventModel model)
-    {
-        var entered = RunManager.Instance.EnterRoomDebug(RoomType.Event, MapPointType.Unknown, model, showTransition: false);
-        Pump.Drain();
-        Assert.True(entered.IsCompleted, "the event room did not open headlessly");
-        Assert.IsType<EventRoom>(RunManager.Instance.DebugOnlyGetState()!.CurrentRoom);
     }
 
     private void Apply(RunDriver driver, RunCapture capture, ActionVerb verb, params (string Key, string Value)[] args)
@@ -251,12 +269,18 @@ public sealed class RecorderTimingTests : IDisposable
         Assert.Equal("victory", Field(session, "combat.outcome"));
     }
 
-    /// <summary>The first node the run's node leads to.</summary>
-    private static MapCoord NextNode(GameSession session)
+    /// <summary>The leftmost node the run's node leads to: of the given type where
+    /// one is asked for, and itself leading to a node of a second type where that is.</summary>
+    private static MapCoord NextNode(GameSession session, MapPointType? type = null, MapPointType? leadingTo = null)
     {
         var coord = session.RunState.CurrentMapCoord!.Value;
         var current = session.RunState.Map!.GetPoint(coord.col, coord.row)!;
-        var next = current.Children.Where(child => child.PointType != MapPointType.Unassigned).OrderBy(child => child.coord.col).First();
+        var next = current.Children
+            .Where(child => child.PointType != MapPointType.Unassigned)
+            .Where(child => type is null || child.PointType == type)
+            .Where(child => leadingTo is null || child.Children.Any(grandchild => grandchild.PointType == leadingTo))
+            .OrderBy(child => child.coord.col)
+            .First();
         return new MapCoord(next.coord.col, next.coord.row);
     }
 
