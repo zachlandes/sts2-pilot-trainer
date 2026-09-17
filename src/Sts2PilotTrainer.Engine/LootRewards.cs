@@ -18,16 +18,20 @@ public static class LootRewards
     /// is taken with <see cref="ActionVerb.TakeCard"/>, never claimed.</summary>
     public const string CardRewardKind = "card";
 
-    public static string KindOf(Reward reward) => reward switch
-    {
-        GoldReward => RewardKinds.Gold,
-        PotionReward => RewardKinds.Potion,
-        RelicReward => RewardKinds.Relic,
-        CardRemovalReward => RewardKinds.CardRemoval,
-        SpecialCardReward => RewardKinds.SpecialCard,
-        CardReward => CardRewardKind,
-        _ => reward.GetType().Name,
-    };
+    public static string KindOf(Reward reward) => KindOf(reward.GetType());
+
+    /// <summary>The same, by type, so a walk over the build's reward classes names
+    /// each the way a loot screen's instance would be named. A class no branch here
+    /// claims is named by its type, which is a kind the format lacks and a walk
+    /// reporting it is the point.</summary>
+    public static string KindOf(Type reward) =>
+        typeof(GoldReward).IsAssignableFrom(reward) ? RewardKinds.Gold
+        : typeof(PotionReward).IsAssignableFrom(reward) ? RewardKinds.Potion
+        : typeof(RelicReward).IsAssignableFrom(reward) ? RewardKinds.Relic
+        : typeof(CardRemovalReward).IsAssignableFrom(reward) ? RewardKinds.CardRemoval
+        : typeof(SpecialCardReward).IsAssignableFrom(reward) ? RewardKinds.SpecialCard
+        : typeof(CardReward).IsAssignableFrom(reward) ? CardRewardKind
+        : reward.Name;
 
     /// <summary>What a reward offers, for the kinds that name a thing, or null.</summary>
     public static string? IdOf(Reward reward) => reward switch

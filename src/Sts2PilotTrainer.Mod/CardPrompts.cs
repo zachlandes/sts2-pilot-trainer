@@ -188,8 +188,7 @@ internal static class CardPrompts
     /// <summary>How <see cref="Forwarders"/> names an entry point: its name and its
     /// parameter names, which is what tells two overloads apart in the game's own
     /// source and survives a parameter's type being renamed.</summary>
-    internal static string Signature(MethodBase method) =>
-        $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.Name))})";
+    internal static string Signature(MethodBase method) => EntryPointSignature.Of(method);
 
     /// <summary>
     /// Opens a prompt for what an entry point was just asked.
