@@ -29,7 +29,7 @@ namespace Sts2PilotTrainer.Mod;
 /// The barrier names <c>SetFtuesEnabled</c> and <c>ResetFtues</c> directly, and
 /// stands in for <c>MarkFtueAsComplete</c> rather than only stopping it: what the
 /// run has shown is held in <see cref="TutorialsShownThisRun"/> for as long as the
-/// run is live and the game's own reads answer from it, so a tutorial is shown once
+/// run is live and the game's own <c>SeenFtue</c> answers from it, so a tutorial is shown once
 /// per trainer run and the player's stored progress never holds the mark.
 ///
 /// Known and deliberately not covered: <c>NGameOverScreen</c> mutates
@@ -243,10 +243,10 @@ internal static class ProfileWriteBarrier
     }
 
     /// <summary>
-    /// Installs the tutorial overlay over the mark and the reads that share its set.
+    /// Installs the tutorial overlay over the mark and the read that shares its set.
     ///
     /// Named rather than discovered, for the same reason as the writes: a build that
-    /// moved the mark or added a third read would otherwise install an overlay with a
+    /// moved the mark or the read would otherwise install an overlay with a
     /// hole in it, and the hole is the popup this exists to stop.
     /// </summary>
     internal static int InstallTutorialOverlay(Harmony harmony, Assembly targetAssembly)
@@ -323,7 +323,7 @@ internal static class ProfileWriteBarrier
 
     /// <summary>The prefix on the tutorial mark. Live, it holds the mark for the run
     /// and skips the write, which is the whole of it; the player's own set is not
-    /// touched. <c>__0</c> because the mark and the reads name their one argument
+    /// touched. <c>__0</c> because the mark and the read name their one argument
     /// differently and Harmony binds a prefix's parameters by name.</summary>
     private static bool HoldTutorialMark(string __0)
     {
