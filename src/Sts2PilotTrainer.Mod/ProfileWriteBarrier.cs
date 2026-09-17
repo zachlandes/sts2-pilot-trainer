@@ -26,7 +26,11 @@ namespace Sts2PilotTrainer.Mod;
 /// One more kind, on the list for the same reason but reached by a different route:
 /// marking a tutorial complete writes the progress file itself rather than through
 /// <c>SaveManager.SaveProgressFile</c>, so suppressing that method does not cover it.
-/// The barrier names <c>MarkFtueAsComplete</c> and its two siblings directly.
+/// The barrier names <c>SetFtuesEnabled</c> and <c>ResetFtues</c> directly, and
+/// stands in for <c>MarkFtueAsComplete</c> rather than only stopping it: what the
+/// run has shown is held in <see cref="TutorialsShownThisRun"/> for as long as the
+/// run is live and the game's own reads answer from it, so a tutorial is shown once
+/// per trainer run and the player's stored progress never holds the mark.
 ///
 /// Known and deliberately not covered: <c>NGameOverScreen</c> mutates
 /// <c>Progress.CurrentScore</c> and the badge state in memory and then calls
@@ -101,40 +105,20 @@ internal static class ProfileWriteBarrier
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"),
 
-        // The tutorial marks, which reach the progress file by a path the entries
-        // above do not cover. ProgressSaveManager.MarkFtueAsComplete calls
-        // SaveProgress() itself rather than SaveManager.SaveProgressFile, so
-        // suppressing that method leaves this one writing; the barrier has to name
-        // these three. Suppressing them here also stops the in-memory mark, which is
-        // the same reasoning as the seen-marks above.
+        // Two of the tutorial marks, which reach the progress file by a path the entries
+        // above do not cover. ProgressSaveManager.SetFtuesEnabled and ResetFtues call
+        // SaveProgress() themselves rather than SaveManager.SaveProgressFile, so
+        // suppressing that method leaves these writing; the barrier has to name them.
+        // Suppressing them here also stops the in-memory change, which is the same
+        // reasoning as the seen-marks above. One consequence is deliberate: the
+        // settings screen's reset-tutorials does nothing while a trainer run is live,
+        // because doing something would mean writing the player's progress file from
+        // inside somebody else's run.
         //
-        // The trainer's own path reaches map_select_ftue from NMapScreen and
-        // can_play_cards_ftue from NEndTurnButton, with more from NCardPlay,
-        // CardPileCmd, NRewardsScreen, NCardRewardSelectionScreen and
-        // NPotionContainer. Nothing measured it because SeenFtue short-circuits on
-        // !EnableFtues and every profile it was measured on had tutorials off; a
-        // player who left them on is the case that was never run.
-        //
-        // The two siblings write the same way and are here for the same reason. One
-        // consequence is deliberate: the settings screen's reset-tutorials does
-        // nothing while a trainer run is live, because doing something would mean
-        // writing the player's progress file from inside somebody else's run.
-        // A second is deliberate the same way: suppressing MarkFtueAsComplete
-        // suppresses the in-memory mark with it, so SeenFtue keeps returning false
-        // for the whole trainer run and a tutorial the player has not already
-        // dismissed can show again later in the same journey. It is bounded -
-        // SeenFtue reads FtueCompleted as loaded from the player's own progress
-        // file, and the barrier only stops additions to it, so a tutorial they
-        // dismissed in ordinary play never reappears. The fix has to answer SeenFtue
-        // true for the duration of a trainer run without writing or leaving a mark in
-        // the player's stored Progress: a run-scoped overlay dropped when the run
-        // ends. Marking it in the real Progress object would not do, because that
-        // mark survives the run, and the next ordinary write after the barrier lowers
-        // - NGame.Quit calling SaveProgressFile - would persist a tutorial mark made
-        // inside somebody else's run, the same measured sequence the seen-marks above
-        // record. That is why it is a new mechanism rather than a named write, and it
-        // is left to a separate change.
-        ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkFtueAsComplete"),
+        // MarkFtueAsComplete writes the same way and is not on this list, because
+        // stopping it is not enough: it is also what the game's own SeenFtue reads,
+        // and a mark stopped whole showed the tutorial again at every screen that
+        // asked. It is stopped and answered by the overlay below instead.
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SetFtuesEnabled"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "ResetFtues"),
 
@@ -146,15 +130,52 @@ internal static class ProfileWriteBarrier
     ];
 
     /// <summary>
+    /// The tutorials the trainer's run has shown, held for the duration of that run
+    /// and nowhere else.
+    ///
+    /// The game keeps one set, <c>Progress.FtueCompleted</c>, that
+    /// <c>MarkFtueAsComplete</c> adds to and <c>SeenFtue</c> and <c>SeenPopup</c> read.
+    /// Stopping the mark whole kept the set clean and left every read answering
+    /// false, so a player with tutorials on and a basic one unseen - map_select_ftue
+    /// from NMapScreen, can_play_cards_ftue from NEndTurnButton - saw the popup again
+    /// at every screen that asked, over a map the recording was driving. Marking the
+    /// real set instead would not do either: the mark would outlive the run, and the
+    /// next ordinary write after the barrier lowers - NGame.Quit calling
+    /// SaveProgressFile - would persist a tutorial mark made inside somebody else's
+    /// run, the measured sequence the seen-marks above record.
+    ///
+    /// So the mark lands here while a trainer run is live, the reads answer from here
+    /// before they answer from the player's own set, and <see cref="Lower"/> drops it.
+    /// The stored progress is never touched, so nothing survives for a later write to
+    /// persist; a tutorial the player has not dismissed in their own play is shown
+    /// once per trainer run and is theirs to dismiss in their next run.
+    ///
+    /// Nothing measured it on a profile with tutorials on, because SeenFtue
+    /// short-circuits on !EnableFtues and every profile it was measured on had them
+    /// off; the driven test in ProfileWriteBarrierTests is the case that was never
+    /// run.
+    /// </summary>
+    private static readonly HashSet<string> TutorialsShownThisRun = new(StringComparer.Ordinal);
+
+    private const string SaveManagerType = "MegaCrit.Sts2.Core.Saves.SaveManager";
+
+    /// <summary>The one mark the overlay stands in for.</summary>
+    private const string TutorialMark = "MarkFtueAsComplete";
+
+    /// <summary>The game's two reads of the set that mark adds to. Both, because a
+    /// read the overlay skipped would be a second definition of what the run has
+    /// shown.</summary>
+    private static readonly string[] TutorialReads = ["SeenFtue", "SeenPopup"];
+
+    /// <summary>
     /// Installs the barrier. Called once, from mod start, before any trainer run can
     /// exist.
     /// </summary>
     internal static void Install(Harmony harmony)
     {
-        var installed = Install(
-            harmony,
-            typeof(MegaCrit.Sts2.Core.Saves.SaveManager).Assembly,
-            SuppressedWrites);
+        var gameAssembly = typeof(MegaCrit.Sts2.Core.Saves.SaveManager).Assembly;
+        var installed = Install(harmony, gameAssembly, SuppressedWrites)
+            + InstallTutorialOverlay(harmony, gameAssembly);
 
         Log.Info(
             $"[{RunmobileMod.ModId}] profile write barrier installed over " +
@@ -221,16 +242,108 @@ internal static class ProfileWriteBarrier
     }
 
     /// <summary>
+    /// Installs the tutorial overlay over the mark and the reads that share its set.
+    ///
+    /// Named rather than discovered, for the same reason as the writes: a build that
+    /// moved the mark or added a third read would otherwise install an overlay with a
+    /// hole in it, and the hole is the popup this exists to stop.
+    /// </summary>
+    internal static int InstallTutorialOverlay(Harmony harmony, Assembly targetAssembly)
+    {
+        var saveManager = targetAssembly.GetType(SaveManagerType)
+            ?? throw new InvalidOperationException(
+                $"This build has no {SaveManagerType}, so the trainer cannot answer its tutorials.");
+
+        var mark = SingleStringMethod(saveManager, TutorialMark);
+        if (mark.ReturnType != typeof(void))
+        {
+            throw new InvalidOperationException(
+                $"{SaveManagerType}.{TutorialMark} returns {mark.ReturnType.Name} on this build, and the " +
+                "overlay has no way to answer its callers without inventing a value.");
+        }
+
+        harmony.Patch(mark, prefix: new HarmonyMethod(typeof(ProfileWriteBarrier)
+            .GetMethod(nameof(HoldTutorialMark), BindingFlags.NonPublic | BindingFlags.Static)!));
+
+        var answer = new HarmonyMethod(typeof(ProfileWriteBarrier)
+            .GetMethod(nameof(AnswerTutorialSeen), BindingFlags.NonPublic | BindingFlags.Static)!);
+        foreach (var readName in TutorialReads)
+        {
+            var read = SingleStringMethod(saveManager, readName);
+            if (read.ReturnType != typeof(bool))
+            {
+                throw new InvalidOperationException(
+                    $"{SaveManagerType}.{readName} returns {read.ReturnType.Name} on this build, and the " +
+                    "overlay can only answer a yes or no.");
+            }
+
+            harmony.Patch(read, prefix: answer);
+        }
+
+        return 1 + TutorialReads.Length;
+    }
+
+    /// <summary>The one member of that name taking one string, which is the shape
+    /// the mark and both reads have on this build; any other shape is refused by
+    /// name rather than patched with a prefix that would not bind.</summary>
+    private static MethodInfo SingleStringMethod(Type type, string name)
+    {
+        var method = type.GetMethod(
+            name,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
+            binder: null,
+            [typeof(string)],
+            modifiers: null);
+        return method ?? throw new InvalidOperationException(
+            $"This build's {type.FullName} has no '{name}(string)', so the trainer cannot answer its " +
+            "tutorials.");
+    }
+
+    /// <summary>
     /// Raises the barrier. Called before the trainer's run is constructed, so there
     /// is no window in which the run exists unprotected.
+    ///
+    /// The overlay starts empty for every run: what one trainer run showed is that
+    /// run's and not the next one's.
     /// </summary>
-    internal static void Raise() => IsActive = true;
+    internal static void Raise()
+    {
+        TutorialsShownThisRun.Clear();
+        IsActive = true;
+    }
 
     /// <summary>
     /// Lowers it, once the trainer's run is gone. Everything the game writes for the
-    /// player's own runs works normally again from here.
+    /// player's own runs works normally again from here, and the tutorials the run
+    /// showed are dropped with it, so the player's own next run asks their own
+    /// progress and nothing else.
     /// </summary>
-    internal static void Lower() => IsActive = false;
+    internal static void Lower()
+    {
+        IsActive = false;
+        TutorialsShownThisRun.Clear();
+    }
+
+    /// <summary>The prefix on the tutorial mark. Live, it holds the mark for the run
+    /// and skips the write, which is the whole of it; the player's own set is not
+    /// touched. <c>__0</c> because the mark and the reads name their one argument
+    /// differently and Harmony binds a prefix's parameters by name.</summary>
+    private static bool HoldTutorialMark(string __0)
+    {
+        if (!IsActive) return true;
+        TutorialsShownThisRun.Add(__0);
+        return false;
+    }
+
+    /// <summary>The prefix on both reads. A tutorial the run has shown is answered
+    /// seen from the overlay; anything else is the game's own answer off the player's
+    /// own progress, live or not.</summary>
+    private static bool AnswerTutorialSeen(string __0, ref bool __result)
+    {
+        if (!IsActive || !TutorialsShownThisRun.Contains(__0)) return true;
+        __result = true;
+        return false;
+    }
 
     /// <summary>The prefix on a write that returns nothing. Returning false skips the
     /// original, which is the whole of it.</summary>

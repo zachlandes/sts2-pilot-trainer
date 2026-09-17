@@ -141,15 +141,15 @@ silently stop saving the next run the player started, which is the same defect
 pointed the other way.
 
 Suppressing `SaveProgressFile` is not the whole of it, because not every progress write goes through it.
-`ProgressSaveManager.MarkFtueAsComplete` writes the progress file itself, so `MarkFtueAsComplete`, `SetFtuesEnabled` and `ResetFtues` are named in `ProfileWriteBarrier.SuppressedWrites` directly.
+`ProgressSaveManager.MarkFtueAsComplete`, `SetFtuesEnabled` and `ResetFtues` each write the progress file themselves, so the two siblings are named in `ProfileWriteBarrier.SuppressedWrites` directly and the mark is stood in for by the barrier's tutorial overlay.
 The trainer's own path reaches the tutorial marks from `NMapScreen` and `NEndTurnButton` among others, and it measured clean only because every profile it was measured on had tutorials off - `SeenFtue` short-circuits when they are.
 A player who left them on, which is the default, is the case that was never run.
 One consequence of suppressing the siblings is deliberate: the settings screen's reset-tutorials does nothing while a trainer run is live.
-A second is deliberate too: suppressing `MarkFtueAsComplete` suppresses the in-memory mark with it, so `SeenFtue` keeps returning false for the whole trainer run and a tutorial the player has not already dismissed can show again later in the same journey.
-It is bounded: `SeenFtue` reads `FtueCompleted` as loaded from the player's own progress file, and the barrier only stops additions to it, so a tutorial they dismissed in ordinary play never reappears.
-The fix has to answer `SeenFtue` true for the duration of a trainer run without writing or leaving a mark in the player's stored `Progress`: a run-scoped overlay dropped when the run ends.
-Marking it in the real `Progress` object would not do, because that mark survives the run, and the next ordinary write after the barrier lowers - `NGame.Quit` calling `SaveProgressFile` - would persist a tutorial mark made inside somebody else's run, the same measured sequence the seen-marks record.
-That is why it is a new mechanism rather than a named write, and it is left to a separate change.
+The mark could not be suppressed the same way: stopping it whole stopped the in-memory mark with it, so `SeenFtue` kept returning false for the whole trainer run and a tutorial the player had not already dismissed showed again at every screen that asked - the map screen the recording was driving under its deviation lock among them.
+Marking the real `Progress` object instead would not do either, because that mark survives the run, and the next ordinary write after the barrier lowers - `NGame.Quit` calling `SaveProgressFile` - would persist a tutorial mark made inside somebody else's run, the same measured sequence the seen-marks record.
+So while a trainer run is live the mark lands in `ProfileWriteBarrier.TutorialsShownThisRun` and nowhere else, `SeenFtue` and `SeenPopup` answer from that set before they answer from the player's own, and `Lower` drops it with the run: a tutorial is shown once per trainer run, the stored progress is never touched, and nothing survives for a later write to persist.
+It is bounded the other way too: the overlay only adds to what `FtueCompleted` already answers, so a tutorial the player dismissed in ordinary play never reappears, and one they have not dismissed is theirs to see in their own next run.
+`ProfileWriteBarrierTests` drives that whole sequence - each tutorial answered seen once shown, none in memory, the run ended, the quit's own progress write captured and holding no mark - through the game's own `SaveManager` with only the store it writes to stood in for.
 `NGameOverScreen` is the known gap, recorded in the barrier's own docstring: it dirties `Progress.CurrentScore` and the badge state in memory before a `SaveProgressFile` the barrier suppresses, so the mutation outlives the run and the next ordinary write persists it.
 Nothing reaches it while the trainer is fight-scoped; a whole-run replay would, and it is answered on that list when it does.
 
