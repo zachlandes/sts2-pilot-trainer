@@ -111,11 +111,14 @@ internal static class Program
               from - including that it starts at the run's start, which nothing
               downstream can check. No game needed.
 
-          engine-commands
+          engine-commands [--update]
               Print which of the game's own members each recorded decision maps onto,
               and check that the host's account of this build still describes it: every
               named member still exists, every verb in the format is either mapped or
-              carries a written reason it is not, and each of the three gameplay paths
+              carries a written reason it is not, every way a decision can reach the
+              game - a net action, a synced choice, a message, a screen, a room - is
+              claimed by a row or excused in writing (--update rewrites
+              scripts/decision-ledger.txt, the ledger on this build), and each of the three gameplay paths
               the test-mode flag would otherwise change still takes retail's branch -
               the merchant's potion price, and the rewards Cauldron and Calling Bell
               generate. Those three read a consequence retail has and test mode does

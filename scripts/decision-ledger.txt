@@ -1,0 +1,133 @@
+# Every way a decision can reach the game on this build - each game action a net
+# action becomes, each choice the client syncs and where, each message it sends and
+# who sends it, each overlay screen, each room - walked off the game assembly by
+# DecisionSurface, with the recorder's account of it: claimed by the rows of the
+# engine command table that observe it, or excused in DecisionLedger with a class
+# and a reason. A candidate accounted for neither way is UNCLASSIFIED and fails
+# engine-commands, which is what a game update that adds one meets first.
+# Regenerate with
+#   ./scripts/arbiter engine-commands --update
+
+# net-action (11)
+net-action       ConsoleCmdGameAction  excused non-standard: DevConsole, whose singleplayer branch builds no action; a run it is met in is non-standard
+net-action       DiscardPotionGameAction  claimed the fight observer, inside a fight; DiscardPotionGameAction..ctor outside one
+net-action       EndPlayerTurnAction  claimed the fight observer, inside a fight
+net-action       MoveToMapCoordAction  claimed RunManager.EnterMapCoord, which the move's execution reaches
+net-action       PickRelicAction  claimed TreasureRoomRelicSynchronizer.PickRelicLocally, which enqueues it
+net-action       PlayCardAction  claimed the fight observer, inside a fight
+net-action       ReadyToBeginEnemyTurnAction  excused engine-driven: the engine, when the player's turn has ended; nobody decides it
+net-action       UndoEndPlayerTurnAction  claimed the fight observer, inside a fight
+net-action       UsePotionAction  claimed the fight observer, inside a fight; PotionModel.EnqueueManualUse outside one
+net-action       VoteForMapCoordAction  claimed RunManager.EnterMapCoord, which the move's execution reaches
+net-action       VoteToMoveToNextActAction  claimed ActChangeSynchronizer.SetLocalPlayerReady, which enqueues it
+
+# player-choice (14)
+player-choice    CombatCard @ CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    CombatCard @ CardSelectCmd.FromHand(context, player, prefs, filter, source)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    CombatCard @ CardSelectCmd.FromHandForUpgrade(context, player, source)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    DeckCard @ CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    DeckCard @ CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    DeckCard @ CardSelectCmd.FromDeckForUpgrade(player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    DeckCard @ CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    Index @ CardReward.OnSelect()  claimed TakeCard, TakeCardRewardAlternative
+player-choice    Index @ CardSelectCmd.FromChooseABundleScreen(player, bundles)  claimed SelectCardFromScreen, ConfirmCardScreen, SelectBundleFromScreen
+player-choice    Index @ CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    Index @ CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    Index @ CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
+player-choice    Index @ RelicSelectCmd.FromChooseARelicScreen(player, relics)  claimed SelectRelicFromScreen
+player-choice    Player @ MendRestSiteOption.OnSelect()  claimed ChooseRestSiteOption
+
+# message (61)
+message          ActionEnqueuedMessage <- ActionQueueSynchronizer.EnqueueAction(action, actionOwnerId)  excused transport: a host's echo of an enqueued action; the net-action kind accounts for the action
+message          CardRemovedMessage <- RewardSynchronizer.DoLocalCardRemoval()  excused outcome-of: ClaimReward, SelectCardFromScreen: the removal a claimed reward's screen made
+message          ChecksumDataMessage <- ChecksumTracker.GenerateChecksum(context, action)  excused checksum: desync detection
+message          ClearMapDrawingsMessage <- NMapDrawings.ClearDrawnLinesLocal()  excused flavor: clearing drawings
+message          ClientLoadJoinRequestMessage <- JoinFlow.AttemptLoadJoin()  excused lobby: joining a saved run
+message          ClientLoadJoinResponseMessage <- LoadRunLobby.HandleClientLoadJoinRequestMessage(message, senderId)  excused lobby: joining a saved run
+message          ClientLobbyJoinRequestMessage <- JoinFlow.AttemptJoin()  excused lobby: joining a lobby
+message          ClientLobbyJoinResponseMessage <- StartRunLobby.HandleClientLobbyJoinRequestMessage(message, senderId)  excused lobby: joining a lobby
+message          ClientRejoinRequestMessage <- JoinFlow.AttemptRejoin()  excused lobby: rejoining
+message          CrystalSphereRewardsMessage <- OneOffSynchronizer.DoLocalCrystalSphereRewards(owner, rng, revealed)  excused outcome-of: RevealCrystalSphereCell: what the last reveal awarded
+message          EndTurnPingMessage <- FlavorSynchronizer.SendEndTurnPing()  excused flavor: a nudge, not a decision
+message          GoldLostMessage <- RewardSynchronizer.SyncLocalGoldLost(goldLost)  excused outcome-of: ShopPurchase, ChooseEventOption: gold a claimed decision cost
+message          HeartbeatRequestMessage <- NetQualityTracker.Update()  excused transport: connection quality
+message          HeartbeatResponseMessage <- NetQualityTracker.HandleHeartbeatRequestMessage(message, senderId)  excused transport: connection quality
+message          HookActionEnqueuedMessage <- ActionQueueSynchronizer.EnqueueHookAction(gameAction)  excused transport: the engine's own hook action, which nobody decides
+message          InitialGameInfoMessage <- LoadRunLobby.OnConnectedToClientAsHost(playerId)  excused lobby: the host's game info on connect
+message          InitialGameInfoMessage <- RunLobby.OnConnectedToClientAsHost(playerId)  excused lobby: the host's game info on connect
+message          InitialGameInfoMessage <- StartRunLobby.OnConnectedToClientAsHost(playerId)  excused lobby: the host's game info on connect
+message          LobbyAscensionChangedMessage <- StartRunLobby.SyncAscensionChange(ascension)  excused lobby: run setup, captured as the run's identity
+message          LobbyBeginLoadedRunMessage <- LoadRunLobby.TryBeginRunForAllPlayers()  excused lobby: starting a saved run
+message          LobbyBeginRunMessage <- StartRunLobby.BeginRunForAllPlayers(seed, modifiers)  excused lobby: starting a run, captured as the run's identity
+message          LobbyModifiersChangedMessage <- StartRunLobby.SetModifiers(modifiers)  excused lobby: run setup, captured as the run's identity
+message          LobbyPlayerChangedCharacterMessage <- StartRunLobby.SetLocalCharacter(character)  excused lobby: run setup, captured as the run's identity
+message          LobbyPlayerSetReadyMessage <- LoadRunLobby.SetReady(ready)  excused lobby: readiness
+message          LobbyPlayerSetReadyMessage <- StartRunLobby.SetReady(ready)  excused lobby: readiness
+message          LobbySeedChangedMessage <- StartRunLobby.SetSeed(seed)  excused lobby: run setup, captured as the run's identity
+message          MapDrawingMessage <- NMapDrawings.QueueOrSendEvent(ev)  excused flavor: a drawing on the map
+message          MapDrawingMessage <- NMapDrawings.SendSyncMessage()  excused flavor: a drawing on the map
+message          MapDrawingModeChangedMessage <- NMapDrawings.SetDrawingModeLocal(drawingMode)  excused flavor: the drawing tool
+message          MapPingMessage <- FlavorSynchronizer.SendMapPing(coord)  excused flavor: a ping on the map, not a move
+message          MerchantCardRemovalMessage <- OneOffSynchronizer.DoLocalMerchantCardRemoval(goldCost, cancelable)  claimed ShopPurchase
+message          OptionIndexChosenMessage <- EventSynchronizer.ChooseLocalOption(index)  claimed ChooseNeowBlessing, ChooseEventOption
+message          OptionIndexChosenMessage <- RestSiteSynchronizer.ChooseLocalOption(index)  claimed ChooseRestSiteOption
+message          PeerInputMessage <- PeerInputSynchronizer.SendSyncMessage()  excused transport: a peer's cursor and input, drawn and never decided
+message          PlayerChoiceMessage <- PlayerChoiceSynchronizer.SyncLocalChoice(player, choiceId, result)  excused transport: carries every synced choice; the player-choice kind accounts for each by its member
+message          PlayerJoinedMessage <- StartRunLobby.HandleClientLobbyJoinRequestMessage(message, senderId)  excused lobby: membership
+message          PlayerLeftMessage <- LoadRunLobby.OnDisconnectedFromClientAsHost(playerId, info)  excused lobby: membership
+message          PlayerLeftMessage <- RunLobby.OnDisconnectedFromClientAsHost(playerId, info)  excused lobby: membership
+message          PlayerLeftMessage <- StartRunLobby.OnDisconnectedFromClientAsHost(playerId, info)  excused lobby: membership
+message          PlayerReconnectedMessage <- LoadRunLobby.HandleClientLoadJoinRequestMessage(message, senderId)  excused lobby: membership
+message          ReactionMessage <- ReactionSynchronizer.SendLocalReaction(type, mouseScreenPos)  excused flavor: an emote
+message          RequestEnqueueActionMessage <- ActionQueueSynchronizer.RequestEnqueue(action)  excused transport: carries a game action to a host; the net-action kind accounts for each by its type
+message          RequestEnqueueHookActionMessage <- ActionQueueSynchronizer.RequestEnqueueHookAction(action)  excused transport: the engine's own hook action, which nobody decides
+message          RequestResumeActionAfterPlayerChoiceMessage <- ActionQueueSynchronizer.RequestResumeActionAfterPlayerChoice(action)  excused transport: resumes an action after a choice the player-choice kind accounts for
+message          RestSiteOptionHoveredMessage <- RestSiteSynchronizer.SendHoverMessage()  excused flavor: a hover, not a choice
+message          RestSiteSkippedMessage <- RestSiteSynchronizer.BeforeLocalRestSiteExited()  excused outcome-of: MapMove: leaving a rest site without resting is the map move that leaves it
+message          ResumeActionAfterPlayerChoiceMessage <- ActionQueueSynchronizer.ResumeActionAfterPlayerChoice(id)  excused transport: resumes an action after a choice the player-choice kind accounts for
+message          RewardObtainedMessage <- RewardSynchronizer.SyncLocalCardEvent(card, skipped)  excused outcome-of: TakeCard: the card a claimed reward gave, announced after the decision
+message          RewardObtainedMessage <- RewardSynchronizer.SyncLocalObtainedGold(goldAmount)  excused outcome-of: ClaimReward: the gold a claimed reward gave
+message          RewardObtainedMessage <- RewardSynchronizer.SyncLocalPotionEvent(potion, skipped)  excused outcome-of: ClaimReward: the potion a claimed reward gave
+message          RewardObtainedMessage <- RewardSynchronizer.SyncLocalRelicEvent(relic, skipped)  excused outcome-of: ClaimReward, TakeChestRelic: the relic a claimed reward or chest gave
+message          RewardSelectedMessage <- RewardsSetSynchronizer.SelectLocalReward(reward)  claimed ClaimReward, TakeCard
+message          RewardSetSkippedMessage <- RewardsSetSynchronizer.BeforeLeavingRoom()  excused outcome-of: SkipRewards: the room's exit declines what is left through the same SkipRewardsSet funnel the recorder watches
+message          RewardSetSkippedMessage <- RewardsSetSynchronizer.SkipLocalRewardsSet()  claimed SkipRewards
+message          SharedEventOptionChosenMessage <- EventSynchronizer.ChooseSharedEventOption()  excused multiplayer-only: a shared event's vote is resolved for the host's peers; a singleplayer run chooses through ChooseLocalOption
+message          StateDivergenceMessage <- ChecksumTracker.CompareChecksums(localChecksum, remoteChecksum, remoteId)  excused checksum: desync detection
+message          StateDivergenceMessage <- ChecksumTracker.LogStateDivergence(localChecksum, message, remoteId, checksumIndex)  excused checksum: desync detection
+message          SyncPlayerDataMessage <- CombatStateSynchronizer.StartSync()  excused sync: the host's combat state for a peer
+message          SyncRngMessage <- CombatStateSynchronizer.StartSync()  excused sync: the host's random streams for a peer
+message          TreasureChestOpenedMessage <- OneOffSynchronizer.DoLocalTreasureRoomRewards()  excused outcome-of: MapMove: the chest a treasure room opens on the click after arrival, before anything is decided
+message          VotedForSharedEventOptionMessage <- EventSynchronizer.ChooseLocalOption(index)  claimed ChooseNeowBlessing, ChooseEventOption
+
+# overlay-screen (13)
+overlay-screen   NCardRewardSelectionScreen  claimed TakeCard, TakeCardRewardAlternative
+overlay-screen   NChooseABundleSelectionScreen  claimed SelectBundleFromScreen
+overlay-screen   NChooseACardSelectionScreen  claimed SelectCardFromScreen
+overlay-screen   NChooseARelicSelection  claimed SelectRelicFromScreen
+overlay-screen   NCombatPileCardSelectScreen  claimed SelectCardFromScreen
+overlay-screen   NCrystalSphereScreen  claimed RevealCrystalSphereCell
+overlay-screen   NDeckCardSelectScreen  claimed SelectCardFromScreen
+overlay-screen   NDeckEnchantSelectScreen  claimed SelectCardFromScreen
+overlay-screen   NDeckTransformSelectScreen  claimed SelectCardFromScreen
+overlay-screen   NDeckUpgradeSelectScreen  claimed SelectCardFromScreen
+overlay-screen   NGameOverScreen  excused ending: the run is over; the recorder finishes on RunManager.OnEnded before it is drawn
+overlay-screen   NRewardsScreen  claimed ClaimReward, TakeCard, SkipRewards
+overlay-screen   NSimpleCardSelectScreen  claimed SelectCardFromScreen
+
+# room (15)
+room             RoomType.Unassigned  excused no-room: the map's placeholder type for a point no room has been dealt to
+room             RoomType.Monster  claimed MapMove, PlayCard, EndTurn, UndoEndTurn
+room             RoomType.Elite  claimed MapMove, PlayCard, EndTurn, UndoEndTurn
+room             RoomType.Boss  claimed MapMove, PlayCard, EndTurn, UndoEndTurn
+room             RoomType.Treasure  claimed MapMove, TakeChestRelic, SkipChestRelic
+room             RoomType.Shop  claimed MapMove, ShopPurchase
+room             RoomType.Event  claimed ChooseNeowBlessing, ChooseEventOption, MapMove
+room             RoomType.RestSite  claimed MapMove, ChooseRestSiteOption
+room             RoomType.Map  claimed MapMove, ProceedToNextAct
+room             CombatRoom  claimed MapMove, PlayCard, EndTurn, UndoEndTurn
+room             EventRoom  claimed ChooseNeowBlessing, ChooseEventOption, MapMove
+room             MapRoom  claimed MapMove, ProceedToNextAct
+room             MerchantRoom  claimed MapMove, ShopPurchase
+room             RestSiteRoom  claimed MapMove, ChooseRestSiteOption
+room             TreasureRoom  claimed MapMove, TakeChestRelic, SkipChestRelic

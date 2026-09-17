@@ -283,6 +283,25 @@ internal static class ChoiceEntryPoints
             .ToList();
     }
 
+    /// <summary>
+    /// Every (caller, callee) pair in the game where the callee satisfies
+    /// <paramref name="callee"/>, the caller read by its declared member the way a
+    /// person would name it and the game's own mocks left out. For a walk over who
+    /// sends which message or syncs which choice, where the callee is a family of
+    /// members rather than one.
+    /// </summary>
+    internal static IReadOnlyList<(MethodBase Caller, MethodBase Callee)> CallSites(Func<MethodBase, bool> callee)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        return Loaded.Value.Types
+            .Where(type => !IsMock(Outermost(type)))
+            .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
+            .SelectMany(method => Callees(method).Where(callee).Select(called => (Caller: DeclaredMember(method), Callee: called)))
+            .Distinct()
+            .ToList();
+    }
+
     /// <summary>Every method a body names, or none where it cannot be read.</summary>
     internal static IReadOnlyList<MethodBase> Callees(MethodBase method)
     {
@@ -481,6 +500,12 @@ internal static class ChoiceEntryPoints
     /// the lambdas this method's code reaches are followed: a closure class is shared by
     /// every lambda its declaring member wrote, and the game's compiler-generated lambda
     /// class is shared by every member of the type.</summary>
+    /// <summary>The callees of a member's own body, its state machine and the lambdas
+    /// it takes the address of, for a walk that reads what a caller constructs; a
+    /// constructor has a body and no state machine.</summary>
+    internal static IReadOnlyList<MethodBase> OwnCalleesOf(MethodBase member) =>
+        member is MethodInfo method ? OwnCallees(method).Distinct().ToList() : Callees(member);
+
     private static IEnumerable<MethodBase> OwnCallees(MethodInfo method)
     {
         var own = BodyAndStateMachineCallees(method).ToList();

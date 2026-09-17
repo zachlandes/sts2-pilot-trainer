@@ -1,10 +1,17 @@
 using System.Reflection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Models;
+using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Multiplayer.Messages.Game;
+using MegaCrit.Sts2.Core.Multiplayer.Messages.Game.Sync;
+using MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere;
+using MegaCrit.Sts2.Core.Nodes.Screens;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 using Sts2PilotTrainer.Replay;
@@ -56,6 +63,13 @@ public static class EngineCommands
             Member = nameof(EventSynchronizer.ChooseLocalOption),
             Kind = EngineCommandKind.Issued,
             Note = "The opening blessing is an event like any other; only its option list is special.",
+            Observes =
+            [
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new RoomObservation("RoomType.Event"),
+                new RoomObservation("EventRoom"),
+            ],
         },
         new()
         {
@@ -64,6 +78,13 @@ public static class EngineCommands
             Member = nameof(EventSynchronizer.ChooseLocalOption),
             Kind = EngineCommandKind.Issued,
             Note = "The same member, with the event's own id checked first.",
+            Observes =
+            [
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new RoomObservation("RoomType.Event"),
+                new RoomObservation("EventRoom"),
+            ],
         },
         new()
         {
@@ -74,6 +95,23 @@ public static class EngineCommands
             Note =
                 "Headlessly this is the whole move. Inside the retail client it is the middle of one, and " +
                 "the host supplies the screen's own travel; see docs/in-game-host.md.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Map"),
+                new RoomObservation("MapRoom"),
+                new RoomObservation("RoomType.Monster"),
+                new RoomObservation("RoomType.Elite"),
+                new RoomObservation("RoomType.Boss"),
+                new RoomObservation("CombatRoom"),
+                new RoomObservation("RoomType.Treasure"),
+                new RoomObservation("TreasureRoom"),
+                new RoomObservation("RoomType.Shop"),
+                new RoomObservation("MerchantRoom"),
+                new RoomObservation("RoomType.Event"),
+                new RoomObservation("EventRoom"),
+                new RoomObservation("RoomType.RestSite"),
+                new RoomObservation("RestSiteRoom"),
+            ],
         },
         new()
         {
@@ -82,6 +120,13 @@ public static class EngineCommands
             Member = ConstructorMember,
             Kind = EngineCommandKind.Issued,
             Note = "Enqueued on the run's own action queue, which is what a clicked card does.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Monster"),
+                new RoomObservation("RoomType.Elite"),
+                new RoomObservation("RoomType.Boss"),
+                new RoomObservation("CombatRoom"),
+            ],
         },
         new()
         {
@@ -92,6 +137,13 @@ public static class EngineCommands
             Note =
                 "Enqueued on the run's own queue, which is what the end-turn button does. canBackOut is " +
                 "the engine's, not ours: an undo that follows is its own decision.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Monster"),
+                new RoomObservation("RoomType.Elite"),
+                new RoomObservation("RoomType.Boss"),
+                new RoomObservation("CombatRoom"),
+            ],
         },
         new()
         {
@@ -104,6 +156,13 @@ public static class EngineCommands
                 "of the same turn. The client offers it only while another player has not ended their turn, " +
                 "so no singleplayer run on v0.111.0 reaches it and a history that records one is refused " +
                 "with that sentence.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Monster"),
+                new RoomObservation("RoomType.Elite"),
+                new RoomObservation("RoomType.Boss"),
+                new RoomObservation("CombatRoom"),
+            ],
         },
         new()
         {
@@ -112,6 +171,11 @@ public static class EngineCommands
             Member = nameof(RewardsSetSynchronizer.SelectLocalReward),
             Kind = EngineCommandKind.Issued,
             Note = "The reward is found by the kind the loot screen names, never by position.",
+            Observes =
+            [
+                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward)),
+                new ScreenObservation(typeof(NRewardsScreen)),
+            ],
         },
         new()
         {
@@ -122,6 +186,13 @@ public static class EngineCommands
             Note =
                 "The same member for the card reward, whose own screen is then answered through " +
                 "ICardSelector.",
+            Observes =
+            [
+                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward)),
+                new PlayerChoiceObservation(typeof(CardReward)),
+                new ScreenObservation(typeof(NRewardsScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen)),
+            ],
         },
         new()
         {
@@ -135,6 +206,11 @@ public static class EngineCommands
                 "the selection - the loot screen's Skip leaves the reward unclaimed, a relic's alternative " +
                 "completes it - so the record is the loot-screen decision itself rather than an answer that " +
                 "follows a TakeCard.",
+            Observes =
+            [
+                new PlayerChoiceObservation(typeof(CardReward)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen)),
+            ],
         },
         new()
         {
@@ -143,6 +219,11 @@ public static class EngineCommands
             Member = nameof(RewardsSetSynchronizer.SkipLocalRewardsSet),
             Kind = EngineCommandKind.Issued,
             Note = "Dismissing a loot screen with something still on it is a decision, so it has a verb.",
+            Observes =
+            [
+                new MessageObservation(typeof(RewardSetSkippedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SkipLocalRewardsSet)),
+                new ScreenObservation(typeof(NRewardsScreen)),
+            ],
         },
         new()
         {
@@ -153,6 +234,17 @@ public static class EngineCommands
             Note =
                 "The engine asks. The driver queues the manifest's picks before the action that opens the " +
                 "screen and confirms afterwards that a screen consumed each one.",
+            Observes =
+            [
+                new PlayerChoiceObservation(typeof(CardSelectCmd)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseACardSelectionScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCombatPileCardSelectScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckCardSelectScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckEnchantSelectScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckTransformSelectScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckUpgradeSelectScreen)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NSimpleCardSelectScreen)),
+            ],
         },
         new()
         {
@@ -165,6 +257,10 @@ public static class EngineCommands
                 "recorded before this and stops at it, so a prompt answered with fewer than it allowed, none " +
                 "included, replays as that answer rather than as a refusal. A prompt that asks for exactly N " +
                 "takes N picks and refuses a confirmation, because only a range leaves the count to the player.",
+            Observes =
+            [
+                new PlayerChoiceObservation(typeof(CardSelectCmd)),
+            ],
         },
         new()
         {
@@ -177,6 +273,11 @@ public static class EngineCommands
                 "that opens the screen, as it does for a card screen. ICardSelector has no bundle member " +
                 "and the engine's own test branch takes the first bundle without asking, so the host " +
                 "stands in at the prompt itself.",
+            Observes =
+            [
+                new PlayerChoiceObservation(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen), nameof(PlayerChoiceType.Index)),
+                new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseABundleSelectionScreen)),
+            ],
         },
         new()
         {
@@ -187,6 +288,11 @@ public static class EngineCommands
             Note =
                 "The engine asks which relic. No caller reaches this on v0.111.0, so a history that " +
                 "records it is refused with that sentence until a build lights the screen.",
+            Observes =
+            [
+                new PlayerChoiceObservation(typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen), nameof(PlayerChoiceType.Index)),
+                new ScreenObservation(typeof(NChooseARelicSelection)),
+            ],
         },
         new()
         {
@@ -197,6 +303,13 @@ public static class EngineCommands
             Note =
                 "The option is found by the id it declares, never by position: which options a rest site " +
                 "offers depends on the run that reached it.",
+            Observes =
+            [
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(RestSiteSynchronizer), nameof(RestSiteSynchronizer.ChooseLocalOption)),
+                new PlayerChoiceObservation(typeof(MendRestSiteOption), Kind: nameof(PlayerChoiceType.Player)),
+                new RoomObservation("RoomType.RestSite"),
+                new RoomObservation("RestSiteRoom"),
+            ],
         },
         new()
         {
@@ -205,6 +318,11 @@ public static class EngineCommands
             Member = nameof(TreasureRoomRelicSynchronizer.PickRelicLocally),
             Kind = EngineCommandKind.Issued,
             Note = "The chest's relics were rolled by the engine when the room was entered.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Treasure"),
+                new RoomObservation("TreasureRoom"),
+            ],
         },
         new()
         {
@@ -213,6 +331,11 @@ public static class EngineCommands
             Member = nameof(TreasureRoomRelicSynchronizer.SkipRelicLocally),
             Kind = EngineCommandKind.Issued,
             Note = "The engine's own name for leaving the relic, and its own way of recording that.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Treasure"),
+                new RoomObservation("TreasureRoom"),
+            ],
         },
         new()
         {
@@ -223,6 +346,11 @@ public static class EngineCommands
             Note =
                 "A vote rather than a call. RunManager.EnterNextAct is what it leads to, and calling that " +
                 "directly would skip the act floor the vote advances.",
+            Observes =
+            [
+                new RoomObservation("RoomType.Map"),
+                new RoomObservation("MapRoom"),
+            ],
         },
         new()
         {
@@ -235,6 +363,12 @@ public static class EngineCommands
                 "removal reaches OneOffSynchronizer.DoLocalMerchantCardRemoval through it, and its screen " +
                 "is answered as any other card screen is. The inventory is the merchant room's, or the " +
                 "current event's when the event exposes one.",
+            Observes =
+            [
+                new MessageObservation(typeof(MerchantCardRemovalMessage), typeof(OneOffSynchronizer), nameof(OneOffSynchronizer.DoLocalMerchantCardRemoval)),
+                new RoomObservation("RoomType.Shop"),
+                new RoomObservation("MerchantRoom"),
+            ],
         },
         new()
         {
@@ -243,6 +377,9 @@ public static class EngineCommands
             Member = nameof(PotionModel.EnqueueManualUse),
             Kind = EngineCommandKind.Issued,
             Note = "What the potion holder in the retail client calls when a potion is dragged onto a target.",
+            Observes =
+            [
+            ],
         },
         new()
         {
@@ -251,6 +388,9 @@ public static class EngineCommands
             Member = ConstructorMember,
             Kind = EngineCommandKind.Issued,
             Note = "Enqueued on the run's own queue, which is what the potion popup's discard button does.",
+            Observes =
+            [
+            ],
         },
         new()
         {
@@ -261,6 +401,10 @@ public static class EngineCommands
             Note =
                 "The tool is set on the same minigame first; the cell reveals according to it, so a " +
                 "recording without the tool replays a different reveal.",
+            Observes =
+            [
+                new ScreenObservation(typeof(NCrystalSphereScreen)),
+            ],
         },
     ];
 
@@ -342,6 +486,25 @@ public static class EngineCommands
             }
         }
 
+        // The third question, the other way round: does every way a decision can reach
+        // the game on this build have a row that watches it or a written reason none
+        // does. A game update that adds a net action, a synced choice, a message, a
+        // screen or a room answers "neither" here before any recording meets it
+        foreach (var entry in DecisionLedger.Entries().Where(entry => !entry.IsClassified))
+        {
+            problems.Add(
+                $"{entry.Candidate.Kind} {entry.Candidate.Identity} is a way a decision can reach the game on this " +
+                "build, and no row observes it and DecisionLedger does not excuse it. Every candidate is one or " +
+                "the other, or a decision the recorder would meet without knowing what it was.");
+        }
+
+        foreach (var stale in DecisionLedger.StaleExcusals())
+        {
+            problems.Add(
+                $"DecisionLedger excuses {stale}, which no walk of this build produces. An excusal for nothing " +
+                "is stale and comes out.");
+        }
+
         return problems;
     }
 
@@ -369,6 +532,16 @@ public sealed record EngineCommand
 
     /// <summary>Why this member and not another, in one or two sentences.</summary>
     public required string Note { get; init; }
+
+    /// <summary>
+    /// What else this decision accounts for, beyond the member it is mapped onto: the
+    /// choices its member syncs, the messages it sends, the screens it answers, the
+    /// rooms it is made in. <see cref="DecisionLedger"/> holds every candidate the
+    /// build offers to some row's observations or a written excusal, which is
+    /// <see cref="EngineCommands.Verify"/>'s third question. Empty where the member
+    /// itself is the whole of what the decision touches.
+    /// </summary>
+    public IReadOnlyList<Observation> Observes { get; init; } = [];
 
     /// <summary>How a diagnostic names this command to a person.</summary>
     public string Describe() => $"{Type.Name}.{Member}";

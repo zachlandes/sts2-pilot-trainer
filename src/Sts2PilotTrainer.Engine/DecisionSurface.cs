@@ -3,11 +3,15 @@ using System.Reflection;
 using System.Text;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Models;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Rooms;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -220,6 +224,131 @@ public static class DecisionSurface
 
         return text.ToString();
     }
+
+    // ── The ledger's kinds: what the recorder has to watch, beyond what a recording counts ──
+
+    /// <summary>The kinds <see cref="DecisionLedger"/> holds the recorder's account to,
+    /// in the order the ledger lists them: each is a way a decision reaches the game
+    /// that a build can add to without touching a member the recorder patches.</summary>
+    public static readonly string[] LedgerKinds = ["net-action", "player-choice", "message", "overlay-screen", "room"];
+
+    /// <summary>The candidates of one ledger kind on this build.</summary>
+    public static IReadOnlyList<string> LedgerCandidates(string kind) => kind switch
+    {
+        "net-action" => NetActions(),
+        "player-choice" => PlayerChoices(),
+        "message" => Messages(),
+        "overlay-screen" => OverlayScreens(),
+        "room" => Rooms(),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "not a ledger kind"),
+    };
+
+    /// <summary>
+    /// Every choice the client syncs, as (kind, member): each member whose body calls
+    /// <c>PlayerChoiceSynchronizer.SyncLocalChoice</c>, crossed with the kinds the
+    /// results that body constructs carry - read off which <c>PlayerChoiceResult.From*</c>
+    /// factory it calls, since the kind is the factory's and never a runtime value on
+    /// this build. A body that constructs its result through the kind-taking factory
+    /// is listed under every card kind.
+    /// </summary>
+    public static IReadOnlyList<(string Kind, MethodBase Member)> PlayerChoiceSites()
+    {
+        var sync = typeof(PlayerChoiceSynchronizer).GetMethod(
+            nameof(PlayerChoiceSynchronizer.SyncLocalChoice), BindingFlags.Public | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("PlayerChoiceSynchronizer.SyncLocalChoice is not declared on this build.");
+        return ChoiceEntryPoints.CallSites(callee => callee == sync)
+            .Select(site => site.Caller)
+            .Distinct()
+            .SelectMany(caller => ChoiceKindsConstructedBy(caller).Select(kind => (Kind: kind, Member: caller)))
+            .OrderBy(site => PlayerChoiceIdentity(site.Kind, site.Member), StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>The same, by the ledger's name for each.</summary>
+    public static IReadOnlyList<string> PlayerChoices() =>
+        PlayerChoiceSites().Select(site => PlayerChoiceIdentity(site.Kind, site.Member)).ToList();
+
+    /// <summary>How a synced choice is named in the ledger: its kind at the member that syncs it.</summary>
+    public static string PlayerChoiceIdentity(string kind, MethodBase member) =>
+        $"{kind} @ {member.DeclaringType!.Name}.{EntryPointSignature.Of(member)}";
+
+    private static IEnumerable<string> ChoiceKindsConstructedBy(MethodBase caller)
+    {
+        var factories = ChoiceEntryPoints.OwnCalleesOf(caller)
+            .Where(callee => callee.DeclaringType == typeof(PlayerChoiceResult) && callee.IsStatic)
+            .Select(callee => callee.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        foreach (var factory in factories)
+        {
+            switch (factory)
+            {
+                case "FromIndex" or "FromIndexes":
+                    yield return nameof(PlayerChoiceType.Index);
+                    break;
+                case "FromPlayerId":
+                    yield return nameof(PlayerChoiceType.Player);
+                    break;
+                case "FromCanonicalCard" or "FromCanonicalCards":
+                    yield return nameof(PlayerChoiceType.CanonicalCard);
+                    break;
+                case "FromMutableCombatCard" or "FromMutableCombatCards":
+                    yield return nameof(PlayerChoiceType.CombatCard);
+                    break;
+                case "FromMutableDeckCard" or "FromMutableDeckCards":
+                    yield return nameof(PlayerChoiceType.DeckCard);
+                    break;
+                case "FromMutableCard" or "FromMutableCards":
+                    yield return nameof(PlayerChoiceType.MutableCard);
+                    break;
+                case "FromCards":
+                    yield return nameof(PlayerChoiceType.CanonicalCard);
+                    yield return nameof(PlayerChoiceType.CombatCard);
+                    yield return nameof(PlayerChoiceType.DeckCard);
+                    yield return nameof(PlayerChoiceType.MutableCard);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every message the client sends, as (message, sender): each member whose body
+    /// calls <c>INetGameService.SendMessage</c>, with the message type it sends read
+    /// off the generic argument of the call.
+    /// </summary>
+    public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() =>
+        ChoiceEntryPoints.CallSites(callee =>
+                callee.DeclaringType == typeof(INetGameService) && callee.Name == nameof(INetGameService.SendMessage) &&
+                callee.IsGenericMethod)
+            .Select(site => (Message: site.Callee.GetGenericArguments()[0], Sender: site.Caller))
+            .Distinct()
+            .OrderBy(site => MessageIdentity(site.Message, site.Sender), StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The same, by the ledger's name for each.</summary>
+    public static IReadOnlyList<string> Messages() =>
+        MessageSites().Select(site => MessageIdentity(site.Message, site.Sender)).Distinct(StringComparer.Ordinal).ToList();
+
+    /// <summary>How a sent message is named in the ledger: its type and the member that sends it.</summary>
+    public static string MessageIdentity(Type message, MethodBase sender) =>
+        $"{message.Name} <- {sender.DeclaringType!.Name}.{EntryPointSignature.Of(sender)}";
+
+    /// <summary>Every overlay screen this build draws.</summary>
+    public static IReadOnlyList<Type> OverlayScreenTypes() =>
+        ChoiceEntryPoints.AllLoadedTypes
+            .Where(type => !type.IsAbstract && !type.IsInterface && typeof(IOverlayScreen).IsAssignableFrom(type))
+            .OrderBy(type => type.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The same, by name.</summary>
+    public static IReadOnlyList<string> OverlayScreens() => OverlayScreenTypes().Select(type => type.Name).ToList();
+
+    /// <summary>Every room type the map can deal and every room class the run can
+    /// stand in, each by name.</summary>
+    public static IReadOnlyList<string> Rooms() =>
+        Enum.GetNames<RoomType>().Select(name => $"RoomType.{name}")
+            .Concat(ConcreteSubclassesOf(typeof(AbstractRoom)).Select(type => type.Name))
+            .ToList();
 
     private static IReadOnlyList<Type> ConcreteSubclassesOf(Type baseType) =>
         ChoiceEntryPoints.AllLoadedTypes

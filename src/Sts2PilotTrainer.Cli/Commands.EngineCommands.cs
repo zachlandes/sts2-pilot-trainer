@@ -1,5 +1,6 @@
 using System.Globalization;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Cli;
@@ -59,6 +60,34 @@ internal static partial class Commands
         {
             Console.WriteLine(
                 $"  {kind,-24} {DecisionSurface.Identities(kind).Count.ToString(CultureInfo.InvariantCulture),3}");
+        }
+
+        // The other direction: every way a decision can reach the game on this build,
+        // with the row that watches it or the reason none does
+        Console.WriteLine();
+        Console.WriteLine("decision ledger (every candidate claimed by a row or excused in writing; --update rewrites the record):");
+        var ledger = DecisionLedger.Entries();
+        foreach (var kind in DecisionSurface.LedgerKinds)
+        {
+            var ofKind = ledger.Where(entry => entry.Candidate.Kind == kind).ToList();
+            Console.WriteLine(
+                $"  {kind,-16} {ofKind.Count.ToString(CultureInfo.InvariantCulture),3} candidate(s): " +
+                $"{ofKind.Count(entry => entry.Status == DecisionLedger.Claimed).ToString(CultureInfo.InvariantCulture)} claimed, " +
+                $"{ofKind.Count(entry => entry.Status == DecisionLedger.ExcusedStatus).ToString(CultureInfo.InvariantCulture)} excused, " +
+                $"{ofKind.Count(entry => !entry.IsClassified).ToString(CultureInfo.InvariantCulture)} unclassified");
+        }
+
+        foreach (var entry in ledger.Where(entry => !entry.IsClassified))
+        {
+            Console.WriteLine($"  {entry.Describe()}");
+        }
+
+        if (Args.Has(args, "--update"))
+        {
+            var record = EvidenceArtifact.PreparePath(
+                Path.Combine(WorktreeLocator.Find(), DecisionLedger.RecordPath), clearExisting: false);
+            record.WriteAtomic(DecisionLedger.Record());
+            Console.WriteLine($"ledger record: {Paths.Display(record.Path)}");
         }
 
         Console.WriteLine();
