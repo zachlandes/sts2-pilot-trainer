@@ -302,6 +302,26 @@ internal static class ChoiceEntryPoints
             .ToList();
     }
 
+    /// <summary>
+    /// Of the outermost types that declare <paramref name="members"/>, the ones with a
+    /// body the scan could not read whole, with how many: the reading
+    /// <see cref="UnreadableBodies"/> makes, narrowed to the types a walk over
+    /// <see cref="CallSites"/> produced a caller from. A call in one of those bodies is
+    /// one the walk never saw, so a walk that counts what such a type calls says so
+    /// beside its count rather than thinning it.
+    /// </summary>
+    internal static IReadOnlyList<(Type Type, int Bodies)> UnreadableBodiesAmong(IEnumerable<MethodBase> members)
+    {
+        var unreadable = Index.Value.UnreadableBodies;
+        return members
+            .Select(member => Outermost(member.DeclaringType!))
+            .Distinct()
+            .Where(unreadable.ContainsKey)
+            .Select(type => (type, unreadable[type]))
+            .OrderBy(entry => entry.type.FullName, StringComparer.Ordinal)
+            .ToList();
+    }
+
     /// <summary>Every method a body names, or none where it cannot be read.</summary>
     internal static IReadOnlyList<MethodBase> Callees(MethodBase method)
     {

@@ -334,6 +334,23 @@ public static class DecisionSurface
     public static string MessageIdentity(Type message, MethodBase sender) =>
         $"{message.Name} <- {sender.DeclaringType!.Name}.{EntryPointSignature.Of(sender)}";
 
+    /// <summary>
+    /// Every type the message and synced-choice walks produced a caller from that has
+    /// a body the IL reader could not read whole, with how many, by full name: a send
+    /// or a sync inside one of those bodies is a candidate neither walk can produce, so
+    /// the ledger carries the set and holds it rather than letting it thin the count.
+    /// </summary>
+    public static IReadOnlyList<(string Type, int Bodies)> UnreadableLedgerBodies() =>
+        ChoiceEntryPoints.UnreadableBodiesAmong(
+                PlayerChoiceSites().Select(site => site.Member).Concat(MessageSites().Select(site => site.Sender)))
+            .Select(entry => (entry.Type.FullName!, entry.Bodies))
+            .ToList();
+
+    /// <summary>Every type of the game assembly the runtime could not load against the
+    /// stubs, by full name: none of its bodies was walked, so none of its sends or syncs
+    /// can be a candidate, and the ledger carries the set for the same reason.</summary>
+    public static IReadOnlyList<string> UnloadableTypes() => ChoiceEntryPoints.UnloadableTypes();
+
     /// <summary>Every overlay screen this build draws. Walked once per process.</summary>
     public static IReadOnlyList<Type> OverlayScreenTypes() => OverlayScreenWalk.Value;
 

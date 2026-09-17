@@ -92,6 +92,15 @@ internal static partial class Commands
             Console.WriteLine($"  {entry.Describe()}");
         }
 
+        if (ledger.Count > 0)
+        {
+            var unreadable = DecisionSurface.UnreadableLedgerBodies();
+            Console.WriteLine(
+                $"  unreadable bodies {unreadable.Count.ToString(CultureInfo.InvariantCulture),3} sender/syncer type(s), " +
+                $"{unreadable.Count(entry => DecisionLedger.UnreadableExcused.ContainsKey(entry.Type)).ToString(CultureInfo.InvariantCulture)} excused; " +
+                $"{DecisionSurface.UnloadableTypes().Count.ToString(CultureInfo.InvariantCulture)} unloadable type(s)");
+        }
+
         if (Args.Has(args, "--update") && ledger.Count > 0)
         {
             var record = EvidenceArtifact.PreparePath(

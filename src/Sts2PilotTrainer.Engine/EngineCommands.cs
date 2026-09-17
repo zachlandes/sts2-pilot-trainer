@@ -538,6 +538,7 @@ public static class EngineCommands
         }
 
         problems.AddRange(DecisionLedger.StaleExcusals());
+        problems.AddRange(DecisionLedger.UnreadableProblems());
         return problems;
     }
 

@@ -37,6 +37,11 @@ public sealed class DecisionLedgerTests
         Assert.Equal(64, counts["message"]);
         Assert.Equal(13, counts["overlay-screen"]);
         Assert.Equal(15, counts["room"]);
+
+        var unreadable = DecisionSurface.UnreadableLedgerBodies();
+        Assert.Equal(3, unreadable.Count);
+        Assert.All(unreadable, entry => Assert.True(DecisionLedger.UnreadableExcused.ContainsKey(entry.Type), entry.Type));
+        Assert.Empty(DecisionLedger.UnreadableProblems());
     }
 
     /// <summary>A candidate no row observes and no excusal names is UNCLASSIFIED, which

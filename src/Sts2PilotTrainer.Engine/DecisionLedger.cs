@@ -198,6 +198,53 @@ public static class DecisionLedger
             ["RoomType.Unassigned"] = ("no-room", "the map's placeholder type for a point no room has been dealt to"),
         };
 
+    /// <summary>
+    /// Every sender or syncer type with a body the walks could not read whole, by full
+    /// name, with why the sends and syncs it makes are still all on the ledger: read
+    /// off the decompiled build, so a body the reader skipped is one somebody looked
+    /// at. In the shape of <see cref="Excused"/>, for the same reason. A type in
+    /// <see cref="DecisionSurface.UnreadableLedgerBodies"/> and not here is a sentence
+    /// out of <see cref="EngineCommands.VerifyLedger"/>; one here and not there is stale.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> UnreadableExcused { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption"] =
+                "the unread body is a Node-taking hover member; its one SyncLocalChoice is in OnSelect's state machine, which reads",
+            ["MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.PeerInputSynchronizer"] =
+                "the unread body is a Control-taking member; its one SendMessage is in SendSyncMessage, which reads",
+            ["MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawings"] =
+                "the unread bodies are the Vector2 and Line2D drawing members; every SendMessage is in SetDrawingModeLocal, ClearDrawnLinesLocal or QueueOrSendEvent, which read",
+        };
+
+    /// <summary>
+    /// Every sender or syncer type the walks could not read whole that no excusal
+    /// names, and every excusal naming a type the walks no longer produce or can now
+    /// read whole, as sentences.
+    /// </summary>
+    public static IReadOnlyList<string> UnreadableProblems()
+    {
+        var unreadable = DecisionSurface.UnreadableLedgerBodies();
+        var problems = new List<string>();
+        foreach (var (type, bodies) in unreadable.Where(entry => !UnreadableExcused.ContainsKey(entry.Type)))
+        {
+            problems.Add(
+                $"{type} sends a message or syncs a choice and has {bodies.ToString(CultureInfo.InvariantCulture)} " +
+                "body(ies) the walk could not read whole, so a send or sync inside one would be a candidate the " +
+                "ledger never sees. Read the type and excuse it in DecisionLedger.UnreadableExcused, or fix the stub.");
+        }
+
+        var named = unreadable.Select(entry => entry.Type).ToHashSet(StringComparer.Ordinal);
+        foreach (var type in UnreadableExcused.Keys.Where(type => !named.Contains(type)).Order(StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"DecisionLedger.UnreadableExcused names {type}, which the walks now read whole or produce no " +
+                "candidate from. An excusal for nothing is stale and comes out.");
+        }
+
+        return problems;
+    }
+
     /// <summary>Every candidate on this build with how it is accounted for, in the
     /// ledger's order. Classified once per process: the walks read the loaded assembly
     /// and the table is a constant, so the answer cannot change under it.</summary>
@@ -296,7 +343,9 @@ public static class DecisionLedger
         return stale;
     }
 
-    /// <summary>The committed record: one line per candidate under its kind.</summary>
+    /// <summary>The committed record: one line per candidate under its kind, then the
+    /// sender and syncer types the walks could not read whole and the types the runtime
+    /// could not load, because a candidate inside either is one no walk produces.</summary>
     public static string Record()
     {
         var text = new StringBuilder();
@@ -317,6 +366,20 @@ public static class DecisionLedger
             text.AppendLine($"# {kind} ({ofKind.Count.ToString(CultureInfo.InvariantCulture)})");
             foreach (var entry in ofKind) text.AppendLine(entry.Describe());
         }
+
+        var unreadable = DecisionSurface.UnreadableLedgerBodies();
+        text.AppendLine();
+        text.AppendLine($"# unreadable bodies ({unreadable.Count.ToString(CultureInfo.InvariantCulture)}): sender or syncer types with bodies the walks could not read whole, and how many");
+        foreach (var (type, bodies) in unreadable)
+        {
+            var account = UnreadableExcused.TryGetValue(type, out var reason) ? $"excused {reason}" : Unclassified;
+            text.AppendLine($"{type} {bodies.ToString(CultureInfo.InvariantCulture)}  {account}");
+        }
+
+        var unloadable = DecisionSurface.UnloadableTypes();
+        text.AppendLine();
+        text.AppendLine($"# unloadable types ({unloadable.Count.ToString(CultureInfo.InvariantCulture)}): types the runtime could not load, so no body of theirs was walked");
+        foreach (var type in unloadable) text.AppendLine(type);
 
         return text.ToString();
     }
