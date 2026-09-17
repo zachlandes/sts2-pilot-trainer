@@ -30,6 +30,9 @@ public sealed class CoverageTests
             Assert.Contains("card-reward-alternative  Skip  excused:", result.Output, StringComparison.Ordinal);
             Assert.Contains("card-prompt  CardSelectCmd.FromHand(context, player, prefs, filter, source)  not projectable", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
+            // The excusals describe the committed corpus, so none of them is reached by
+            // it: an excusal this corpus reaches has a sentence that has gone false
+            Assert.DoesNotContain("excused and reached by this corpus", result.Output, StringComparison.Ordinal);
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
             Assert.True(artifact.GetProperty("covered").GetBoolean());

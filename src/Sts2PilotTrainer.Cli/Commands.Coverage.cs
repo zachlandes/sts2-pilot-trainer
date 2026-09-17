@@ -81,10 +81,17 @@ internal static partial class Commands
             foreach (var row in report.OutsideTheDenominator) Console.WriteLine($"  {row.Describe()}");
         }
 
+        if (report.ExcusedAndReached.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  excused, and reached by a recording of this corpus - the excusal is not needed here:");
+            foreach (var point in report.ExcusedAndReached) Console.WriteLine($"  {point}");
+        }
+
         if (report.StaleExcusals.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine("  excused and reached by a recording, or excused and produced by no walk, so the excusal comes out:");
+            Console.WriteLine("  excused and produced by no walk of this build, so the excusal comes out:");
             foreach (var point in report.StaleExcusals) Console.WriteLine($"  {point}");
         }
 
@@ -126,6 +133,7 @@ internal static partial class Commands
                         not_projectable = report.NotProjectable,
                         outside_the_denominator = report.OutsideTheDenominator.Count,
                         stale_excusals = report.StaleExcusals.Count,
+                        excused_and_reached = report.ExcusedAndReached.Count,
                         recordings = report.Recordings,
                         credited_recordings = report.CreditedRecordings,
                         unverified_recordings = report.Unverified.Count,
@@ -141,6 +149,7 @@ internal static partial class Commands
                         excuse = row.Excuse,
                     }),
                     stale_excusals = report.StaleExcusals,
+                    excused_and_reached = report.ExcusedAndReached,
                     unverified_recordings = report.Unverified.Select(recording => new
                     {
                         run_id = recording.RunId,

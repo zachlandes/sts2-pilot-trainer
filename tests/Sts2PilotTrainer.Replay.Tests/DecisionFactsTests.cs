@@ -262,19 +262,28 @@ public sealed class DecisionFactsTests
         Assert.Contains("outside the denominator: 1", report.Totals());
     }
 
-    /// <summary>An excusal a recording has since reached, or one naming a point no walk
-    /// produces, is stale and comes out; the point itself is counted as what it is.</summary>
+    /// <summary>An excusal naming a point no walk produces is stale on any corpus and
+    /// fails the bar; one a crediting recording reached is a fact about this corpus,
+    /// named and not failed, and the point itself is counted as what it is.</summary>
     [Fact]
-    public void AStaleExcusalIsNamedAndFailsTheBar()
+    public void AStaleExcusalFailsTheBarAndAReachedOneIsNamed()
     {
         var report = DecisionCoverage.Over(
             [Gold, Relic],
-            new Dictionary<DecisionPoint, string> { [Gold] = "stale", [Potion] = "names nothing the build offers" },
+            new Dictionary<DecisionPoint, string> { [Gold] = "reached here", [Potion] = "names nothing the build offers" },
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold, Relic }, Holds)]);
 
         Assert.False(report.Holds);
-        Assert.Equal([Gold, Potion], report.StaleExcusals);
+        Assert.Equal([Potion], report.StaleExcusals);
+        Assert.Equal([Gold], report.ExcusedAndReached);
         Assert.Equal(CoverageState.Covered, report.Rows[0].State);
-        Assert.Contains("stale excusals: 2", report.Totals());
+        Assert.Contains("stale excusals: 1", report.Totals());
+        Assert.Contains("excused and reached by this corpus: 1", report.Totals());
+
+        var reachedOnly = DecisionCoverage.Over(
+            [Gold, Relic],
+            new Dictionary<DecisionPoint, string> { [Gold] = "reached here" },
+            [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold, Relic }, Holds)]);
+        Assert.True(reachedOnly.Holds);
     }
 }
