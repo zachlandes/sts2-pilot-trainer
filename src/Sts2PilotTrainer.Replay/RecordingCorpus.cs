@@ -46,7 +46,27 @@ public static class RecordingCorpus
 
         return recordings;
     }
+
+    /// <summary>
+    /// A manifest read for a corpus number: the manifest, or the one sentence both
+    /// numbers give a file this build cannot read, so a corpus with one such file is
+    /// reported recording by recording rather than aborted at the first.
+    /// </summary>
+    public static CorpusReading Read(string manifestPath)
+    {
+        try
+        {
+            return new CorpusReading(ManifestJson.Load(manifestPath), null);
+        }
+        catch (ManifestException ex)
+        {
+            return new CorpusReading(null, $"this build cannot read the manifest: {ex.Message}");
+        }
+    }
 }
+
+/// <summary>One manifest read from a corpus: exactly one of the two is set.</summary>
+public sealed record CorpusReading(ReplayManifest? Manifest, string? Refusal);
 
 /// <summary>One recording in a corpus: its manifest, and its journal where one is on hand.</summary>
 public sealed record CorpusRecording(string ManifestPath, string? JournalPath);

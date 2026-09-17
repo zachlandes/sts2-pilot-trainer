@@ -257,6 +257,7 @@ The mod also records the player's own runs, on unless `settings.json` in its sto
 The recorder itself is held to a standard of its own, `./scripts/arbiter parity`: a fresh replay of a recording has to reproduce the journal the recorder wrote beside it decision for decision, sample and complete digest either side of every one, and the first decision where it does not is named with the field.
 Over a corpus - `manifests/`, or a copy of a player's own recordings - it prints the figure with every recording that holds nothing named by why, so the two committed native recordings, made before their journals were kept in a schema this build reads, count in the denominator rather than disappearing from it.
 `./scripts/arbiter coverage` is the second number: for every decision point this build can offer - every verb, reward kind, card-reward alternative, shop shelf, rest option, event and prompt entry point, walked off the game assembly rather than written by anybody - how many recordings in the corpus exercise it, every uncovered point by name, and every excused one with its written reason.
+A recording `parity` holds nothing on - an integrity other than complete, a broken continuity - credits nothing here either: what it reached is tallied beside the point as unverified, and a manifest this build cannot read is named and the rest of the corpus still counted, so the two numbers read one corpus the same way.
 [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps for producing one and checking it.
 
 ```bash

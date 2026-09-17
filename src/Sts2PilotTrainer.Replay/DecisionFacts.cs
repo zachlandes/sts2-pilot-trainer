@@ -80,13 +80,18 @@ public static class DecisionKinds
 /// alternative to its id, a purchase to its shelf, a rest to its option, an event
 /// option to its event. An action missing that argument projects to its verb alone,
 /// because this reader validates nothing and a coverage count is not a place to refuse.
+///
+/// The decisions on a discarded branch - a reward claimed before the game's own
+/// rollback undid it - are projected beside the continued history: the player reached
+/// that point and chose, and the replay holds the branch as it holds the history.
 /// </summary>
 public static class DecisionFacts
 {
     public static IReadOnlySet<DecisionPoint> Of(ReplayManifest manifest)
     {
         var points = new HashSet<DecisionPoint>();
-        foreach (var action in manifest.Actions)
+        var branches = manifest.Source.Native?.Discarded ?? [];
+        foreach (var action in manifest.Actions.Concat(branches.SelectMany(branch => branch.Actions)))
         {
             points.Add(new DecisionPoint(DecisionKinds.Verb, action.Verb.ToString()));
             switch (action.Verb)
@@ -133,17 +138,27 @@ public static class DecisionFacts
 /// The coverage number: every point the game offers, with how many recordings reach
 /// it, computed over a denominator somebody else walked and a corpus somebody else
 /// projected. Pure, so it is held on inputs written by hand.
+///
+/// A recording credits a point only where <see cref="RecordingStanding"/> says it
+/// holds. One the recorder marked broken, unmapped or non-standard is projected all
+/// the same and tallied apart, as reached and unverified: a point only such a
+/// recording reaches stays uncovered, or excused, and the tally is printed beside it
+/// so the corpus is not read as shorter than it is. A manifest this build cannot read
+/// projects nothing and is listed by name for the same reason.
 /// </summary>
 public static class DecisionCoverage
 {
     public static CoverageReport Over(
         IReadOnlyList<DecisionPoint> denominator,
         IReadOnlyDictionary<DecisionPoint, string> excusals,
-        IReadOnlyList<CoveredRecording> recordings)
+        IReadOnlyList<CoveredRecording> recordings,
+        IReadOnlyList<UnreadableRecording>? unreadable = null)
     {
-        var counts = new Dictionary<DecisionPoint, int>();
+        var credited = new Dictionary<DecisionPoint, int>();
+        var unverified = new Dictionary<DecisionPoint, int>();
         foreach (var recording in recordings)
         {
+            var counts = recording.Credits ? credited : unverified;
             foreach (var point in recording.Points)
             {
                 counts[point] = counts.GetValueOrDefault(point) + 1;
@@ -153,42 +168,57 @@ public static class DecisionCoverage
         var rows = denominator
             .Select(point =>
             {
-                var count = counts.GetValueOrDefault(point);
+                var count = credited.GetValueOrDefault(point);
                 var notProjectable = DecisionKinds.NotProjectableBecause(point.Kind);
                 var excused = excusals.TryGetValue(point, out var reason) ? reason : null;
                 var state = notProjectable is not null ? CoverageState.NotProjectable
                     : count > 0 ? CoverageState.Covered
                     : excused is not null ? CoverageState.Excused
                     : CoverageState.Uncovered;
-                return new CoverageRow(point, count, state, state == CoverageState.Excused ? excused : null);
+                return new CoverageRow(
+                    point, count, unverified.GetValueOrDefault(point), state,
+                    state == CoverageState.Excused ? excused : null);
             })
             .ToList();
 
         // A point a recording reached that no walk produced is a finding about the
         // walk or the format, never silently dropped: it is listed after the
-        // denominator under its own heading.
+        // denominator under its own heading, whichever standing reached it.
         var known = denominator.ToHashSet();
-        var outside = counts.Keys
+        var outside = credited.Keys.Concat(unverified.Keys).Distinct()
             .Where(point => !known.Contains(point))
             .OrderBy(point => Array.IndexOf(DecisionKinds.All, point.Kind))
             .ThenBy(point => point.Identity, StringComparer.Ordinal)
-            .Select(point => new CoverageRow(point, counts[point], CoverageState.OutsideTheDenominator, null))
+            .Select(point => new CoverageRow(
+                point, credited.GetValueOrDefault(point), unverified.GetValueOrDefault(point),
+                CoverageState.OutsideTheDenominator, null))
             .ToList();
 
-        // An excusal is stale two ways: a recording has reached its point, or no walk
-        // produces the point any more. Either is named so it comes out
+        // An excusal is stale two ways: a crediting recording has reached its point, or
+        // no walk produces the point any more. Either is named so it comes out
         var staleExcusals = excusals.Keys
-            .Where(point => counts.GetValueOrDefault(point) > 0 || !known.Contains(point))
+            .Where(point => credited.GetValueOrDefault(point) > 0 || !known.Contains(point))
             .OrderBy(point => Array.IndexOf(DecisionKinds.All, point.Kind))
             .ThenBy(point => point.Identity, StringComparer.Ordinal)
             .ToList();
 
-        return new CoverageReport(rows, outside, staleExcusals, recordings.Count);
+        return new CoverageReport(
+            rows, outside, staleExcusals,
+            recordings.Where(recording => !recording.Credits).ToList(),
+            unreadable ?? [],
+            recordings.Count + (unreadable?.Count ?? 0));
     }
 }
 
-/// <summary>One recording's projection, named so a row can say who reached it.</summary>
-public sealed record CoveredRecording(string RunId, IReadOnlySet<DecisionPoint> Points);
+/// <summary>One recording's projection, named so a row can say who reached it, with
+/// the standing that says whether it credits what it reached.</summary>
+public sealed record CoveredRecording(string RunId, IReadOnlySet<DecisionPoint> Points, RecordingStanding Standing)
+{
+    public bool Credits => Standing.Holds;
+}
+
+/// <summary>A manifest in the corpus this build could not read, with the parser's words.</summary>
+public sealed record UnreadableRecording(string Manifest, string Detail);
 
 public enum CoverageState
 {
@@ -199,32 +229,45 @@ public enum CoverageState
     OutsideTheDenominator,
 }
 
-public sealed record CoverageRow(DecisionPoint Point, int Recordings, CoverageState State, string? Excuse)
+/// <param name="Recordings">How many crediting recordings reached the point.</param>
+/// <param name="UnverifiedRecordings">How many recordings that credit nothing reached it;
+/// printed beside the row and never folded into its state.</param>
+public sealed record CoverageRow(
+    DecisionPoint Point, int Recordings, int UnverifiedRecordings, CoverageState State, string? Excuse)
 {
     /// <summary>The row as the report prints it.</summary>
     public string Describe() => State switch
     {
         CoverageState.Covered =>
-            $"{Point}  {Recordings.ToString(CultureInfo.InvariantCulture)} recording(s)",
-        CoverageState.Uncovered => $"{Point}  uncovered",
-        CoverageState.Excused => $"{Point}  excused: {Excuse}",
+            $"{Point}  {Recordings.ToString(CultureInfo.InvariantCulture)} recording(s){Unverified}",
+        CoverageState.Uncovered => $"{Point}  uncovered{Unverified}",
+        CoverageState.Excused => $"{Point}  excused: {Excuse}{Unverified}",
         CoverageState.NotProjectable => $"{Point}  {DecisionKinds.NotProjectableBecause(Point.Kind)}",
         CoverageState.OutsideTheDenominator =>
-            $"{Point}  {Recordings.ToString(CultureInfo.InvariantCulture)} recording(s), and no walk of " +
+            $"{Point}  {Recordings.ToString(CultureInfo.InvariantCulture)} recording(s){Unverified}, and no walk of " +
             "this build produced the point",
         _ => throw new ArgumentOutOfRangeException(nameof(State), State, "unknown coverage state"),
     };
+
+    private string Unverified => UnverifiedRecordings > 0
+        ? $"; reached by {UnverifiedRecordings.ToString(CultureInfo.InvariantCulture)} unverified recording(s), " +
+          "not credited"
+        : "";
 }
 
 /// <summary>What <see cref="DecisionCoverage.Over"/> found.</summary>
 /// <param name="Rows">One per point of the denominator, in the denominator's order.</param>
 /// <param name="OutsideTheDenominator">Points a recording reached that no walk produced.</param>
-/// <param name="StaleExcusals">Excusals to take out: a recording has reached the point, or no walk produces it.</param>
-/// <param name="Recordings">How many recordings were projected.</param>
+/// <param name="StaleExcusals">Excusals to take out: a crediting recording has reached the point, or no walk produces it.</param>
+/// <param name="Unverified">The recordings projected and credited nothing, each with the recorder's own reason.</param>
+/// <param name="Unreadable">The manifests this build could not read, each with the parser's words.</param>
+/// <param name="Recordings">How many recordings the corpus held, unverified and unreadable included.</param>
 public sealed record CoverageReport(
     IReadOnlyList<CoverageRow> Rows,
     IReadOnlyList<CoverageRow> OutsideTheDenominator,
     IReadOnlyList<DecisionPoint> StaleExcusals,
+    IReadOnlyList<CoveredRecording> Unverified,
+    IReadOnlyList<UnreadableRecording> Unreadable,
     int Recordings)
 {
     public int Points => Rows.Count;
@@ -232,6 +275,7 @@ public sealed record CoverageReport(
     public int Uncovered => Count(CoverageState.Uncovered);
     public int Excused => Count(CoverageState.Excused);
     public int NotProjectable => Count(CoverageState.NotProjectable);
+    public int CreditedRecordings => Recordings - Unverified.Count - Unreadable.Count;
 
     /// <summary>Whether the bar holds: no point is uncovered, no recording reached a
     /// point outside the denominator, and no excusal is stale.</summary>
@@ -245,6 +289,12 @@ public sealed record CoverageReport(
         var n = (int value) => value.ToString(CultureInfo.InvariantCulture);
         yield return $"points: {n(Points)}  covered: {n(Covered)}  excused: {n(Excused)}  uncovered: {n(Uncovered)}  " +
                      $"not projectable: {n(NotProjectable)}  recordings: {n(Recordings)}";
+        if (Unverified.Count > 0 || Unreadable.Count > 0)
+        {
+            yield return $"recordings credited: {n(CreditedRecordings)}  unverified: {n(Unverified.Count)}  " +
+                         $"unreadable: {n(Unreadable.Count)}";
+        }
+
         if (OutsideTheDenominator.Count > 0)
         {
             yield return $"outside the denominator: {n(OutsideTheDenominator.Count)}";

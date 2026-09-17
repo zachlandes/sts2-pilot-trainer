@@ -129,16 +129,12 @@ internal static partial class Commands
     {
         var manifestName = Path.GetFileName(manifestPath);
         var journalName = journalPath is null ? null : Path.GetFileName(journalPath);
-        ReplayManifest manifest;
-        try
-        {
-            manifest = ManifestJson.Load(manifestPath);
-        }
-        catch (ManifestException ex)
+        var reading = RecordingCorpus.Read(manifestPath);
+        if (reading.Manifest is not { } manifest)
         {
             return new Classified(new ParityEntry(
                 Path.GetFileNameWithoutExtension(manifestName), manifestName, journalName, null, null, null,
-                ParityStatus.Refused, $"this build cannot read the manifest: {ex.Message}"));
+                ParityStatus.Refused, reading.Refusal!));
         }
 
         var native = manifest.Source.Native;
@@ -156,26 +152,15 @@ internal static partial class Commands
             });
         }
 
-        if (native.Integrity != NativeSource.CompleteIntegrity)
+        var standing = RecordingStanding.Of(native);
+        if (!standing.Holds)
         {
             return new Classified(entry with
             {
-                Status = ParityStatus.Integrity,
-                Detail = $"integrity is '{native.Integrity}', so the recorder itself says this recording " +
-                         "is not a complete account of the run" +
-                         (native.Unmapped is { Count: > 0 } unmapped
-                             ? $": {ManifestValidator.Describe(unmapped[0])}"
-                             : ""),
-            });
-        }
-
-        if (string.Equals(native.Continuity, NativeSource.BrokenContinuity, StringComparison.Ordinal))
-        {
-            return new Classified(entry with
-            {
-                Status = ParityStatus.Continuity,
-                Detail = $"continuity is '{native.Continuity}', so the recorder stopped watching this run and " +
-                         "started again; a journal with a hole in it is not held to a replay",
+                Status = standing.Kind == RecordingStandingKind.IntegrityNotComplete
+                    ? ParityStatus.Integrity
+                    : ParityStatus.Continuity,
+                Detail = standing.Detail,
             });
         }
 

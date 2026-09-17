@@ -1296,6 +1296,8 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
    Copy the directory rather than naming the store: the command is handed a path and derives none, and nothing it reads is written back.
    A directory with no `*.replay.json` in it is refused rather than read as at parity, naming the directory and the `recordings/` layout, because the command reads one directory level and a copy of `Runmobile/` or of the profile scope holds nothing at that level.
    A journal in this build's own schema that cannot be parsed, a journal of another run, and a replay the engine refused are each `REFUSED` and fail the figure; only the recordings that hold nothing are excused from it.
+   `./scripts/arbiter coverage --corpus <the same copy>` is the second number over the same directory: every decision point this build can offer, with how many recordings reached it.
+   It reads each recording the way parity classifies one - a recording with an integrity other than complete or a broken continuity credits no point and is tallied beside each point it reached as unverified, and a manifest this build cannot read is named with the parser's words while the rest is counted - so neither number can read a recording the other refuses as evidence.
 8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.
 
 To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
