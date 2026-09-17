@@ -9,15 +9,18 @@ namespace Sts2PilotTrainer.Engine;
 /// Code rather than a data file, in the shape of <c>EngineCommands.Unmapped</c>: a
 /// build is held to it by the coverage test, and a reviewer sees an excusal appear or
 /// disappear in a diff. The reason is the whole of an excusal; a point without one
-/// is uncovered and fails the bar. A point a recording has since reached is a stale
-/// excusal, which the coverage report names so it is taken out rather than left to
-/// excuse nothing.
+/// is uncovered and fails the bar. An excusal naming a point no walk on this build
+/// produces is stale, which the coverage report names so it is taken out rather than
+/// left to excuse nothing. One a crediting recording of the corpus under test reached
+/// is not stale but named as <c>excused and reached by this corpus</c>: over the
+/// committed corpus its sentence has gone false, which <c>CoverageTests</c> holds to
+/// none; over a copy of a player's store it is progress.
 ///
-/// The release bar (<c>data/recording-completeness-architecture-audit</c>, section 5)
-/// does not accept "no recording reaches it" for a point a player can reach on this
-/// build. The generated walks retire that sentence for every point the fixture seed's
-/// route can be pointed at; what is left is excused by what its producer is and why
-/// the route does not pass it, dated so its age is visible, for the retail soak.
+/// The release bar (<c>docs/release-bar.md</c>) does not accept "no recording reaches
+/// it" for a point a player can reach on this build. The generated walks retire that
+/// sentence for every point the fixture seed's route can be pointed at; what is left
+/// is excused by what its producer is and why the route does not pass it, dated so
+/// its age is visible, for the retail soak.
 /// </summary>
 public static class DecisionExcusals
 {
