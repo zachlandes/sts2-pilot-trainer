@@ -289,9 +289,8 @@ public sealed class RunRecorderTests
 
     /// <summary>
     /// The game's act topology - every act the database ships at each index, which is
-    /// the default, what unlocks each, every unshipped <c>ActModel</c> subclass, and
-    /// every member that builds a run's act list - is the one the fixtures' progression
-    /// was read from.
+    /// the default, what unlocks each, and every unshipped <c>ActModel</c> subclass - is
+    /// the one the fixtures' progression was read from.
     ///
     /// Held apart from the save contract above because a new or alternative act keeps
     /// every <c>SaveManager.SaveRun</c> call site and every ancient-event subclass
@@ -305,7 +304,7 @@ public sealed class RunRecorderTests
         HoldToRecord(ActTopologyPath, ActTopology.Enumeration(),
             "ACT_TOPOLOGY_UPDATE", "./scripts/act-topology.sh --update",
             "The game's act topology - which acts ship at each index, which is the default, what unlocks each, " +
-            "and who builds a run's act list - is not the recorded one. If the game build changed, regenerate " +
+            "and which ActModel subclasses go unshipped - is not the recorded one. If the game build changed, regenerate " +
             "the list in the same change and look at every fixture that names a progression");
 
     /// <summary>

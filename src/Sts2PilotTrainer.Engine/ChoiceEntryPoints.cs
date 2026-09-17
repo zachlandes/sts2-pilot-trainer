@@ -276,7 +276,7 @@ internal static class ChoiceEntryPoints
     /// name: an async method's compiler-generated state machine resolves back to the
     /// method that declared it, so a caller reads the way a person would name it. What
     /// a committed record lists under "members that call" - <see cref="SavePoints"/>
-    /// and <see cref="ActTopology"/> both read their callers here.
+    /// reads its callers here.
     /// </summary>
     internal static IReadOnlyList<MethodBase> DeclaredCallersOf(MethodBase callee) =>
         MethodsNaming(callee)

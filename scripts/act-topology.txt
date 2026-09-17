@@ -1,12 +1,11 @@
 # The game's act topology on this build, read by RunRecorderTests from the
 # assembly's own model database, IL and type table rather than assumed: every
 # act the database ships at each index, whether it is that index's default, the
-# epochs its IsUnlocked names and its room and floor counts; every type that
-# subclasses ActModel without shipping; and every member that builds a run's
-# act list. The recorder's and the replay's fixtures name the default act at
-# each index as their progression, so a build that adds an act, moves one to
-# another index, changes which is the default or what unlocks one, or adds a
-# way to choose the list, changes this file in the change that adopts it.
+# epochs its IsUnlocked names and its room and floor counts; and every type that
+# subclasses ActModel without shipping. The recorder's and the replay's fixtures
+# name the default act at each index as their progression, so a build that adds
+# an act, moves one to another index, or changes which is the default or what
+# unlocks one, changes this file in the change that adopts it.
 # Regenerate with
 #   ./scripts/act-topology.sh --update
 
@@ -19,11 +18,3 @@
 
 # Types that subclass ActModel and the database does not ship:
 MegaCrit.Sts2.Core.Models.Acts.DeprecatedAct
-
-# Members that call ActModel.GetDefaultList():
-MegaCrit.Sts2.Core.Nodes.Debug.NSceneBootstrapper.StartNewRun
-MegaCrit.Sts2.Core.Runs.NullRunState.get_Acts
-MegaCrit.Sts2.Core.Runs.RunState.CreateForTest
-
-# Members that call ActModel.GetRandomList(Rng, UnlockState, Boolean):
-MegaCrit.Sts2.Core.Multiplayer.Game.Lobby.StartRunLobby.BeginRunLocally

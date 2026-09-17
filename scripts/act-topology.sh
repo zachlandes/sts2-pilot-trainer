@@ -3,15 +3,14 @@
 #
 # The file lists every act the model database ships at each index - whether it is
 # that index's default, the epochs its IsUnlocked names, its room and floor counts -
-# every type this build subclasses ActModel with and the database leaves out, and
-# every member whose own body builds a run's act list, all read from the game
-# assembly's model database, IL and type table. The recorder's and the replay's
+# and every type this build subclasses ActModel with and the database leaves out,
+# all read from the game assembly's model database, IL and type table. The recorder's and the replay's
 # fixtures name the default act at each index as their progression and one
 # alternative at index 0, and scripts/save-points.sh cannot see an act change: a new
 # or alternative act keeps every SaveManager.SaveRun call site and every ancient
 # event subclass where they were. A game update that adds an act, moves one to
-# another index, changes which is the default or what unlocks one, or adds a way to
-# choose the list, now shows up as a diff in the change that adopts the build,
+# another index, or changes which is the default or what unlocks one, now shows up
+# as a diff in the change that adopts the build,
 # rather than as fixtures that keep naming a progression the game no longer defaults to.
 #
 # The check is a [GameFact] in RunRecorderTests, in tests/Sts2PilotTrainer.Mod.Tests,

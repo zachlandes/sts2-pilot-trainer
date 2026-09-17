@@ -8,8 +8,8 @@ namespace Sts2PilotTrainer.Engine;
 /// <summary>
 /// The game's own act topology, read from the assembly rather than assumed: every act
 /// the model database ships at each index, whether it is that index's default, the
-/// epochs its own <c>IsUnlocked</c> names, its room and floor counts, every type this
-/// build subclasses <c>ActModel</c> with, and every member that builds a run's act list.
+/// epochs its own <c>IsUnlocked</c> names, its room and floor counts, and every type
+/// this build subclasses <c>ActModel</c> with.
 ///
 /// The recorder's and the replay's fixtures name one progression - the default act at
 /// each index - and one alternative at index 0, and the whole-act walk's survival rules
@@ -103,38 +103,9 @@ internal static class ActTopology
     }
 
     /// <summary>
-    /// The two members that build a run's act list on this build - the default act at
-    /// each index, and the retail lobby's roll over the unlocked ones - by signature.
-    /// A third would be a way of choosing acts the fixtures do not know.
-    /// </summary>
-    internal static IReadOnlyList<MethodInfo> ActListBuilders()
-    {
-        const BindingFlags statics = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
-                                     BindingFlags.DeclaredOnly;
-        var builders = typeof(ActModel).GetMethods(statics)
-            .Where(method => method.ReturnType.IsGenericType &&
-                             method.ReturnType.GetGenericArguments() is [var element] && element == typeof(ActModel))
-            .OrderBy(Signature, StringComparer.Ordinal)
-            .ToList();
-        return builders.Count > 0
-            ? builders
-            : throw new InvalidOperationException(
-                $"{typeof(ActModel).FullName} declares no static member returning a list of acts on this build; " +
-                "GetDefaultList and GetRandomList are what the fixtures' progression was read from.");
-    }
-
-    /// <summary>Every member whose own body calls the given <see cref="ActListBuilders"/> member.</summary>
-    internal static IReadOnlyList<MethodBase> CallersOf(MethodBase builder) =>
-        ChoiceEntryPoints.DeclaredCallersOf(builder);
-
-    private static string Signature(MethodInfo method) =>
-        $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.ParameterType.Name))})";
-
-    /// <summary>
-    /// The committed record: every <see cref="ShippedActs"/> line, every
-    /// <see cref="UnshippedActSubclasses"/> name, and every <see cref="ActListBuilders"/>
-    /// member with every <see cref="CallersOf"/> member under it, one per line under its
-    /// own heading. Regenerate with <c>./scripts/act-topology.sh --update</c> so a game
+    /// The committed record: every <see cref="ShippedActs"/> line and every
+    /// <see cref="UnshippedActSubclasses"/> name, one per line under its own heading.
+    /// Regenerate with <c>./scripts/act-topology.sh --update</c> so a game
     /// update that adds an act, moves one, or changes what unlocks one shows as a diff
     /// in the change that adopts the build.
     /// </summary>
@@ -144,12 +115,11 @@ internal static class ActTopology
         text.AppendLine("# The game's act topology on this build, read by RunRecorderTests from the");
         text.AppendLine("# assembly's own model database, IL and type table rather than assumed: every");
         text.AppendLine("# act the database ships at each index, whether it is that index's default, the");
-        text.AppendLine("# epochs its IsUnlocked names and its room and floor counts; every type that");
-        text.AppendLine("# subclasses ActModel without shipping; and every member that builds a run's");
-        text.AppendLine("# act list. The recorder's and the replay's fixtures name the default act at");
-        text.AppendLine("# each index as their progression, so a build that adds an act, moves one to");
-        text.AppendLine("# another index, changes which is the default or what unlocks one, or adds a");
-        text.AppendLine("# way to choose the list, changes this file in the change that adopts it.");
+        text.AppendLine("# epochs its IsUnlocked names and its room and floor counts; and every type that");
+        text.AppendLine("# subclasses ActModel without shipping. The recorder's and the replay's fixtures");
+        text.AppendLine("# name the default act at each index as their progression, so a build that adds");
+        text.AppendLine("# an act, moves one to another index, or changes which is the default or what");
+        text.AppendLine("# unlocks one, changes this file in the change that adopts it.");
         text.AppendLine("# Regenerate with");
         text.AppendLine("#   ./scripts/act-topology.sh --update");
         text.AppendLine();
@@ -168,16 +138,6 @@ internal static class ActTopology
         foreach (var type in UnshippedActSubclasses())
         {
             text.AppendLine(type.FullName);
-        }
-
-        foreach (var builder in ActListBuilders())
-        {
-            text.AppendLine();
-            text.AppendLine($"# Members that call ActModel.{Signature(builder)}:");
-            foreach (var method in CallersOf(builder))
-            {
-                text.AppendLine($"{method.DeclaringType!.FullName}.{method.Name}");
-            }
         }
 
         return text.ToString();
