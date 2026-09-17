@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -1474,7 +1475,8 @@ internal sealed class RunRecorder : IDisposable
             // observer settles on this recorder's own clock, so a headless attach's
             // fight is drained the same way its decisions are.
             _observer = PlayerFightObserver.Start(
-                run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { }, Clock);
+                run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { }, Clock,
+                unmapped: StopAtFightAction);
             return;
         }
 
@@ -1537,8 +1539,37 @@ internal sealed class RunRecorder : IDisposable
         string member, string verb, IReadOnlyDictionary<string, string> args, TakenReading before,
         string unresolved)
     {
-        _capture.Fight?.MarkIncomplete(unresolved);
-        StopAt(new UnmappedFacts(UnmappedDecision.MemberSeam, member, verb, Args(args), unresolved), before);
+        StopAtFightStep(new UnmappedFacts(UnmappedDecision.MemberSeam, member, verb, Args(args), unresolved), before);
+    }
+
+    /// <summary>
+    /// The one writer of a stop inside a fight, whatever seam met the decision: the
+    /// fight's capture is marked incomplete with the same sentence the stop carries,
+    /// and the recording stops at the state the decision began from.
+    /// </summary>
+    private void StopAtFightStep(UnmappedFacts met, TakenReading before)
+    {
+        _capture.Fight?.MarkIncomplete(met.Note ?? $"The recorder met {met.Seam} {met.Name} inside a fight.");
+        StopAt(met, before);
+    }
+
+    /// <summary>
+    /// A game action the observer met at the executor and nothing here claims.
+    ///
+    /// The observer's default hands over what it hands <see cref="FightSink"/> for a
+    /// decision - the state sampled before the action and whether the step still open
+    /// had finished - so the decision before the stranger is closed exactly as it is
+    /// before any decision, on this sample, and the stop stands at the ordinal after
+    /// it rather than taking that ordinal and dropping the step when its after-sample
+    /// arrives. The stop names the action's own type, at the same seam
+    /// <see cref="ActionRequested"/> names one at.
+    /// </summary>
+    private void StopAtFightAction(
+        GameAction action, IReadOnlyDictionary<string, string> before, bool previousFinished)
+    {
+        if (!CloseStrandedFightStep(action.GetType().Name, before, previousFinished)) return;
+
+        StopAtFightStep(MetAtNetAction(action), ReadingOf(before));
     }
 
     /// <summary>
@@ -2404,6 +2435,16 @@ internal sealed class RunRecorder : IDisposable
             UnmappedDecision.MemberSeam, $"{declaringType.Name}.{member.TrimStart('.')}", discriminator,
             Args(args), note);
 
+    /// <summary>A decision met as a game action nothing here claims, at the seam every
+    /// locally issued action enters by or at the executor about to run it: named by the
+    /// action's own type, which is the game's name for the thing.</summary>
+    internal static UnmappedFacts MetAtNetAction(GameAction action) =>
+        new(
+            UnmappedDecision.NetActionSeam, action.GetType().Name, action.ActionType.ToString(),
+            Args(("owner_id", action.OwnerId.ToString(CultureInfo.InvariantCulture))),
+            "No patch or observer of this recorder claims this game action, so the decision it carries " +
+            "cannot be named.");
+
     /// <summary>A decision met as the answer to one of the game's own screens.</summary>
     internal static UnmappedFacts MetAtScreen(
         string screen, string? discriminator, string note, params (string Name, string Value)[] args) =>
@@ -2554,7 +2595,7 @@ internal sealed class RunRecorder : IDisposable
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
         typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
         typeof(ConsoleCommand), typeof(BundleScreen), typeof(RelicScreen), typeof(ChoiceSynced),
-        typeof(CrystalSphereCellRevealed),
+        typeof(CrystalSphereCellRevealed), typeof(ActionRequested),
     ];
 
     /// <summary>
@@ -2692,6 +2733,11 @@ internal sealed class RunRecorder : IDisposable
     {
         private static Decision? _decision;
 
+        /// <summary>Whether a decision has been read in the prefix and not yet
+        /// announced by the postfix: the engine is inside the member, and any choice
+        /// synced meanwhile is this decision's.</summary>
+        internal static bool Reading => _decision is not null;
+
         [HarmonyPrefix]
         internal static void Before(MapCoord coord)
         {
@@ -2768,6 +2814,11 @@ internal sealed class RunRecorder : IDisposable
     internal static class RewardTaken
     {
         private static Decision? _decision;
+
+        /// <summary>Whether a decision has been read in the prefix and not yet
+        /// announced by the postfix: the engine is inside the member, and any choice
+        /// synced meanwhile is this decision's.</summary>
+        internal static bool Reading => _decision is not null;
 
         [HarmonyPrefix]
         internal static void Before(Reward reward)
@@ -2908,6 +2959,11 @@ internal sealed class RunRecorder : IDisposable
     {
         private static Decision? _decision;
 
+        /// <summary>Whether a decision has been read in the prefix and not yet
+        /// announced by the postfix: the engine is inside the member, and any choice
+        /// synced meanwhile is this decision's.</summary>
+        internal static bool Reading => _decision is not null;
+
         [HarmonyPrefix]
         internal static void Before(RestSiteSynchronizer __instance, int index)
         {
@@ -3016,6 +3072,11 @@ internal sealed class RunRecorder : IDisposable
     internal static class ShopPurchased
     {
         private static Decision? _decision;
+
+        /// <summary>Whether a decision has been read in the prefix and not yet
+        /// announced by the postfix: the engine is inside the member, and any choice
+        /// synced meanwhile is this decision's.</summary>
+        internal static bool Reading => _decision is not null;
 
         [HarmonyPostfix]
         internal static void After(Task<bool> __result)
@@ -3290,11 +3351,71 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
+    /// Every game action a player issues, at the one member all of them enter by.
+    ///
+    /// <c>RequestEnqueue</c> is the local origin of every game action in a
+    /// singleplayer game - the eleven types the game's net actions become all pass
+    /// through it - so it is where a type nothing here claims is met once and by
+    /// name, before the executor runs it. <see cref="NetActionClaims"/> is the
+    /// account: a claimed type is recorded by its own patch or by the fight observer
+    /// and takes the path it takes today; the engine's own bookkeeping is excused;
+    /// the console's marks the run non-standard, the way the console's own patch
+    /// does; and a stranger stops the recording here, naming its type. An action the
+    /// synchronizer defers past the enemy turn re-enters this member when the player's
+    /// turn begins, so each action instance is classified once. A stranger the fight
+    /// observer <see cref="PlayerFightObserver.Watches"/> is left to the observer,
+    /// which meets it at the executor with the fight's own step open and closes that
+    /// step first; stopped here, at the request, the stop would stand at the open
+    /// step's ordinal and drop it.
+    /// </summary>
+    [HarmonyPatch(typeof(ActionQueueSynchronizer), nameof(ActionQueueSynchronizer.RequestEnqueue))]
+    internal static class ActionRequested
+    {
+        private static readonly ConditionalWeakTable<GameAction, object> Classified = [];
+        private static readonly object Once = new();
+
+        [HarmonyPrefix]
+        internal static void Before(GameAction action)
+        {
+            if (Active is not { } recorder) return;
+            if (!Classified.TryAdd(action, Once)) return;
+
+            try
+            {
+                switch (NetActionClaims.For(action.GetType())?.Disposition)
+                {
+                    case NetActionClaims.Disposition.Claimed:
+                    case NetActionClaims.Disposition.EngineDriven:
+                        return;
+                    case NetActionClaims.Disposition.NonStandard:
+                        ConsoleCommandUsed();
+                        return;
+                    default:
+                        if (recorder._observer is { } observer && observer.Watches(action)) return;
+
+                        StopAtDecision(MetAtNetAction(action));
+                        return;
+                }
+            }
+            catch (Exception ex)
+            {
+                recorder.Refuse($"A game action could not be classified: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
     /// The client's own answer to a prompt, read as it is synced.
     ///
-    /// Every locally answered prompt passes through here; only the two whose prompt
-    /// this recorder is holding open are read, and a prompt is closed by the sync that
-    /// answers it whether or not there is a recording to read it into.
+    /// Every locally answered prompt passes through here; the two whose prompt this
+    /// recorder is holding open are read, and a prompt is closed by the sync that
+    /// answers it whether or not there is a recording to read it into. Every other
+    /// answer is one of a decision already being recorded - a card prompt this
+    /// recorder holds open or a card reward's screen up, a prompt the game's own
+    /// selector answers in both hosts, or a choice made inside a decision the recorder
+    /// has announced and not yet settled, the way a rest site's Mend asks which player
+    /// to heal - and an answer that is none of those is a decision nothing here names,
+    /// which stops the recording rather than going by unread.
     /// </summary>
     [HarmonyPatch(typeof(PlayerChoiceSynchronizer), nameof(PlayerChoiceSynchronizer.SyncLocalChoice))]
     internal static class ChoiceSynced
@@ -3307,7 +3428,7 @@ internal sealed class RunRecorder : IDisposable
             BundleScreen.Open = null;
             RelicScreen.Open = null;
 
-            if (Active is null) return;
+            if (Active is not { } recorder) return;
 
             try
             {
@@ -3320,12 +3441,43 @@ internal sealed class RunRecorder : IDisposable
                 if (relics is not null)
                 {
                     RelicScreenAnswered(relics, result.AsIndex());
+                    return;
                 }
+
+                if (IsAnAnswerToADecisionBeingRecorded(recorder)) return;
+
+                StopAtDecision(new UnmappedFacts(
+                    UnmappedDecision.PlayerChoiceSeam,
+                    $"{nameof(PlayerChoiceSynchronizer)}.{nameof(PlayerChoiceSynchronizer.SyncLocalChoice)}",
+                    result.ChoiceType.ToString(),
+                    Args(("index", result.AsIndexOrNull() is { } index ? Number(index) : "")),
+                    "This choice was synced with no prompt or screen this recorder holds open, no selector of " +
+                    "the game's own answering, and no decision of the run announced and unsettled, so nothing " +
+                    "here names the decision it answers."));
             }
             catch (Exception ex)
             {
                 Active?.Refuse($"A screen's answer could not be read: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        /// <summary>Whether a synced choice belongs to a decision something here is
+        /// already recording, read the way each of those records it: a prompt or
+        /// screen held open, the game's own selector answering, a decision announced
+        /// to the pump and not yet settled, or one read in a member's prefix and not
+        /// yet announced by its postfix - the card reward's pick, and Mend's choice of
+        /// whom to heal, both happen inside that window.</summary>
+        private static bool IsAnAnswerToADecisionBeingRecorded(RunRecorder recorder)
+        {
+            if (CardPrompts.Open is not null || CardScreensUp.Count > 0) return true;
+            if (CardSelectCmd.Selector is { } selector && CardPrompts.IsTheGamesOwn(selector)) return true;
+            if (MapMove.Reading || RewardTaken.Reading || RestSiteOptionTaken.Reading || ShopPurchased.Reading ||
+                CrystalSphereCellRevealed.Reading)
+            {
+                return true;
+            }
+
+            lock (Gate) return recorder._pending.Count > 0;
         }
     }
 
@@ -3341,6 +3493,11 @@ internal sealed class RunRecorder : IDisposable
     internal static class CrystalSphereCellRevealed
     {
         private static Decision? _decision;
+
+        /// <summary>Whether a decision has been read in the prefix and not yet
+        /// announced by the postfix: the engine is inside the member, and any choice
+        /// synced meanwhile is this decision's.</summary>
+        internal static bool Reading => _decision is not null;
 
         [HarmonyPrefix]
         internal static void Before(CrystalSphereMinigame __instance, CrystalSphereCell clickedCell)

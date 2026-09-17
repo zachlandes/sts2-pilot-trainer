@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Actions;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
@@ -59,6 +60,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly ActionExecutor _executor;
     private readonly Action _fightEnded;
     private readonly Action _sampled;
+    private readonly Action<GameAction, IReadOnlyDictionary<string, string>, bool>? _unmapped;
     private readonly SettleClock _clock;
 
     private bool _awaitingPlayerTurn;
@@ -83,12 +85,14 @@ internal sealed class PlayerFightObserver : IDisposable
         IFightSampleSink sink,
         Action fightEnded,
         Action sampled,
-        SettleClock clock)
+        SettleClock clock,
+        Action<GameAction, IReadOnlyDictionary<string, string>, bool>? unmapped)
     {
         _sample = sample;
         _sink = sink;
         _fightEnded = fightEnded;
         _sampled = sampled;
+        _unmapped = unmapped;
         _clock = clock;
         _player = player;
         _combat = CombatManager.Instance
@@ -119,15 +123,24 @@ internal sealed class PlayerFightObserver : IDisposable
     /// <param name="clock">How to wait for the engine to settle after an action. The
     /// scene tree's timer in the retail client; a headless attach supplies one driven
     /// by the arbiter's drain. See <see cref="SettleClock"/>.</param>
+    /// <param name="unmapped">Called for a player-driven action that is none of the
+    /// five the fight is made of - a stranger the executor is about to run and this
+    /// observer would otherwise let by unrecorded - with the state sampled before it
+    /// and whether the step still open had finished executing, which is what
+    /// <see cref="IFightSampleSink.BeginStep"/> is told for a decision, so the
+    /// recorder closes that step the way it closes one before any decision and then
+    /// stops its recording, naming the type; a caller that passes nothing keeps the
+    /// old silence.</param>
     internal static PlayerFightObserver Start(
         Player player,
         Func<IReadOnlyDictionary<string, string>> sample,
         IFightSampleSink sink,
         Action fightEnded,
         Action sampled,
-        SettleClock clock)
+        SettleClock clock,
+        Action<GameAction, IReadOnlyDictionary<string, string>, bool>? unmapped = null)
     {
-        var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled, clock);
+        var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled, clock, unmapped);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
@@ -206,6 +219,14 @@ internal sealed class PlayerFightObserver : IDisposable
                     _awaitingPlayerTurn = false;
                     opened = Begin(action, nameof(ActionVerb.UndoEndTurn), new Arguments(Empty), previousFinished);
                     break;
+                default:
+                    // A player-driven action none of the five cases names is a
+                    // stranger to this capture, not the engine's bookkeeping; the
+                    // executor tells the two apart, and a stranger is refused by name
+                    // rather than executed unseen. Sampled the way a decision is, so
+                    // the step still open closes on the state this one began from
+                    if (Watches(action) && _unmapped is { } unmapped) unmapped(action, _sample(), previousFinished);
+                    break;
             }
         }
         catch (Exception ex)
@@ -257,8 +278,19 @@ internal sealed class PlayerFightObserver : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Whether this observer meets <paramref name="action"/> when the executor runs
+    /// it: the player's own, and player-driven as the executor tells it - not a hook,
+    /// not the enemy turn's readiness. The one reading of that, so the seam that sees
+    /// an action requested inside a fight can leave it to the executor's announcement
+    /// knowing this observer will meet it there.
+    /// </summary>
+    internal bool Watches(GameAction action) =>
+        !_ended && action.OwnerId == _player.NetId && ActionQueueSet.IsGameActionPlayerDriven(action);
+
     /// <summary>The five actions a fight is made of, which is the set the switch in
-    /// <see cref="BeforeAction"/> opens steps for.</summary>
+    /// <see cref="BeforeAction"/> opens steps for; its default is what meets any other
+    /// action this observer <see cref="Watches"/>.</summary>
     private static bool IsADecision(GameAction action) =>
         action is PlayCardAction or UsePotionAction or DiscardPotionGameAction
             or EndPlayerTurnAction or UndoEndPlayerTurnAction;
