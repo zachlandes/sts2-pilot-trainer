@@ -105,7 +105,7 @@ public sealed class GeneratedCoverageTests : IDisposable
             $"the replay was {replay.Report.Status}: {string.Join("; ", replay.Report.Diagnostics)}");
         var parity = TraceParity.Compare(capture.Trace, replay.Report.Trace!);
         Assert.True(parity.AtParity, parity.Describe());
-        Assert.Null(parity.OpeningHiddenState);
+        Assert.Empty(parity.OpeningDifferences);
     }
 
     /// <summary>The rows name every point <c>DecisionExcusals</c> credits to this test,

@@ -29,9 +29,13 @@ namespace Sts2PilotTrainer.Replay;
 /// (<see cref="ReplayStep.EndsAFight"/>; the next decision's before-digest is held on
 /// its own). And the opening reading: it is not a decision's reading, no decision is
 /// held to it, and the retail client's first room does its own work between the
-/// recorder's reading of it and the first decision, which only the digest sees. That
-/// one is reported beside the verdict rather than folded into it, so a recording is at
-/// parity by what its decisions reproduce and the opening's difference stays visible.
+/// recorder's reading of it and the first decision - the run's random streams move,
+/// and on an ascension that starts the run damaged the player's health falls - which
+/// the headless replay's opening reading, taken past that room, has already seen.
+/// That reading is reported beside the verdict rather than folded into it, samples
+/// and digest alike, so a recording is at parity by what its decisions reproduce and
+/// the opening's difference stays visible. Nothing is lost by it: whatever the first
+/// room did not change is held at the first decision's own before-reading.
 ///
 /// The first divergence is the answer. A replay that has left the recorded history is
 /// in a different run from there on, and every later difference is a consequence of
@@ -45,7 +49,7 @@ public static class TraceParity
         var replayedSteps = replayed.Steps;
         var decisions = recordedSteps.Count(step => step.Seq >= 0);
         var replayedDecisions = replayedSteps.Count(step => step.Seq >= 0);
-        string? openingHiddenState = null;
+        var openingDifferences = new List<string>();
 
         for (var index = 0; index < recordedSteps.Count; index++)
         {
@@ -54,7 +58,7 @@ public static class TraceParity
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.MissingStep,
-                    ["the replay has no step here; it ended before this decision"]);
+                    ["the replay has no step here; it ended before this decision"], openingDifferences);
             }
 
             var actual = replayedSteps[index];
@@ -62,45 +66,46 @@ public static class TraceParity
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.StepDiffers,
-                    [$"the replay's step here is {Describe(actual)}"]);
+                    [$"the replay's step here is {Describe(actual)}"], openingDifferences);
+            }
+
+            if (expected.Seq < 0)
+            {
+                openingDifferences.AddRange(ReplayTrace.Differences(expected.After, actual.After));
+                if (DigestsDiffer(expected.AfterDigest, actual.AfterDigest))
+                {
+                    openingDifferences.Add($"hidden state: {expected.AfterDigest} -> {actual.AfterDigest}");
+                }
+
+                continue;
             }
 
             if (!ReplayTrace.SameSample(expected.Before, actual.Before))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.BeforeSampleDiffers,
-                    ReplayTrace.Differences(expected.Before, actual.Before));
+                    ReplayTrace.Differences(expected.Before, actual.Before), openingDifferences);
             }
 
             if (!ReplayTrace.SameSample(expected.After, actual.After))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.AfterSampleDiffers,
-                    ReplayTrace.Differences(expected.After, actual.After));
-            }
-
-            if (expected.Seq < 0)
-            {
-                if (DigestsDiffer(expected.AfterDigest, actual.AfterDigest))
-                {
-                    openingHiddenState = $"{expected.AfterDigest} -> {actual.AfterDigest}";
-                }
-
-                continue;
+                    ReplayTrace.Differences(expected.After, actual.After), openingDifferences);
             }
 
             if (DigestsDiffer(expected.BeforeDigest, actual.BeforeDigest))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.HiddenStateDiffersBefore,
-                    [$"before: {expected.BeforeDigest} -> {actual.BeforeDigest}"]);
+                    [$"before: {expected.BeforeDigest} -> {actual.BeforeDigest}"], openingDifferences);
             }
 
             if (!expected.EndsAFight && DigestsDiffer(expected.AfterDigest, actual.AfterDigest))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.HiddenStateDiffersAfter,
-                    [$"after: {expected.AfterDigest} -> {actual.AfterDigest}"]);
+                    [$"after: {expected.AfterDigest} -> {actual.AfterDigest}"], openingDifferences);
             }
         }
 
@@ -109,10 +114,10 @@ public static class TraceParity
             var extra = replayedSteps[recordedSteps.Count];
             return Diverged(
                 decisions, replayedDecisions, extra, ParityDivergenceKind.ExtraStep,
-                ["the recording has no decision here; the replay went on past its last one"]);
+                ["the recording has no decision here; the replay went on past its last one"], openingDifferences);
         }
 
-        return new ParityResult(decisions, replayedDecisions, Divergence: null, openingHiddenState);
+        return new ParityResult(decisions, replayedDecisions, Divergence: null, openingDifferences);
     }
 
     /// <summary>A digest is held only where both sides carry one: a trace written
@@ -123,8 +128,8 @@ public static class TraceParity
 
     private static ParityResult Diverged(
         int decisions, int replayedDecisions, ReplayStep at, ParityDivergenceKind kind,
-        IReadOnlyList<string> differences) =>
-        new(decisions, replayedDecisions, new ParityDivergence(at.Seq, at.Verb, kind, differences), null);
+        IReadOnlyList<string> differences, IReadOnlyList<string> openingDifferences) =>
+        new(decisions, replayedDecisions, new ParityDivergence(at.Seq, at.Verb, kind, differences), openingDifferences);
 
     private static string Describe(ReplayStep step) =>
         $"decision {step.Seq.ToString(CultureInfo.InvariantCulture)} ({step.Verb})";
@@ -134,20 +139,21 @@ public static class TraceParity
 /// <param name="Decisions">How many decisions the recording holds, the opening reading aside.</param>
 /// <param name="ReplayedDecisions">How many the replay took, the opening reading aside.</param>
 /// <param name="Divergence">The first decision at which the replay left the recording, or null at parity.</param>
-/// <param name="OpeningHiddenState">The two opening digests where they differed with the
-/// opening samples equal, as <c>recorded -> replayed</c>; null where they agreed or
-/// where a side carried none. Reported, never counted: see <see cref="TraceParity"/>.</param>
+/// <param name="OpeningDifferences">What differed at the opening reading, each sampled
+/// field as <c>name: recorded -> replayed</c> and the digest as <c>hidden state:
+/// recorded -> replayed</c> where both sides carried one; empty where the two agreed.
+/// Reported, never counted: see <see cref="TraceParity"/>.</param>
 public sealed record ParityResult(
-    int Decisions, int ReplayedDecisions, ParityDivergence? Divergence, string? OpeningHiddenState)
+    int Decisions, int ReplayedDecisions, ParityDivergence? Divergence, IReadOnlyList<string> OpeningDifferences)
 {
     public bool AtParity => Divergence is null;
 
-    /// <summary>The opening's difference as a line for a person, or null where there
+    /// <summary>The opening's differences as a line for a person, or null where there
     /// is none to report.</summary>
-    public string? OpeningNote => OpeningHiddenState is null
+    public string? OpeningNote => OpeningDifferences.Count == 0
         ? null
-        : "opening reading: hidden state differs before any decision; every decision is held from its own " +
-          $"reading ({OpeningHiddenState})";
+        : "opening reading: differs before any decision; every decision is held from its own reading " +
+          $"({string.Join("; ", OpeningDifferences)})";
 
     /// <summary>The verdict as lines for a person: <c>PARITY</c>, or the first
     /// divergence as a decision and what differed there; the opening's note after

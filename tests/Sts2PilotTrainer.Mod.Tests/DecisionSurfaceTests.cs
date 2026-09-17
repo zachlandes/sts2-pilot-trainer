@@ -67,14 +67,19 @@ public sealed class DecisionSurfaceTests
             DecisionSurface.RestOptions());
     }
 
+    /// <summary>The 57 events and the seven ancients an act can roll; Neow is the
+    /// one ancient left out, because its decision is <c>ChooseNeowBlessing</c> and
+    /// carries no event id.</summary>
     [GameFact]
-    public void TheEventsAreEveryEventTheModelDatabaseShips()
+    public void TheEventsAreEveryEventAndAncientTheModelDatabaseShips()
     {
         var events = DecisionSurface.Events();
 
-        Assert.Equal(57, events.Count);
+        Assert.Equal(64, events.Count);
         Assert.All(events, id => Assert.StartsWith("EVENT.", id, StringComparison.Ordinal));
         Assert.Contains("EVENT.WATERLOGGED_SCRIPTORIUM", events);
+        Assert.Contains("EVENT.OROBAS", events);
+        Assert.DoesNotContain("EVENT.NEOW", events);
         Assert.Equal(events.Order(StringComparer.Ordinal), events);
     }
 
@@ -105,7 +110,7 @@ public sealed class DecisionSurfaceTests
     {
         var all = DecisionSurface.All();
 
-        Assert.Equal(131, all.Count);
+        Assert.Equal(138, all.Count);
         Assert.Equal(
             DecisionKinds.All.SelectMany(kind => DecisionSurface.Identities(kind).Select(identity => new DecisionPoint(kind, identity))),
             all);

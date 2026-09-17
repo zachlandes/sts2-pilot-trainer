@@ -194,16 +194,24 @@ public static class DecisionCoverage
                 CoverageState.OutsideTheDenominator, null))
             .ToList();
 
-        // An excusal is stale two ways: a crediting recording has reached its point, or
-        // no walk produces the point any more. Either is named so it comes out
+        // An excusal naming a point no walk produces is stale on any corpus and comes
+        // out. One a crediting recording reached is a fact about this corpus and not
+        // about the build: over the committed corpus it is the excusal's own sentence
+        // gone false, which the merge gate holds to zero; over a wider corpus it is
+        // progress, and named so rather than failed
         var staleExcusals = excusals.Keys
-            .Where(point => credited.GetValueOrDefault(point) > 0 || !known.Contains(point))
+            .Where(point => !known.Contains(point))
+            .OrderBy(point => Array.IndexOf(DecisionKinds.All, point.Kind))
+            .ThenBy(point => point.Identity, StringComparer.Ordinal)
+            .ToList();
+        var excusedAndReached = excusals.Keys
+            .Where(point => known.Contains(point) && credited.GetValueOrDefault(point) > 0)
             .OrderBy(point => Array.IndexOf(DecisionKinds.All, point.Kind))
             .ThenBy(point => point.Identity, StringComparer.Ordinal)
             .ToList();
 
         return new CoverageReport(
-            rows, outside, staleExcusals,
+            rows, outside, staleExcusals, excusedAndReached,
             recordings.Where(recording => !recording.Credits).ToList(),
             unreadable ?? [],
             recordings.Count + (unreadable?.Count ?? 0));
@@ -258,7 +266,9 @@ public sealed record CoverageRow(
 /// <summary>What <see cref="DecisionCoverage.Over"/> found.</summary>
 /// <param name="Rows">One per point of the denominator, in the denominator's order.</param>
 /// <param name="OutsideTheDenominator">Points a recording reached that no walk produced.</param>
-/// <param name="StaleExcusals">Excusals to take out: a crediting recording has reached the point, or no walk produces it.</param>
+/// <param name="StaleExcusals">Excusals to take out: no walk on this build produces the point.</param>
+/// <param name="ExcusedAndReached">Excused points a crediting recording of this corpus reached: over the
+/// committed corpus, an excusal whose sentence has gone false; over a wider one, progress.</param>
 /// <param name="Unverified">The recordings projected and credited nothing, each with the recorder's own reason.</param>
 /// <param name="Unreadable">The manifests this build could not read, each with the parser's words.</param>
 /// <param name="Recordings">How many recordings the corpus held, unverified and unreadable included.</param>
@@ -266,6 +276,7 @@ public sealed record CoverageReport(
     IReadOnlyList<CoverageRow> Rows,
     IReadOnlyList<CoverageRow> OutsideTheDenominator,
     IReadOnlyList<DecisionPoint> StaleExcusals,
+    IReadOnlyList<DecisionPoint> ExcusedAndReached,
     IReadOnlyList<CoveredRecording> Unverified,
     IReadOnlyList<UnreadableRecording> Unreadable,
     int Recordings)
@@ -303,6 +314,11 @@ public sealed record CoverageReport(
         if (StaleExcusals.Count > 0)
         {
             yield return $"stale excusals: {n(StaleExcusals.Count)}";
+        }
+
+        if (ExcusedAndReached.Count > 0)
+        {
+            yield return $"excused and reached by this corpus: {n(ExcusedAndReached.Count)}";
         }
     }
 }

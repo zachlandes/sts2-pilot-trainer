@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Rewards;
@@ -148,11 +149,28 @@ public static class DecisionSurface
             .Order(StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>Every event this build ships, by the id a recording names it with.</summary>
+    /// <summary>
+    /// Every event this build ships, by the id a recording names it with: the events
+    /// the acts and the shared pool deal, and the ancients each act rolls one of, which
+    /// the model database keeps apart from its events and a recording does not - an
+    /// ancient's page is answered through the same <c>ChooseEventOption</c>, naming
+    /// the ancient's id. The first release measurement found Orobas in a store
+    /// recording and in no walk, which is how the ancients came to be here. Neow is
+    /// the one ancient left out, by name: every Neow decision is the recorder's
+    /// <c>ChooseNeowBlessing</c>, a verb of its own carrying no event id, so the point
+    /// it is counted under is that verb and an event point for it would be one no
+    /// recording can ever project. The two lists are concatenated and not
+    /// de-duplicated: an event and an ancient shipped under one id on a later build
+    /// are two points with one name, which fails <c>DecisionSurfaceTests</c> by count
+    /// rather than being folded into one and thinning the denominator silently.
+    /// </summary>
     public static IReadOnlyList<string> Events()
     {
         EngineHost.Start();
-        return ModelDb.AllEvents.Select(model => model.Id.ToString()).Order(StringComparer.Ordinal).ToList();
+        return ModelDb.AllEvents.Select(model => model.Id.ToString())
+            .Concat(ModelDb.AllAncients.Where(model => model is not Neow).Select(model => model.Id.ToString()))
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>Every card or relic prompt entry point, by its qualified signature.</summary>

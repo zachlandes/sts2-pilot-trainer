@@ -491,7 +491,7 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
     {
         var parity = TraceParity.Compare(captured, replayed);
         Assert.True(parity.AtParity, parity.Describe());
-        Assert.Null(parity.OpeningHiddenState);
+        Assert.Empty(parity.OpeningDifferences);
     }
 
     // ── The first in-fight play, for the settle-clock seam ───────────────────────
