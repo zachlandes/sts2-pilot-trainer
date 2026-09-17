@@ -28,9 +28,10 @@ public sealed record WalkPolicy
     /// it takes today's rule.</summary>
     public string? RestOption { get; init; }
 
-    /// <summary>The shelf to buy from first wherever the shop stocks it and the run can
-    /// afford it, one of the format's shop kinds; the rest of the purse is spent by
-    /// today's cheapest-first rule.</summary>
+    /// <summary>The shelf to buy from before any other, one of the format's shop kinds:
+    /// the walk buys everything it can afford on that shelf, cheapest first, and only
+    /// then spends what is left of the purse by today's cheapest-first rule across the
+    /// rest.</summary>
     public string? ShopKind { get; init; }
 
     /// <summary>Drink the first potion the belt holds that can be drunk outside a

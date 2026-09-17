@@ -545,7 +545,8 @@ public static partial class SyntheticFixtureGenerator
             // A potion nobody can carry is bought and immediately lost, which would be
             // a purchase this history could not explain.
             .Where(candidate => candidate.Kind != ShopPurchaseKinds.Potion || player.HasOpenPotionSlots)
-            // The shelf the policy asks for first, then the purse's own order
+            // Everything affordable on the shelf the policy asks for before any other
+            // shelf, since the sort is redone per purchase; then the purse's own order
             .OrderBy(candidate => candidate.Kind == _policy.ShopKind ? 0 : 1)
             .ThenBy(candidate => candidate.entry.Cost)
             .ThenBy(candidate => candidate.Kind, StringComparer.Ordinal)

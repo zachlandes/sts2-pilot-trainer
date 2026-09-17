@@ -3038,15 +3038,16 @@ internal sealed class RunRecorder : IDisposable
                 // with no index, and ChestRelicSkipped has announced it already
                 if (index is null) return;
 
+                var position = index.Value;
                 var relics = __instance.CurrentRelics;
-                if (index is not { } position || relics is null || position < 0 || position >= relics.Count)
+                if (relics is null || position < 0 || position >= relics.Count)
                 {
                     StopAtDecision(MetAtMember(
                         typeof(TreasureRoomRelicSynchronizer), nameof(TreasureRoomRelicSynchronizer.PickRelicLocally),
                         null,
                         "The position is not one this chest offers, so the recorder cannot say which relic was " +
                         "taken.",
-                        ("option_index", index is { } picked ? Number(picked) : "none"),
+                        ("option_index", Number(position)),
                         ("offered", relics is null ? "none" : Number(relics.Count))));
                     return;
                 }

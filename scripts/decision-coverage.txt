@@ -26,7 +26,7 @@ ChooseRestSiteOption
 UsePotion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 DiscardPotion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 ShopPurchase
-ProceedToNextAct  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+ProceedToNextAct  excused: reached by HeadlessGameplayCaptureTests' won run, recorded through the real recorder and replayed on every merge; the recording is generated rather than committed
 RevealCrystalSphereCell  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 
 # reward-kind (7)

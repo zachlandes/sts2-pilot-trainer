@@ -64,7 +64,6 @@ public sealed class GeneratedCoverageTests : IDisposable
     [
         ["decline the first card reward", "verb  TakeCardRewardAlternative", "card-reward-alternative  Skip"],
         ["rest HEAL", "rest-option  HEAL", ""],
-        ["rest SMITH", "rest-option  SMITH", ""],
         ["shop relic", "shop-kind  relic", ""],
         ["shop potion", "shop-kind  potion", ""],
         ["shop colorless_card", "shop-kind  colorless_card", ""],
@@ -105,25 +104,26 @@ public sealed class GeneratedCoverageTests : IDisposable
         Assert.Null(parity.OpeningHiddenState);
     }
 
-    /// <summary>The rows name every point <c>DecisionExcusals</c> credits to this test.</summary>
+    /// <summary>The rows name every point <c>DecisionExcusals</c> credits to this test,
+    /// and nothing else: a row for a point the committed corpus already reaches is a
+    /// whole recorded act on every merge for nothing.</summary>
     [GameFact]
-    public void EveryPointExcusedOntoThisTestHasARow()
+    public void TheRowsAreExactlyThePointsExcusedOntoThisTest()
     {
         var rows = Rows().SelectMany(row => new[] { (string)row[1], (string)row[2] }).Where(point => point.Length > 0).ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All
             .Where(excusal => excusal.Value.Contains(nameof(GeneratedCoverageTests), StringComparison.Ordinal))
             .Select(excusal => excusal.Key.ToString())
-            .ToList();
+            .ToHashSet(StringComparer.Ordinal);
 
         Assert.NotEmpty(credited);
-        Assert.All(credited, point => Assert.Contains(point, rows));
+        Assert.Equal(credited.Order(StringComparer.Ordinal), rows.Order(StringComparer.Ordinal));
     }
 
     private static WalkPolicy PolicyFor(string row) => row switch
     {
         "decline the first card reward" => new WalkPolicy { DeclineTheFirstCardReward = true },
         "rest HEAL" => new WalkPolicy { RestOption = "HEAL" },
-        "rest SMITH" => new WalkPolicy { RestOption = "SMITH" },
         "shop relic" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Relic },
         "shop potion" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Potion },
         "shop colorless_card" => new WalkPolicy { ShopKind = ShopPurchaseKinds.ColorlessCard },

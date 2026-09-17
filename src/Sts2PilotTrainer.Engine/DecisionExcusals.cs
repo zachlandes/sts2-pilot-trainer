@@ -33,6 +33,14 @@ public static class DecisionExcusals
         "reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on " +
         "every merge; the recording is generated rather than committed";
 
+    /// <summary>The act's transition is reached by the won-run proof rather than by a
+    /// row of its own: <c>HeadlessGameplayCaptureTests</c> plays a whole run through
+    /// the real recorder to the Architect's PROCEED, asserts the recording holds the
+    /// verb, and replays it, on every merge.</summary>
+    private const string GeneratedByTheWonRunProof =
+        "reached by HeadlessGameplayCaptureTests' won run, recorded through the real recorder and replayed on " +
+        "every merge; the recording is generated rather than committed";
+
     public static IReadOnlyDictionary<DecisionPoint, string> All { get; } = Build();
 
     private static IReadOnlyDictionary<DecisionPoint, string> Build()
@@ -54,13 +62,15 @@ public static class DecisionExcusals
             excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = Generated;
         }
 
+        excusals[new DecisionPoint(DecisionKinds.Verb, "ProceedToNextAct")] = GeneratedByTheWonRunProof;
+
         // The undo needs the window the retail client leaves open before the enemy
         // turn begins, which this process runs inside the end-turn decision; the
         // three screens are ones the headless host has no screen for
         foreach (var verb in new[]
                  {
                      "UndoEndTurn", "SelectBundleFromScreen", "SelectRelicFromScreen", "ConfirmCardScreen",
-                     "ProceedToNextAct", "RevealCrystalSphereCell",
+                     "RevealCrystalSphereCell",
                  })
         {
             excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = NotYetRecorded;
