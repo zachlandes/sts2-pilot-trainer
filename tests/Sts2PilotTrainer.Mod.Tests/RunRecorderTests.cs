@@ -309,9 +309,14 @@ public sealed class RunRecorderTests
             "the list in the same change and look at every fixture that names a progression");
 
     /// <summary>
-    /// And the progression the fixtures name is the game's own default one, so the
-    /// record above is not just a file that changed: the whole-act walk, the headless
-    /// runs and the recorder harnesses all start their run on <see cref="RecordedActWalk.Acts"/>.
+    /// And <see cref="RecordedActWalk.Acts"/> alone is the game's own default progression.
+    /// The record above is what flags an act-topology change for every other fixture:
+    /// when it diffs, the progression literals in SyntheticFixtureGenerator and its
+    /// WholeAct and ScreenAtBoundary partials, RetailBranchProbe, HeadlessRuns,
+    /// HeadlessGameplayCaptureTests, RecorderContinueTests, RecorderTimingTests,
+    /// RecorderSeamDefaultTests, CardPromptCaptureTests and PlayerFightObserverTests
+    /// must be updated by hand too, because they do not yet share one owner and
+    /// StartRun accepts any shipped act list.
     /// </summary>
     [GameFact]
     public void TheFixturesProgressionIsTheGamesDefaultOne() =>
