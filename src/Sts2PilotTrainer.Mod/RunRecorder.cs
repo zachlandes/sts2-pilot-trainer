@@ -353,7 +353,7 @@ internal sealed class RunRecorder : IDisposable
             // than one still building the room it just entered.
             if (await Settle(
                     null,
-                    ticket: 0,
+                    handedOverTicket: null,
                     () => Active is not null || ProfileWriteBarrier.IsActive
                         ? "another recording or a trainer run took this game first."
                         : RunWentAway()) is { } unsettled)
@@ -629,9 +629,13 @@ internal sealed class RunRecorder : IDisposable
     /// prefix of the member that makes it, which is where the state it begins from
     /// is still the state in front of the player.</summary>
     internal static void Announce(
-        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null)
+        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null,
+        bool settlesOnceHandedToThePlayer = false)
     {
-        if (ReadBefore(verb.ToString()) is { } before) AnnounceByName(verb.ToString(), args, engineWork, before);
+        if (ReadBefore(verb.ToString()) is { } before)
+        {
+            AnnounceByName(verb.ToString(), args, engineWork, before, settlesOnceHandedToThePlayer);
+        }
     }
 
     /// <summary>
@@ -722,14 +726,16 @@ internal sealed class RunRecorder : IDisposable
     /// card that was played; the state is read at the other end of the settle.
     /// </summary>
     private static void AnnounceByName(
-        string verb, IReadOnlyDictionary<string, string> args, Task? engineWork, TakenReading before)
+        string verb, IReadOnlyDictionary<string, string> args, Task? engineWork, TakenReading before,
+        bool settlesOnceHandedToThePlayer = false)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
         lock (Gate)
         {
-            recorder._pending.Enqueue(new PendingDecision(verb, args, engineWork, before));
+            recorder._pending.Enqueue(new PendingDecision(
+                verb, args, engineWork, before, SettlesOnceHandedToThePlayer: settlesOnceHandedToThePlayer));
             if (recorder._pumping) return;
             recorder._pumping = true;
         }
@@ -1002,12 +1008,14 @@ internal sealed class RunRecorder : IDisposable
     /// and a sentence written for one of them would be false in the other.
     ///
     /// The engine's own work is waited for as well as its queue, where a decision
-    /// handed one over, with one exception: work that has handed the run to the
-    /// player. An event option that offers rewards awaits the set until the player has
-    /// dealt with it, and those are the player's next decisions; the option has settled
-    /// once the set is on offer, and <paramref name="handedToThePlayer"/> is how the
-    /// caller says so. It is asked only where the work is still open, so a decision
-    /// whose work finishes on its own is read once it has.
+    /// handed one over, with one exception a caller opts into per decision: work that
+    /// has handed the run to the player. An event option that offers rewards awaits
+    /// the set until the player has dealt with it, and those are the player's next
+    /// decisions; the option has settled once the set is on offer, and
+    /// <paramref name="handedToThePlayer"/> is how the caller says so. It is asked only
+    /// where the work is still open, so a decision whose work finishes on its own is
+    /// read once it has; a caller that passes none waits for the work to finish, and
+    /// a decision whose own work begins a set and awaits it runs the budget out.
     ///
     /// The count, the stop, the poll and the budget arrive as arguments for the same
     /// reason <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule
@@ -1203,7 +1211,7 @@ internal sealed class RunRecorder : IDisposable
                     ? null
                     : await Settle(
                         next.EngineWork,
-                        next.Before.Ticket,
+                        next.SettlesOnceHandedToThePlayer ? next.Before.Ticket : null,
                         () => _disposed || _finished
                             ? "The recording ended before this decision could be read."
                             : RunWentAway());
@@ -1319,13 +1327,16 @@ internal sealed class RunRecorder : IDisposable
     /// is a queue that drains - and a reading taken between them would be of a run
     /// halfway through a decision.
     /// </summary>
+    /// <param name="handedOverTicket">The ticket of a decision whose work is finished
+    /// once the engine has handed the run to the player inside it, or null for every
+    /// other decision, whose work is waited for until it finishes.</param>
     /// <param name="stopped">Why there is no longer a recording to settle for, or null
     /// while there still is. <see cref="WaitForTheEngine"/> says why it is a sentence.</param>
     /// <returns>Null once the engine has settled, or the sentence saying what it was
     /// still waiting for.</returns>
-    private static Task<string?> Settle(Task? engineWork, long ticket, Func<string?> stopped) =>
+    private static Task<string?> Settle(Task? engineWork, long? handedOverTicket, Func<string?> stopped) =>
         WaitForTheEngine(
-            () => CardScreensUp.Count,
+            () => CardScreensUp.Count + (BundleScreen.Open is null ? 0 : 1) + (RelicScreen.Open is null ? 0 : 1),
             stopped,
             engineWork,
             // The queue is asked twice with a tick between, because a decision that has
@@ -1345,7 +1356,7 @@ internal sealed class RunRecorder : IDisposable
             Clock.Poll,
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
                      "decision left.",
-            () => HandedToThePlayerDuring(ticket));
+            handedOverTicket is { } ticket ? () => HandedToThePlayerDuring(ticket) : null);
 
     /// <summary>
     /// Whether the engine has nothing in flight right now: the executor idle, the
@@ -1365,20 +1376,24 @@ internal sealed class RunRecorder : IDisposable
     /// decision holding <paramref name="ticket"/>: a rewards set on offer, or the
     /// Crystal Sphere's screen up, begun while that decision was the one executing.
     ///
-    /// The two places an event option's task waits on the player rather than on the
-    /// engine, each read where the engine begins the wait. A card prompt is the third
-    /// and is not here, because the settle stands down for one on its own count and
-    /// the option's task finishes once the prompt is answered - the picks are the
-    /// option's own answer, recorded after it, rather than decisions of the run. Work
-    /// waiting on anything else runs the settle's budget out and refuses the decision,
-    /// naming it, which is what a screen this build adds and nothing here watches
-    /// should do.
+    /// Asked for an event option's work and for nothing else, which
+    /// <see cref="PendingDecision.SettlesOnceHandedToThePlayer"/> carries: the two
+    /// places that task waits on the player rather than on the engine, each read where
+    /// the engine begins the wait. A card prompt, the bundle screen and the relic
+    /// screen are not here, because the settle stands down for each on its own count
+    /// and the option's task finishes once it is answered - the picks are the option's
+    /// own answer, recorded after it, rather than decisions of the run. Work waiting on
+    /// anything else runs the settle's budget out and refuses the decision, naming it,
+    /// which is what a screen this build adds and nothing here watches should do.
     ///
     /// Asked of the decision and not of the run, because a set on offer is the usual
     /// state of a loot screen: a reward claimed off it has work of its own - the gold
     /// flying, the card landing in the deck - and that work is waited for as before,
-    /// with the set the claim is answering still open beside it. Only a wait the
-    /// decision itself began is the decision's to stop at.
+    /// with the set the claim is answering still open beside it. Every other decision
+    /// waits for its own task whatever it began: a purchase or a rest whose own work
+    /// offers a set and awaits it is a decision the driver replays by awaiting the
+    /// same task, so a recording that read it as settled would replay by blocking,
+    /// and it is refused instead when the task does not finish.
     /// </summary>
     private static bool HandedToThePlayerDuring(long ticket) =>
         RewardsOffered.OnOfferSince(ticket) || CrystalSphereOpened.OpenSince(ticket);
@@ -2481,10 +2496,14 @@ internal sealed class RunRecorder : IDisposable
     /// its types before this mod can say where that sibling is. The names are parsed
     /// back at the one place that records them.
     /// </summary>
+    /// <param name="SettlesOnceHandedToThePlayer">Whether the decision's work is read as
+    /// finished once the engine has handed the run to the player inside it, which
+    /// <see cref="HandedToThePlayerDuring"/> reads and only an event option's work
+    /// says; every other decision waits for its own task to finish.</param>
     private sealed record PendingDecision(
         string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
         TakenReading Before, TakenReading? Reading = null, UnmappedFacts? Unmapped = null,
-        bool FightEnd = false);
+        bool FightEnd = false, bool SettlesOnceHandedToThePlayer = false);
 
     /// <summary>
     /// A decision the recorder saw and could not name, as the game named it.
@@ -2777,8 +2796,8 @@ internal sealed class RunRecorder : IDisposable
     /// streams did not. The work announced here is a stand-in the engine's own task
     /// completes, handed over by <see cref="OptionChosen"/>; the settle then waits for
     /// the option's work to finish, or for the engine to hand the run to the player
-    /// inside it (<see cref="HandedToThePlayerDuring"/>), and the reading is of the
-    /// state the replay's own drain reaches.
+    /// inside it (<see cref="HandedToThePlayerDuring"/>, which this decision alone opts
+    /// into), and the reading is of the state the replay's own drain reaches.
     ///
     /// The announcement stays in the prefix because the Architect's PROCEED ends the
     /// run inside this very call: <see cref="Finish"/> reads the one decision still
@@ -2833,7 +2852,8 @@ internal sealed class RunRecorder : IDisposable
                     model is Neow
                         ? Args(("option_index", Number(index)), ("option_key", key))
                         : Args(("event_id", model.Id.ToString()), ("option_index", Number(index)), ("option_key", key)),
-                    work.Task);
+                    work.Task,
+                    settlesOnceHandedToThePlayer: true);
             }
             catch (Exception ex)
             {
