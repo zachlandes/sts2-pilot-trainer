@@ -58,7 +58,7 @@ public static class TraceParity
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.MissingStep,
-                    ["the replay has no step here; it ended before this decision"]);
+                    ["the replay has no step here; it ended before this decision"], openingDifferences);
             }
 
             var actual = replayedSteps[index];
@@ -66,7 +66,7 @@ public static class TraceParity
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.StepDiffers,
-                    [$"the replay's step here is {Describe(actual)}"]);
+                    [$"the replay's step here is {Describe(actual)}"], openingDifferences);
             }
 
             if (expected.Seq < 0)
@@ -84,28 +84,28 @@ public static class TraceParity
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.BeforeSampleDiffers,
-                    ReplayTrace.Differences(expected.Before, actual.Before));
+                    ReplayTrace.Differences(expected.Before, actual.Before), openingDifferences);
             }
 
             if (!ReplayTrace.SameSample(expected.After, actual.After))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.AfterSampleDiffers,
-                    ReplayTrace.Differences(expected.After, actual.After));
+                    ReplayTrace.Differences(expected.After, actual.After), openingDifferences);
             }
 
             if (DigestsDiffer(expected.BeforeDigest, actual.BeforeDigest))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.HiddenStateDiffersBefore,
-                    [$"before: {expected.BeforeDigest} -> {actual.BeforeDigest}"]);
+                    [$"before: {expected.BeforeDigest} -> {actual.BeforeDigest}"], openingDifferences);
             }
 
             if (!expected.EndsAFight && DigestsDiffer(expected.AfterDigest, actual.AfterDigest))
             {
                 return Diverged(
                     decisions, replayedDecisions, expected, ParityDivergenceKind.HiddenStateDiffersAfter,
-                    [$"after: {expected.AfterDigest} -> {actual.AfterDigest}"]);
+                    [$"after: {expected.AfterDigest} -> {actual.AfterDigest}"], openingDifferences);
             }
         }
 
@@ -114,7 +114,7 @@ public static class TraceParity
             var extra = replayedSteps[recordedSteps.Count];
             return Diverged(
                 decisions, replayedDecisions, extra, ParityDivergenceKind.ExtraStep,
-                ["the recording has no decision here; the replay went on past its last one"]);
+                ["the recording has no decision here; the replay went on past its last one"], openingDifferences);
         }
 
         return new ParityResult(decisions, replayedDecisions, Divergence: null, openingDifferences);
@@ -128,8 +128,8 @@ public static class TraceParity
 
     private static ParityResult Diverged(
         int decisions, int replayedDecisions, ReplayStep at, ParityDivergenceKind kind,
-        IReadOnlyList<string> differences) =>
-        new(decisions, replayedDecisions, new ParityDivergence(at.Seq, at.Verb, kind, differences), []);
+        IReadOnlyList<string> differences, IReadOnlyList<string> openingDifferences) =>
+        new(decisions, replayedDecisions, new ParityDivergence(at.Seq, at.Verb, kind, differences), openingDifferences);
 
     private static string Describe(ReplayStep step) =>
         $"decision {step.Seq.ToString(CultureInfo.InvariantCulture)} ({step.Verb})";

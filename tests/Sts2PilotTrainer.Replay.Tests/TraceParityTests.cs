@@ -224,6 +224,28 @@ public sealed class TraceParityTests
         Assert.Equal(ParityDivergenceKind.BeforeSampleDiffers, divergence.Kind);
     }
 
+    /// <summary>The opening's differences are carried on a diverged result as well,
+    /// so the note stands beside either verdict: a recording whose opening differs
+    /// and whose first decision diverges reports both, and the artifact loses
+    /// neither.</summary>
+    [Fact]
+    public void TheOpeningReadingIsReportedBesideADivergenceToo()
+    {
+        var replayed = With(Recorded(), seq: -1, step => step with { After = Changed(step.After, "player.hp", "1") });
+        replayed = With(replayed, seq: 0, step => step with { Before = Changed(step.Before, "player.hp", "1") });
+
+        var result = TraceParity.Compare(Recorded(), replayed);
+
+        Assert.False(result.AtParity);
+        Assert.Equal(0, result.Divergence!.Seq);
+        Assert.Equal(["player.hp: 60 -> 1"], result.OpeningDifferences);
+        Assert.Equal(
+            "decision 0 (ChooseNeowBlessing) before: player.hp: 60 -> 1\n" +
+            "opening reading: differs before any decision; every decision is held from its own reading " +
+            "(player.hp: 60 -> 1)",
+            result.Describe());
+    }
+
     /// <summary>A journal reads back as the trace its capture kept, digests and all,
     /// through one conversion: what the CLI compares is what the test compared.</summary>
     [Fact]
