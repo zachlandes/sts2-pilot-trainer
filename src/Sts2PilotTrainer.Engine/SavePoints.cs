@@ -60,17 +60,11 @@ internal static class SavePoints
 
     /// <summary>
     /// Every member whose own body calls the given <see cref="SaveRunOverloads"/> member,
-    /// read by its declared name: an async method's compiler-generated state machine
-    /// resolves back to the method that declared it, so a caller reads the way a person
-    /// would name it.
+    /// read through <see cref="ChoiceEntryPoints.DeclaredCallersOf"/> so it reads the way
+    /// a person would name it.
     /// </summary>
     internal static IReadOnlyList<MethodBase> CallersOf(MethodBase saveRun) =>
-        ChoiceEntryPoints.MethodsNaming(saveRun)
-            .Select(ChoiceEntryPoints.DeclaredMember)
-            .Distinct()
-            .OrderBy(method => method.DeclaringType!.FullName, StringComparer.Ordinal)
-            .ThenBy(method => method.Name, StringComparer.Ordinal)
-            .ToList();
+        ChoiceEntryPoints.DeclaredCallersOf(saveRun);
 
     private static string Signature(MethodInfo method) =>
         $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.ParameterType.Name))})";

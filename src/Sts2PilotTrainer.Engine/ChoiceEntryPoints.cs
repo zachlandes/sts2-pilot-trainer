@@ -272,6 +272,21 @@ internal static class ChoiceEntryPoints
     }
 
     /// <summary>
+    /// Every member whose own body names <paramref name="callee"/>, read by its declared
+    /// name: an async method's compiler-generated state machine resolves back to the
+    /// method that declared it, so a caller reads the way a person would name it. What
+    /// a committed record lists under "members that call" - <see cref="SavePoints"/>
+    /// reads its callers here.
+    /// </summary>
+    internal static IReadOnlyList<MethodBase> DeclaredCallersOf(MethodBase callee) =>
+        MethodsNaming(callee)
+            .Select(DeclaredMember)
+            .Distinct()
+            .OrderBy(method => method.DeclaringType!.FullName, StringComparer.Ordinal)
+            .ThenBy(method => method.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
     /// Every method or constructor in <paramref name="assembly"/> whose body constructs
     /// <paramref name="constructed"/>, read off the raw IL: every spelling C# has for a
     /// construction - <c>new T(...)</c>, target-typed <c>new(...)</c>, a collection
