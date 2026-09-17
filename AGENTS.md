@@ -52,6 +52,15 @@ timed-out session.
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.
 
+**`dotnet format` needs `./scripts/bootstrap.sh` first too, for the same reason as `dotnet test`.**
+Run bare against a tree with no `build/lib`, it silently analyses a broken
+compilation - Engine, Mod and Cli fail to resolve the game's own types - and
+reports hundreds of spurious errors that look like formatting violations but
+are not.
+`.no-mistakes.yaml`'s `format` command already bootstraps first; run it that
+way; a bare `dotnet format sts2-pilot-trainer.sln --verify-no-changes` is not
+a valid reproduction of a formatting failure.
+
 ## Conventions
 
 **The game is a read-only input.** `scripts/bootstrap.sh` copies the player's
