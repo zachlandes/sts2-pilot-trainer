@@ -1,0 +1,426 @@
+# Every seam a decision reaches the game through, at the game hook the producing
+# content runs in, with the models that reach it: walked off the game assembly by
+# DecisionSurface and held to this file by DecisionSurfaceTests. A relic carries what
+# deals it and an event which acts reach it, so a seed hunter knows what to look for.
+# The walk follows a model's own code 6 calls deep; '?' is a seam reached from no hook the model overrides. Regenerate with
+#   ./scripts/arbiter coverage --corpus manifests --update
+
+# models walked: 1613; seams produced: 77; producer edges: 256
+
+card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained  [1]
+    RELIC.SCROLL_BOXES  dealt by neow
+
+card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ AbstractModel.BeforeHandDraw  [1]
+    RELIC.TOOLBOX  dealt by shop
+
+card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay  [4]
+    CARD.ABUNDANCE
+    CARD.DISCOVERY
+    CARD.QUASAR
+    CARD.SPLASH
+
+card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ MonsterModel.GenerateMoveStateMachine  [1]
+    MONSTER.KNOWLEDGE_DEMON
+
+card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ PotionModel.OnUse  [4]
+    POTION.ATTACK_POTION
+    POTION.COLORLESS_POTION
+    POTION.POWER_POTION
+    POTION.SKILL_POTION
+
+card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ RelicModel.AfterObtained  [3]
+    RELIC.HEFTY_TABLET  dealt by neow
+    RELIC.LEAD_PAPERWEIGHT  dealt by neow
+    RELIC.MASSIVE_SCROLL  dealt by neow
+
+card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.AfterShuffle  [1]
+    POWER.STRATAGEM_POWER
+
+card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.BeforeHandDraw  [1]
+    POWER.FOREGONE_CONCLUSION_POWER
+
+card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ CardModel.OnPlay  [10]
+    CARD.CHARGE
+    CARD.CLEANSE
+    CARD.COSMIC_INDIFFERENCE
+    CARD.DREDGE
+    CARD.GRAVEBLAST
+    CARD.HEADBUTT
+    CARD.HOLOGRAM
+    CARD.NEOWS_FURY
+    CARD.SEANCE
+    CARD.WISH
+
+card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ PotionModel.OnUse  [2]
+    POTION.DROPLET_OF_PRECOGNITION
+    POTION.LIQUID_MEMORIES
+
+card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter) @ CardModel.OnPlay  [4]
+    CARD.SECRET_TECHNIQUE
+    CARD.SECRET_WEAPON
+    CARD.SEEKER_STRIKE
+    CARD.TUTOR
+
+card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions  [1]
+    EVENT.SAPPHIRE_SEED  reached in ACT.OVERGROWTH
+
+card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ RelicModel.AfterObtained  [1]
+    RELIC.ROYAL_STAMP  dealt by shop
+
+card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions  [2]
+    EVENT.SELF_HELP_BOOK  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.SPIRALING_WHIRLPOOL  reached in ACT.UNDERDOCKS
+
+card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions  [6]
+    EVENT.FIELD_OF_MAN_SIZED_HOLES  reached in ACT.HIVE
+    EVENT.GRAVE_OF_THE_FORGOTTEN  reached in ACT.GLORY
+    EVENT.STONE_OF_ALL_TIME  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.SYMBIOTE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WATERLOGGED_SCRIPTORIUM  reached in ACT.UNDERDOCKS
+    EVENT.WOOD_CARVINGS  reached in ACT.OVERGROWTH
+
+card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, prefs) @ RelicModel.AfterObtained  [6]
+    RELIC.ELECTRIC_SHRYMP  dealt by ancient EVENT.OROBAS
+    RELIC.GNARLED_HAMMER  dealt by shop
+    RELIC.KIFUDA  dealt by shop
+    RELIC.PAELS_GROWTH  dealt by ancient EVENT.PAEL
+    RELIC.PUNCH_DAGGER  dealt by shop
+    RELIC.TRI_BOOMERANG  dealt by ancient EVENT.TANX
+
+card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ AbstractModel.AfterRoomEntered  [1]
+    RELIC.LORDS_PARASOL  dealt by ancient EVENT.VAKUU
+
+card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ EventModel.GenerateInitialOptions  [6]
+    EVENT.AMALGAMATOR  reached in ACT.HIVE
+    EVENT.DOORS_OF_LIGHT_AND_DARK  reached in ACT.UNDERDOCKS
+    EVENT.FIELD_OF_MAN_SIZED_HOLES  reached in ACT.HIVE
+    EVENT.LUMINOUS_CHOIR  reached in ACT.OVERGROWTH
+    EVENT.WELLSPRING  reached in ACT.OVERGROWTH
+    EVENT.ZEN_WEAVER  reached in ACT.HIVE
+
+card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ RelicModel.AfterObtained  [6]
+    RELIC.BIIIG_HUG  dealt by ancient EVENT.TEZCATARA
+    RELIC.EMPTY_CAGE  dealt by ancient EVENT.DARV
+    RELIC.PAELS_TOOTH  dealt by ancient EVENT.PAEL
+    RELIC.PRECARIOUS_SHEARS  dealt by neow
+    RELIC.PRECISE_SCISSORS  dealt by neow
+    RELIC.PRESERVED_FOG  dealt by ancient EVENT.VAKUU
+
+card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars  [1]
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
+
+card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions  [5]
+    EVENT.AROMA_OF_CHAOS  reached in ACT.OVERGROWTH
+    EVENT.MORPHIC_GROVE  reached in ACT.OVERGROWTH
+    EVENT.SYMBIOTE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TRIAL  reached in ACT.GLORY
+    EVENT.WHISPERING_HOLLOW  reached in ACT.OVERGROWTH
+
+card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ RelicModel.AfterObtained  [3]
+    RELIC.ASTROLABE  dealt by ancient EVENT.DARV
+    RELIC.CLAWS  dealt by ancient EVENT.TANX
+    RELIC.NEW_LEAF  dealt by neow
+
+card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ EventModel.GenerateInitialOptions  [4]
+    EVENT.AROMA_OF_CHAOS  reached in ACT.OVERGROWTH
+    EVENT.SAPPHIRE_SEED  reached in ACT.OVERGROWTH
+    EVENT.SPIRIT_GRAFTER  reached in ACT.HIVE
+    EVENT.TRIAL  reached in ACT.GLORY
+
+card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ RelicModel.AfterObtained  [2]
+    RELIC.POMANDER  dealt by neow
+    RELIC.YUMMY_COOKIE  dealt by ancient EVENT.TEZCATARA
+
+card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ EventModel.GenerateInitialOptions  [1]
+    EVENT.WOOD_CARVINGS  reached in ACT.OVERGROWTH
+
+card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ RelicModel.AfterObtained  [1]
+    RELIC.DOLLYS_MIRROR  dealt by shop
+
+card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart  [3]
+    POWER.ENTROPY_POWER
+    POWER.TYRANNY_POWER
+    RELIC.TOASTY_MITTENS  dealt by ancient EVENT.TEZCATARA
+
+card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ CardModel.OnPlay  [18]
+    CARD.BEGONE
+    CARD.BRAND
+    CARD.BURNING_PACT
+    CARD.DECISIONS_DECISIONS
+    CARD.DUAL_WIELD
+    CARD.GLIMMER
+    CARD.GUARDS
+    CARD.HAND_TRICK
+    CARD.HEIRLOOM_HAMMER
+    CARD.NIGHTMARE
+    CARD.PHOTON_CUT
+    CARD.PURITY
+    CARD.SCAVENGE
+    CARD.SCULPTING_STRIKE
+    CARD.SNAP
+    CARD.THINKING_AHEAD
+    CARD.TRANSFIGURE
+    CARD.TRUE_GRIT
+
+card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse  [2]
+    POTION.ASHWATER
+    POTION.TOUCH_OF_INSANITY
+
+card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart  [2]
+    POWER.TOOLS_OF_THE_TRADE_POWER
+    RELIC.GAMBLING_CHIP  dealt by grab-bag Rare
+
+card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ CardModel.OnPlay  [5]
+    CARD.ACROBATICS
+    CARD.DAGGER_THROW
+    CARD.HIDDEN_DAGGERS
+    CARD.PREPARED
+    CARD.SURVIVOR
+
+card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse  [1]
+    POTION.GAMBLERS_BREW
+
+card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay  [1]
+    CARD.ARMAMENTS
+
+card-prompt:CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs) @ AbstractModel.AfterPlayerTurnStart  [1]
+    RELIC.CHOICES_PARADOX  dealt by ancient EVENT.VAKUU
+
+card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ EventModel.GenerateInitialOptions  [2]
+    EVENT.BRAIN_LEECH  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.ROOM_FULL_OF_CHEESE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ ModifierModel.GenerateNeowOption  [1]
+    MODIFIER.SEALED_DECK
+
+card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ RelicModel.AfterObtained  [1]
+    RELIC.SEA_GLASS  dealt by ancient EVENT.OROBAS
+
+card-reward-alternative @ AbstractModel.TryModifyCardRewardAlternatives  [1]
+    RELIC.PAELS_WING  dealt by ancient EVENT.PAEL
+
+event-option @ AncientEventModel.AllPossibleOptions  [8]
+    EVENT.DARV  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.NEOW  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS
+    EVENT.NONUPEIPE  reached in ACT.GLORY
+    EVENT.OROBAS  reached in ACT.HIVE
+    EVENT.PAEL  reached in ACT.HIVE
+    EVENT.TANX  reached in ACT.GLORY
+    EVENT.TEZCATARA  reached in ACT.HIVE
+    EVENT.VAKUU  reached in ACT.GLORY
+
+event-option @ EventModel.GenerateInitialOptions  [56]
+    EVENT.ABYSSAL_BATHS  reached in ACT.UNDERDOCKS
+    EVENT.AMALGAMATOR  reached in ACT.HIVE
+    EVENT.AROMA_OF_CHAOS  reached in ACT.OVERGROWTH
+    EVENT.BATTLEWORN_DUMMY  reached in ACT.GLORY
+    EVENT.BRAIN_LEECH  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.BUGSLAYER  reached in ACT.HIVE
+    EVENT.BYRDONIS_NEST  reached in ACT.OVERGROWTH
+    EVENT.COLORFUL_PHILOSOPHERS  reached in ACT.HIVE
+    EVENT.COLOSSAL_FLOWER  reached in ACT.HIVE
+    EVENT.CRYSTAL_SPHERE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.DENSE_VEGETATION  reached in ACT.OVERGROWTH
+    EVENT.DOLL_ROOM  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.DOORS_OF_LIGHT_AND_DARK  reached in ACT.UNDERDOCKS
+    EVENT.DROWNING_BEACON  reached in ACT.UNDERDOCKS
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
+    EVENT.FIELD_OF_MAN_SIZED_HOLES  reached in ACT.HIVE
+    EVENT.GRAVE_OF_THE_FORGOTTEN  reached in ACT.GLORY
+    EVENT.HUNGRY_FOR_MUSHROOMS  reached in ACT.GLORY
+    EVENT.INFESTED_AUTOMATON  reached in ACT.HIVE
+    EVENT.JUNGLE_MAZE_ADVENTURE  reached in ACT.OVERGROWTH
+    EVENT.LOST_WISP  reached in ACT.HIVE
+    EVENT.LUMINOUS_CHOIR  reached in ACT.OVERGROWTH
+    EVENT.MORPHIC_GROVE  reached in ACT.OVERGROWTH
+    EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
+    EVENT.RANWID_THE_ELDER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.REFLECTIONS  reached in ACT.GLORY
+    EVENT.RELIC_TRADER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.ROOM_FULL_OF_CHEESE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.ROUND_TEA_PARTY  reached in ACT.GLORY
+    EVENT.SAPPHIRE_SEED  reached in ACT.OVERGROWTH
+    EVENT.SELF_HELP_BOOK  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.SLIPPERY_BRIDGE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.SPIRALING_WHIRLPOOL  reached in ACT.UNDERDOCKS
+    EVENT.SPIRIT_GRAFTER  reached in ACT.HIVE
+    EVENT.STONE_OF_ALL_TIME  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.SUNKEN_STATUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS
+    EVENT.SUNKEN_TREASURY  reached in ACT.UNDERDOCKS
+    EVENT.SYMBIOTE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TABLET_OF_TRUTH  reached in ACT.OVERGROWTH
+    EVENT.TEA_MASTER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.THE_FUTURE_OF_POTIONS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.THE_LANTERN_KEY  reached in ACT.HIVE
+    EVENT.THE_LEGENDS_WERE_TRUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.THIS_OR_THAT  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TINKER_TIME  reached in ACT.GLORY
+    EVENT.TRASH_HEAP  reached in ACT.UNDERDOCKS
+    EVENT.TRIAL  reached in ACT.GLORY
+    EVENT.UNREST_SITE  reached in ACT.OVERGROWTH
+    EVENT.WAR_HISTORIAN_REPY  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WATERLOGGED_SCRIPTORIUM  reached in ACT.UNDERDOCKS
+    EVENT.WELCOME_TO_WONGOS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WELLSPRING  reached in ACT.OVERGROWTH
+    EVENT.WHISPERING_HOLLOW  reached in ACT.OVERGROWTH
+    EVENT.WOOD_CARVINGS  reached in ACT.OVERGROWTH
+    EVENT.ZEN_WEAVER  reached in ACT.HIVE
+
+event-option @ EventModel.SetInitialEventState  [1]
+    EVENT.THE_ARCHITECT  reached in no act
+
+rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions  [1]
+    RELIC.PAELS_GROWTH  dealt by ancient EVENT.PAEL
+
+rest-option:COOK @ AbstractModel.TryModifyRestSiteOptions  [1]
+    RELIC.MEAT_CLEAVER  dealt by ancient EVENT.TANX
+
+rest-option:DIG @ AbstractModel.TryModifyRestSiteOptions  [1]
+    RELIC.SHOVEL  dealt by grab-bag Rare
+
+rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions  [1]
+    CARD.BYRDONIS_EGG
+
+rest-option:KINDLE @ AbstractModel.TryModifyRestSiteOptions  [1]
+    RELIC.PUMPKIN_CANDLE  dealt by ancient EVENT.TEZCATARA
+
+rest-option:LIFT @ AbstractModel.TryModifyRestSiteOptions  [1]
+    RELIC.GIRYA  dealt by grab-bag Rare
+
+reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards  [1]
+    RELIC.DREAM_CATCHER  dealt by event no option offers it
+
+reward-kind:card @ AbstractModel.TryModifyRewards  [2]
+    RELIC.PRAYER_WHEEL  dealt by grab-bag Rare
+    RELIC.WHITE_STAR  dealt by grab-bag Rare
+
+reward-kind:card @ CardModel.OnPlay  [1]
+    CARD.THE_HUNT
+
+reward-kind:card @ EventModel.GenerateInitialOptions  [4]
+    EVENT.BRAIN_LEECH  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.COLORFUL_PHILOSOPHERS  reached in ACT.HIVE
+    EVENT.THE_FUTURE_OF_POTIONS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TRIAL  reached in ACT.GLORY
+
+reward-kind:card @ ModifierModel.GenerateNeowOption  [1]
+    MODIFIER.DRAFT
+
+reward-kind:card @ RelicModel.AfterObtained  [4]
+    RELIC.GLASS_EYE  dealt by ancient EVENT.OROBAS
+    RELIC.KALEIDOSCOPE  dealt by neow
+    RELIC.LOST_COFFER  dealt by neow
+    RELIC.ORRERY  dealt by shop
+
+reward-kind:card_removal @ AbstractModel.AfterCombatEnd  [1]
+    POWER.FORBIDDEN_GRIMOIRE_POWER
+
+reward-kind:gold @ AbstractModel.AfterCombatEnd  [1]
+    POWER.ROYALTIES_POWER
+
+reward-kind:gold @ AbstractModel.BeforeDeath  [1]
+    POWER.HEIST_POWER
+
+reward-kind:gold @ AbstractModel.TryModifyRewards  [1]
+    RELIC.AMETHYST_AUBERGINE  dealt by grab-bag Common
+
+reward-kind:gold @ AbstractModel.TryModifyRewardsLate  [1]
+    MODIFIER.MIDAS
+
+reward-kind:potion @ AbstractModel.TryModifyRestSiteHealRewards  [1]
+    RELIC.TINY_MAILBOX  dealt by grab-bag Uncommon
+
+reward-kind:potion @ EventModel.CalculateVars  [1]
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
+
+reward-kind:potion @ EventModel.GenerateInitialOptions  [7]
+    EVENT.DROWNING_BEACON  reached in ACT.UNDERDOCKS
+    EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
+    EVENT.THE_LEGENDS_WERE_TRUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WAR_HISTORIAN_REPY  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WELLSPRING  reached in ACT.OVERGROWTH
+    EVENT.WHISPERING_HOLLOW  reached in ACT.OVERGROWTH
+
+reward-kind:potion @ EventModel.Resume  [1]
+    EVENT.BATTLEWORN_DUMMY  reached in ACT.GLORY
+
+reward-kind:potion @ RelicModel.AfterObtained  [2]
+    RELIC.CAULDRON  dealt by shop
+    RELIC.LOST_COFFER  dealt by neow
+
+reward-kind:relic @ ?  [1]
+    EVENT.FAKE_MERCHANT  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+reward-kind:relic @ AbstractModel.TryModifyRewards  [3]
+    RELIC.BLACK_STAR  dealt by ancient EVENT.DARV
+    RELIC.LAVA_ROCK  dealt by neow
+    RELIC.WONGOS_MYSTERY_TICKET  dealt by event no option offers it
+
+reward-kind:relic @ AbstractModel.TryModifyRewardsLate  [1]
+    MODIFIER.VINTAGE
+
+reward-kind:relic @ EventModel.GenerateInitialOptions  [2]
+    EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
+    EVENT.WAR_HISTORIAN_REPY  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+reward-kind:relic @ EventModel.Resume  [1]
+    EVENT.BATTLEWORN_DUMMY  reached in ACT.GLORY
+
+reward-kind:relic @ RelicModel.AfterObtained  [4]
+    RELIC.CALLING_BELL  dealt by ancient EVENT.DARV
+    RELIC.NEOWS_BONES  dealt by neow
+    RELIC.SMALL_CAPSULE  dealt by neow
+    RELIC.TOY_BOX  dealt by ancient EVENT.TEZCATARA
+
+reward-kind:special_card @ AbstractModel.BeforeDeath  [1]
+    POWER.SWIPE_POWER
+
+reward-kind:special_card @ EventModel.GenerateInitialOptions  [1]
+    EVENT.THE_LANTERN_KEY  reached in ACT.HIVE
+
+rewards:OfferCustom @ EventModel.CalculateVars  [1]
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
+
+rewards:OfferCustom @ EventModel.GenerateInitialOptions  [13]
+    EVENT.BRAIN_LEECH  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.COLORFUL_PHILOSOPHERS  reached in ACT.HIVE
+    EVENT.CRYSTAL_SPHERE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.DENSE_VEGETATION  reached in ACT.OVERGROWTH
+    EVENT.DROWNING_BEACON  reached in ACT.UNDERDOCKS
+    EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
+    EVENT.THE_FUTURE_OF_POTIONS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.THE_LEGENDS_WERE_TRUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TRIAL  reached in ACT.GLORY
+    EVENT.WAR_HISTORIAN_REPY  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.WELLSPRING  reached in ACT.OVERGROWTH
+    EVENT.WHISPERING_HOLLOW  reached in ACT.OVERGROWTH
+
+rewards:OfferCustom @ EventModel.Resume  [1]
+    EVENT.BATTLEWORN_DUMMY  reached in ACT.GLORY
+
+rewards:OfferCustom @ RelicModel.AfterObtained  [8]
+    RELIC.CALLING_BELL  dealt by ancient EVENT.DARV
+    RELIC.CAULDRON  dealt by shop
+    RELIC.GLASS_EYE  dealt by ancient EVENT.OROBAS
+    RELIC.KALEIDOSCOPE  dealt by neow
+    RELIC.LOST_COFFER  dealt by neow
+    RELIC.ORRERY  dealt by shop
+    RELIC.SMALL_CAPSULE  dealt by neow
+    RELIC.TOY_BOX  dealt by ancient EVENT.TEZCATARA
+
+screen:NCrystalSphereScreen.ShowScreen @ EventModel.GenerateInitialOptions  [1]
+    EVENT.CRYSTAL_SPHERE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+shop-kind:relic @ EventModel.BeforeEventStarted  [1]
+    EVENT.FAKE_MERCHANT  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+# seams no content reaches (6)
+card-prompt:RelicSelectCmd.FromChooseARelicScreen(player, relics)
+rest-option:HEAL
+rest-option:MEND
+rest-option:SMITH
+reward-kind:LinkedRewardSet
+room:EnterRoom

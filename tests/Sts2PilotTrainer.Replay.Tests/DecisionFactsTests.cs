@@ -24,7 +24,8 @@ public sealed class DecisionFactsTests
                 Fixtures.Action(7, ActionVerb.ShopPurchase, ("kind", "card_removal")),
                 Fixtures.Action(8, ActionVerb.ChooseRestSiteOption, ("option_id", "SMITH"), ("option_index", "1")),
                 Fixtures.Action(9, ActionVerb.ChooseEventOption, ("event_id", "EVENT.BRAIN_LEECH"), ("option_index", "0")),
-                Fixtures.Action(10, ActionVerb.ChooseEventOption, ("event_id", "EVENT.BRAIN_LEECH"), ("option_index", "1")),
+                Fixtures.Action(10, ActionVerb.ChooseEventOption, ("event_id", "EVENT.BRAIN_LEECH"), ("option_index", "1"), ("option_key", "BRAIN_LEECH.pages.INITIAL.options.RIP")),
+                Fixtures.Action(11, ActionVerb.ChooseNeowBlessing, ("option_index", "1"), ("option_key", "RELIC.WINGED_BOOTS")),
             ],
         };
 
@@ -49,6 +50,8 @@ public sealed class DecisionFactsTests
                 "rest-option  SMITH",
                 "verb  ChooseEventOption",
                 "event  EVENT.BRAIN_LEECH",
+                "event-option  EVENT.BRAIN_LEECH BRAIN_LEECH.pages.INITIAL.options.RIP",
+                "event-option  EVENT.NEOW RELIC.WINGED_BOOTS",
             }.Order(StringComparer.Ordinal),
             points.Select(point => point.ToString()).Order(StringComparer.Ordinal));
     }
@@ -111,18 +114,23 @@ public sealed class DecisionFactsTests
     }
 
     [Fact]
-    public void EveryProjectableKindIsAKindAndTheTwoOthersSayWhyTheyAreNot()
+    public void EveryProjectableKindIsAKindTheSeamIsReachedByCoOccurrenceAndTheTwoOthersSayWhyTheyAreNot()
     {
         Assert.All(DecisionKinds.Projectable, kind => Assert.Contains(kind, DecisionKinds.All));
         Assert.Equal(
-            [DecisionKinds.CardPrompt, DecisionKinds.NetAction],
+            [DecisionKinds.Seam, DecisionKinds.CardPrompt, DecisionKinds.NetAction],
             DecisionKinds.All.Where(kind => !DecisionKinds.IsProjectable(kind)));
+        Assert.True(DecisionKinds.IsReachedByCoOccurrence(DecisionKinds.Seam));
+        Assert.Null(DecisionKinds.NotProjectableBecause(DecisionKinds.Seam));
         Assert.All(DecisionKinds.Projectable, kind => Assert.Null(DecisionKinds.NotProjectableBecause(kind)));
         Assert.NotNull(DecisionKinds.NotProjectableBecause(DecisionKinds.CardPrompt));
         Assert.NotNull(DecisionKinds.NotProjectableBecause(DecisionKinds.NetAction));
     }
 
     // ── Counting a corpus against a denominator ──────────────────────────────────
+
+    private static Dictionary<DecisionPoint, Excusal> Excuses(params (DecisionPoint Point, string Reason)[] excusals) =>
+        excusals.ToDictionary(excusal => excusal.Point, excusal => new Excusal(ExcusalClass.NotOnTheRoute, excusal.Reason));
 
     private static readonly DecisionPoint Gold = new(DecisionKinds.RewardKind, "gold");
     private static readonly DecisionPoint Relic = new(DecisionKinds.RewardKind, "relic");
@@ -160,7 +168,7 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold, Relic, Potion],
-            new Dictionary<DecisionPoint, string> { [Relic] = "nobody has found one yet" },
+            Excuses((Relic, "nobody has found one yet")),
             [
                 new CoveredRecording("a", new HashSet<DecisionPoint> { Gold }, Holds),
                 new CoveredRecording("b", new HashSet<DecisionPoint> { Gold, Relic, Potion }, Broken),
@@ -170,7 +178,7 @@ public sealed class DecisionFactsTests
         Assert.Equal(
             [
                 "reward-kind  gold  1 recording(s); reached by 1 unverified recording(s), not credited",
-                "reward-kind  relic  excused: nobody has found one yet; reached by 1 unverified recording(s), not credited",
+                "reward-kind  relic  excused [not-on-the-route]: nobody has found one yet; reached by 1 unverified recording(s), not credited",
                 "reward-kind  potion  uncovered; reached by 2 unverified recording(s), not credited",
             ],
             report.Rows.Select(row => row.Describe()));
@@ -192,9 +200,9 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold],
-            new Dictionary<DecisionPoint, string>(),
+            Excuses(),
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold }, Holds)],
-            [new UnreadableRecording("junk.replay.json", "this build cannot read the manifest: not JSON")]);
+            unreadable: [new UnreadableRecording("junk.replay.json", "this build cannot read the manifest: not JSON")]);
 
         Assert.True(report.Holds);
         Assert.Equal(2, report.Recordings);
@@ -208,7 +216,7 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold, Relic, Potion, Prompt],
-            new Dictionary<DecisionPoint, string> { [Relic] = "nobody has found one yet" },
+            Excuses((Relic, "nobody has found one yet")),
             [
                 new CoveredRecording("a", new HashSet<DecisionPoint> { Gold }, Holds),
                 new CoveredRecording("b", new HashSet<DecisionPoint> { Gold }, Holds),
@@ -217,7 +225,7 @@ public sealed class DecisionFactsTests
         Assert.Equal(
             [
                 "reward-kind  gold  2 recording(s)",
-                "reward-kind  relic  excused: nobody has found one yet",
+                "reward-kind  relic  excused [not-on-the-route]: nobody has found one yet",
                 "reward-kind  potion  uncovered",
                 $"card-prompt  CardSelectCmd.FromHand(context)  {DecisionKinds.NotProjectableBecause(DecisionKinds.CardPrompt)}",
             ],
@@ -229,7 +237,7 @@ public sealed class DecisionFactsTests
         Assert.Equal(1, report.NotProjectable);
         Assert.Equal(2, report.Recordings);
         Assert.False(report.Holds);
-        Assert.Contains("points: 4  covered: 1  excused: 1  uncovered: 1  not projectable: 1  recordings: 2", report.Totals());
+        Assert.Contains("points: 4  covered: 1  co-occurrence: 0  excused: 1  uncovered: 1  not projectable: 1  recordings: 2", report.Totals());
     }
 
     [Fact]
@@ -237,7 +245,7 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold, Relic, Prompt],
-            new Dictionary<DecisionPoint, string> { [Relic] = "nobody has found one yet" },
+            Excuses((Relic, "nobody has found one yet")),
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold }, Holds)]);
 
         Assert.True(report.Holds);
@@ -252,7 +260,7 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold],
-            new Dictionary<DecisionPoint, string>(),
+            Excuses(),
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold, Potion }, Holds)]);
 
         Assert.False(report.Holds);
@@ -270,7 +278,7 @@ public sealed class DecisionFactsTests
     {
         var report = DecisionCoverage.Over(
             [Gold, Relic],
-            new Dictionary<DecisionPoint, string> { [Gold] = "reached here", [Potion] = "names nothing the build offers" },
+            Excuses((Gold, "reached here"), (Potion, "names nothing the build offers")),
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold, Relic }, Holds)]);
 
         Assert.False(report.Holds);
@@ -282,8 +290,130 @@ public sealed class DecisionFactsTests
 
         var reachedOnly = DecisionCoverage.Over(
             [Gold, Relic],
-            new Dictionary<DecisionPoint, string> { [Gold] = "reached here" },
+            Excuses((Gold, "reached here")),
             [new CoveredRecording("a", new HashSet<DecisionPoint> { Gold, Relic }, Holds)]);
         Assert.True(reachedOnly.Holds);
+    }
+
+    /// <summary>The models a recording met are read off every sampled value and every
+    /// argument by their spelling: a card before its upgrade mark, a power before its
+    /// amount, a relic an option dealt, the event itself.</summary>
+    [Fact]
+    public void TheModelsARecordingMetAreReadOffItsSamplesAndItsArguments()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Actions =
+            [
+                Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "1"), ("option_key", "RELIC.WINGED_BOOTS")),
+                Fixtures.Action(1, ActionVerb.PlayCard, ("card_id", "CARD.TRUE_GRIT"), ("hand_index", "0")),
+                Fixtures.Action(2, ActionVerb.ChooseEventOption, ("event_id", "EVENT.BRAIN_LEECH"), ("option_index", "0")),
+            ],
+            Checkpoints =
+            [
+                new Checkpoint
+                {
+                    Id = "fight-1-start",
+                    AfterSeq = 1,
+                    Kind = "combat_start",
+                    Expect = new Dictionary<string, Fact<string>>
+                    {
+                        ["player.deck"] = Fact<string>.Engine("CARD.STRIKE_IRONCLAD+1|CARD.BASH"),
+                        ["player.relics"] = Fact<string>.Engine("RELIC.BURNING_BLOOD|RELIC.ARCANE_SCROLL"),
+                        ["player.potions"] = Fact<string>.Engine("empty|POTION.FIRE|empty"),
+                        ["combat.player_powers"] = Fact<string>.Engine("POWER.FRAIL_POWER:2"),
+                        ["combat.enemy.0.model"] = Fact<string>.Engine("MONSTER.FUZZY_WURM_CRAWLER"),
+                        ["combat.player_hp"] = Fact<string>.Engine("72"),
+                    },
+                },
+            ],
+        };
+
+        Assert.Equal(
+            [
+                "CARD.BASH", "CARD.STRIKE_IRONCLAD", "CARD.TRUE_GRIT", "EVENT.BRAIN_LEECH", "MONSTER.FUZZY_WURM_CRAWLER",
+                "POTION.FIRE", "POWER.FRAIL_POWER", "RELIC.ARCANE_SCROLL", "RELIC.BURNING_BLOOD", "RELIC.WINGED_BOOTS",
+            ],
+            DecisionFacts.ModelsMet(manifest).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>A seam is reached by co-occurrence: a crediting recording that met one
+    /// of its producers and answered one of the points it is answered at. Either alone
+    /// reaches nothing, an unverified recording credits nothing, and the row says
+    /// co-occurrence rather than covered.</summary>
+    [Fact]
+    public void ASeamIsReachedByCoOccurrenceAndNeverCalledCovered()
+    {
+        var seam = new ProducerSeam("reward-kind:gold", "AbstractModel.TryModifyRewards", ["RELIC.AMETHYST_AUBERGINE"], [Gold]);
+        var report = DecisionCoverage.Over(
+            [Gold, Relic, seam.Point],
+            Excuses(),
+            [
+                new CoveredRecording("met and answered", new HashSet<DecisionPoint> { Gold }, Holds, new HashSet<string> { "RELIC.AMETHYST_AUBERGINE" }),
+                new CoveredRecording("answered only", new HashSet<DecisionPoint> { Gold }, Holds, new HashSet<string> { "RELIC.ANCHOR" }),
+                new CoveredRecording("met only", new HashSet<DecisionPoint> { Relic }, Holds, new HashSet<string> { "RELIC.AMETHYST_AUBERGINE" }),
+                new CoveredRecording("broken", new HashSet<DecisionPoint> { Gold }, Broken, new HashSet<string> { "RELIC.AMETHYST_AUBERGINE" }),
+            ],
+            [seam]);
+
+        Assert.Equal(
+            [
+                "reward-kind  gold  2 recording(s); reached by 1 unverified recording(s), not credited",
+                "reward-kind  relic  1 recording(s)",
+                "seam  reward-kind:gold @ AbstractModel.TryModifyRewards  co-occurrence in 1 recording(s); reached by 1 unverified recording(s), not credited",
+            ],
+            report.Rows.Select(row => row.Describe()));
+        Assert.Equal(1, report.CoOccurrence);
+        Assert.Equal(2, report.Covered);
+        Assert.True(report.Holds);
+        Assert.Contains("points: 3  covered: 2  co-occurrence: 1  excused: 0  uncovered: 0  not projectable: 0  recordings: 4", report.Totals());
+    }
+
+    /// <summary>An excusal is held to the classes the map admits for its point: a
+    /// placeholder where the map derives a class, or a derived class the map does not
+    /// derive, is named with what the map admits and fails the bar; one in an admitted
+    /// class stands.</summary>
+    [Fact]
+    public void AnExcusalInAClassTheMapDoesNotAdmitIsNamedAndFailsTheBar()
+    {
+        var admissible = new Dictionary<DecisionPoint, IReadOnlySet<ExcusalClass>>
+        {
+            [Gold] = new HashSet<ExcusalClass> { ExcusalClass.NoProducerOnThisBuild, ExcusalClass.Generated },
+            [Relic] = new HashSet<ExcusalClass> { ExcusalClass.Generated, ExcusalClass.NotOnTheRoute },
+            [Potion] = new HashSet<ExcusalClass> { ExcusalClass.Generated, ExcusalClass.NotOnTheRoute },
+        };
+        var excusals = new Dictionary<DecisionPoint, Excusal>
+        {
+            [Gold] = new(ExcusalClass.NotOnTheRoute, "a placeholder where nothing produces the point"),
+            [Relic] = new(ExcusalClass.MultiplayerOnly, "a derived class the map does not derive"),
+            [Potion] = new(ExcusalClass.NotOnTheRoute, "admitted"),
+        };
+
+        var report = DecisionCoverage.Over([Gold, Relic, Potion], excusals, [], admissible: admissible);
+
+        Assert.False(report.Holds);
+        Assert.Equal(3, report.Excused);
+        Assert.Equal(
+            [
+                "reward-kind  gold  excused as not-on-the-route, and the map admits no-producer-on-this-build, generated",
+                "reward-kind  relic  excused as multiplayer-only, and the map admits generated, not-on-the-route",
+            ],
+            report.InadmissibleExcusals.Select(excusal => excusal.Describe()));
+        Assert.Contains("inadmissible excusals: 2", report.Totals());
+        Assert.Equal("excused [not-on-the-route]: admitted", report.Rows[2].Excuse!.Describe());
+
+        var withoutTheMap = DecisionCoverage.Over([Gold, Relic, Potion], excusals, []);
+        Assert.True(withoutTheMap.Holds);
+    }
+
+    [Fact]
+    public void EveryExcusalClassHasANameAndIsDerivedOrUndeclared()
+    {
+        var classes = Enum.GetValues<ExcusalClass>();
+
+        Assert.Equal(classes.Length, classes.Select(ExcusalClasses.Name).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(classes.Order(), ExcusalClasses.Derived.Concat(ExcusalClasses.Undeclared).Order());
+        Assert.All(ExcusalClasses.Derived, excusalClass => Assert.True(ExcusalClasses.IsDerived(excusalClass)));
+        Assert.All(ExcusalClasses.Undeclared, excusalClass => Assert.False(ExcusalClasses.IsDerived(excusalClass)));
     }
 }

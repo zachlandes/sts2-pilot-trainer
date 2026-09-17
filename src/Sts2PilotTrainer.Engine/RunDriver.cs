@@ -1858,6 +1858,11 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// one describes a run this build did not play. The verb stays in the format so a
     /// build that opens the window lights it without a format bump.
     /// </summary>
+    /// <summary>The verbs this host refuses on this build because the window they need
+    /// is one the retail client's own timing leaves open and the headless host runs
+    /// inside another decision: the coverage map's reading of retail-only timing.</summary>
+    public static readonly IReadOnlyList<ActionVerb> RetailOnlyWindow = [ActionVerb.UndoEndTurn];
+
     private static void UndoEndTurn(ActionRecord action) =>
         throw new EngineException(
             $"Action {action.Seq} takes an ended turn back, and no singleplayer run on v0.111.0 can: the " +

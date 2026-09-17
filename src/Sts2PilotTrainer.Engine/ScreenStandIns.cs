@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -43,14 +44,28 @@ internal static class ScreenStandIns
         RelicModel? AnswerRelic(IReadOnlyList<RelicModel> relics);
     }
 
+    /// <summary>One screen stood in for: the game's entry point patched, the prefix
+    /// that answers it, and the verb a recording answers it with.</summary>
+    internal sealed record StandIn(Type Type, string Member, string Prefix, ActionVerb Verb);
+
+    /// <summary>
+    /// The three screens, as the one table <see cref="Install"/> patches from and the
+    /// coverage map reads which verbs are answered on a screen this host has none for:
+    /// a screen added here is a stand-in and an excusal class in one edit.
+    /// </summary>
+    internal static readonly IReadOnlyList<StandIn> StoodInFor =
+    [
+        new(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen), nameof(BeforeBundleScreen), ActionVerb.SelectBundleFromScreen),
+        new(typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen), nameof(BeforeRelicScreen), ActionVerb.SelectRelicFromScreen),
+        new(typeof(NCrystalSphereScreen), nameof(NCrystalSphereScreen.ShowScreen), nameof(BeforeCrystalSphereScreen), ActionVerb.RevealCrystalSphereCell),
+    ];
+
     internal static void Install(Harmony harmony, List<string> failures)
     {
-        Patch(harmony, failures,
-            typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen), nameof(BeforeBundleScreen));
-        Patch(harmony, failures,
-            typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen), nameof(BeforeRelicScreen));
-        Patch(harmony, failures,
-            typeof(NCrystalSphereScreen), nameof(NCrystalSphereScreen.ShowScreen), nameof(BeforeCrystalSphereScreen));
+        foreach (var standIn in StoodInFor)
+        {
+            Patch(harmony, failures, standIn.Type, standIn.Member, standIn.Prefix);
+        }
     }
 
     /// <summary>The minigame is over, or the run left it; nothing is open. The

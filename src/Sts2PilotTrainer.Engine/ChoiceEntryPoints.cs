@@ -371,21 +371,80 @@ internal static class ChoiceEntryPoints
     /// without executing it, and without taking every other literal the body loads -
     /// an exception message, a log line - for an id.
     /// </summary>
-    internal static IReadOnlyList<string> LiteralsConstructing(MethodBase method, Type constructed)
+    internal static IReadOnlyList<string> LiteralsConstructing(MethodBase method, Type constructed) =>
+        ConstructionsIn(method, constructed).Select(construction => construction.Literal).OfType<string>().ToList();
+
+    /// <summary>
+    /// The literal loaded last before each call a body makes to a callee satisfying
+    /// <paramref name="callee"/>, in order: how a key built by a helper such as
+    /// <c>InitialOptionKey("X")</c> is read off the body that calls it.
+    /// </summary>
+    internal static IReadOnlyList<string> LiteralsBefore(MethodBase method, Func<MethodBase, bool> callee)
     {
-        var named = new List<string>();
+        var literals = new List<string>();
         string? last = null;
         foreach (var operand in OperandsOf(method))
         {
             if (operand.Literal is { } literal) last = literal;
-            if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
-                callee.DeclaringType == constructed && last is not null)
+            if (operand.Callee is { } called && !operand.IsConstruction && callee(called) && last is not null)
             {
-                named.Add(last);
+                literals.Add(last);
             }
         }
 
-        return named;
+        return literals;
+    }
+
+    /// <summary>
+    /// Every member of the game assembly whose body constructs <paramref name="constructed"/>,
+    /// over the types the runtime could load: <see cref="MethodsConstructing"/> for the
+    /// game, which cannot be asked for its whole type table against the stubs. A body
+    /// that cannot be read is read as far as it goes, the way the caller scan reads it.
+    /// </summary>
+    internal static IReadOnlyList<MethodBase> GameMembersConstructing(Type constructed)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        return Loaded.Value.Types
+            .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
+            .Where(method =>
+            {
+                TryReadOperands(method, out var operands);
+                return operands.Any(operand => operand.IsConstruction && operand.Callee?.DeclaringType == constructed);
+            })
+            .ToList();
+    }
+
+    /// <summary>One construction of a type in a body: the last string and the last
+    /// integer constant loaded before its <c>newobj</c>, either null where the body
+    /// loaded none before it.</summary>
+    internal sealed record Construction(string? Literal, int? Constant);
+
+    /// <summary>
+    /// Every construction of <paramref name="constructed"/> in a body, each with the
+    /// last string and the last integer constant loaded before it, in order: how an
+    /// id and an enum argument are read off a body that writes
+    /// <c>new Thing("ID", ..., Kind.Value)</c> without executing it. Which of the two
+    /// a caller trusts is the caller's, because a body may load either for another
+    /// reason on its way to the construction.
+    /// </summary>
+    internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
+    {
+        var constructions = new List<Construction>();
+        string? literal = null;
+        int? constant = null;
+        foreach (var operand in OperandsOf(method))
+        {
+            if (operand.Literal is { } loaded) literal = loaded;
+            if (operand.Constant is { } value) constant = value;
+            if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
+                callee.DeclaringType == constructed)
+            {
+                constructions.Add(new Construction(literal, constant));
+            }
+        }
+
+        return constructions;
     }
 
     private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
@@ -401,8 +460,24 @@ internal static class ChoiceEntryPoints
     }
 
     /// <summary>One operand a body's instruction carries: a method token resolved, a
-    /// string token resolved, and whether the instruction constructs.</summary>
-    private sealed record Operand(MethodBase? Callee, string? Literal, bool IsConstruction);
+    /// string token resolved, an integer constant loaded, and whether the instruction
+    /// constructs.</summary>
+    private sealed record Operand(MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null);
+
+    // The short forms of ldc.i4 carry their value in the opcode rather than as an operand
+    private static readonly Dictionary<short, int> InlineIntegerOpCodes = new()
+    {
+        [OpCodes.Ldc_I4_M1.Value] = -1,
+        [OpCodes.Ldc_I4_0.Value] = 0,
+        [OpCodes.Ldc_I4_1.Value] = 1,
+        [OpCodes.Ldc_I4_2.Value] = 2,
+        [OpCodes.Ldc_I4_3.Value] = 3,
+        [OpCodes.Ldc_I4_4.Value] = 4,
+        [OpCodes.Ldc_I4_5.Value] = 5,
+        [OpCodes.Ldc_I4_6.Value] = 6,
+        [OpCodes.Ldc_I4_7.Value] = 7,
+        [OpCodes.Ldc_I4_8.Value] = 8,
+    };
 
     /// <summary>
     /// The member the game's author wrote, for a method the compiler wrote on their
@@ -648,6 +723,18 @@ internal static class ChoiceEntryPoints
             else if (op.OperandType is OperandType.InlineString)
             {
                 operands.Add(new Operand(null, module.ResolveString(BitConverter.ToInt32(il, at)), false));
+            }
+            else if (op == OpCodes.Ldc_I4)
+            {
+                operands.Add(new Operand(null, null, false, BitConverter.ToInt32(il, at)));
+            }
+            else if (op == OpCodes.Ldc_I4_S)
+            {
+                operands.Add(new Operand(null, null, false, (sbyte)il[at]));
+            }
+            else if (InlineIntegerOpCodes.TryGetValue(op.Value, out var inline))
+            {
+                operands.Add(new Operand(null, null, false, inline));
             }
 
             at += operandSize;
