@@ -157,7 +157,7 @@ public sealed class RunCaptureStopTests
     {
         var text = Played().Journal.Render().Replace(RunJournal.Schema, "sts2-pilot-trainer/run-journal/v1", StringComparison.Ordinal);
 
-        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
+        var refusal = Assert.Throws<UnreadableJournalSchemaException>(() => RunJournal.Parse(text));
 
         Assert.Contains("declares schema 'sts2-pilot-trainer/run-journal/v1'", refusal.Message, StringComparison.Ordinal);
     }

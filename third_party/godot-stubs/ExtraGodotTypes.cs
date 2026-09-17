@@ -63,14 +63,16 @@ public partial class Font : Resource
 {
     public float GetStringSize(string text, int alignment = 0, float width = -1, int fontSize = 16) => text.Length * fontSize * 0.6f;
 
+    // Defaults on the trailing three, as the real GodotSharp declares them, so a
+    // caller that names only the text, alignment, width and size compiles here too
     public Vector2 GetStringSize(
         string text,
         HorizontalAlignment alignment,
         float width,
         int fontSize,
-        TextServer.JustificationFlag justificationFlags,
-        TextServer.Direction direction,
-        TextServer.Orientation orientation) => new(text.Length * fontSize * 0.6f, fontSize);
+        TextServer.JustificationFlag justificationFlags = TextServer.JustificationFlag.None,
+        TextServer.Direction direction = TextServer.Direction.Auto,
+        TextServer.Orientation orientation = TextServer.Orientation.Horizontal) => new(text.Length * fontSize * 0.6f, fontSize);
 }
 
 public class TextParagraph

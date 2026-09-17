@@ -479,21 +479,19 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// The per-decision oracle the CLI's <c>parity</c> command runs over a player's
+    /// journal, applied to the capture this process made: every decision's sample and
+    /// complete digest either side, so a headless recording is held to the same
+    /// standard a retail one is. Headlessly the opening reading is taken where the
+    /// replay's is, so its hidden state has to agree here too, which is the one
+    /// digest the oracle reports beside the verdict rather than in it.
+    /// </summary>
     private static void AssertSameTrace(ReplayTrace captured, ReplayTrace replayed)
     {
-        Assert.Equal(
-            captured.Steps.Select(step => (step.Seq, step.Verb)),
-            replayed.Steps.Select(step => (step.Seq, step.Verb)));
-
-        foreach (var (capturedStep, replayedStep) in captured.Steps.Zip(replayed.Steps))
-        {
-            Assert.True(
-                ReplayTrace.SameSample(capturedStep.Before, replayedStep.Before),
-                $"step {capturedStep.Seq} ({capturedStep.Verb}) before-sample diverged");
-            Assert.True(
-                ReplayTrace.SameSample(capturedStep.After, replayedStep.After),
-                $"step {capturedStep.Seq} ({capturedStep.Verb}) after-sample diverged");
-        }
+        var parity = TraceParity.Compare(captured, replayed);
+        Assert.True(parity.AtParity, parity.Describe());
+        Assert.Null(parity.OpeningHiddenState);
     }
 
     // ── The first in-fight play, for the settle-clock seam ───────────────────────

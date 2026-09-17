@@ -302,4 +302,9 @@ public static class ManifestJson
     }
 }
 
-public sealed class ManifestException(string message) : Exception(message);
+public class ManifestException(string message) : Exception(message);
+
+/// <summary>A run journal in a schema this build does not read: the one refusal out of
+/// <see cref="RunJournal.Parse"/> that says nothing about the recording, as opposed to
+/// a journal in this build's own schema that is malformed.</summary>
+public sealed class UnreadableJournalSchemaException(string message) : ManifestException(message);

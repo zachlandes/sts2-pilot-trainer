@@ -24,6 +24,7 @@ internal static class Program
             return args[0] switch
             {
                 "gate" => Commands.Gate(args[1..]),
+                "parity" => Commands.Parity(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
                 "engine-commands" => Commands.EngineCommandsCommand(args[1..]),
                 "migrate-manifest" => Commands.MigrateManifest(args[1..]),
@@ -78,6 +79,21 @@ internal static class Program
               The publication gate. Runs every condition below and reports one verdict:
               may this reconstruction be published as exact? Nothing here accepts a
               cheaper proxy in place of replaying through the real engine.
+
+          parity          <manifest> [--journal <path>] [--out <dir>]
+          parity          --corpus <dir> [--corpus <dir> ...] [--out <dir>]
+              The recorder's standard, per decision: replay a recording through the
+              real engine and hold it to the journal the recorder wrote beside it -
+              the sample and the complete digest either side of every decision. The
+              first divergence is named as a decision and a field, or as hidden state
+              when every sampled field agrees and only the digest differs. Without
+              --journal the journal is the manifest's .journal.jsonl sibling. Over a
+              corpus - manifests/, or a copy of a player's own recordings taken by
+              the person - every replay runs in a fresh process and one parity.json
+              names every recording, with the ones that hold nothing (no journal,
+              a journal this build does not read, a video reconstruction) counted in
+              the denominator rather than either way. Exit 0 only when every
+              recording with a journal is at parity and every integrity is complete.
 
           validate        <manifest> [--show-rejections]
               Check a manifest's structure and its account of where the recording came

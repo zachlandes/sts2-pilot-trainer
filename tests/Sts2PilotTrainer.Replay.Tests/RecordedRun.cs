@@ -178,7 +178,7 @@ internal static class RecordedRun
         return args;
     }
 
-    private static RunIdentityReading Identity(PatchRoster? rosterAtStart = null) => new()
+    internal static RunIdentityReading Identity(PatchRoster? rosterAtStart = null) => new()
     {
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",

@@ -16,7 +16,8 @@ not released yet. See [README.md](README.md).
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
-./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
+./scripts/arbiter parity --corpus manifests/   # the recorder's standard, one figure
+./scripts/arbiter <command> # gate | parity | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | floor-snapshot | combat-compare |
                             # enter-fight | recorded-fight |
@@ -125,6 +126,17 @@ reader confidence, not arithmetic over the footage, not a screenshot of a mod li
 Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
+**The recorder's release bar is two numbers `./scripts/arbiter` computes over a corpus, and `parity` is the first.**
+Per recording and per decision: a fresh replay of the manifest has to reproduce the `.journal.jsonl` the recorder wrote beside it - the same decision at the same place, the sampled state it began from and settled into through `ReplayTrace.SameSample`, and the complete digest of each reading where both sides carry one - and the first decision where it does not is named with the field, or as hidden state where every sampled field agrees and only the digest differs.
+`TraceParity.Compare` in `Sts2PilotTrainer.Replay` is the one oracle: the CLI's `parity` holds a journal to `Arbiter.Run`'s trace through it and `HeadlessGameplayCaptureTests` holds the recorder's own headless capture to an in-process replay through the same call, so the two cannot drift.
+`ReplayStep` carries `before_digest` and `after_digest` for that comparison, `RunJournalEntry.AsStep` is the one conversion from a journal line to a step, and `RunJournal.Trace` is the continued history as the trace a replay is held to.
+Two digests are not held, each for the reason the recorder's own resume already carries, and nothing else is excused: the reading a fight-ending decision settled into, because the retail client rolls the rewards after the engine has settled and the next decision's before-reading is where both hosts read the same state (`ReplayStep.EndsAFight`, the rule `RunCapture.MatchesTheRestoredLootScreen` reads); and the opening reading, which is not a decision's reading and whose hidden state the retail client's first room changes before the first decision - reported beside the verdict as `opening reading`, never folded into it.
+The corpus is a directory of `*.replay.json` with each `.journal.jsonl` beside it where one is on hand, read by `RecordingCorpus.Enumerate` and nothing else: `manifests/` is the committed one, and a player's store is a copy the person takes and names with `--corpus`, never a path the CLI derives.
+A recording without a journal, with one in a schema this build does not read, or whose `continuity` the recorder marked `broken`, holds nothing and is counted in the printed denominator so the figure cannot read as whole; the two committed native recordings carry none, the journals the recorder wrote for them being schema v1, and `ParityTests` holds the command to saying so over `manifests/`.
+A journal in this build's own schema that cannot be parsed, a journal of another run, and a replay the engine refused each fail the figure as `REFUSED`; `UnreadableJournalSchemaException` is how `RunJournal.Parse` tells the first apart from an older schema.
+The store corpus is release evidence and never part of the merge gate.
+The second number, `coverage`, is not built yet.
+
 **A boundary is re-derived, never deserialized, except at a floor arrival with a live
 fight, which may be restored - headlessly and in the client - and only through the one
 cache that verifies it.**
@@ -160,12 +172,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 161
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 246 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 173
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 258 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 246.
+datum where it runs, so a run with the game reports more cases than 258.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift

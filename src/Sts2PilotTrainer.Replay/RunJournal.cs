@@ -172,6 +172,11 @@ public sealed record RunJournal
     /// <summary>The decisions, without the opening reading.</summary>
     public IEnumerable<RunJournalEntry> Decisions => Entries.Skip(1);
 
+    /// <summary>The continued history as the trace a replay of it is held to, one
+    /// step per entry with both readings and both digests; what
+    /// <see cref="TraceParity"/> compares a replay against.</summary>
+    public ReplayTrace Trace => new() { Steps = Entries.Select(entry => entry.AsStep()).ToList() };
+
     /// <summary>The header line, written once when the journal is opened.</summary>
     public string RenderHeader() =>
         JsonSerializer.Serialize(
@@ -411,7 +416,7 @@ public sealed record RunJournal
 
         if (!ReadableSchemas.Contains(header.SchemaId, StringComparer.Ordinal))
         {
-            throw new ManifestException(
+            throw new UnreadableJournalSchemaException(
                 $"This run journal declares schema '{header.SchemaId}', and this build reads " +
                 $"'{string.Join("', '", ReadableSchemas)}'. Refusing rather than reading it partially.");
         }
@@ -920,4 +925,24 @@ public sealed record RunJournalEntry
     [JsonPropertyName("run_clock_ms")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? RunClockMs { get; init; }
+
+    /// <summary>
+    /// This entry as the step a replay is held to: the reading it began from, the
+    /// reading it settled into, and the digest of each.
+    ///
+    /// One conversion, so the trace a live capture keeps and the trace a journal on
+    /// disk reads back as cannot disagree about what a decision line means. The
+    /// opening reading has nothing before it and stands either side of its own step,
+    /// which is how the replay's own opening step is built.
+    /// </summary>
+    public ReplayStep AsStep() => new()
+    {
+        Seq = Seq,
+        Verb = Verb,
+        Args = Args,
+        Before = Before ?? State,
+        After = State,
+        BeforeDigest = BeforeDigest ?? (Before is null ? Digest : null),
+        AfterDigest = Digest,
+    };
 }

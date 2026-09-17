@@ -162,6 +162,37 @@ public sealed record ReplayStep
     public required IReadOnlyDictionary<string, string> After { get; init; }
 
     /// <summary>
+    /// The complete canonical state digest either side of the step, where the host
+    /// that produced the trace took one.
+    ///
+    /// A sample keeps the fields a comparison reads; the digest covers the draw order
+    /// and every random stream's position besides. Two steps whose samples agree and
+    /// whose digests do not have diverged in hidden state, which is what
+    /// <see cref="TraceParity"/> reports by decision. Absent on a trace written before
+    /// the digests were kept, and absent from a captured fight, whose boundary digest
+    /// binds it instead; a comparison holds the digests only where both sides carry
+    /// one.
+    /// </summary>
+    [JsonPropertyName("before_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BeforeDigest { get; init; }
+
+    [JsonPropertyName("after_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AfterDigest { get; init; }
+
+    /// <summary>Whether this step began inside a live fight and settled with it
+    /// over: the killing play, whose settled reading the retail client rolls the
+    /// rewards after, on its own clock. One reading of that rule, asked by the
+    /// recorder's resume and by <see cref="TraceParity"/> alike.</summary>
+    [JsonIgnore]
+    public bool EndsAFight => InALiveFight(Before) && !InALiveFight(After);
+
+    /// <summary>Whether a sample was read inside a fight still being fought.</summary>
+    public static bool InALiveFight(IReadOnlyDictionary<string, string> sample) =>
+        string.Equals(sample.GetValueOrDefault("combat.outcome", "none"), "in_progress", StringComparison.Ordinal);
+
+    /// <summary>
     /// Reserved marker for a step that happened and was then unwound.
     ///
     /// Absent by default and read by nothing. Native mid-fight rollbacks instead keep

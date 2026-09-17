@@ -116,14 +116,7 @@ public sealed class RunCapture
         Continuity = continuity;
         Opening = opening;
 
-        var sample = ReplayTrace.Sample(opening.State);
-        _steps.Add(new ReplayStep
-        {
-            Seq = -1,
-            Verb = RunStartVerb,
-            Before = sample,
-            After = sample,
-        });
+        _steps.Add(opening.AsStep());
         _digests[-1] = opening.Digest;
         _clocks[-1] = opening.RunClockMs;
     }
@@ -314,7 +307,7 @@ public sealed class RunCapture
             "which run it began watching.");
 
         var sample = ReplayTrace.Sample(start.State);
-        if (InCombat(sample))
+        if (ReplayStep.InALiveFight(sample))
         {
             throw new ManifestException(
                 "This run is already in a fight, so the recorder did not see it begin. A history recorded from " +
@@ -537,8 +530,7 @@ public sealed class RunCapture
 
     /// <summary>Whether a decision began inside a fight and settled with it over:
     /// the killing play, whose settled reading precedes the rewards the client rolls.</summary>
-    private static bool EndedAFight(RunJournalEntry entry) =>
-        entry.Before is { } before && InCombat(before) && !InCombat(entry.State);
+    private static bool EndedAFight(RunJournalEntry entry) => entry.Before is not null && entry.AsStep().EndsAFight;
 
     /// <summary>
     /// Whether a return to <paramref name="target"/> is the game's own rollback: its
@@ -1135,14 +1127,7 @@ public sealed class RunCapture
                 "it began from.");
         var after = entry.State;
 
-        _steps.Add(new ReplayStep
-        {
-            Seq = entry.Seq,
-            Verb = entry.Verb,
-            Args = entry.Args,
-            Before = before,
-            After = after,
-        });
+        _steps.Add(entry.AsStep());
 
         _actions.Add(new ActionRecord
         {
@@ -1177,7 +1162,7 @@ public sealed class RunCapture
     {
         if (_fight is null)
         {
-            if (!InCombat(after)) return;
+            if (!ReplayStep.InALiveFight(after)) return;
 
             _fight = FightCapture.Begin(
                 $"{FightSourceIdPrefix}{(_fights.Count + 1).ToString(CultureInfo.InvariantCulture)}",
@@ -1330,11 +1315,6 @@ public sealed class RunCapture
     {
         if (!condition) throw new ManifestException(refusal);
     }
-
-    private const string InProgress = "in_progress";
-
-    private static bool InCombat(IReadOnlyDictionary<string, string> sample) =>
-        string.Equals(sample.GetValueOrDefault("combat.outcome", "none"), InProgress, StringComparison.Ordinal);
 
     private static int? Floor(IReadOnlyDictionary<string, string> sample) =>
         sample.TryGetValue("run.total_floor", out var value) &&

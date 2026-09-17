@@ -429,7 +429,7 @@ public sealed class RunCaptureTests
     {
         var text = Played().Journal.Render().Replace(RunJournal.Schema, schema, StringComparison.Ordinal);
 
-        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
+        var refusal = Assert.Throws<UnreadableJournalSchemaException>(() => RunJournal.Parse(text));
 
         Assert.Contains($"declares schema '{schema}'", refusal.Message, StringComparison.Ordinal);
         Assert.Contains(RunJournal.Schema, refusal.Message, StringComparison.Ordinal);
@@ -1657,7 +1657,7 @@ public sealed class RunCaptureTests
         var lines = Played().Journal.Render().Split('\n');
         lines[0] = lines[0].Replace(RunJournal.Schema, "somebody-elses/journal/v9", StringComparison.Ordinal);
 
-        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(string.Join("\n", lines)));
+        var refusal = Assert.Throws<UnreadableJournalSchemaException>(() => RunJournal.Parse(string.Join("\n", lines)));
 
         Assert.Contains("somebody-elses/journal/v9", refusal.Message, StringComparison.Ordinal);
     }
