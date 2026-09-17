@@ -266,9 +266,11 @@ public enum ExcusalClass
     /// never to a singleplayer run, so it is multiplayer only.</summary>
     RetailOnlyTiming,
 
-    /// <summary>An answer this build's driver refuses by name, because what the
-    /// recording would have to carry after it is a decision the format has no record
-    /// of; no recording of it can replay.</summary>
+    /// <summary>An answer no recording of which can replay on this build: either the
+    /// driver refuses it by name, because what the recording would have to carry after
+    /// it is a decision the format has no record of (the reroll), or the key the
+    /// recorder writes is one the driver never matches (an event option keyed by a
+    /// LocString's raw text, the Doll Room's dolls).</summary>
     NotReplayable,
 
     /// <summary>The victory room's own event and its options: reached by the win and
