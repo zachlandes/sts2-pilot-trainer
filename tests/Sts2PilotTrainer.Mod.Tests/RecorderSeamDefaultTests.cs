@@ -163,6 +163,66 @@ public sealed class RecorderSeamDefaultTests : IDisposable
     }
 
     /// <summary>
+    /// A stranger met while a decision's step is still open closes that step first
+    /// and stops at the ordinal after it.
+    ///
+    /// The executor runs a played card and then whatever the card enqueued, before
+    /// the observer has sampled the card's after-state: the play's step is open when
+    /// the stranger arrives. Stopped without closing it, the stop would take the
+    /// play's own ordinal with a before-reading the play had already changed, and the
+    /// play would be dropped when its after-sample found the recording stopped. So the
+    /// play is closed on the stranger's before-sample, the way it is closed before any
+    /// decision that follows it, and the stop stands after it. Both ways a stranger
+    /// enters a fight end there: straight onto the executor's queue, and requested
+    /// through <c>RequestEnqueue</c>, where the request seam leaves an action the
+    /// observer will meet to the observer.
+    /// </summary>
+    [GameTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AStrangerMetWhileAPlayIsOpenClosesThePlayAndStopsAfterIt(bool requested)
+    {
+        using var recording = Patched();
+        var session = StartRecordedRun(out var driver);
+        using (driver)
+        {
+            HeadlessRuns.EnterTheFirstFight(driver, session);
+            DrainSettles();
+            var capture = RunRecorder.Active!.Capture;
+            var player = session.RunState.Players[0];
+            var playSeq = capture.NextSeq;
+
+            var hand = player.PlayerCombatState!.Hand.Cards.ToList();
+            var card = hand.First(candidate => candidate.CanPlay(out _, out _));
+            var target = card.TargetType == TargetType.AnyEnemy
+                ? CombatManager.Instance!.DebugOnlyGetState()!.Enemies.First(enemy => enemy.IsAlive)
+                : null;
+            var queues = RunManager.Instance.ActionQueueSet;
+            queues.EnqueueWithoutSynchronizing(new PlayCardAction(card, target));
+            Pump.Drain();
+            Assert.Equal(playSeq, capture.NextSeq);
+
+            // The play has executed and its after-sample is still parked on the clock
+            var stranger = new Stranger(player, GameActionType.CombatPlayPhaseOnly);
+            if (requested) RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(stranger);
+            else queues.EnqueueWithoutSynchronizing(stranger);
+            Pump.Drain();
+            DrainSettles();
+
+            Assert.Equal(RunCaptureState.Unmapped, capture.State);
+            Assert.Empty(capture.Refusals);
+            var play = capture.Actions[^1];
+            Assert.Equal(ActionVerb.PlayCard, play.Verb);
+            Assert.Equal(playSeq, play.Seq);
+            Assert.Equal(card.Id.ToString(), play.Args["card_id"]);
+            var stop = capture.Stop!.Decision;
+            Assert.Equal(playSeq + 1, stop.Seq);
+            Assert.Equal(UnmappedDecision.NetActionSeam, stop.Seam);
+            Assert.Equal(nameof(Stranger), stop.Name);
+        }
+    }
+
+    /// <summary>
     /// A prompt the game's own selector answers is the engine answering itself in
     /// both hosts: it opens no prompt, syncs its choice like any other, and the choice
     /// default must read that sync as nobody's decision. The card is put in the hand

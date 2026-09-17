@@ -1476,7 +1476,7 @@ internal sealed class RunRecorder : IDisposable
             // fight is drained the same way its decisions are.
             _observer = PlayerFightObserver.Start(
                 run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { }, Clock,
-                unmapped: action => StopAtDecision(MetAtNetAction(action)));
+                unmapped: StopAtFightAction);
             return;
         }
 
@@ -1539,8 +1539,37 @@ internal sealed class RunRecorder : IDisposable
         string member, string verb, IReadOnlyDictionary<string, string> args, TakenReading before,
         string unresolved)
     {
-        _capture.Fight?.MarkIncomplete(unresolved);
-        StopAt(new UnmappedFacts(UnmappedDecision.MemberSeam, member, verb, Args(args), unresolved), before);
+        StopAtFightStep(new UnmappedFacts(UnmappedDecision.MemberSeam, member, verb, Args(args), unresolved), before);
+    }
+
+    /// <summary>
+    /// The one writer of a stop inside a fight, whatever seam met the decision: the
+    /// fight's capture is marked incomplete with the same sentence the stop carries,
+    /// and the recording stops at the state the decision began from.
+    /// </summary>
+    private void StopAtFightStep(UnmappedFacts met, TakenReading before)
+    {
+        _capture.Fight?.MarkIncomplete(met.Note ?? $"The recorder met {met.Seam} {met.Name} inside a fight.");
+        StopAt(met, before);
+    }
+
+    /// <summary>
+    /// A game action the observer met at the executor and nothing here claims.
+    ///
+    /// The observer's default hands over what it hands <see cref="FightSink"/> for a
+    /// decision - the state sampled before the action and whether the step still open
+    /// had finished - so the decision before the stranger is closed exactly as it is
+    /// before any decision, on this sample, and the stop stands at the ordinal after
+    /// it rather than taking that ordinal and dropping the step when its after-sample
+    /// arrives. The stop names the action's own type, at the same seam
+    /// <see cref="ActionRequested"/> names one at.
+    /// </summary>
+    private void StopAtFightAction(
+        GameAction action, IReadOnlyDictionary<string, string> before, bool previousFinished)
+    {
+        if (!CloseStrandedFightStep(action.GetType().Name, before, previousFinished)) return;
+
+        StopAtFightStep(MetAtNetAction(action), ReadingOf(before));
     }
 
     /// <summary>
@@ -3333,7 +3362,11 @@ internal sealed class RunRecorder : IDisposable
     /// the console's marks the run non-standard, the way the console's own patch
     /// does; and a stranger stops the recording here, naming its type. An action the
     /// synchronizer defers past the enemy turn re-enters this member when the player's
-    /// turn begins, so each action instance is classified once.
+    /// turn begins, so each action instance is classified once. A stranger the fight
+    /// observer <see cref="PlayerFightObserver.Watches"/> is left to the observer,
+    /// which meets it at the executor with the fight's own step open and closes that
+    /// step first; stopped here, at the request, the stop would stand at the open
+    /// step's ordinal and drop it.
     /// </summary>
     [HarmonyPatch(typeof(ActionQueueSynchronizer), nameof(ActionQueueSynchronizer.RequestEnqueue))]
     internal static class ActionRequested
@@ -3344,7 +3377,7 @@ internal sealed class RunRecorder : IDisposable
         [HarmonyPrefix]
         internal static void Before(GameAction action)
         {
-            if (Active is null) return;
+            if (Active is not { } recorder) return;
             if (!Classified.TryAdd(action, Once)) return;
 
             try
@@ -3358,13 +3391,15 @@ internal sealed class RunRecorder : IDisposable
                         ConsoleCommandUsed();
                         return;
                     default:
+                        if (recorder._observer is { } observer && observer.Watches(action)) return;
+
                         StopAtDecision(MetAtNetAction(action));
                         return;
                 }
             }
             catch (Exception ex)
             {
-                Active?.Refuse($"A game action could not be classified: {ex.GetType().Name}: {ex.Message}");
+                recorder.Refuse($"A game action could not be classified: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

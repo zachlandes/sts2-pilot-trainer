@@ -60,7 +60,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly ActionExecutor _executor;
     private readonly Action _fightEnded;
     private readonly Action _sampled;
-    private readonly Action<GameAction>? _unmapped;
+    private readonly Action<GameAction, IReadOnlyDictionary<string, string>, bool>? _unmapped;
     private readonly SettleClock _clock;
 
     private bool _awaitingPlayerTurn;
@@ -86,7 +86,7 @@ internal sealed class PlayerFightObserver : IDisposable
         Action fightEnded,
         Action sampled,
         SettleClock clock,
-        Action<GameAction>? unmapped)
+        Action<GameAction, IReadOnlyDictionary<string, string>, bool>? unmapped)
     {
         _sample = sample;
         _sink = sink;
@@ -125,8 +125,12 @@ internal sealed class PlayerFightObserver : IDisposable
     /// by the arbiter's drain. See <see cref="SettleClock"/>.</param>
     /// <param name="unmapped">Called for a player-driven action that is none of the
     /// five the fight is made of - a stranger the executor is about to run and this
-    /// observer would otherwise let by unrecorded. The recorder stops its recording
-    /// there, naming the type; a caller that passes nothing keeps the old silence.</param>
+    /// observer would otherwise let by unrecorded - with the state sampled before it
+    /// and whether the step still open had finished executing, which is what
+    /// <see cref="IFightSampleSink.BeginStep"/> is told for a decision, so the
+    /// recorder closes that step the way it closes one before any decision and then
+    /// stops its recording, naming the type; a caller that passes nothing keeps the
+    /// old silence.</param>
     internal static PlayerFightObserver Start(
         Player player,
         Func<IReadOnlyDictionary<string, string>> sample,
@@ -134,7 +138,7 @@ internal sealed class PlayerFightObserver : IDisposable
         Action fightEnded,
         Action sampled,
         SettleClock clock,
-        Action<GameAction>? unmapped = null)
+        Action<GameAction, IReadOnlyDictionary<string, string>, bool>? unmapped = null)
     {
         var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled, clock, unmapped);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
@@ -219,8 +223,9 @@ internal sealed class PlayerFightObserver : IDisposable
                     // A player-driven action none of the five cases names is a
                     // stranger to this capture, not the engine's bookkeeping; the
                     // executor tells the two apart, and a stranger is refused by name
-                    // rather than executed unseen
-                    if (ActionQueueSet.IsGameActionPlayerDriven(action)) _unmapped?.Invoke(action);
+                    // rather than executed unseen. Sampled the way a decision is, so
+                    // the step still open closes on the state this one began from
+                    if (Watches(action) && _unmapped is { } unmapped) unmapped(action, _sample(), previousFinished);
                     break;
             }
         }
@@ -273,9 +278,19 @@ internal sealed class PlayerFightObserver : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Whether this observer meets <paramref name="action"/> when the executor runs
+    /// it: the player's own, and player-driven as the executor tells it - not a hook,
+    /// not the enemy turn's readiness. The one reading of that, so the seam that sees
+    /// an action requested inside a fight can leave it to the executor's announcement
+    /// knowing this observer will meet it there.
+    /// </summary>
+    internal bool Watches(GameAction action) =>
+        !_ended && action.OwnerId == _player.NetId && ActionQueueSet.IsGameActionPlayerDriven(action);
+
     /// <summary>The five actions a fight is made of, which is the set the switch in
     /// <see cref="BeforeAction"/> opens steps for; its default is what meets any other
-    /// player-driven action.</summary>
+    /// action this observer <see cref="Watches"/>.</summary>
     private static bool IsADecision(GameAction action) =>
         action is PlayCardAction or UsePotionAction or DiscardPotionGameAction
             or EndPlayerTurnAction or UndoEndPlayerTurnAction;
