@@ -17,7 +17,7 @@ not released yet. See [README.md](README.md).
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter parity --corpus manifests   # the recorder's standard: every journalled recording replays decision for decision
-./scripts/arbiter coverage --corpus manifests # ... and every decision point the build offers is reached or excused (--update to re-record the denominator)
+./scripts/arbiter coverage --corpus manifests # ... and every decision point the build offers is reached or excused (--update to re-record the denominator and the producer map)
 ./scripts/arbiter engine-commands --update  # re-record scripts/decision-ledger.txt: every way a decision reaches the game, claimed by a row or excused
 ./scripts/arbiter <command> # gate | parity | coverage | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
