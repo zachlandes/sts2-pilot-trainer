@@ -3,11 +3,15 @@ using System.Reflection;
 using System.Text;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Models;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Rooms;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -220,6 +224,164 @@ public static class DecisionSurface
 
         return text.ToString();
     }
+
+    // ── The ledger's kinds: what the recorder has to watch, beyond what a recording counts ──
+
+    /// <summary>The kinds <see cref="DecisionLedger"/> holds the recorder's account to,
+    /// in the order the ledger lists them: each is a way a decision reaches the game
+    /// that a build can add to without touching a member the recorder patches.</summary>
+    public static readonly string[] LedgerKinds = ["net-action", "player-choice", "message", "overlay-screen", "room"];
+
+    /// <summary>
+    /// Every choice the client syncs, as (kind, member): each member whose body calls
+    /// <c>PlayerChoiceSynchronizer.SyncLocalChoice</c>, crossed with the kinds the
+    /// results that body constructs carry - read off which <c>PlayerChoiceResult.From*</c>
+    /// factory it calls, since the kind is the factory's and never a runtime value on
+    /// this build. A caller that constructs through a factory this reading does not
+    /// know - the kind-taking <c>FromCards</c> among them - is listed under that factory's name, and one whose
+    /// own body constructs no result at all under <see cref="UnreadChoiceKind"/>, so
+    /// that neither is dropped: each is a candidate no row can claim until somebody
+    /// has read it. Walked once per process, since the assembly does not change under it.
+    /// </summary>
+    public static IReadOnlyList<(string Kind, MethodBase Member)> PlayerChoiceSites() => PlayerChoiceSiteWalk.Value;
+
+    /// <summary>The kind a synced choice is listed under when the member syncing it
+    /// constructs its result nowhere this walk can read.</summary>
+    public const string UnreadChoiceKind = "?";
+
+    private static readonly Lazy<IReadOnlyList<(string Kind, MethodBase Member)>> PlayerChoiceSiteWalk = new(() =>
+    {
+        var sync = typeof(PlayerChoiceSynchronizer).GetMethod(
+            nameof(PlayerChoiceSynchronizer.SyncLocalChoice), BindingFlags.Public | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("PlayerChoiceSynchronizer.SyncLocalChoice is not declared on this build.");
+        return ChoiceEntryPoints.CallSites(callee => callee == sync)
+            .Select(site => site.Caller)
+            .Distinct()
+            .SelectMany(caller => ChoiceKindsConstructedBy(caller).Select(kind => (Kind: kind, Member: caller)))
+            .OrderBy(site => PlayerChoiceIdentity(site.Kind, site.Member), StringComparer.Ordinal)
+            .ToList();
+    });
+
+    /// <summary>How a synced choice is named in the ledger: its kind at the member that syncs it.</summary>
+    public static string PlayerChoiceIdentity(string kind, MethodBase member) =>
+        $"{kind} @ {member.DeclaringType!.Name}.{EntryPointSignature.Of(member)}";
+
+    private static IEnumerable<string> ChoiceKindsConstructedBy(MethodBase caller)
+    {
+        var factories = ChoiceEntryPoints.OwnCalleesOf(caller)
+            .Where(callee => callee.DeclaringType == typeof(PlayerChoiceResult) && callee.IsStatic)
+            .Select(callee => callee.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (factories.Count == 0)
+        {
+            yield return UnreadChoiceKind;
+            yield break;
+        }
+
+        foreach (var factory in factories)
+        {
+            switch (factory)
+            {
+                case "FromIndex" or "FromIndexes":
+                    yield return nameof(PlayerChoiceType.Index);
+                    break;
+                case "FromPlayerId":
+                    yield return nameof(PlayerChoiceType.Player);
+                    break;
+                case "FromCanonicalCard" or "FromCanonicalCards":
+                    yield return nameof(PlayerChoiceType.CanonicalCard);
+                    break;
+                case "FromMutableCombatCard" or "FromMutableCombatCards":
+                    yield return nameof(PlayerChoiceType.CombatCard);
+                    break;
+                case "FromMutableDeckCard" or "FromMutableDeckCards":
+                    yield return nameof(PlayerChoiceType.DeckCard);
+                    break;
+                case "FromMutableCard" or "FromMutableCards":
+                    yield return nameof(PlayerChoiceType.MutableCard);
+                    break;
+                default:
+                    yield return factory;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every message the client sends, as (message, sender): each member whose body
+    /// calls <c>SendMessage</c> on the <c>INetGameService</c> interface or on a service
+    /// that implements it - a lobby member holding the host service by its own type
+    /// calls the class's method, and the IL names that one - with the message type it
+    /// sends read off the generic argument of the call. A call whose argument is still
+    /// open - a service forwarding one overload to another as <c>T</c> - sends nothing
+    /// of its own and is left out; a service sending a named message is a sender like
+    /// any other. Walked once per process.
+    /// </summary>
+    public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() => MessageSiteWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<(Type Message, MethodBase Sender)>> MessageSiteWalk = new(() =>
+        ChoiceEntryPoints.CallSites(callee =>
+                callee.Name == nameof(INetGameService.SendMessage) && callee.IsGenericMethod &&
+                typeof(INetGameService).IsAssignableFrom(callee.DeclaringType))
+            .Select(site => (Message: site.Callee.GetGenericArguments()[0], Sender: site.Caller))
+            .Where(site => !site.Message.IsGenericParameter)
+            .Distinct()
+            .OrderBy(site => MessageIdentity(site.Message, site.Sender), StringComparer.Ordinal)
+            .ToList());
+
+    /// <summary>How a sent message is named in the ledger: its type and the member that sends it.</summary>
+    public static string MessageIdentity(Type message, MethodBase sender) =>
+        $"{message.Name} <- {sender.DeclaringType!.Name}.{EntryPointSignature.Of(sender)}";
+
+    /// <summary>
+    /// Every type the message and synced-choice walks produced a caller from that has
+    /// a body the IL reader could not read whole, with how many, by full name: a send
+    /// or a sync inside one of those bodies is a candidate neither walk can produce, so
+    /// the ledger carries the set and excuses each in writing. It is the part of the
+    /// whole unreadable set the walks can point at; every other type on
+    /// <see cref="UnreadableBodiesRecord"/> is a place a send or sync could hide too,
+    /// and that record's diff is the guard for those.
+    /// </summary>
+    public static IReadOnlyList<(string Type, int Bodies)> UnreadableLedgerBodies() =>
+        ChoiceEntryPoints.UnreadableBodiesAmong(
+                PlayerChoiceSites().Select(site => site.Member).Concat(MessageSites().Select(site => site.Sender)))
+            .Select(entry => (entry.Type.FullName!, entry.Bodies))
+            .ToList();
+
+    /// <summary>Every type of the game assembly the runtime could not load against the
+    /// stubs, by full name: none of its bodies was walked, so none of its sends or syncs
+    /// can be a candidate, and the ledger carries the set for the same reason.</summary>
+    public static IReadOnlyList<string> UnloadableTypes() => ChoiceEntryPoints.UnloadableTypes();
+
+    /// <summary>How many types on this build have a body the IL reader could not read whole.</summary>
+    public static int UnreadableTypeCount() => ChoiceEntryPoints.UnreadableBodies().Count;
+
+    /// <summary>The whole unreadable set on this build - every type with a body the IL
+    /// reader could not read whole, and every type the runtime could not load - as the
+    /// text committed at <see cref="UnreadableBodiesRecordPath"/>.</summary>
+    public static string UnreadableBodiesRecord() => ChoiceEntryPoints.UnreadableBodiesRecord();
+
+    /// <summary>Where that record is committed, relative to the repository root.</summary>
+    public const string UnreadableBodiesRecordPath = ChoiceEntryPoints.UnreadableBodiesRecordPath;
+
+    /// <summary>Every overlay screen this build draws. Walked once per process.</summary>
+    public static IReadOnlyList<Type> OverlayScreenTypes() => OverlayScreenWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<Type>> OverlayScreenWalk = new(() =>
+        ChoiceEntryPoints.AllLoadedTypes
+            .Where(type => !type.IsAbstract && !type.IsInterface && typeof(IOverlayScreen).IsAssignableFrom(type))
+            .OrderBy(type => type.Name, StringComparer.Ordinal)
+            .ToList());
+
+    /// <summary>Every room type the map can deal and every room class the run can
+    /// stand in, each by name. Walked once per process.</summary>
+    public static IReadOnlyList<string> Rooms() => RoomWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<string>> RoomWalk = new(() =>
+        Enum.GetNames<RoomType>().Select(name => $"RoomType.{name}")
+            .Concat(ConcreteSubclassesOf(typeof(AbstractRoom)).Select(type => type.Name))
+            .ToList());
 
     private static IReadOnlyList<Type> ConcreteSubclassesOf(Type baseType) =>
         ChoiceEntryPoints.AllLoadedTypes

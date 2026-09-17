@@ -188,8 +188,15 @@ internal static class ChoiceEntryPoints
     /// </summary>
     internal static IReadOnlyList<string> UnloadableTypes() => Loaded.Value.Unloadable;
 
+    /// <summary>Where the record of <see cref="UnreadableBodies"/> and
+    /// <see cref="UnloadableTypes"/> is committed, relative to the repository root.</summary>
+    internal const string UnreadableBodiesRecordPath = "scripts/unreadable-choice-scan-bodies.txt";
+
     /// <summary>The committed record of <see cref="UnreadableBodies"/> and
-    /// <see cref="UnloadableTypes"/>, one type per line under two headings.</summary>
+    /// <see cref="UnloadableTypes"/>, one type per line under two headings. Every type
+    /// on it is a place a send or a sync could hide from <see cref="CallSites"/> as
+    /// well as a prompt from the funnel check, so the ledger holds the build to the
+    /// committed copy too.</summary>
     internal static string UnreadableBodiesRecord()
     {
         var text = new StringBuilder();
@@ -280,6 +287,48 @@ internal static class ChoiceEntryPoints
             .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
             .Where(method => OperandsOf(method).Any(operand =>
                 operand.IsConstruction && operand.Callee?.DeclaringType == constructed))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Every (caller, callee) pair in the game where the callee satisfies
+    /// <paramref name="callee"/>, the caller read by its declared member the way a
+    /// person would name it and the game's own mocks left out. For a walk over who
+    /// sends which message or syncs which choice, where the callee is a family of
+    /// members rather than one.
+    /// </summary>
+    internal static IReadOnlyList<(MethodBase Caller, MethodBase Callee)> CallSites(Func<MethodBase, bool> callee)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        return Loaded.Value.Types
+            .Where(type => !IsMock(Outermost(type)))
+            .SelectMany(type => type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
+            .SelectMany(method => Callees(method).Where(callee).Select(called => (Caller: DeclaredMember(method), Callee: called)))
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Of the outermost types that declare <paramref name="members"/>, the ones with a
+    /// body the scan could not read whole, with how many: the reading
+    /// <see cref="UnreadableBodies"/> makes, narrowed to the types a walk over
+    /// <see cref="CallSites"/> produced a caller from. A call in one of those bodies is
+    /// one the walk never saw, so a walk that counts what such a type calls says so
+    /// beside its count rather than thinning it. This narrowing names only the types
+    /// the walk already reached; a type whose only call sits in an unreadable body
+    /// produces no caller and is not here, which is why the whole set is held to its
+    /// committed record as well.
+    /// </summary>
+    internal static IReadOnlyList<(Type Type, int Bodies)> UnreadableBodiesAmong(IEnumerable<MethodBase> members)
+    {
+        var unreadable = Index.Value.UnreadableBodies;
+        return members
+            .Select(member => Outermost(member.DeclaringType!))
+            .Distinct()
+            .Where(unreadable.ContainsKey)
+            .Select(type => (type, unreadable[type]))
+            .OrderBy(entry => entry.type.FullName, StringComparer.Ordinal)
             .ToList();
     }
 
@@ -475,6 +524,12 @@ internal static class ChoiceEntryPoints
             callers.ToDictionary(entry => entry.Key, entry => (IReadOnlySet<Type>)entry.Value),
             unreadable);
     }
+
+    /// <summary>The callees of a member's own body, its state machine and the lambdas
+    /// it takes the address of, for a walk that reads what a caller constructs; a
+    /// constructor has a body and no state machine.</summary>
+    internal static IReadOnlyList<MethodBase> OwnCalleesOf(MethodBase member) =>
+        member is MethodInfo method ? OwnCallees(method).Distinct().ToList() : Callees(member);
 
     /// <summary>The callees of a method's own body, its async state machine's MoveNext,
     /// and of each lambda either of those takes the address of, read the same way. Only
