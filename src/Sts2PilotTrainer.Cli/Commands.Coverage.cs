@@ -48,7 +48,8 @@ internal static partial class Commands
             if (reading.Manifest is { } manifest)
             {
                 recordings.Add(new CoveredRecording(
-                    manifest.RunId, DecisionFacts.Of(manifest), RecordingStanding.Of(manifest.Source.Native)));
+                    manifest.RunId, DecisionFacts.Of(manifest), RecordingStanding.Of(manifest.Source.Native),
+                    DecisionFacts.ModelsMet(manifest)));
             }
             else
             {
@@ -57,7 +58,9 @@ internal static partial class Commands
         }
 
         var denominator = DecisionSurface.All();
-        var report = DecisionCoverage.Over(denominator, DecisionExcusals.All, recordings, unreadable);
+        var report = DecisionCoverage.Over(
+            denominator, DecisionExcusals.All, recordings, DecisionSurface.ProducerMap(),
+            DecisionSurface.AdmissibleExcusals(denominator), unreadable);
 
         foreach (var row in report.Rows) Console.WriteLine($"  {row.Describe()}");
         if (report.Unverified.Count > 0)
@@ -95,6 +98,13 @@ internal static partial class Commands
             foreach (var point in report.StaleExcusals) Console.WriteLine($"  {point}");
         }
 
+        if (report.InadmissibleExcusals.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  excused in a class the map does not admit for the point, which fails the bar; each names what the map admits:");
+            foreach (var excusal in report.InadmissibleExcusals) Console.WriteLine($"  {excusal.Describe()}");
+        }
+
         Console.WriteLine();
         foreach (var line in report.Totals()) Console.WriteLine(line);
         Console.WriteLine(report.Holds
@@ -108,31 +118,39 @@ internal static partial class Commands
                 Path.Combine(WorktreeLocator.Find(), DecisionSurface.RecordPath), clearExisting: false);
             record.WriteAtomic(DecisionSurface.Record(denominator));
             Console.WriteLine($"denominator record: {Paths.Display(record.Path)}");
+            var producerMap = EvidenceArtifact.PreparePath(
+                Path.Combine(WorktreeLocator.Find(), DecisionSurface.ProducerMapRecordPath), clearExisting: false);
+            producerMap.WriteAtomic(DecisionSurface.ProducerMapRecord());
+            Console.WriteLine($"producer map: {Paths.Display(producerMap.Path)}");
         }
 
         artifact.WriteAtomic(
             JsonSerializer.Serialize(
                 new
                 {
-                    schema = "sts2-pilot-trainer/coverage/v1",
+                    schema = "sts2-pilot-trainer/coverage/v2",
                     arbiter_version = Arbiter.Version,
                     standard =
                         "Every decision point this build offers, walked off the game assembly, is reached by a " +
-                        "recording in the corpus or excused in writing; a kind this format cannot project is " +
-                        "listed as such and counted neither way. A recording the recorder marked broken, " +
-                        "unmapped or non-standard credits nothing and is tallied apart as unverified, and a " +
-                        "manifest this build cannot read is named and counts for nothing.",
+                        "recording in the corpus or excused in writing in a class the map admits; a seam is " +
+                        "reached by co-occurrence, a recording that met one of its producers and answered its " +
+                        "decision; a kind this format cannot project is listed as such and counted neither way. " +
+                        "A recording the recorder marked broken, unmapped or non-standard credits nothing and is " +
+                        "tallied apart as unverified, and a manifest this build cannot read is named and counts " +
+                        "for nothing.",
                     corpus = corpora.Select(Paths.Display).ToList(),
                     covered = report.Holds,
                     totals = new
                     {
                         points = report.Points,
                         covered = report.Covered,
+                        co_occurrence = report.CoOccurrence,
                         excused = report.Excused,
                         uncovered = report.Uncovered,
                         not_projectable = report.NotProjectable,
                         outside_the_denominator = report.OutsideTheDenominator.Count,
                         stale_excusals = report.StaleExcusals.Count,
+                        inadmissible_excusals = report.InadmissibleExcusals.Count,
                         excused_and_reached = report.ExcusedAndReached.Count,
                         recordings = report.Recordings,
                         credited_recordings = report.CreditedRecordings,
@@ -146,9 +164,17 @@ internal static partial class Commands
                         recordings = row.Recordings,
                         unverified_recordings = row.UnverifiedRecordings,
                         state = row.State.ToString(),
-                        excuse = row.Excuse,
+                        excuse = row.Excuse?.Reason,
+                        excuse_class = row.Excuse is { } excuse ? ExcusalClasses.Name(excuse.Class) : null,
                     }),
                     stale_excusals = report.StaleExcusals,
+                    inadmissible_excusals = report.InadmissibleExcusals.Select(excusal => new
+                    {
+                        kind = excusal.Point.Kind,
+                        identity = excusal.Point.Identity,
+                        claimed = ExcusalClasses.Name(excusal.Claimed),
+                        admitted = excusal.Admitted.Select(ExcusalClasses.Name),
+                    }),
                     excused_and_reached = report.ExcusedAndReached,
                     unverified_recordings = report.Unverified.Select(recording => new
                     {

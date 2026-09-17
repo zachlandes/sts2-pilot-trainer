@@ -75,7 +75,7 @@ public sealed class GeneratedCoverageTests
     {
         var rows = Rows().SelectMany(row => new[] { (string)row[1], (string)row[2] }).Where(point => point.Length > 0).ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All
-            .Where(excusal => excusal.Value.Contains(nameof(GeneratedCoverageTests), StringComparison.Ordinal))
+            .Where(excusal => excusal.Value.Reason.Contains(nameof(GeneratedCoverageTests), StringComparison.Ordinal))
             .Select(excusal => excusal.Key.ToString())
             .ToHashSet(StringComparer.Ordinal);
 

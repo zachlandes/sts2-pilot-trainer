@@ -8,8 +8,13 @@ Neither is a feeling about how much has been tested; each has a denominator some
 **Parity**, per recording and per decision: a fresh replay of the manifest reproduces the `.journal.jsonl` the recorder wrote beside it, decision for decision - the same verb at the same place, the sampled state it began from and settled into, and the complete digest of each reading - and the first decision where it does not is named with the field.
 `./scripts/arbiter parity` computes it; `AGENTS.md` owns what it holds and the two digests it does not.
 
-**Coverage**, per decision point and over the corpus: for every point this build can offer - every verb, reward kind, card-reward alternative, shop shelf, rest option, event and prompt entry point, walked off the assembly by `DecisionSurface` - how many recordings exercise it, with every uncovered point named and every excused one carrying the reason a build is held to.
+**Coverage**, per decision point and over the corpus: for every point this build can offer - every verb, reward kind, card-reward alternative, shop shelf, rest option, event, event option, seam at its timing class and prompt entry point, walked off the assembly by `DecisionSurface` - how many recordings exercise it, with every uncovered point named and every excused one carrying the reason a build is held to and the class the map admits for it.
 `./scripts/arbiter coverage` computes it; `DecisionExcusals` is the written excuse for what no committed recording reaches.
+
+The map is seam-centric, because every replay refusal this project has recorded was a seam and never a card effect: `DecisionSurface.ProducerMap` walks the game assembly from every hook a model overrides to the first seam it reaches and lists, per seam and timing class, the content that produces it, with what deals each relic (`DealtBy`) and which acts reach each event (`ReachableIn`); `scripts/producer-map.txt` is that map on this build.
+A seam is reached by co-occurrence - a recording that met one of its producers and answered its decision - and is printed as such, never as covered, because the format does not record which producer opened the decision.
+Every excusal carries a class, and the map says which classes it admits for each point: `no-producer-on-this-build`, `multiplayer-only`, `screen-without-headless-host`, `retail-only-timing`, `not-replayable` and `reached-by-the-win` are derived from the walks and the host's own tables, `generated` is held by a merge-gate row, and `not-on-the-route` is admissible only where nothing is derived.
+An excusal in a class the map does not admit fails the number by name, the way a stale one does.
 
 The release statement: parity is 100% over every recording on hand, and coverage lists no decision point reachable on this build that no recording exercises, or every such point is named with its excuse.
 
@@ -25,8 +30,8 @@ The store is `user://Runmobile/<platform>/<account>/<profile>/recordings/`, copi
 The artifacts under `--out` - `parity.json` and `coverage.json` - are the release evidence, and the release note carries:
 
 - the parity figure as printed, with every recording that holds nothing named by why - no journal, a journal in a schema this build does not read, a continuity the recorder marked broken;
-- every point still excused, with its reason.
-  An excusal that says no committed recording reaches the point is a placeholder, and at release it is not acceptable for a point a player can reach on this build: such a point is played, recorded and committed, or the release note says why not.
+- every point still excused, with its class and its reason.
+  An excusal that says no committed recording reaches the point (`not-on-the-route`) is a placeholder, and at release it is not acceptable for a point a player can reach on this build: such a point is played, recorded and committed, or the release note says why not.
   An excusal that names `GeneratedCoverageTests` is held by a generated walk through the real recorder on every merge and stands.
   A point reached by a recording of the store corpus is printed as `excused and reached by this corpus`; that is progress and not a failure, and it is the list of excusals a committed recording would retire.
 
@@ -50,6 +55,9 @@ Over `manifests/` and a copy of the author's whole store on v0.111.0 - every pro
   Of the 78 still excused, 3 are held by `GeneratedCoverageTests`, 1 is a reward kind no singleplayer path constructs, 3 are screens the headless host has none for, and the undo, the reroll the driver refuses and the mend a singleplayer run is never offered are one each; the other 68 name a producer the fixture seed's route does not pass - 52 events and the 7 ancients a row per each would need a seed hunted for, the card-removal and special-card rewards, the sacrifice and the six rest options a relic or the Byrdonis Egg adds.
 
 The measurement stands as the recorder's first release verdict: coverage passes and parity does not.
+
+The denominator was widened on 2026-09-17 to 522 points over `manifests/`, when the map became seam-centric: the Architect as the 65th event, 305 event options (every option of every event, ancient, Neow and the Architect, the runtime-built keys of nine events derived the way their code builds them, none of which a committed recording names, because all three were written before the recorder wrote `option_key`) and 78 seams at their timing classes, six of which the committed corpus reaches by co-occurrence.
+The figure over the store copy is re-measured at the next release procedure; the 78 excusals above kept their sentences and gained their classes, the undo's class corrected to `multiplayer-only` by the driver's own measurement, and every new point is excused by id - the Architect's as `reached-by-the-win`, the two seams answered only on stood-in screens as `screen-without-headless-host`, the three dolls keyed by a localized title as `not-replayable`, the rest as `not-on-the-route` until the walks of the staged path reach them.
 Two recorder findings came out of it, the reward-opening event reading above and a `SkipRewards` in a v5 journal read after the map move that dismissed the loot screen had begun; both are fixed in the recorder, below, and neither by the standard.
 
 ## The two recorder findings, fixed 2026-09-17

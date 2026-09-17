@@ -256,6 +256,17 @@ internal sealed class ManifestCardSelector : ICardSelector
     private void Refuse(string message) => Refusal ??= message;
 
     /// <summary>
+    /// Whether an alternative's after-action ends the reward's selection, which is
+    /// what lets a recording carry the whole answer: the two ending actions do, and
+    /// anything else - the reroll's DoNothing - keeps the engine asking for an answer
+    /// the recorder never wrote. The one rule, read here for a live alternative and by
+    /// the coverage map for every alternative the build constructs.
+    /// </summary>
+    public static bool EndsTheSelection(PostAlternateCardRewardAction afterSelected) =>
+        afterSelected is PostAlternateCardRewardAction.EndSelectionAndCompleteReward
+            or PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward;
+
+    /// <summary>
     /// The card taken from a combat's card reward.
     ///
     /// Called from <c>CardReward.OnSelect</c> once the reward itself has been
@@ -310,8 +321,7 @@ internal sealed class ManifestCardSelector : ICardSelector
             // and answered with nothing so the engine ends the selection rather than
             // asking on: an answer of nothing is the engine's own "declined" path.
             var afterSelected = alternatives[position].AfterSelected;
-            if (afterSelected is not (PostAlternateCardRewardAction.EndSelectionAndCompleteReward
-                or PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward))
+            if (!EndsTheSelection(afterSelected))
             {
                 Refuse(
                     $"Action {alternative.Seq} answers a card reward with alternative '{alternative.OptionId}', " +

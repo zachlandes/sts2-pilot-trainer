@@ -10,9 +10,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// without a written excusal.
 ///
 /// Today that condition holds by excusal for most of the denominator - the committed
-/// corpus reaches nineteen points - and this holds the command to saying so by name,
-/// with the card-reward alternative the audit found unrecorded listed under its own
-/// verb as excused rather than absent.
+/// corpus reaches nineteen points and six seams by co-occurrence - and this holds the
+/// command to saying so by name, with the card-reward alternative the audit found
+/// unrecorded listed under its own verb as excused rather than absent, and every
+/// excusal in a class the map admits.
 /// </summary>
 public sealed class CoverageTests
 {
@@ -26,10 +27,15 @@ public sealed class CoverageTests
             Assert.True(result.Verified, result.All);
             Assert.Contains("COVERED - every point", result.Output, StringComparison.Ordinal);
             Assert.Contains("verb  ChooseNeowBlessing  3 recording(s)", result.Output, StringComparison.Ordinal);
-            Assert.Contains("verb  TakeCardRewardAlternative  excused:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("card-reward-alternative  Skip  excused:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("verb  TakeCardRewardAlternative  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("card-reward-alternative  Skip  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("card-prompt  CardSelectCmd.FromHand(context, player, prefs, filter, source)  not projectable", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("rest-option  MEND  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("inadmissible excusals", result.Output, StringComparison.Ordinal);
             // The excusals describe the committed corpus, so none of them is reached by
             // it: an excusal this corpus reaches has a sentence that has gone false
             Assert.DoesNotContain("excused and reached by this corpus", result.Output, StringComparison.Ordinal);
@@ -37,13 +43,21 @@ public sealed class CoverageTests
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
             Assert.True(artifact.GetProperty("covered").GetBoolean());
             var totals = artifact.GetProperty("totals");
-            Assert.Equal(138, totals.GetProperty("points").GetInt32());
+            Assert.Equal(522, totals.GetProperty("points").GetInt32());
             Assert.Equal(0, totals.GetProperty("uncovered").GetInt32());
+            Assert.Equal(6, totals.GetProperty("co_occurrence").GetInt32());
+            Assert.Equal(0, totals.GetProperty("inadmissible_excusals").GetInt32());
             Assert.Equal(3, totals.GetProperty("recordings").GetInt32());
             Assert.Equal(
                 totals.GetProperty("points").GetInt32(),
-                totals.GetProperty("covered").GetInt32() + totals.GetProperty("excused").GetInt32() +
-                totals.GetProperty("not_projectable").GetInt32());
+                totals.GetProperty("covered").GetInt32() + totals.GetProperty("co_occurrence").GetInt32() +
+                totals.GetProperty("excused").GetInt32() + totals.GetProperty("not_projectable").GetInt32());
+            var seam = artifact.GetProperty("points").EnumerateArray()
+                .Single(point => point.GetProperty("identity").GetString() == "event-option @ EventModel.GenerateInitialOptions");
+            Assert.Equal("CoOccurrence", seam.GetProperty("state").GetString());
+            var mend = artifact.GetProperty("points").EnumerateArray()
+                .Single(point => point.GetProperty("identity").GetString() == "MEND" && point.GetProperty("kind").GetString() == "rest-option");
+            Assert.Equal("multiplayer-only", mend.GetProperty("excuse_class").GetString());
         });
     }
 
@@ -63,6 +77,7 @@ public sealed class CoverageTests
             Assert.Contains("NOT COVERED", result.Output, StringComparison.Ordinal);
             Assert.Contains("verb  ChooseNeowBlessing  uncovered", result.Output, StringComparison.Ordinal);
             Assert.Contains("event  EVENT.WATERLOGGED_SCRIPTORIUM  uncovered", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  uncovered", result.Output, StringComparison.Ordinal);
             Assert.Contains("recordings: 0", result.Output, StringComparison.Ordinal);
         });
     }

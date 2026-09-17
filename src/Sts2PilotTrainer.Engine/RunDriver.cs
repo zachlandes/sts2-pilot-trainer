@@ -1846,6 +1846,12 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         OfferRoomEndRewardsIfCombatEnded();
     }
 
+    /// <summary>The verbs this host refuses on this build because the client offers
+    /// them only while another player has not acted, which a singleplayer run never
+    /// is: the coverage map's reading of a verb that is multiplayer only, beside the
+    /// rest option the game constructs under its player-count branch.</summary>
+    public static readonly IReadOnlyList<ActionVerb> OfferedOnlyWithAnotherPlayer = [ActionVerb.UndoEndTurn];
+
     /// <summary>
     /// The turn taken back before the enemy turn began.
     ///
