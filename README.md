@@ -305,7 +305,9 @@ Inside the game the same restore is how `Runmobile` stands a player in any fight
 `engine-commands`, `verify-seed`, `determinism`, `negative-controls`,
 `combat-snapshot`, `floor-snapshot`, `snapshot-restore-probe`, `migrate-manifest`. `engine-commands`
 prints which of the game's own members each recorded decision maps onto, says of
-every verb it does not map why there is nothing to map it onto, and checks that the
+every verb it does not map why there is nothing to map it onto, prints how many
+decision points of each kind this build offers - the denominator `coverage` counts
+recordings against - and checks that the
 three gameplay paths the engine's test-mode flag would otherwise change still take
 retail's branch under this host. `validate` and
 `migrate-manifest` need no game, the latter unless it is deriving boundaries;

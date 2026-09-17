@@ -18,7 +18,7 @@ namespace Sts2PilotTrainer.Engine;
 /// recorder patches, because <c>RunSaved</c> sits on <c>SaveManager.SaveRun</c> itself
 /// and fires for a new caller exactly as it does for an old one - so drift here is
 /// silent until a recording it produced fails resume, unless it is read and held to a
-/// committed record the way <see cref="RunRecorderTests"/> already holds the choice
+/// committed record the way <c>RunRecorderTests</c> already holds the choice
 /// entry points.
 ///
 /// Reuses <see cref="ChoiceEntryPoints"/>'s IL scan and loaded-type set rather than
