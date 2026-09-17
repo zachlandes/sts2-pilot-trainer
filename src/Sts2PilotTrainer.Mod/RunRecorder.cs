@@ -1205,14 +1205,19 @@ internal sealed class RunRecorder : IDisposable
                     continue;
                 }
 
-                if (NothingHappened(next))
+                if (NothingHappened(next) && !AnsweredPastTheCards(next))
                 {
                     // The player opened a screen and backed out of it, or the engine
                     // turned the decision down. Recording it would put an action in the
                     // history that a replay would make differently, and the two
                     // together are what say it: the engine said no, and the run's
                     // complete state - draw order and every random stream included - is
-                    // where it was before.
+                    // where it was before. A card reward answered past its cards with
+                    // the alternative that leaves it on the screen reads the same way -
+                    // the reward was not taken and nothing changed - and is a decision
+                    // all the same, the loot screen's Skip, which the replay makes with
+                    // its own verb; dropped here, its held answer went to the next
+                    // click on the same reward and broke the recording.
                     Log.Info(
                         $"[{RunmobileMod.ModId}] a {next.Verb} was not taken and the run is unchanged, so it " +
                         "is not recorded", 2);
@@ -1261,6 +1266,19 @@ internal sealed class RunRecorder : IDisposable
     private bool NothingHappened(PendingDecision decision) =>
         decision.EngineWork is Task<bool> { IsCompletedSuccessfully: true, Result: false } &&
         string.Equals(_capture.LastDigest, LiveRun.Project().Digest(), StringComparison.Ordinal);
+
+    /// <summary>Whether a card-reward decision holds an answer the screen gave past
+    /// its cards: an alternative, which is a decision whether or not it completed
+    /// the reward.</summary>
+    private bool AnsweredPastTheCards(PendingDecision decision)
+    {
+        if (!string.Equals(decision.Verb, nameof(ActionVerb.TakeCard), StringComparison.Ordinal)) return false;
+        lock (Gate)
+        {
+            return _screenAnswers.Any(answer =>
+                string.Equals(answer.Verb, nameof(ActionVerb.TakeCardRewardAlternative), StringComparison.Ordinal));
+        }
+    }
 
     /// <summary>
     /// Waits for the engine to finish what a decision started.
@@ -3016,6 +3034,10 @@ internal sealed class RunRecorder : IDisposable
 
             try
             {
+                // The skip's own path on this build: SkipRelicLocally is PickRelicLocally
+                // with no index, and ChestRelicSkipped has announced it already
+                if (index is null) return;
+
                 var relics = __instance.CurrentRelics;
                 if (index is not { } position || relics is null || position < 0 || position >= relics.Count)
                 {

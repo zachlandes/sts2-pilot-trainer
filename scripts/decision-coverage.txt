@@ -14,17 +14,17 @@ UndoEndTurn  excused: no committed recording reaches it; retired by generated de
 ChooseEventOption
 ClaimReward
 TakeCard
-TakeCardRewardAlternative  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+TakeCardRewardAlternative  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 SkipRewards
 SelectCardFromScreen
 ConfirmCardScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 SelectBundleFromScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 SelectRelicFromScreen  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-TakeChestRelic  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-SkipChestRelic  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+TakeChestRelic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
+SkipChestRelic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 ChooseRestSiteOption
-UsePotion  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-DiscardPotion  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+UsePotion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
+DiscardPotion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 ShopPurchase
 ProceedToNextAct  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 RevealCrystalSphereCell  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
@@ -39,23 +39,23 @@ relic  excused: no committed recording reaches it; retired by generated decision
 special_card  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 
 # card-reward-alternative (3)
-Skip  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+Skip  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 REROLL  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 SACRIFICE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 
 # shop-kind (5)
 character_card
-colorless_card  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+colorless_card  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 card_removal
-potion  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-relic  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+potion  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
+relic  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 
 # rest-option (9)
 CLONE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 COOK  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 DIG  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 HATCH  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
-HEAL  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
+HEAL  excused: reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on every merge; the recording is generated rather than committed
 KINDLE  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 LIFT  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)
 MEND  excused: no committed recording reaches it; retired by generated decision sequences or the retail soak (excused 2026-09-16)

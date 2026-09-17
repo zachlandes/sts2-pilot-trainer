@@ -1,7 +1,9 @@
 using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -48,6 +50,16 @@ public static partial class SyntheticFixtureGenerator
     /// <summary>The coverage the walk under way demands of its route: every required
     /// type for the fixture, or none for a walk that only has to reach the boss.</summary>
     private static int _requiredCoverage = RequiredCoverage;
+
+    /// <summary>The choices the walk under way consults; the fixture's are the defaults.</summary>
+    private static WalkPolicy _policy = WalkPolicy.Default;
+
+    /// <summary>Which of the policy's one-time asks the walk under way has met, and
+    /// whether any ask has been, for a walk that stops there.</summary>
+    private static bool _declinedACardReward;
+    private static bool _drankOnTheMap;
+    private static bool _discardedOnTheMap;
+    private static bool _askMet;
 
     private static ReplayManifest GenerateWholeAct()
     {
@@ -121,14 +133,17 @@ public static partial class SyntheticFixtureGenerator
     /// site, a treasure room and an elite on the way, which the fixture needs for the
     /// verbs that only exist there; a walk that only has to reach the boss takes the
     /// cheapest route there instead.</param>
+    /// <param name="policy">The choices the walk consults at the decisions it has a
+    /// rule for; today's rules where none is given. See <see cref="WalkPolicy"/>.</param>
     internal static List<ActionRecord> WalkTheAct(
         GameSession session, RunDriver driver, List<Checkpoint> checkpoints,
-        Action? afterEachDecision = null, bool visitEveryRoomType = true)
+        Action? afterEachDecision = null, bool visitEveryRoomType = true, WalkPolicy? policy = null)
     {
         var actions = new List<ActionRecord>();
-        var previous = (_afterEachDecision, _requiredCoverage);
-        (_afterEachDecision, _requiredCoverage) =
-            (afterEachDecision, visitEveryRoomType ? RequiredCoverage : 0);
+        var previous = (_afterEachDecision, _requiredCoverage, _policy);
+        (_afterEachDecision, _requiredCoverage, _policy) =
+            (afterEachDecision, visitEveryRoomType ? RequiredCoverage : 0, policy ?? WalkPolicy.Default);
+        (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _askMet) = (false, false, false, false);
         try
         {
             WalkTheActFrom(session, driver, actions, checkpoints);
@@ -136,7 +151,7 @@ public static partial class SyntheticFixtureGenerator
         }
         finally
         {
-            (_afterEachDecision, _requiredCoverage) = previous;
+            (_afterEachDecision, _requiredCoverage, _policy) = previous;
         }
     }
 
@@ -166,6 +181,8 @@ public static partial class SyntheticFixtureGenerator
                 "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
 
             HandleRoom(driver, session, actions, checkpoints, next.PointType);
+            UseTheBeltOnTheMap(driver, session, actions);
+            if (_policy.StopOnceMet && _askMet) return;
         }
 
         Apply(driver, actions, ActionVerb.ProceedToNextAct);
@@ -392,6 +409,23 @@ public static partial class SyntheticFixtureGenerator
             Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
         }
 
+        // The loot screen's Skip is the first alternative of every card reward that
+        // can be skipped, past its cards; the reward stays on the screen for the
+        // TakeCard that follows, which is what a player who changed their mind does
+        if (_policy.DeclineTheFirstCardReward && !_declinedACardReward && driver.OpenCardReward is { } reward)
+        {
+            var alternatives = CardRewardAlternative.Generate(reward);
+            var skip = alternatives.ToList().FindIndex(alternative => alternative.OptionId == "Skip");
+            if (skip >= 0)
+            {
+                _declinedACardReward = true;
+                _askMet = true;
+                Apply(driver, actions, ActionVerb.TakeCardRewardAlternative,
+                    ("option_id", "Skip"),
+                    ("option_index", (reward.Cards.Count() + skip).ToString(CultureInfo.InvariantCulture)));
+            }
+        }
+
         if (driver.OfferedCardIds is [var firstCard, ..])
         {
             Apply(driver, actions, ActionVerb.TakeCard, ("card_id", firstCard), ("option_index", "0"));
@@ -421,7 +455,9 @@ public static partial class SyntheticFixtureGenerator
     {
         var options = RunManager.Instance.RestSiteSynchronizer.GetLocalOptions().ToList();
         var wanted = Hurt(session) ? RestSiteHeal : RestSiteSmith;
-        var index = options.FindIndex(option => option.OptionId == wanted);
+        var index = _policy.RestOption is { } asked ? options.FindIndex(option => option.OptionId == asked) : -1;
+        if (index >= 0) _askMet = true;
+        if (index < 0) index = options.FindIndex(option => option.OptionId == wanted);
         if (index < 0) index = options.FindIndex(option => option.OptionId == RestSiteHeal);
 
         if (index < 0)
@@ -447,9 +483,18 @@ public static partial class SyntheticFixtureGenerator
                 "decision to record there.");
         }
 
-        Apply(driver, actions, ActionVerb.TakeChestRelic,
-            ("relic_id", relics[0].Id.ToString()),
-            ("option_index", "0"));
+        if (_policy.SkipTheChest)
+        {
+            _askMet = true;
+            Apply(driver, actions, ActionVerb.SkipChestRelic);
+        }
+        else
+        {
+            if (_policy.TakeTheChest) _askMet = true;
+            Apply(driver, actions, ActionVerb.TakeChestRelic,
+                ("relic_id", relics[0].Id.ToString()),
+                ("option_index", "0"));
+        }
 
         if (driver.UnclaimedRewardKinds.Count > 0)
         {
@@ -500,7 +545,9 @@ public static partial class SyntheticFixtureGenerator
             // A potion nobody can carry is bought and immediately lost, which would be
             // a purchase this history could not explain.
             .Where(candidate => candidate.Kind != ShopPurchaseKinds.Potion || player.HasOpenPotionSlots)
-            .OrderBy(candidate => candidate.entry.Cost)
+            // The shelf the policy asks for first, then the purse's own order
+            .OrderBy(candidate => candidate.Kind == _policy.ShopKind ? 0 : 1)
+            .ThenBy(candidate => candidate.entry.Cost)
             .ThenBy(candidate => candidate.Kind, StringComparer.Ordinal)
             .ThenBy(candidate => candidate.index)
             .ToList();
@@ -508,11 +555,51 @@ public static partial class SyntheticFixtureGenerator
         if (affordable.Count == 0) return false;
 
         var (kind, chosen, position) = affordable[0];
+        if (kind == _policy.ShopKind) _askMet = true;
         Apply(driver, actions, ActionVerb.ShopPurchase,
             ("kind", kind),
             (ShopPurchaseKinds.IdArgument(kind)!, PurchasedId(chosen)),
             ("option_index", position.ToString(CultureInfo.InvariantCulture)));
         return true;
+    }
+
+    /// <summary>
+    /// Drinks or discards a potion on the map when the policy asks for one and the
+    /// belt has it, once each: the two potion decisions a fight never carries. A
+    /// potion is drunk outside a fight only where the game lets it be, which is the
+    /// potion's own say.
+    /// </summary>
+    private static void UseTheBeltOnTheMap(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        if (session.RunState.CurrentRoom is { RoomType: RoomType.Monster or RoomType.Elite or RoomType.Boss }) return;
+        var belt = session.RunState.Players[0].PotionSlots;
+
+        if (_policy.DrinkAPotionOnTheMap && !_drankOnTheMap)
+        {
+            var slot = Enumerable.Range(0, belt.Count).FirstOrDefault(
+                index => belt[index] is { Usage: PotionUsage.AnyTime }, -1);
+            if (slot >= 0)
+            {
+                _drankOnTheMap = true;
+                _askMet = true;
+                Apply(driver, actions, ActionVerb.UsePotion,
+                    ("potion_id", belt[slot]!.Id.ToString()),
+                    ("slot_index", slot.ToString(CultureInfo.InvariantCulture)));
+            }
+        }
+
+        if (_policy.DiscardAPotionOnTheMap && !_discardedOnTheMap)
+        {
+            var slot = Enumerable.Range(0, belt.Count).FirstOrDefault(index => belt[index] is not null, -1);
+            if (slot >= 0)
+            {
+                _discardedOnTheMap = true;
+                _askMet = true;
+                Apply(driver, actions, ActionVerb.DiscardPotion,
+                    ("potion_id", belt[slot]!.Id.ToString()),
+                    ("slot_index", slot.ToString(CultureInfo.InvariantCulture)));
+            }
+        }
     }
 
     private static string PurchasedId(MerchantEntry entry) => entry switch

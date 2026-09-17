@@ -24,6 +24,15 @@ public static class DecisionExcusals
         "no committed recording reaches it; retired by generated decision sequences or the retail soak " +
         "(excused 2026-09-16)";
 
+    /// <summary>A point no committed recording reaches and a generated walk does: a
+    /// row of <c>GeneratedCoverageTests</c> plays the decision through the real
+    /// recorder, replays the recording and holds it to parity, on every merge. The
+    /// recording is not committed, which is why the point is still excused here
+    /// rather than counted.</summary>
+    private const string Generated =
+        "reached by a GeneratedCoverageTests row, recorded through the real recorder and replayed to parity on " +
+        "every merge; the recording is generated rather than committed";
+
     public static IReadOnlyDictionary<DecisionPoint, string> All { get; } = Build();
 
     private static IReadOnlyDictionary<DecisionPoint, string> Build()
@@ -39,8 +48,18 @@ public static class DecisionExcusals
 
         foreach (var verb in new[]
                  {
-                     "UndoEndTurn", "TakeCardRewardAlternative", "SelectBundleFromScreen", "SelectRelicFromScreen",
-                     "UsePotion", "DiscardPotion", "ConfirmCardScreen", "TakeChestRelic", "SkipChestRelic",
+                     "TakeCardRewardAlternative", "UsePotion", "DiscardPotion", "TakeChestRelic", "SkipChestRelic",
+                 })
+        {
+            excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = Generated;
+        }
+
+        // The undo needs the window the retail client leaves open before the enemy
+        // turn begins, which this process runs inside the end-turn decision; the
+        // three screens are ones the headless host has no screen for
+        foreach (var verb in new[]
+                 {
+                     "UndoEndTurn", "SelectBundleFromScreen", "SelectRelicFromScreen", "ConfirmCardScreen",
                      "ProceedToNextAct", "RevealCrystalSphereCell",
                  })
         {
@@ -52,17 +71,19 @@ public static class DecisionExcusals
             excusals[new DecisionPoint(DecisionKinds.RewardKind, kind)] = NotYetRecorded;
         }
 
-        foreach (var alternative in new[] { "Skip", "REROLL", "SACRIFICE" })
+        excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
+        foreach (var alternative in new[] { "REROLL", "SACRIFICE" })
         {
             excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, alternative)] = NotYetRecorded;
         }
 
         foreach (var kind in new[] { "colorless_card", "relic", "potion" })
         {
-            excusals[new DecisionPoint(DecisionKinds.ShopKind, kind)] = NotYetRecorded;
+            excusals[new DecisionPoint(DecisionKinds.ShopKind, kind)] = Generated;
         }
 
-        foreach (var option in new[] { "CLONE", "COOK", "DIG", "HATCH", "HEAL", "KINDLE", "LIFT", "MEND" })
+        excusals[new DecisionPoint(DecisionKinds.RestOption, "HEAL")] = Generated;
+        foreach (var option in new[] { "CLONE", "COOK", "DIG", "HATCH", "KINDLE", "LIFT", "MEND" })
         {
             excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotYetRecorded;
         }
