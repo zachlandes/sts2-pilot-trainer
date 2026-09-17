@@ -287,12 +287,44 @@ public sealed class RunRecorderTests
             "AncientEventModel - is not the recorded one. If the game build changed, regenerate " +
             "the list in the same change");
 
+    /// <summary>
+    /// The game's act topology - every act the database ships at each index, which is
+    /// the default, what unlocks each, every unshipped <c>ActModel</c> subclass, and
+    /// every member that builds a run's act list - is the one the fixtures' progression
+    /// was read from.
+    ///
+    /// Held apart from the save contract above because a new or alternative act keeps
+    /// every <c>SaveManager.SaveRun</c> call site and every ancient-event subclass
+    /// exactly where they were: that record stays green while the whole-act walk, the
+    /// headless runs and the recorder fixtures all name a progression the game no
+    /// longer defaults to. Informational in the same sense - held to a committed record,
+    /// regenerated in the change that adopts the build.
+    /// </summary>
+    [GameFact]
+    public void TheGamesActTopologyIsTheRecordedOne() =>
+        HoldToRecord(ActTopologyPath, ActTopology.Enumeration(),
+            "ACT_TOPOLOGY_UPDATE", "./scripts/act-topology.sh --update",
+            "The game's act topology - which acts ship at each index, which is the default, what unlocks each, " +
+            "and who builds a run's act list - is not the recorded one. If the game build changed, regenerate " +
+            "the list in the same change and look at every fixture that names a progression");
+
+    /// <summary>
+    /// And the progression the fixtures name is the game's own default one, so the
+    /// record above is not just a file that changed: the whole-act walk, the headless
+    /// runs and the recorder harnesses all start their run on <see cref="RecordedActWalk.Acts"/>.
+    /// </summary>
+    [GameFact]
+    public void TheFixturesProgressionIsTheGamesDefaultOne() =>
+        Assert.Equal(ActTopology.DefaultProgression(), RecordedActWalk.Acts);
+
     private static string EnumerationPath => Path.Combine(Arbiter.RepoRoot, "scripts", "choice-entry-points.txt");
 
     private static string UnreadableBodiesRecordPath =>
         Path.Combine(Arbiter.RepoRoot, "scripts", "unreadable-choice-scan-bodies.txt");
 
     private static string SavePointsPath => Path.Combine(Arbiter.RepoRoot, "scripts", "save-points.txt");
+
+    private static string ActTopologyPath => Path.Combine(Arbiter.RepoRoot, "scripts", "act-topology.txt");
 
     /// <summary>Holds a committed record to what this build produces, or rewrites it
     /// when the caller's own update script asks; a script's two records, where it has
