@@ -24,15 +24,16 @@ public abstract record Observation
     public abstract bool Claims(LedgerCandidate candidate);
 }
 
-/// <summary>A choice synced through <c>PlayerChoiceSynchronizer.SyncLocalChoice</c> by
-/// a member of <paramref name="DeclaringType"/>: every member of it, or the one named;
-/// every kind, or the one named.</summary>
-public sealed record PlayerChoiceObservation(Type DeclaringType, string? Member = null, string? Kind = null) : Observation
+/// <summary>One choice synced through <c>PlayerChoiceSynchronizer.SyncLocalChoice</c>:
+/// the kind, and the member of <paramref name="DeclaringType"/> that syncs it, spelled
+/// the way <c>EntryPointSignature.Of</c> spells one. Each is a claim by identity; a
+/// member the type gains on a game update is claimed by nobody until a row names it.</summary>
+public sealed record PlayerChoiceObservation(Type DeclaringType, string Member, string Kind) : Observation
 {
     public override bool Claims(LedgerCandidate candidate) =>
         candidate.Kind == "player-choice" && candidate.Type == DeclaringType &&
-        (Member is null || candidate.Member?.StartsWith(Member + "(", StringComparison.Ordinal) == true) &&
-        (Kind is null || candidate.Discriminator == Kind);
+        string.Equals(candidate.Member, Member, StringComparison.Ordinal) &&
+        string.Equals(candidate.Discriminator, Kind, StringComparison.Ordinal);
 }
 
 /// <summary>A message the decision's own member sends: every sender of it, or the one named.</summary>
@@ -178,6 +179,9 @@ public static class DecisionLedger
             ["PlayerLeftMessage <- RunLobby.OnDisconnectedFromClientAsHost(playerId, info)"] = ("lobby", "membership"),
             ["PlayerLeftMessage <- StartRunLobby.OnDisconnectedFromClientAsHost(playerId, info)"] = ("lobby", "membership"),
             ["PlayerReconnectedMessage <- LoadRunLobby.HandleClientLoadJoinRequestMessage(message, senderId)"] = ("lobby", "membership"),
+            ["ClientRejoinResponseMessage <- RunLobby.HandleClientRejoinRequestMessage(message, senderId)"] = ("lobby", "rejoining"),
+            ["PlayerRejoinedMessage <- RunLobby.HandleClientRejoinRequestMessage(message, senderId)"] = ("lobby", "membership"),
+            ["RunAbandonedMessage <- RunLobby.AbandonRun()"] = ("lobby", "the host leaving the run; the recorder finishes on RunManager.OnEnded"),
 
             // State the host pushes to peers, never a decision
             ["SyncPlayerDataMessage <- CombatStateSynchronizer.StartSync()"] = ("sync", "the host's combat state for a peer"),

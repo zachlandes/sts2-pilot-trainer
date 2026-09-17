@@ -54,6 +54,26 @@ public enum EngineCommandKind
 /// </summary>
 public static class EngineCommands
 {
+    /// <summary>
+    /// The ten card prompts the <c>ICardSelector</c> seam answers, one observation per
+    /// entry point and the kind its factory constructs: the entry points
+    /// <c>CardPrompts</c> patches, and not the bundle screen, which
+    /// <c>SelectBundleFromScreen</c> answers at the prompt itself.
+    /// </summary>
+    private static readonly IReadOnlyList<Observation> CardScreenPrompts =
+    [
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromChooseACardScreen)}(context, cards, player, canSkip)", nameof(PlayerChoiceType.Index)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromSimpleGrid)}(context, cardsIn, player, prefs)", nameof(PlayerChoiceType.Index)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromSimpleGridForRewards)}(context, cards, player, prefs)", nameof(PlayerChoiceType.Index)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromCombatPile)}(context, pile, player, prefs, filter)", nameof(PlayerChoiceType.CombatCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromHand)}(context, player, prefs, filter, source)", nameof(PlayerChoiceType.CombatCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromHandForUpgrade)}(context, player, source)", nameof(PlayerChoiceType.CombatCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromDeckForUpgrade)}(player, prefs)", nameof(PlayerChoiceType.DeckCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromDeckForTransformation)}(player, prefs, cardToTransformation)", nameof(PlayerChoiceType.DeckCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromDeckForEnchantment)}(cards, enchantment, amount, prefs)", nameof(PlayerChoiceType.DeckCard)),
+        new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromDeckGeneric)}(player, prefs, filter, sortingOrder)", nameof(PlayerChoiceType.DeckCard)),
+    ];
+
     private static readonly EngineCommand[] Table =
     [
         new()
@@ -189,7 +209,7 @@ public static class EngineCommands
             Observes =
             [
                 new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward)),
-                new PlayerChoiceObservation(typeof(CardReward)),
+                new PlayerChoiceObservation(typeof(CardReward), "OnSelect()", nameof(PlayerChoiceType.Index)),
                 new ScreenObservation(typeof(NRewardsScreen)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen)),
             ],
@@ -208,7 +228,7 @@ public static class EngineCommands
                 "follows a TakeCard.",
             Observes =
             [
-                new PlayerChoiceObservation(typeof(CardReward)),
+                new PlayerChoiceObservation(typeof(CardReward), "OnSelect()", nameof(PlayerChoiceType.Index)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen)),
             ],
         },
@@ -236,7 +256,7 @@ public static class EngineCommands
                 "screen and confirms afterwards that a screen consumed each one.",
             Observes =
             [
-                new PlayerChoiceObservation(typeof(CardSelectCmd)),
+                .. CardScreenPrompts,
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseACardSelectionScreen)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCombatPileCardSelectScreen)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckCardSelectScreen)),
@@ -257,10 +277,7 @@ public static class EngineCommands
                 "recorded before this and stops at it, so a prompt answered with fewer than it allowed, none " +
                 "included, replays as that answer rather than as a refusal. A prompt that asks for exactly N " +
                 "takes N picks and refuses a confirmation, because only a range leaves the count to the player.",
-            Observes =
-            [
-                new PlayerChoiceObservation(typeof(CardSelectCmd)),
-            ],
+            Observes = CardScreenPrompts,
         },
         new()
         {
@@ -275,7 +292,7 @@ public static class EngineCommands
                 "stands in at the prompt itself.",
             Observes =
             [
-                new PlayerChoiceObservation(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen), nameof(PlayerChoiceType.Index)),
+                new PlayerChoiceObservation(typeof(CardSelectCmd), $"{nameof(CardSelectCmd.FromChooseABundleScreen)}(player, bundles)", nameof(PlayerChoiceType.Index)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseABundleSelectionScreen)),
             ],
         },
@@ -290,7 +307,7 @@ public static class EngineCommands
                 "records it is refused with that sentence until a build lights the screen.",
             Observes =
             [
-                new PlayerChoiceObservation(typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen), nameof(PlayerChoiceType.Index)),
+                new PlayerChoiceObservation(typeof(RelicSelectCmd), $"{nameof(RelicSelectCmd.FromChooseARelicScreen)}(player, relics)", nameof(PlayerChoiceType.Index)),
                 new ScreenObservation(typeof(NChooseARelicSelection)),
             ],
         },
@@ -306,7 +323,7 @@ public static class EngineCommands
             Observes =
             [
                 new MessageObservation(typeof(OptionIndexChosenMessage), typeof(RestSiteSynchronizer), nameof(RestSiteSynchronizer.ChooseLocalOption)),
-                new PlayerChoiceObservation(typeof(MendRestSiteOption), Kind: nameof(PlayerChoiceType.Player)),
+                new PlayerChoiceObservation(typeof(MendRestSiteOption), $"{nameof(MendRestSiteOption.OnSelect)}()", nameof(PlayerChoiceType.Player)),
                 new RoomObservation("RoomType.RestSite"),
                 new RoomObservation("RestSiteRoom"),
             ],

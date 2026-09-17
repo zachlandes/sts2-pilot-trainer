@@ -66,7 +66,17 @@ internal static partial class Commands
         // with the row that watches it or the reason none does
         Console.WriteLine();
         Console.WriteLine("decision ledger (every candidate claimed by a row or excused in writing; --update rewrites the record):");
-        var ledger = DecisionLedger.Entries();
+        IReadOnlyList<DecisionLedger.Entry> ledger;
+        try
+        {
+            ledger = DecisionLedger.Entries();
+        }
+        catch (InvalidOperationException walk)
+        {
+            Console.WriteLine($"  not walked: {walk.Message}");
+            ledger = [];
+        }
+
         foreach (var kind in DecisionSurface.LedgerKinds)
         {
             var ofKind = ledger.Where(entry => entry.Candidate.Kind == kind).ToList();
@@ -82,7 +92,7 @@ internal static partial class Commands
             Console.WriteLine($"  {entry.Describe()}");
         }
 
-        if (Args.Has(args, "--update"))
+        if (Args.Has(args, "--update") && ledger.Count > 0)
         {
             var record = EvidenceArtifact.PreparePath(
                 Path.Combine(WorktreeLocator.Find(), DecisionLedger.RecordPath), clearExisting: false);

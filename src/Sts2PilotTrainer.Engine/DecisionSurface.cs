@@ -317,15 +317,20 @@ public static class DecisionSurface
 
     /// <summary>
     /// Every message the client sends, as (message, sender): each member whose body
-    /// calls <c>INetGameService.SendMessage</c>, with the message type it sends read
-    /// off the generic argument of the call. Walked once per process.
+    /// calls <c>SendMessage</c> on the <c>INetGameService</c> interface or on a service
+    /// that implements it - a lobby member holding the host service by its own type
+    /// calls the class's method, and the IL names that one - with the message type it
+    /// sends read off the generic argument of the call. The services' own bodies are
+    /// not senders: they forward one overload to another with the type still open.
+    /// Walked once per process.
     /// </summary>
     public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() => MessageSiteWalk.Value;
 
     private static readonly Lazy<IReadOnlyList<(Type Message, MethodBase Sender)>> MessageSiteWalk = new(() =>
         ChoiceEntryPoints.CallSites(callee =>
-                callee.DeclaringType == typeof(INetGameService) && callee.Name == nameof(INetGameService.SendMessage) &&
-                callee.IsGenericMethod)
+                callee.Name == nameof(INetGameService.SendMessage) && callee.IsGenericMethod &&
+                typeof(INetGameService).IsAssignableFrom(callee.DeclaringType))
+            .Where(site => !typeof(INetGameService).IsAssignableFrom(site.Caller.DeclaringType))
             .Select(site => (Message: site.Callee.GetGenericArguments()[0], Sender: site.Caller))
             .Distinct()
             .OrderBy(site => MessageIdentity(site.Message, site.Sender), StringComparer.Ordinal)

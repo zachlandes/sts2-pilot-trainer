@@ -34,7 +34,7 @@ public sealed class DecisionLedgerTests
 
         Assert.Equal(11, counts["net-action"]);
         Assert.Equal(14, counts["player-choice"]);
-        Assert.Equal(61, counts["message"]);
+        Assert.Equal(64, counts["message"]);
         Assert.Equal(13, counts["overlay-screen"]);
         Assert.Equal(15, counts["room"]);
     }

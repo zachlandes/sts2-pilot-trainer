@@ -30,14 +30,14 @@ player-choice    DeckCard @ CardSelectCmd.FromDeckForTransformation(player, pref
 player-choice    DeckCard @ CardSelectCmd.FromDeckForUpgrade(player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
 player-choice    DeckCard @ CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder)  claimed SelectCardFromScreen, ConfirmCardScreen
 player-choice    Index @ CardReward.OnSelect()  claimed TakeCard, TakeCardRewardAlternative
-player-choice    Index @ CardSelectCmd.FromChooseABundleScreen(player, bundles)  claimed SelectCardFromScreen, ConfirmCardScreen, SelectBundleFromScreen
+player-choice    Index @ CardSelectCmd.FromChooseABundleScreen(player, bundles)  claimed SelectBundleFromScreen
 player-choice    Index @ CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip)  claimed SelectCardFromScreen, ConfirmCardScreen
 player-choice    Index @ CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
 player-choice    Index @ CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs)  claimed SelectCardFromScreen, ConfirmCardScreen
 player-choice    Index @ RelicSelectCmd.FromChooseARelicScreen(player, relics)  claimed SelectRelicFromScreen
 player-choice    Player @ MendRestSiteOption.OnSelect()  claimed ChooseRestSiteOption
 
-# message (61)
+# message (64)
 message          ActionEnqueuedMessage <- ActionQueueSynchronizer.EnqueueAction(action, actionOwnerId)  excused transport: a host's echo of an enqueued action; the net-action kind accounts for the action
 message          CardRemovedMessage <- RewardSynchronizer.DoLocalCardRemoval()  excused outcome-of: ClaimReward, SelectCardFromScreen: the removal a claimed reward's screen made
 message          ChecksumDataMessage <- ChecksumTracker.GenerateChecksum(context, action)  excused checksum: desync detection
@@ -47,6 +47,7 @@ message          ClientLoadJoinResponseMessage <- LoadRunLobby.HandleClientLoadJ
 message          ClientLobbyJoinRequestMessage <- JoinFlow.AttemptJoin()  excused lobby: joining a lobby
 message          ClientLobbyJoinResponseMessage <- StartRunLobby.HandleClientLobbyJoinRequestMessage(message, senderId)  excused lobby: joining a lobby
 message          ClientRejoinRequestMessage <- JoinFlow.AttemptRejoin()  excused lobby: rejoining
+message          ClientRejoinResponseMessage <- RunLobby.HandleClientRejoinRequestMessage(message, senderId)  excused lobby: rejoining
 message          CrystalSphereRewardsMessage <- OneOffSynchronizer.DoLocalCrystalSphereRewards(owner, rng, revealed)  excused outcome-of: RevealCrystalSphereCell: what the last reveal awarded
 message          EndTurnPingMessage <- FlavorSynchronizer.SendEndTurnPing()  excused flavor: a nudge, not a decision
 message          GoldLostMessage <- RewardSynchronizer.SyncLocalGoldLost(goldLost)  excused outcome-of: ShopPurchase, ChooseEventOption: gold a claimed decision cost
@@ -78,6 +79,7 @@ message          PlayerLeftMessage <- LoadRunLobby.OnDisconnectedFromClientAsHos
 message          PlayerLeftMessage <- RunLobby.OnDisconnectedFromClientAsHost(playerId, info)  excused lobby: membership
 message          PlayerLeftMessage <- StartRunLobby.OnDisconnectedFromClientAsHost(playerId, info)  excused lobby: membership
 message          PlayerReconnectedMessage <- LoadRunLobby.HandleClientLoadJoinRequestMessage(message, senderId)  excused lobby: membership
+message          PlayerRejoinedMessage <- RunLobby.HandleClientRejoinRequestMessage(message, senderId)  excused lobby: membership
 message          ReactionMessage <- ReactionSynchronizer.SendLocalReaction(type, mouseScreenPos)  excused flavor: an emote
 message          RequestEnqueueActionMessage <- ActionQueueSynchronizer.RequestEnqueue(action)  excused transport: carries a game action to a host; the net-action kind accounts for each by its type
 message          RequestEnqueueHookActionMessage <- ActionQueueSynchronizer.RequestEnqueueHookAction(action)  excused transport: the engine's own hook action, which nobody decides
@@ -92,6 +94,7 @@ message          RewardObtainedMessage <- RewardSynchronizer.SyncLocalRelicEvent
 message          RewardSelectedMessage <- RewardsSetSynchronizer.SelectLocalReward(reward)  claimed ClaimReward, TakeCard
 message          RewardSetSkippedMessage <- RewardsSetSynchronizer.BeforeLeavingRoom()  excused outcome-of: SkipRewards: the room's exit declines what is left through the same SkipRewardsSet funnel the recorder watches
 message          RewardSetSkippedMessage <- RewardsSetSynchronizer.SkipLocalRewardsSet()  claimed SkipRewards
+message          RunAbandonedMessage <- RunLobby.AbandonRun()  excused lobby: the host leaving the run; the recorder finishes on RunManager.OnEnded
 message          SharedEventOptionChosenMessage <- EventSynchronizer.ChooseSharedEventOption()  excused multiplayer-only: a shared event's vote is resolved for the host's peers; a singleplayer run chooses through ChooseLocalOption
 message          StateDivergenceMessage <- ChecksumTracker.CompareChecksums(localChecksum, remoteChecksum, remoteId)  excused checksum: desync detection
 message          StateDivergenceMessage <- ChecksumTracker.LogStateDivergence(localChecksum, message, remoteId, checksumIndex)  excused checksum: desync detection
