@@ -237,9 +237,8 @@ public static class DecisionSurface
     /// <c>PlayerChoiceSynchronizer.SyncLocalChoice</c>, crossed with the kinds the
     /// results that body constructs carry - read off which <c>PlayerChoiceResult.From*</c>
     /// factory it calls, since the kind is the factory's and never a runtime value on
-    /// this build. A body that constructs its result through the kind-taking factory
-    /// is listed under every card kind. A caller that constructs through a factory
-    /// this reading does not know is listed under that factory's name, and one whose
+    /// this build. A caller that constructs through a factory this reading does not
+    /// know - the kind-taking <c>FromCards</c> among them - is listed under that factory's name, and one whose
     /// own body constructs no result at all under <see cref="UnreadChoiceKind"/>, so
     /// that neither is dropped: each is a candidate no row can claim until somebody
     /// has read it. Walked once per process, since the assembly does not change under it.
@@ -302,12 +301,6 @@ public static class DecisionSurface
                 case "FromMutableCard" or "FromMutableCards":
                     yield return nameof(PlayerChoiceType.MutableCard);
                     break;
-                case "FromCards":
-                    yield return nameof(PlayerChoiceType.CanonicalCard);
-                    yield return nameof(PlayerChoiceType.CombatCard);
-                    yield return nameof(PlayerChoiceType.DeckCard);
-                    yield return nameof(PlayerChoiceType.MutableCard);
-                    break;
                 default:
                     yield return factory;
                     break;
@@ -320,9 +313,10 @@ public static class DecisionSurface
     /// calls <c>SendMessage</c> on the <c>INetGameService</c> interface or on a service
     /// that implements it - a lobby member holding the host service by its own type
     /// calls the class's method, and the IL names that one - with the message type it
-    /// sends read off the generic argument of the call. The services' own bodies are
-    /// not senders: they forward one overload to another with the type still open.
-    /// Walked once per process.
+    /// sends read off the generic argument of the call. A call whose argument is still
+    /// open - a service forwarding one overload to another as <c>T</c> - sends nothing
+    /// of its own and is left out; a service sending a named message is a sender like
+    /// any other. Walked once per process.
     /// </summary>
     public static IReadOnlyList<(Type Message, MethodBase Sender)> MessageSites() => MessageSiteWalk.Value;
 
@@ -330,8 +324,8 @@ public static class DecisionSurface
         ChoiceEntryPoints.CallSites(callee =>
                 callee.Name == nameof(INetGameService.SendMessage) && callee.IsGenericMethod &&
                 typeof(INetGameService).IsAssignableFrom(callee.DeclaringType))
-            .Where(site => !typeof(INetGameService).IsAssignableFrom(site.Caller.DeclaringType))
             .Select(site => (Message: site.Callee.GetGenericArguments()[0], Sender: site.Caller))
+            .Where(site => !site.Message.IsGenericParameter)
             .Distinct()
             .OrderBy(site => MessageIdentity(site.Message, site.Sender), StringComparer.Ordinal)
             .ToList());

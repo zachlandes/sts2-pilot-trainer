@@ -85,8 +85,8 @@ public static class EngineCommands
             Note = "The opening blessing is an event like any other; only its option list is special.",
             Observes =
             [
-                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
-                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), $"{nameof(EventSynchronizer.ChooseLocalOption)}(index)"),
+                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), $"{nameof(EventSynchronizer.ChooseLocalOption)}(index)"),
                 new RoomObservation("RoomType.Event"),
                 new RoomObservation("EventRoom"),
             ],
@@ -100,8 +100,8 @@ public static class EngineCommands
             Note = "The same member, with the event's own id checked first.",
             Observes =
             [
-                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
-                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(EventSynchronizer), $"{nameof(EventSynchronizer.ChooseLocalOption)}(index)"),
+                new MessageObservation(typeof(VotedForSharedEventOptionMessage), typeof(EventSynchronizer), $"{nameof(EventSynchronizer.ChooseLocalOption)}(index)"),
                 new RoomObservation("RoomType.Event"),
                 new RoomObservation("EventRoom"),
             ],
@@ -193,7 +193,7 @@ public static class EngineCommands
             Note = "The reward is found by the kind the loot screen names, never by position.",
             Observes =
             [
-                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward)),
+                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), $"{nameof(RewardsSetSynchronizer.SelectLocalReward)}(reward)"),
                 new ScreenObservation(typeof(NRewardsScreen)),
             ],
         },
@@ -208,7 +208,7 @@ public static class EngineCommands
                 "ICardSelector.",
             Observes =
             [
-                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward)),
+                new MessageObservation(typeof(RewardSelectedMessage), typeof(RewardsSetSynchronizer), $"{nameof(RewardsSetSynchronizer.SelectLocalReward)}(reward)"),
                 new PlayerChoiceObservation(typeof(CardReward), "OnSelect()", nameof(PlayerChoiceType.Index)),
                 new ScreenObservation(typeof(NRewardsScreen)),
                 new ScreenObservation(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen)),
@@ -241,7 +241,7 @@ public static class EngineCommands
             Note = "Dismissing a loot screen with something still on it is a decision, so it has a verb.",
             Observes =
             [
-                new MessageObservation(typeof(RewardSetSkippedMessage), typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SkipLocalRewardsSet)),
+                new MessageObservation(typeof(RewardSetSkippedMessage), typeof(RewardsSetSynchronizer), $"{nameof(RewardsSetSynchronizer.SkipLocalRewardsSet)}()"),
                 new ScreenObservation(typeof(NRewardsScreen)),
             ],
         },
@@ -322,7 +322,7 @@ public static class EngineCommands
                 "offers depends on the run that reached it.",
             Observes =
             [
-                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(RestSiteSynchronizer), nameof(RestSiteSynchronizer.ChooseLocalOption)),
+                new MessageObservation(typeof(OptionIndexChosenMessage), typeof(RestSiteSynchronizer), $"{nameof(RestSiteSynchronizer.ChooseLocalOption)}(index)"),
                 new PlayerChoiceObservation(typeof(MendRestSiteOption), $"{nameof(MendRestSiteOption.OnSelect)}()", nameof(PlayerChoiceType.Player)),
                 new RoomObservation("RoomType.RestSite"),
                 new RoomObservation("RestSiteRoom"),
@@ -382,7 +382,7 @@ public static class EngineCommands
                 "current event's when the event exposes one.",
             Observes =
             [
-                new MessageObservation(typeof(MerchantCardRemovalMessage), typeof(OneOffSynchronizer), nameof(OneOffSynchronizer.DoLocalMerchantCardRemoval)),
+                new MessageObservation(typeof(MerchantCardRemovalMessage), typeof(OneOffSynchronizer), $"{nameof(OneOffSynchronizer.DoLocalMerchantCardRemoval)}(goldCost, cancelable)"),
                 new RoomObservation("RoomType.Shop"),
                 new RoomObservation("MerchantRoom"),
             ],
@@ -394,9 +394,6 @@ public static class EngineCommands
             Member = nameof(PotionModel.EnqueueManualUse),
             Kind = EngineCommandKind.Issued,
             Note = "What the potion holder in the retail client calls when a potion is dragged onto a target.",
-            Observes =
-            [
-            ],
         },
         new()
         {
@@ -405,9 +402,6 @@ public static class EngineCommands
             Member = ConstructorMember,
             Kind = EngineCommandKind.Issued,
             Note = "Enqueued on the run's own queue, which is what the potion popup's discard button does.",
-            Observes =
-            [
-            ],
         },
         new()
         {

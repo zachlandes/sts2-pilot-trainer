@@ -36,13 +36,16 @@ public sealed record PlayerChoiceObservation(Type DeclaringType, string Member, 
         string.Equals(candidate.Discriminator, Kind, StringComparison.Ordinal);
 }
 
-/// <summary>A message the decision's own member sends: every sender of it, or the one named.</summary>
-public sealed record MessageObservation(Type MessageType, Type? SenderType = null, string? SenderMember = null) : Observation
+/// <summary>One message the decision's own member sends: the message type, and the
+/// member of <paramref name="SenderType"/> that sends it, spelled the way
+/// <c>EntryPointSignature.Of</c> spells one. A claim by identity, as every
+/// observation is; a sender the build gains is claimed by nobody until a row names it.</summary>
+public sealed record MessageObservation(Type MessageType, Type SenderType, string SenderMember) : Observation
 {
     public override bool Claims(LedgerCandidate candidate) =>
         candidate.Kind == "message" && candidate.Discriminator == MessageType.Name &&
-        (SenderType is null || candidate.Type == SenderType) &&
-        (SenderMember is null || candidate.Member?.StartsWith(SenderMember + "(", StringComparison.Ordinal) == true);
+        candidate.Type == SenderType &&
+        string.Equals(candidate.Member, SenderMember, StringComparison.Ordinal);
 }
 
 /// <summary>An overlay screen the decision answers or dismisses.</summary>
@@ -254,9 +257,10 @@ public static class DecisionLedger
     }
 
     /// <summary>Every excusal that is stale, as sentences: one naming no candidate this
-    /// build offers is a sentence about nothing, and one naming a candidate a row
-    /// already claims is a sentence nobody reads, since <see cref="Classify"/> asks the
-    /// rows first. Either comes out.</summary>
+    /// build offers is a sentence about nothing; one naming a net action is never read,
+    /// because <see cref="NetActionClaims"/> is that kind's only account; and one naming
+    /// a candidate a row already claims is a sentence nobody reads, since
+    /// <see cref="Classify"/> asks the rows first. Each comes out.</summary>
     public static IReadOnlyList<string> StaleExcusals()
     {
         var entries = Entries();
@@ -269,6 +273,14 @@ public static class DecisionLedger
                 stale.Add(
                     $"DecisionLedger excuses {identity}, which no walk of this build produces. An excusal for " +
                     "nothing is stale and comes out.");
+                continue;
+            }
+
+            if (entries.Any(entry => entry.Candidate.Identity == identity && entry.Candidate.Kind == "net-action"))
+            {
+                stale.Add(
+                    $"DecisionLedger excuses {identity}, a net action, which NetActionClaims is the only account " +
+                    "of. An excusal here is never read and comes out.");
                 continue;
             }
 
