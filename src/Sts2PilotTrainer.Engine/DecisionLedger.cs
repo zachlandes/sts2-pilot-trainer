@@ -226,11 +226,20 @@ public static class DecisionLedger
     /// walks never reached: a send or sync inside one of its unreadable bodies produces
     /// no caller, so the only thing that can name it is the record changing.
     /// </summary>
-    public static IReadOnlyList<string> UnreadableProblems()
+    public static IReadOnlyList<string> UnreadableProblems() => UnreadableProblems(UnreadableRecordOnHand());
+
+    /// <summary>
+    /// The same, holding the unreadable set to the record at <paramref name="recordPath"/>,
+    /// or to none where it is null. The packaged arbiter runs from a game installation
+    /// with no worktree above it, and a record that is not on hand is not a record
+    /// that no longer matches: the merge gate (DecisionLedgerTests) holds the set to
+    /// the committed file, and outside a worktree the verdict rests on the walks alone.
+    /// </summary>
+    public static IReadOnlyList<string> UnreadableProblems(string? recordPath)
     {
         var unreadable = DecisionSurface.UnreadableLedgerBodies();
         var problems = new List<string>();
-        problems.AddRange(UnreadableRecordDrift());
+        if (recordPath is not null) problems.AddRange(UnreadableRecordDrift(recordPath));
         foreach (var (type, bodies) in unreadable.Where(entry => !UnreadableExcused.ContainsKey(entry.Type)))
         {
             problems.Add(
@@ -250,23 +259,22 @@ public static class DecisionLedger
         return problems;
     }
 
-    private static IReadOnlyList<string> UnreadableRecordDrift()
+    /// <summary>Where the committed unreadable-bodies record would be, or null where no
+    /// worktree root is above here - the packaged arbiter's case.</summary>
+    public static string? UnreadableRecordOnHand()
     {
-        string root;
         try
         {
-            root = WorktreeLocator.Find();
+            return Path.Combine(WorktreeLocator.Find(), DecisionSurface.UnreadableBodiesRecordPath);
         }
         catch (InvalidOperationException)
         {
-            return
-            [
-                $"{DecisionSurface.UnreadableBodiesRecordPath} could not be found: no worktree root above here, so " +
-                "the unreadable set of this build cannot be held to its record.",
-            ];
+            return null;
         }
+    }
 
-        var path = Path.Combine(root, DecisionSurface.UnreadableBodiesRecordPath);
+    private static IReadOnlyList<string> UnreadableRecordDrift(string path)
+    {
         if (!File.Exists(path))
         {
             return

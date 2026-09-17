@@ -101,6 +101,12 @@ internal static partial class Commands
                 $"{DecisionSurface.UnreadableTypeCount().ToString(CultureInfo.InvariantCulture)} unreadable and " +
                 $"{DecisionSurface.UnloadableTypes().Count.ToString(CultureInfo.InvariantCulture)} unloadable type(s) held to " +
                 DecisionSurface.UnreadableBodiesRecordPath);
+            if (DecisionLedger.UnreadableRecordOnHand() is null)
+            {
+                Console.WriteLine(
+                    "  (that record is held by the merge gate, DecisionLedgerTests, and is not on hand here: no " +
+                    "worktree root above this arbiter, so the set is counted and not compared)");
+            }
         }
 
         if (Args.Has(args, "--update") && ledger.Count > 0)

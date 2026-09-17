@@ -44,6 +44,29 @@ public sealed class DecisionLedgerTests
         Assert.Empty(DecisionLedger.UnreadableProblems());
     }
 
+    /// <summary>The packaged arbiter runs with no worktree above it, so a record that is
+    /// not on hand is not one that differs: no record yields no record problem, and a
+    /// record that is on hand and differs names the line, so DRIFTED stays for that.</summary>
+    [GameFact]
+    public void ARecordNotOnHandIsNoProblemAndOneThatDiffersNamesTheLine()
+    {
+        Assert.Empty(DecisionLedger.UnreadableProblems(recordPath: null));
+
+        var differing = Path.Combine(Path.GetTempPath(), $"unreadable-{Guid.NewGuid():N}.txt");
+        try
+        {
+            File.WriteAllText(differing, DecisionSurface.UnreadableBodiesRecord() + "Nowhere.NoSuchType 1\n");
+            var problems = DecisionLedger.UnreadableProblems(differing);
+
+            var problem = Assert.Single(problems);
+            Assert.Contains("lists Nowhere.NoSuchType 1", problem, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(differing);
+        }
+    }
+
     /// <summary>A candidate no row observes and no excusal names is UNCLASSIFIED, which
     /// is the answer a game update's new screen or message gets before anybody has
     /// looked at it; a claimed one names its rows.</summary>
