@@ -76,4 +76,30 @@ internal sealed class PumpedSettleClock : SettleClock
             "A headless settle did not quiesce after a million pumps; the engine is wedged or a settle is " +
             "polling for a condition that never becomes true.");
     }
+
+    /// <summary>
+    /// One frame rather than every frame until quiet: runs what the inline context has
+    /// queued, completes every poll outstanding at that moment once, and runs what
+    /// resuming them queued. A settle that resumes and parks again is left parked, and
+    /// that is what this is for - standing in for the retail client's frames going by
+    /// while the engine is mid-way through a decision's own work, so a test can ask
+    /// whether the settle read during them. Returns whether a settle is still waiting.
+    /// </summary>
+    internal bool Tick()
+    {
+        var context = SynchronizationContext.Current as InlineSynchronizationContext;
+        context?.DrainPending();
+
+        List<TaskCompletionSource> waiting;
+        lock (_gate)
+        {
+            waiting = [.. _polls];
+            _polls.Clear();
+        }
+
+        foreach (var poll in waiting) poll.TrySetResult();
+        context?.DrainPending();
+
+        lock (_gate) return _polls.Count > 0;
+    }
 }

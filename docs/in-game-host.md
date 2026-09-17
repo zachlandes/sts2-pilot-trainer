@@ -715,6 +715,22 @@ Both paths funnel through the private `SkipRewardsSet`, which is what is watched
 `RunRecorderTests` carries that divergence in a named list with its reason, because it is
 the one place the two halves do not meet at the same member.
 
+**And the funnel fires inside the move, after the move has begun.**
+`EnterMapPointInternal` sets the act floor to the node being walked to and `EnterMapCoord` has already recorded the coordinate visited before `ExitCurrentRooms` reaches `BeforeLeavingRoom`, so a reading taken at the funnel is of a run partway through the move: the next node's floor and coordinate under the room being left, the total floor not yet advanced.
+Every store journal of v0.111.0 carried that on its skips, and no replay holds it, because the driver declines the set as its own decision before the move, from the state the player walked away from the loot screen in.
+`RewardsSkipped` therefore reads a set the move declines from the move's own before-reading, on both sides of the decision - `MapMove.BeforeTheMove` while the move's prefix has read and its postfix has not announced - with a ticket of its own so the arrival's save is still the move's to place; declining a set changes nothing the projection reads, which is why the format records the skip at all, so the state the move began from is the state the skip left.
+A set skipped from its own button, outside any move, is read at the funnel as before.
+`RecorderTimingTests` makes the move the way a clicked node makes it, the engine's own `EnterMapCoord` with the set still on offer, and holds the recording to a fresh replay through `TraceParity`; on the old reading the oracle names `run.act_floor` and `run.map_coord` at the skip.
+
+**An engine member that returns nothing leaves the settle nothing to wait for.**
+`EventSynchronizer.ChooseLocalOption` starts the option's task and keeps it to itself, so the event option's decision settled on the action queue alone, and the queue is idle while an option is between two of its awaits.
+In the retail client that gap is a real stretch of time: Brain Leech's RIP loses the health, awaits the player creature's hit animation through `CreatureCmd.TriggerAnim`, and only then rolls the card reward it offers, so the reading was taken with the health gone and the reward not rolled - every sampled field agreeing with the replay and the random streams apart, which is how the ascension-6 store run failed parity at decision 18.
+The option's task is now read on its way past, by a postfix on `EventOption.Chosen` held open only while `ChooseLocalOption` is executing (a Proceed button calls the same method directly and is no decision), and the decision is announced in the prefix with a stand-in that task completes - in the prefix still, because the Architect's PROCEED ends the run inside the call and `Finish` reads the one decision pending there.
+The settle then waits for that work as it waits for any decision's, with one exception `RunRecorder.HandedToThePlayerDuring` owns: work that has handed the run to the player - a rewards set on offer, read where `RewardsSetSynchronizer.BeginRewardsSet` begins one, or the Crystal Sphere's screen up, read where `CrystalSphereMinigame.PlayMinigame` puts it up, either begun while this decision was the one executing - has settled, because what answers it is the player's next decisions; a set on offer beside a reward being claimed off it is not this claim's wait, and the claim's own work is waited for as before.
+A card prompt is the third such wait and needs no entry there: the settle already stands down for one on `CardScreensUp` and the option's task finishes once the prompt is answered.
+Work waiting on anything else runs the budget out and refuses the decision by name, which is what a screen a later build adds should do.
+The headless engine has no hit animation, which is why no headless capture ever saw this; `RecorderTimingTests` stands one in with a task the test completes after frames have gone by, on `PumpedSettleClock.Tick`, and holds the decision's after-reading to the state the rewards are on offer in.
+
 **A patch on a base method does not fire for a subclass that shadows it.**
 `MerchantCardRemovalEntry` declares its own three-argument `OnTryPurchaseWrapper` beside
 `MerchantEntry`'s non-virtual two-argument one.

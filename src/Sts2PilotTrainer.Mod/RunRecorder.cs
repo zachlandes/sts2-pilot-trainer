@@ -236,6 +236,8 @@ internal sealed class RunRecorder : IDisposable
     internal static void RunTornDown()
     {
         lock (Gate) _consoleUsedBeforeAttach = false;
+        RewardsOffered.Forget();
+        CrystalSphereOpened.Forget();
 
         var recorder = Active;
         if (recorder is null) return;
@@ -351,6 +353,7 @@ internal sealed class RunRecorder : IDisposable
             // than one still building the room it just entered.
             if (await Settle(
                     null,
+                    ticket: 0,
                     () => Active is not null || ProfileWriteBarrier.IsActive
                         ? "another recording or a trainer run took this game first."
                         : RunWentAway()) is { } unsettled)
@@ -687,6 +690,18 @@ internal sealed class RunRecorder : IDisposable
             return;
         }
 
+        AnnounceAsAlreadyFinished(verb, args, before, reading);
+    }
+
+    /// <summary>The same, with the state the decision left already read by the
+    /// caller: a set the map move declines carries the move's own reading, because a
+    /// reading taken at the funnel is of a run partway through the move.</summary>
+    internal static void AnnounceAsAlreadyFinished(
+        ActionVerb verb, IReadOnlyDictionary<string, string> args, TakenReading before, TakenReading reading)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+
         lock (Gate)
         {
             recorder._pending.Enqueue(new PendingDecision(verb.ToString(), args, null, before, reading));
@@ -986,6 +1001,14 @@ internal sealed class RunRecorder : IDisposable
     /// the reason rather than a flag, because the two callers stop for different reasons
     /// and a sentence written for one of them would be false in the other.
     ///
+    /// The engine's own work is waited for as well as its queue, where a decision
+    /// handed one over, with one exception: work that has handed the run to the
+    /// player. An event option that offers rewards awaits the set until the player has
+    /// dealt with it, and those are the player's next decisions; the option has settled
+    /// once the set is on offer, and <paramref name="handedToThePlayer"/> is how the
+    /// caller says so. It is asked only where the work is still open, so a decision
+    /// whose work finishes on its own is read once it has.
+    ///
     /// The count, the stop, the poll and the budget arrive as arguments for the same
     /// reason <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule
     /// about those things, and handed them it can be exercised on a machine with no game.
@@ -999,7 +1022,8 @@ internal sealed class RunRecorder : IDisposable
         Func<bool> idle,
         Func<Task> newBudget,
         Func<Task> nextPoll,
-        Func<string, string> unsettled)
+        Func<string, string> unsettled,
+        Func<bool>? handedToThePlayer = null)
     {
         Task? budget = null;
         var idleTicks = 0;
@@ -1032,12 +1056,17 @@ internal sealed class RunRecorder : IDisposable
             // its own work is finished: the queue reading empty is not the same claim as
             // the queue having been seen to drain, and the two ticks are a debounce on
             // top of that signal rather than a replacement for it.
-            idleTicks = open() == 0 && (engineWork is null || engineWork.IsCompleted) && idle()
+            idleTicks = open() == 0 && WorkIsDone(engineWork, handedToThePlayer) && idle()
                 ? idleTicks + 1
                 : 0;
             if (idleTicks >= 2) return null;
         }
     }
+
+    /// <summary>Whether the work a decision handed over is finished, or has handed the
+    /// run to the player and so will not finish until the player's next decision.</summary>
+    private static bool WorkIsDone(Task? engineWork, Func<bool>? handedToThePlayer) =>
+        engineWork is null || engineWork.IsCompleted || handedToThePlayer?.Invoke() == true;
 
     /// <summary>
     /// What the budget that ran out was measuring, in words.
@@ -1174,6 +1203,7 @@ internal sealed class RunRecorder : IDisposable
                     ? null
                     : await Settle(
                         next.EngineWork,
+                        next.Before.Ticket,
                         () => _disposed || _finished
                             ? "The recording ended before this decision could be read."
                             : RunWentAway());
@@ -1293,7 +1323,7 @@ internal sealed class RunRecorder : IDisposable
     /// while there still is. <see cref="WaitForTheEngine"/> says why it is a sentence.</param>
     /// <returns>Null once the engine has settled, or the sentence saying what it was
     /// still waiting for.</returns>
-    private static Task<string?> Settle(Task? engineWork, Func<string?> stopped) =>
+    private static Task<string?> Settle(Task? engineWork, long ticket, Func<string?> stopped) =>
         WaitForTheEngine(
             () => CardScreensUp.Count,
             stopped,
@@ -1314,7 +1344,8 @@ internal sealed class RunRecorder : IDisposable
             Clock.Budget,
             Clock.Poll,
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
-                     "decision left.");
+                     "decision left.",
+            () => HandedToThePlayerDuring(ticket));
 
     /// <summary>
     /// Whether the engine has nothing in flight right now: the executor idle, the
@@ -1328,6 +1359,29 @@ internal sealed class RunRecorder : IDisposable
         RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
         manager.ActionQueueSet.IsEmpty &&
         (!LiveRun.InCombat || LiveRun.ReadyForThePlayer());
+
+    /// <summary>
+    /// Whether the engine has handed the run to the player inside the work of the
+    /// decision holding <paramref name="ticket"/>: a rewards set on offer, or the
+    /// Crystal Sphere's screen up, begun while that decision was the one executing.
+    ///
+    /// The two places an event option's task waits on the player rather than on the
+    /// engine, each read where the engine begins the wait. A card prompt is the third
+    /// and is not here, because the settle stands down for one on its own count and
+    /// the option's task finishes once the prompt is answered - the picks are the
+    /// option's own answer, recorded after it, rather than decisions of the run. Work
+    /// waiting on anything else runs the settle's budget out and refuses the decision,
+    /// naming it, which is what a screen this build adds and nothing here watches
+    /// should do.
+    ///
+    /// Asked of the decision and not of the run, because a set on offer is the usual
+    /// state of a loot screen: a reward claimed off it has work of its own - the gold
+    /// flying, the card landing in the deck - and that work is waited for as before,
+    /// with the set the claim is answering still open beside it. Only a wait the
+    /// decision itself began is the decision's to stop at.
+    /// </summary>
+    private static bool HandedToThePlayerDuring(long ticket) =>
+        RewardsOffered.OnOfferSince(ticket) || CrystalSphereOpened.OpenSince(ticket);
 
     /// <summary>Why a settle should stop because the run itself went away, or null while
     /// it is still being played.</summary>
@@ -1668,6 +1722,17 @@ internal sealed class RunRecorder : IDisposable
         get
         {
             lock (Gate) return _openTickets.Count;
+        }
+    }
+
+    /// <summary>The ticket read most recently and still open, or 0 where none is:
+    /// the decision whose work the engine is inside right now, by the rule
+    /// <see cref="NoticeSave"/> places a save by.</summary>
+    private long LatestOpenTicket
+    {
+        get
+        {
+            lock (Gate) return _openTickets.Count == 0 ? 0 : _openTickets.Max();
         }
     }
 
@@ -2608,7 +2673,8 @@ internal sealed class RunRecorder : IDisposable
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown), typeof(RunSaved),
-        typeof(EventOption), typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
+        typeof(EventOption), typeof(OptionChosen), typeof(RewardsOffered), typeof(CrystalSphereOpened),
+        typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
         typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
@@ -2698,13 +2764,49 @@ internal sealed class RunRecorder : IDisposable
     /// id. Told apart by the event's own model type rather than by the decision's
     /// position, so a run whose first decision is not Neow's is still recorded
     /// correctly.
+    ///
+    /// Announced in the prefix, as every decision is, and handed the option's own
+    /// work from inside the call. The member returns nothing: the synchronizer starts
+    /// the option's task and keeps it to itself, so a decision announced without it
+    /// settled on the action queue alone, and the queue is idle while an option is
+    /// between two of its awaits. In the retail client that gap is a real stretch of
+    /// time - Brain Leech's RIP loses the health, awaits the player creature's hit
+    /// animation, and only then rolls the card reward it offers - and the reading taken
+    /// inside it named a state no replay holds: the health gone and the reward not yet
+    /// rolled, so that every sampled field agreed with the replay and the random
+    /// streams did not. The work announced here is a stand-in the engine's own task
+    /// completes, handed over by <see cref="OptionChosen"/>; the settle then waits for
+    /// the option's work to finish, or for the engine to hand the run to the player
+    /// inside it (<see cref="HandedToThePlayerDuring"/>), and the reading is of the
+    /// state the replay's own drain reaches.
+    ///
+    /// The announcement stays in the prefix because the Architect's PROCEED ends the
+    /// run inside this very call: <see cref="Finish"/> reads the one decision still
+    /// pending there, and a decision announced only by the postfix would arrive after
+    /// the recording had finished and be lost without a word.
     /// </summary>
     [HarmonyPatch(typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption))]
     internal static class EventOption
     {
+        /// <summary>The stand-in for the option's work, open from the prefix to the
+        /// postfix; completed by the engine's own task once <see cref="OptionChosen"/>
+        /// has handed it over, or by the postfix where the engine started none.</summary>
+        private static TaskCompletionSource? _work;
+
+        /// <summary>Whether the engine's own task has been handed over for the
+        /// decision being read, so the stand-in follows it rather than the return.</summary>
+        private static bool _followed;
+
+        /// <summary>Whether a decision has been announced in the prefix and the member
+        /// has not returned yet: the engine is inside it, and the option task started
+        /// meanwhile is this decision's.</summary>
+        internal static bool Reading => _work is not null;
+
         [HarmonyPrefix]
         internal static void Before(EventSynchronizer __instance, int index)
         {
+            _work = null;
+            _followed = false;
             if (Active is null) return;
 
             try
@@ -2724,16 +2826,135 @@ internal sealed class RunRecorder : IDisposable
                 // checks it with: what lets a build that reordered the options refuse
                 // rather than take whatever sits at that index.
                 var key = RunDriver.OptionKey(options[index]);
+                var work = new TaskCompletionSource();
+                _work = work;
                 Announce(
                     model is Neow ? ActionVerb.ChooseNeowBlessing : ActionVerb.ChooseEventOption,
                     model is Neow
                         ? Args(("option_index", Number(index)), ("option_key", key))
-                        : Args(("event_id", model.Id.ToString()), ("option_index", Number(index)), ("option_key", key)));
+                        : Args(("event_id", model.Id.ToString()), ("option_index", Number(index)), ("option_key", key)),
+                    work.Task);
             }
             catch (Exception ex)
             {
+                _work = null;
                 Active?.Refuse($"An event option could not be read: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        /// <summary>The engine's own task for the option, handed over by
+        /// <see cref="OptionChosen"/> while the member is executing: the stand-in
+        /// completes when it does.</summary>
+        internal static void WorkStarted(Task task)
+        {
+            if (_work is not { } work) return;
+            _followed = true;
+            task.ContinueWith(
+                _ => work.TrySetResult(),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        /// <summary>The member has returned. An option the engine started no task for
+        /// has no work to wait on, and its stand-in completes here.</summary>
+        [HarmonyPostfix]
+        internal static void After()
+        {
+            if (_work is not { } work) return;
+            var followed = _followed;
+            _work = null;
+            _followed = false;
+            if (!followed) work.TrySetResult();
+        }
+    }
+
+    /// <summary>
+    /// The task an event option's work runs as, read on its way past.
+    ///
+    /// <c>EventOption.Chosen</c> is what the synchronizer starts for the option the
+    /// player chose, and the postfix hands its task to <see cref="EventOption"/> only
+    /// while that member is executing: the event room calls the same method directly
+    /// for a Proceed button, which is no decision of the run, and a task started
+    /// outside the window belongs to nothing this recorder is reading. The task itself
+    /// is returned exactly as the game produced it.
+    /// </summary>
+    [HarmonyPatch(typeof(MegaCrit.Sts2.Core.Events.EventOption), nameof(MegaCrit.Sts2.Core.Events.EventOption.Chosen))]
+    internal static class OptionChosen
+    {
+        [HarmonyPostfix]
+        internal static void After(Task __result)
+        {
+            if (EventOption.Reading) EventOption.WorkStarted(__result);
+        }
+    }
+
+    /// <summary>
+    /// A rewards set put on offer to the player, watched where the engine begins one.
+    ///
+    /// The task the synchronizer hands back completes when the set does - every reward
+    /// taken, or the set skipped - so a set whose task is still open is one the player
+    /// is looking at. It is the reading <see cref="HandedToThePlayerDuring"/> asks: a
+    /// decision whose own work offers rewards and then awaits them, as an event
+    /// option that offers a card does, has settled once the set is on offer, because
+    /// the decisions that answer the set are the player's next ones and are recorded
+    /// on their own.
+    /// </summary>
+    [HarmonyPatch(typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.BeginRewardsSet))]
+    internal static class RewardsOffered
+    {
+        private static Task? _set;
+        private static long _during;
+
+        /// <summary>Whether the player has a rewards set on offer right now that was
+        /// begun inside the work of the decision holding <paramref name="ticket"/>.</summary>
+        internal static bool OnOfferSince(long ticket) => _set is { IsCompleted: false } && _during == ticket;
+
+        [HarmonyPostfix]
+        internal static void After(RewardsSet set, Task __result)
+        {
+            if (!MegaCrit.Sts2.Core.Context.LocalContext.IsMe(set.Player)) return;
+            _set = __result;
+            _during = Active?.LatestOpenTicket ?? 0;
+        }
+
+        internal static void Forget()
+        {
+            _set = null;
+            _during = 0;
+        }
+    }
+
+    /// <summary>
+    /// The Crystal Sphere's own screen put up, watched where the engine plays the
+    /// minigame.
+    ///
+    /// The minigame's task completes when the sphere is done with, and while it is
+    /// open every cell the player reveals is a decision of its own; the option that
+    /// opened it awaits the whole game and has settled once the sphere is up, for the
+    /// reason <see cref="RewardsOffered"/> gives for a rewards set.
+    /// </summary>
+    [HarmonyPatch(typeof(CrystalSphereMinigame), nameof(CrystalSphereMinigame.PlayMinigame))]
+    internal static class CrystalSphereOpened
+    {
+        private static Task? _minigame;
+        private static long _during;
+
+        /// <summary>Whether the sphere is in front of the player right now, put up
+        /// inside the work of the decision holding <paramref name="ticket"/>.</summary>
+        internal static bool OpenSince(long ticket) => _minigame is { IsCompleted: false } && _during == ticket;
+
+        [HarmonyPostfix]
+        internal static void After(Task __result)
+        {
+            _minigame = __result;
+            _during = Active?.LatestOpenTicket ?? 0;
+        }
+
+        internal static void Forget()
+        {
+            _minigame = null;
+            _during = 0;
         }
     }
 
@@ -2755,6 +2976,11 @@ internal sealed class RunRecorder : IDisposable
         /// announced by the postfix: the engine is inside the member, and any choice
         /// synced meanwhile is this decision's.</summary>
         internal static bool Reading => _decision is not null;
+
+        /// <summary>The reading the move began from, while the engine is inside the
+        /// member; what <see cref="RewardsSkipped"/> reads a set the move declines
+        /// from.</summary>
+        internal static TakenReading? BeforeTheMove => _decision?.Before;
 
         [HarmonyPrefix]
         internal static void Before(MapCoord coord)
@@ -2951,15 +3177,42 @@ internal sealed class RunRecorder : IDisposable
         ///
         /// Nothing here waits, because there is nothing to wait for: the set is
         /// declined synchronously and the state it left is final when this returns.
+        ///
+        /// A set the map move declines is read from the reading the move began from,
+        /// both before and after, rather than here. <c>EnterMapPointInternal</c> has
+        /// already advanced the act floor and the coordinate to the node being walked
+        /// to when it leaves the room, so a reading taken at the funnel is of a run
+        /// partway through the move - the next node's floor and coordinate under the
+        /// room being left - and no replay holds that state: the driver declines the
+        /// set as its own decision, before the move, from the state the player walked
+        /// away from the loot screen in. That state is the one the move's prefix read,
+        /// and declining a set changes nothing the projection reads (the run looks the
+        /// same either way, which is why the format records the skip at all), so it is
+        /// the state the skip left too. Every store journal of this build carried the
+        /// move's partial state on its skips, and the coverage read the wrong floor
+        /// off them.
         /// </summary>
         private static TakenReading? _before;
+        private static bool _readFromTheMove;
 
-        /// <summary>The state the set was declined from, read before the funnel runs.</summary>
+        /// <summary>The state the set was declined from: the move's own reading where
+        /// the move is what declines it, read here otherwise.</summary>
         [HarmonyPrefix]
         internal static void Before()
         {
             _before = null;
-            if (Active is null) return;
+            _readFromTheMove = false;
+            if (Active is not { } recorder) return;
+
+            if (MapMove.BeforeTheMove is { } move)
+            {
+                // Its own ticket, so a save asked while the move runs on is still the
+                // move's to place and not this decision's.
+                _before = move with { Ticket = recorder.OpenTicket() };
+                _readFromTheMove = true;
+                return;
+            }
+
             _before = ReadBefore(nameof(ActionVerb.SkipRewards));
         }
 
@@ -2968,6 +3221,15 @@ internal sealed class RunRecorder : IDisposable
         {
             if (_before is not { } before) return;
             _before = null;
+            if (_readFromTheMove)
+            {
+                _readFromTheMove = false;
+                AnnounceAsAlreadyFinished(
+                    ActionVerb.SkipRewards, Args(), before,
+                    new TakenReading(before.Sample, before.Digest, before.RunClockMs));
+                return;
+            }
+
             AnnounceAsAlreadyFinished(ActionVerb.SkipRewards, Args(), before);
         }
     }
@@ -3494,8 +3756,8 @@ internal sealed class RunRecorder : IDisposable
         {
             if (CardPrompts.Open is not null || CardScreensUp.Count > 0) return true;
             if (CardSelectCmd.Selector is { } selector && CardPrompts.IsTheGamesOwn(selector)) return true;
-            if (MapMove.Reading || RewardTaken.Reading || RestSiteOptionTaken.Reading || ShopPurchased.Reading ||
-                CrystalSphereCellRevealed.Reading)
+            if (EventOption.Reading || MapMove.Reading || RewardTaken.Reading || RestSiteOptionTaken.Reading ||
+                ShopPurchased.Reading || CrystalSphereCellRevealed.Reading)
             {
                 return true;
             }
