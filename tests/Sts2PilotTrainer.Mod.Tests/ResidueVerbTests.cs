@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -168,36 +169,38 @@ public sealed class ResidueVerbTests
     // ── A card reward answered past its cards ─────────────────────────────
 
     /// <summary>A card reward answered past its cards comes back through the same
-    /// seam a card does, named by the alternative's own id.</summary>
+    /// seam a card does, named by the alternative's own id. The alternatives are the
+    /// ones the engine generates for a reward the player holds Pael's Wing over -
+    /// Skip, and the wing's sacrifice - never a list written here.</summary>
     [GameFact]
     public void ACardRewardsAlternativeIsAnsweredThroughTheSeamAndCheckedByIdAndPosition() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
-        var options = player.Deck.Cards.Take(3).Select(card => new CardCreationResult(card)).ToList();
-        var alternatives = new List<CardRewardAlternative>
-        {
-            new("SACRIFICE", PostAlternateCardRewardAction.EndSelectionAndCompleteReward),
-        };
+        RelicCmd.Obtain(ModelDb.Relic<PaelsWing>().ToMutable(), player).GetAwaiter().GetResult();
+        var reward = HeadlessRuns.ACardReward(player);
+        var options = OfferedCards(reward);
+        var alternatives = CardRewardAlternative.Generate(reward);
+        Assert.Equal(["Skip", "SACRIFICE"], alternatives.Select(alternative => alternative.OptionId));
 
         var selector = new ManifestCardSelector();
-        selector.Enqueue(new ManifestCardSelector.AlternativePick(1, "SACRIFICE", 3));
+        selector.Enqueue(new ManifestCardSelector.AlternativePick(1, "SACRIFICE", 4));
         var selection = selector.GetSelectedCardReward(options, alternatives);
 
-        Assert.Same(alternatives[0], selection.alternative);
+        Assert.Same(alternatives[1], selection.alternative);
         Assert.Null(selection.card);
         Assert.Null(selector.Refusal);
 
         Assert.Contains(
-            "with alternative 'REROLL', and this reward offers 0:SACRIFICE",
+            "with alternative 'REROLL', and this reward offers 0:Skip, 1:SACRIFICE",
             Refused(refusing =>
             {
-                refusing.Enqueue(new ManifestCardSelector.AlternativePick(1, "REROLL", 3));
+                refusing.Enqueue(new ManifestCardSelector.AlternativePick(1, "REROLL", 4));
                 refusing.GetSelectedCardReward(options, alternatives);
             }),
             StringComparison.Ordinal);
 
         Assert.Contains(
-            "at option 7, and this screen reports it at 3",
+            "at option 7, and this screen reports it at 4",
             Refused(refusing =>
             {
                 refusing.Enqueue(new ManifestCardSelector.AlternativePick(1, "SACRIFICE", 7));
@@ -217,12 +220,14 @@ public sealed class ResidueVerbTests
     public void AnAlternativesEffectOnTheRewardIsTheAlternativesOwn() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
-        var options = player.Deck.Cards.Take(3).Select(card => new CardCreationResult(card)).ToList();
-        var alternatives = new List<CardRewardAlternative>
-        {
-            new("Skip", PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward),
-            new("REROLL", () => Task.CompletedTask, PostAlternateCardRewardAction.DoNothing),
-        };
+        // Driftwood is what lets a card reward be rerolled on this build; the reward's
+        // own generator then offers the reroll after the skip
+        var driftwood = RelicCmd.Obtain(ModelDb.Relic<Driftwood>().ToMutable(), player).GetAwaiter().GetResult();
+        var reward = HeadlessRuns.ACardReward(player);
+        Assert.True(driftwood.TryModifyRewardsLate(player, [reward], room: null));
+        var options = OfferedCards(reward);
+        var alternatives = CardRewardAlternative.Generate(reward);
+        Assert.Equal(["Skip", "REROLL"], alternatives.Select(alternative => alternative.OptionId));
 
         var selector = new ManifestCardSelector();
         selector.Enqueue(new ManifestCardSelector.AlternativePick(1, "Skip", 3));
@@ -344,6 +349,12 @@ public sealed class ResidueVerbTests
 
     /// <summary>The refusal a selector recorded for one asking, on a selector of its
     /// own because a selector keeps its first refusal.</summary>
+    /// <summary>The cards a reward offers, as the engine hands them to the seam: the
+    /// reward's own list, read through the field the engine reads it from, because
+    /// the reward exposes the cards and not the creation results the seam is given.</summary>
+    private static IReadOnlyList<CardCreationResult> OfferedCards(CardReward reward) =>
+        (IReadOnlyList<CardCreationResult>)HarmonyLib.AccessTools.Field(typeof(CardReward), "_cards").GetValue(reward)!;
+
     private static string Refused(Action<ManifestCardSelector> ask)
     {
         var selector = new ManifestCardSelector();
