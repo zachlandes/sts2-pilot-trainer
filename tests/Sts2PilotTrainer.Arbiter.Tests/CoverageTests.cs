@@ -43,7 +43,7 @@ public sealed class CoverageTests
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
             Assert.True(artifact.GetProperty("covered").GetBoolean());
             var totals = artifact.GetProperty("totals");
-            Assert.Equal(499, totals.GetProperty("points").GetInt32());
+            Assert.Equal(522, totals.GetProperty("points").GetInt32());
             Assert.Equal(0, totals.GetProperty("uncovered").GetInt32());
             Assert.Equal(6, totals.GetProperty("co_occurrence").GetInt32());
             Assert.Equal(0, totals.GetProperty("inadmissible_excusals").GetInt32());

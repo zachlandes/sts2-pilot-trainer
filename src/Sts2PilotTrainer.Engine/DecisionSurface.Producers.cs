@@ -60,15 +60,18 @@ public static partial class DecisionSurface
 
     /// <summary>
     /// Every option of every event this build ships, as <c>event_id option_key</c>:
-    /// the events and the ancients of <see cref="Events"/>, and Neow, whose blessing
-    /// carries an option key under its own verb. An ancient's options are the game's
-    /// own <c>AllPossibleOptions</c> - every option its pools can roll - keyed the way
-    /// the driver keys one, by the relic dealt or the option's text key. Any other
-    /// event's are read off its own IL: every option key literal its bodies load, every
-    /// <c>InitialOptionKey</c> it builds one with, and every relic its generic
-    /// <c>RelicOption</c> deals; an event that builds a key the walk cannot read is
-    /// refused by name rather than listed short, except where <see cref="RuntimeBuiltOptionKeys"/>
-    /// derives the keys from the same database the event does.
+    /// the events, the ancients and the Architect of <see cref="Events"/>, and Neow,
+    /// whose blessing carries an option key under its own verb. An ancient's options
+    /// are the game's own <c>AllPossibleOptions</c> - every option its pools can roll -
+    /// keyed the way the driver keys one, by the relic dealt or the option's text key.
+    /// Any other event's are read off its own IL: every option key literal its bodies
+    /// load, every <c>InitialOptionKey</c> it builds one with, and every relic its
+    /// generic <c>RelicOption</c> deals. Every <c>EventOption</c> the event constructs
+    /// is then held to that reading - the key it is constructed with has to be one of
+    /// those literals - and an event that constructs one with a key built at runtime
+    /// is refused by name rather than listed short, except where
+    /// <see cref="RuntimeBuiltOptionKeys"/> derives its keys the way the event's own
+    /// code builds them.
     /// </summary>
     public static IReadOnlyList<string> EventOptions() =>
         EventOptionKeys().Select(option => DecisionPoint.EventOption(option.EventId, option.Key).Identity).ToList();
@@ -79,7 +82,7 @@ public static partial class DecisionSurface
     private static readonly Lazy<IReadOnlyList<(string EventId, string Key)>> EventOptionWalk = new(() =>
     {
         EngineHost.Start();
-        return ModelDb.AllEvents.Concat<EventModel>(ModelDb.AllAncients)
+        return EventModels().Concat(ModelDb.AllAncients.Where(model => model is Neow))
             .SelectMany(model => OptionKeysOf(model).Select(key => (EventId: model.Id.ToString(), Key: key)))
             .Distinct()
             .OrderBy(option => option.EventId, StringComparer.Ordinal)
@@ -87,22 +90,35 @@ public static partial class DecisionSurface
             .ToList();
     });
 
+    /// <summary>A whole option key as an event's code writes one: an event, a page and
+    /// an option, the option's last character never the underscore an interpolated
+    /// key's literal half ends in.</summary>
     private static readonly Regex OptionKeyLiteral = new(
-        @"^[A-Z0-9_]+\.pages\.[A-Za-z0-9_]+\.options\.[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
-
-    private static readonly Regex OptionKeyPrefix = new(
-        @"^[A-Z0-9_]+\.pages\.[A-Za-z0-9_]+\.options\.$", RegexOptions.CultureInvariant);
+        @"^[A-Z0-9_]+\.pages\.[A-Za-z0-9_]+\.options\.[A-Za-z0-9_]*[A-Za-z0-9]$", RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// The events whose option keys the game builds at runtime from a prefix and
-    /// something other than a literal beside it, each with the same derivation the
-    /// event's own code makes. Colorful Philosophers offers one option per character
-    /// card pool, keyed by the pool's energy colour, read from the database the event
-    /// reads; Endless Conveyor keys each dish by the id its <c>Dish</c> record is
-    /// constructed with, read off the constructions the way an alternative's id is. A
-    /// walk that read either's literal would list a prefix and no option, and an event
-    /// that builds a key and is not here is refused by name, so a game update that
-    /// adds one fails the denominator rather than thinning it.
+    /// The events whose option keys the game builds at runtime, each with the same
+    /// derivation the event's own code makes, so the walk lists the keys a recorder
+    /// writes rather than the literal halves the IL holds. Colorful Philosophers
+    /// offers one option per character card pool, keyed by the pool's energy colour;
+    /// Endless Conveyor keys each dish by the id its <c>Dish</c> record is constructed
+    /// with; Colossal Flower numbers its extract and dig options by the digs so far,
+    /// on its first page and on each deeper one; Slippery Bridge numbers each hold-on
+    /// by the holds so far, on the page the last one opened, and reads <c>LOOP</c> past
+    /// the seventh; Tablet of Truth offers its decipher on a page per decipher so far;
+    /// Doll Room keys each doll by the title of the relic in it, the way the driver
+    /// keys an option with no relic set; Tinker Time keys each rider through a helper
+    /// whose literals are the keys; Relic Trader offers a bare <c>PROCEED</c> to a
+    /// player with nothing to trade; and the Architect offers a line per line of the
+    /// dialogue the win rolls and then a bare <c>PROCEED</c>. An event that builds a
+    /// key and is not here is refused by name, so a game update that adds one fails the
+    /// denominator rather than thinning it.
+    ///
+    /// Doll Room's keys are the one place the recorded key is a title rather than an
+    /// id: the retail client writes the player's localized title where this process,
+    /// whose localization returns every key as itself, writes the title's key. The
+    /// walk lists what this process reads, as the driver here would; making the two
+    /// hosts agree is the driver's and the recorder's change, not the map's.
     /// </summary>
     private static IReadOnlyList<string>? RuntimeBuiltOptionKeys(EventModel model) => model switch
     {
@@ -110,6 +126,13 @@ public static partial class DecisionSurface
             .Select(pool => $"{model.Id.Entry}.pages.INITIAL.options.{pool.EnergyColorName.ToUpperInvariant()}")
             .ToList(),
         EndlessConveyor => DishKeysOf(model),
+        ColossalFlower => ColossalFlowerKeys(model),
+        SlipperyBridge => SlipperyBridgeKeys(model),
+        TabletOfTruth => TabletOfTruthKeys(model),
+        DollRoom => DollRoomKeys(model),
+        TinkerTime => LiteralsOf(model, "GetRiderLocKey"),
+        RelicTrader => ["PROCEED"],
+        TheArchitect architect => ArchitectKeys(architect),
         _ => null,
     };
 
@@ -122,6 +145,81 @@ public static partial class DecisionSurface
             .Select(construction => construction.Literal
                 ?? throw new InvalidOperationException($"{conveyor.Id} constructs a dish with no id literal before it."))
             .Select(id => $"{conveyor.Id.Entry}.pages.ALL.options.{id}")
+            .ToList();
+    }
+
+    /// <summary>The digs are counted from zero, the first page numbers its options by
+    /// the dig they would be, and each dig short of the second opens a page named for
+    /// it; the second dig's page carries literal keys the IL walk reads itself.</summary>
+    private static IReadOnlyList<string> ColossalFlowerKeys(EventModel flower)
+    {
+        var entry = flower.Id.Entry;
+        return
+        [
+            $"{entry}.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
+            $"{entry}.pages.INITIAL.options.REACH_DEEPER_1",
+            $"{entry}.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
+            $"{entry}.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
+        ];
+    }
+
+    /// <summary>Each hold-on opens the page of the hold before it and offers the next,
+    /// both numbered by <c>GetHoldOnSuffix</c>, which reads <c>LOOP</c> from the
+    /// seventh; from there the page and the option both read <c>LOOP</c> and the set
+    /// is closed.</summary>
+    private static IReadOnlyList<string> SlipperyBridgeKeys(EventModel bridge)
+    {
+        var entry = bridge.Id.Entry;
+        var suffix = bridge.GetType().GetMethod("GetHoldOnSuffix", Every)
+            ?? throw new InvalidOperationException($"{bridge.Id} declares no GetHoldOnSuffix on this build.");
+        string Suffix(int holdOns) => (string)suffix.Invoke(bridge, [holdOns])!;
+        var keys = new List<string>();
+        for (var holdOns = 1; ; holdOns++)
+        {
+            var key = $"{entry}.pages.HOLD_ON_{Suffix(holdOns - 1)}.options.HOLD_ON_{Suffix(holdOns)}";
+            if (keys.Contains(key)) break;
+            keys.Add(key);
+        }
+
+        return keys;
+    }
+
+    /// <summary>Each decipher short of the fifth opens a page named for the deciphers
+    /// so far and offers the next; the fifth finishes the event.</summary>
+    private static IReadOnlyList<string> TabletOfTruthKeys(EventModel tablet) =>
+        Enumerable.Range(1, 4).Select(deciphers => $"{tablet.Id.Entry}.pages.DECIPHER_{deciphers}.options.DECIPHER").ToList();
+
+    /// <summary>The dolls are the event's own static table of relics, and each doll's
+    /// option is keyed by its relic's title with no relic set on the option.</summary>
+    private static IReadOnlyList<string> DollRoomKeys(EventModel room)
+    {
+        var dolls = room.GetType().GetField("_dolls", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null) as Array
+            ?? throw new InvalidOperationException($"{room.Id} declares no static _dolls table on this build.");
+        return dolls.Cast<object>()
+            .Select(doll => doll.GetType().GetField("relic")?.GetValue(doll) as RelicModel
+                ?? throw new InvalidOperationException($"{room.Id}'s doll table carries no relic on this build."))
+            .Select(relic => relic.Title.GetRawText())
+            .ToList();
+    }
+
+    /// <summary>The option keys a helper of the event's own returns: every literal its
+    /// body loads.</summary>
+    private static IReadOnlyList<string> LiteralsOf(EventModel model, string helper)
+    {
+        var method = model.GetType().GetMethod(helper, Every)
+            ?? throw new InvalidOperationException($"{model.Id} declares no {helper} on this build.");
+        return ChoiceEntryPoints.StringLiterals(method).Where(literal => OptionKeyLiteral.IsMatch(literal)).ToList();
+    }
+
+    /// <summary>One option per line of the longest dialogue the Architect's own set
+    /// holds but the last, keyed by the line's index, then the PROCEED its last line
+    /// and an empty dialogue both offer.</summary>
+    private static IReadOnlyList<string> ArchitectKeys(TheArchitect architect)
+    {
+        var longest = architect.DialogueSet.GetAllDialogues().Max(dialogue => dialogue.Lines.Count);
+        return Enumerable.Range(0, Math.Max(longest - 1, 0))
+            .Select(line => $"{architect.Id.Entry}.dialogue.{line.ToString(CultureInfo.InvariantCulture)}")
+            .Append("PROCEED")
             .ToList();
     }
 
@@ -138,21 +236,26 @@ public static partial class DecisionSurface
         var runtimeBuilt = RuntimeBuiltOptionKeys(model);
         foreach (var member in OwnMembersOf(model.GetType()))
         {
-            foreach (var literal in ChoiceEntryPoints.StringLiterals(member))
+            keys.AddRange(ChoiceEntryPoints.StringLiterals(member).Where(literal => OptionKeyLiteral.IsMatch(literal)));
+
+            var initialKeys = ChoiceEntryPoints.LiteralsBefore(member, callee => callee == initialOptionKey);
+            keys.AddRange(initialKeys.Select(literal => $"{model.Id.Entry}.pages.INITIAL.options.{literal}"));
+
+            // Every option the member constructs is held to the literals read above:
+            // among the strings loaded on the way to it is a whole key, or the name an
+            // InitialOptionKey call completes; a construction with neither carries a
+            // key the event built at runtime, which only a derivation here can list
+            foreach (var construction in ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)))
             {
-                if (OptionKeyLiteral.IsMatch(literal)) keys.Add(literal);
-                else if (OptionKeyPrefix.IsMatch(literal) && runtimeBuilt is null)
+                var explained = construction.Literals.Any(literal =>
+                    OptionKeyLiteral.IsMatch(literal) || initialKeys.Contains(literal, StringComparer.Ordinal));
+                if (!explained && runtimeBuilt is null)
                 {
                     throw new InvalidOperationException(
-                        $"{model.Id} builds an option key at runtime from '{literal}' in " +
-                        $"{member.DeclaringType!.Name}.{member.Name}, which this walk cannot read; add its " +
-                        "derivation to DecisionSurface.RuntimeBuiltOptionKeys.");
+                        $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} with no whole " +
+                        $"option key literal on the way to it ({(construction.Literals.Count == 0 ? "no string loaded" : string.Join(", ", construction.Literals.Select(literal => $"'{literal}'")))}), " +
+                        "so the key is built at runtime; add its derivation to DecisionSurface.RuntimeBuiltOptionKeys.");
                 }
-            }
-
-            foreach (var literal in ChoiceEntryPoints.LiteralsBefore(member, callee => callee == initialOptionKey))
-            {
-                keys.Add($"{model.Id.Entry}.pages.INITIAL.options.{literal}");
             }
 
             foreach (var callee in ChoiceEntryPoints.Callees(member))
@@ -209,20 +312,21 @@ public static partial class DecisionSurface
         foreach (var model in models)
         {
             var type = model.GetType();
-            var fromHooks = new Dictionary<string, string>(StringComparer.Ordinal);
+            var fromHooks = new HashSet<(string Seam, string Timing)>();
             foreach (var root in HookRoots(type))
             {
                 foreach (var seam in SeamsReachedFrom(type, [root]))
                 {
-                    fromHooks.TryAdd(seam, TimingOf(root));
+                    fromHooks.Add((seam, TimingOf(root)));
                 }
             }
 
             // The check that the hooks explain every edge: a seam the model's whole
             // member set reaches and no hook does is listed under the unrooted timing
+            var rooted = fromHooks.Select(edge => edge.Seam).ToHashSet(StringComparer.Ordinal);
             foreach (var seam in SeamsReachedFrom(type, OwnMembersOf(type)))
             {
-                fromHooks.TryAdd(seam, UnrootedTiming);
+                if (!rooted.Contains(seam)) fromHooks.Add((seam, UnrootedTiming));
             }
 
             foreach (var (seam, timing) in fromHooks)
@@ -557,6 +661,7 @@ public static partial class DecisionSurface
             return "dealt by " + string.Join(", ", DealtBy(producerId));
         }
 
+        if (producerId == ArchitectEventId) return "reached by the win";
         if (producerId.StartsWith("EVENT.", StringComparison.Ordinal))
         {
             var acts = ActsReaching(producerId);
@@ -649,7 +754,7 @@ public static partial class DecisionSurface
                 if (Enum.TryParse<ActionVerb>(point.Identity, out var verb))
                 {
                     if (ScreenStandIns.StoodInFor.Any(standIn => standIn.Verb == verb)) yield return ExcusalClass.ScreenWithoutHeadlessHost;
-                    if (RunDriver.RetailOnlyWindow.Contains(verb)) yield return ExcusalClass.RetailOnlyTiming;
+                    if (RunDriver.OfferedOnlyWithAnotherPlayer.Contains(verb)) yield return ExcusalClass.MultiplayerOnly;
                     if (ScreenStandIns.StoodInFor.FirstOrDefault(standIn => standIn.Verb == verb) is { } stoodIn
                         && NothingReaches(stoodIn.Type, stoodIn.Member))
                     {
@@ -669,11 +774,28 @@ public static partial class DecisionSurface
                 if (!AlternativeEndsTheSelection(point.Identity)) yield return ExcusalClass.NotReplayable;
                 break;
             case DecisionKinds.Event:
-                if (ActsReaching(point.Identity).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
+                if (point.Identity == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
+                else if (ActsReaching(point.Identity).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
                 break;
             case DecisionKinds.EventOption:
                 var eventId = point.Identity[..point.Identity.IndexOf(' ', StringComparison.Ordinal)];
-                if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
+                if (eventId == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
+                else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
+                break;
+            case DecisionKinds.Seam:
+                if (ProducerMap().FirstOrDefault(row => row.Point == point) is not { } seam) break;
+
+                // A seam answered nowhere but on screens the headless host stands in
+                // for is one no generated walk can draw, whatever produces it
+                if (seam.AnsweredAt.Count > 0
+                    && seam.AnsweredAt.All(answer => answer.Kind == DecisionKinds.Verb
+                                                     && Enum.TryParse<ActionVerb>(answer.Identity, out var answered)
+                                                     && ScreenStandIns.StoodInFor.Any(standIn => standIn.Verb == answered)))
+                {
+                    yield return ExcusalClass.ScreenWithoutHeadlessHost;
+                }
+
+                if (seam.Producers.All(producer => producer == ArchitectEventId)) yield return ExcusalClass.ReachedByTheWin;
                 break;
             case DecisionKinds.CardPrompt:
                 var entryPoint = ChoiceEntryPoints.All().FirstOrDefault(method => ChoiceEntryPoints.QualifiedSignature(method) == point.Identity);

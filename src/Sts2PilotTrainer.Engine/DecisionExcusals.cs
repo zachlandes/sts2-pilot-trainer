@@ -84,6 +84,23 @@ public static class DecisionExcusals
         "reached by HeadlessGameplayCaptureTests' won run, recorded through the real recorder and replayed on " +
         "every merge; the recording is generated rather than committed");
 
+    /// <summary>The victory room's event and its options are reached by the win and by
+    /// no act's roll: the same won-run proof plays through the Architect's lines to its
+    /// PROCEED, so the class is the map's own for it rather than a placeholder.</summary>
+    private static readonly Excusal ReachedByTheWin = new(
+        ExcusalClass.ReachedByTheWin,
+        "the victory room's own event, reached by the win rather than by an act's roll; HeadlessGameplayCaptureTests' " +
+        "won run plays through its lines to PROCEED through the real recorder and replays it on every merge, and " +
+        "the recording is generated rather than committed");
+
+    /// <summary>A seam answered only on screens the headless host has none for: no
+    /// generated walk can draw it, whatever produces it.</summary>
+    private static readonly Excusal SeamOnAScreenWithoutHeadlessHost = new(
+        ExcusalClass.ScreenWithoutHeadlessHost,
+        "answered only on a screen the headless host has no screen for (docs/headless-fidelity.md), so no generated " +
+        "walk reaches it, and no committed recording both met one of its producers and answered it " +
+        "(scripts/producer-map.txt lists them); retired by a recording from the retail soak (excused 2026-09-17)");
+
     /// <summary>
     /// The options of the events the committed corpus reaches - Neow's blessing and
     /// two events - each recorded before the recorder wrote <c>option_key</c>, so
@@ -187,8 +204,10 @@ public static class DecisionExcusals
         ],
         ["EVENT.COLOSSAL_FLOWER"] =
         [
-            "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_",
-            "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_",
+            "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
+            "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_1",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
             "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD",
             "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE",
         ],
@@ -203,11 +222,17 @@ public static class DecisionExcusals
             "DENSE_VEGETATION.pages.INITIAL.options.TRUDGE_ON",
             "DENSE_VEGETATION.pages.REST.options.FIGHT",
         ],
+        // The three dolls are keyed by their relic's title with no relic set, so the
+        // key is the title's localization key here and the player's localized title
+        // in the retail client (DecisionSurface.RuntimeBuiltOptionKeys)
         ["EVENT.DOLL_ROOM"] =
         [
             "DOLL_ROOM.pages.INITIAL.options.EXAMINE",
             "DOLL_ROOM.pages.INITIAL.options.RANDOM",
             "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME",
+            "relics.BING_BONG.title",
+            "relics.DAUGHTER_OF_THE_WIND.title",
+            "relics.MR_STRUGGLES.title",
         ],
         ["EVENT.DOORS_OF_LIGHT_AND_DARK"] =
         [
@@ -301,6 +326,7 @@ public static class DecisionExcusals
         ],
         ["EVENT.RELIC_TRADER"] =
         [
+            "PROCEED",
             "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
             "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
             "RELIC_TRADER.pages.INITIAL.options.TOP",
@@ -333,6 +359,14 @@ public static class DecisionExcusals
         ],
         ["EVENT.SLIPPERY_BRIDGE"] =
         [
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_1.options.HOLD_ON_2",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_2.options.HOLD_ON_3",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_3.options.HOLD_ON_4",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_4.options.HOLD_ON_5",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_5.options.HOLD_ON_6",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_6.options.HOLD_ON_LOOP",
+            "SLIPPERY_BRIDGE.pages.HOLD_ON_LOOP.options.HOLD_ON_LOOP",
             "SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0",
             "SLIPPERY_BRIDGE.pages.INITIAL.options.OVERCOME",
         ],
@@ -372,6 +406,10 @@ public static class DecisionExcusals
         ["EVENT.TABLET_OF_TRUTH"] =
         [
             "TABLET_OF_TRUTH.pages.DECIPHER.options.GIVE_UP",
+            "TABLET_OF_TRUTH.pages.DECIPHER_1.options.DECIPHER",
+            "TABLET_OF_TRUTH.pages.DECIPHER_2.options.DECIPHER",
+            "TABLET_OF_TRUTH.pages.DECIPHER_3.options.DECIPHER",
+            "TABLET_OF_TRUTH.pages.DECIPHER_4.options.DECIPHER",
             "TABLET_OF_TRUTH.pages.INITIAL.options.DECIPHER_1",
             "TABLET_OF_TRUTH.pages.INITIAL.options.SMASH",
         ],
@@ -589,7 +627,6 @@ public static class DecisionExcusals
     /// </summary>
     private static readonly string[] SeamsOffTheRoute =
     [
-        "card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ AbstractModel.BeforeHandDraw",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ MonsterModel.GenerateMoveStateMachine",
@@ -625,7 +662,6 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ RelicModel.AfterObtained",
         "card-reward-alternative @ AbstractModel.TryModifyCardRewardAlternatives",
         "event-option @ AncientEventModel.AllPossibleOptions",
-        "event-option @ EventModel.SetInitialEventState",
         "rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:COOK @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:DIG @ AbstractModel.TryModifyRestSiteOptions",
@@ -658,8 +694,15 @@ public static class DecisionExcusals
         "rewards:OfferCustom @ EventModel.CalculateVars",
         "rewards:OfferCustom @ EventModel.Resume",
         "rewards:OfferCustom @ RelicModel.AfterObtained",
-        "screen:NCrystalSphereScreen.ShowScreen @ EventModel.GenerateInitialOptions",
         "shop-kind:relic @ EventModel.BeforeEventStarted",
+    ];
+
+    /// <summary>The seams answered only on the screens the headless host stands in for:
+    /// the bundle screen Scroll Boxes opens and the Crystal Sphere's own screen.</summary>
+    private static readonly string[] SeamsOnScreensWithoutHeadlessHost =
+    [
+        "card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained",
+        "screen:NCrystalSphereScreen.ShowScreen @ EventModel.GenerateInitialOptions",
     ];
 
     public static IReadOnlyDictionary<DecisionPoint, Excusal> All { get; } = Build();
@@ -686,12 +729,13 @@ public static class DecisionExcusals
 
         excusals[new DecisionPoint(DecisionKinds.Verb, "ProceedToNextAct")] = GeneratedByTheWonRunProof;
 
-        // The undo needs the window the retail client leaves open before the enemy
-        // turn begins, which this process runs inside the end-turn decision
+        // The client offers the undo only while another player has not ended their
+        // turn, and the recorder records singleplayer runs only (RunDriver.UndoEndTurn)
         excusals[new DecisionPoint(DecisionKinds.Verb, "UndoEndTurn")] = new(
-            ExcusalClass.RetailOnlyTiming,
-            "the retail client offers the undo only in the window before the enemy turn begins, which the " +
-            "headless host runs inside the end-turn decision; no generated walk reaches it (excused 2026-09-16)");
+            ExcusalClass.MultiplayerOnly,
+            "the client offers the undo only while another player has not ended their turn, and a singleplayer " +
+            "run, the one kind the recorder records, never reaches it: with one player the engine commits to the " +
+            "enemy turn the moment the turn ends (RunDriver.UndoEndTurn)");
 
         // The three screens the headless host has no screen for
         foreach (var verb in new[] { "SelectBundleFromScreen", "SelectRelicFromScreen", "RevealCrystalSphereCell" })
@@ -829,6 +873,23 @@ public static class DecisionExcusals
             excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = NotOnTheRoute(EventOffTheRoute);
         }
 
+        excusals[new DecisionPoint(DecisionKinds.Event, "EVENT.THE_ARCHITECT")] = ReachedByTheWin;
+        foreach (var key in new[] { "PROCEED", "THE_ARCHITECT.dialogue.0", "THE_ARCHITECT.dialogue.1" })
+        {
+            excusals[DecisionPoint.EventOption("EVENT.THE_ARCHITECT", key)] = ReachedByTheWin;
+        }
+
+        // The Architect alone builds an option as its initial state is set and as its
+        // room is entered, for the line it speaks first; the same won run answers it
+        foreach (var timing in new[] { "EventModel.OnRoomEnter", "EventModel.SetInitialEventState" })
+        {
+            excusals[DecisionPoint.Seam("event-option", timing)] = new(
+                ExcusalClass.ReachedByTheWin,
+                "produced by the victory room's event alone (scripts/producer-map.txt), so reached by the win rather " +
+                "than by an act's roll; HeadlessGameplayCaptureTests' won run meets it and answers its decision through " +
+                "the real recorder on every merge, and the recording is generated rather than committed");
+        }
+
         // An act's ancient is one of the act's own, rolled by the run's RNG at the act's
         // start, and Darv is shared by every act; the fixture seed's route meets one per
         // act and a row per ancient would need a seed hunted per ancient. Neow is not
@@ -884,6 +945,11 @@ public static class DecisionExcusals
         foreach (var seam in SeamsOffTheRoute)
         {
             excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = SeamOffTheRoute;
+        }
+
+        foreach (var seam in SeamsOnScreensWithoutHeadlessHost)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = SeamOnAScreenWithoutHeadlessHost;
         }
 
         return excusals;

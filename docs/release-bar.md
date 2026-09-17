@@ -13,7 +13,7 @@ Neither is a feeling about how much has been tested; each has a denominator some
 
 The map is seam-centric, because every replay refusal this project has recorded was a seam and never a card effect: `DecisionSurface.ProducerMap` walks the game assembly from every hook a model overrides to the first seam it reaches and lists, per seam and timing class, the content that produces it, with what deals each relic (`DealtBy`) and which acts reach each event (`ReachableIn`); `scripts/producer-map.txt` is that map on this build.
 A seam is reached by co-occurrence - a recording that met one of its producers and answered its decision - and is printed as such, never as covered, because the format does not record which producer opened the decision.
-Every excusal carries a class, and the map says which classes it admits for each point: `no-producer-on-this-build`, `multiplayer-only`, `screen-without-headless-host`, `retail-only-timing` and `not-replayable` are derived from the walks and the host's own tables, `generated` is held by a merge-gate row, and `not-on-the-route` is admissible only where nothing is derived.
+Every excusal carries a class, and the map says which classes it admits for each point: `no-producer-on-this-build`, `multiplayer-only`, `screen-without-headless-host`, `retail-only-timing`, `not-replayable` and `reached-by-the-win` are derived from the walks and the host's own tables, `generated` is held by a merge-gate row, and `not-on-the-route` is admissible only where nothing is derived.
 An excusal in a class the map does not admit fails the number by name, the way a stale one does.
 
 The release statement: parity is 100% over every recording on hand, and coverage lists no decision point reachable on this build that no recording exercises, or every such point is named with its excuse.
@@ -56,8 +56,8 @@ Over `manifests/` and a copy of the author's whole store on v0.111.0 - every pro
 
 The measurement stands as the recorder's first release verdict: coverage passes and parity does not.
 
-The denominator was widened on 2026-09-17 to 499 points over `manifests/`, when the map became seam-centric: 284 event options (every option of every event, ancient and Neow, none of which a committed recording names, because all three were written before the recorder wrote `option_key`) and 77 seams at their timing classes, six of which the committed corpus reaches by co-occurrence.
-The figure over the store copy is re-measured at the next release procedure; the 78 excusals above kept their sentences and gained their classes, and every new point is excused as `not-on-the-route` by id until the walks of the staged path reach it.
+The denominator was widened on 2026-09-17 to 522 points over `manifests/`, when the map became seam-centric: the Architect as the 65th event, 305 event options (every option of every event, ancient, Neow and the Architect, the runtime-built keys of nine events derived the way their code builds them, none of which a committed recording names, because all three were written before the recorder wrote `option_key`) and 78 seams at their timing classes, six of which the committed corpus reaches by co-occurrence.
+The figure over the store copy is re-measured at the next release procedure; the 78 excusals above kept their sentences and gained their classes, the undo's class corrected to `multiplayer-only` by the driver's own measurement, and every new point is excused by id - the Architect's as `reached-by-the-win`, the two seams answered only on stood-in screens as `screen-without-headless-host`, the rest as `not-on-the-route` until the walks of the staged path reach them.
 Two recorder findings came out of it, the reward-opening event reading above and a `SkipRewards` in a v5 journal read after the map move that dismissed the loot screen had begun; both are fixed in the recorder, below, and neither by the standard.
 
 ## The two recorder findings, fixed 2026-09-17

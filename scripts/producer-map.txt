@@ -5,7 +5,7 @@
 # The walk follows a model's own code 6 calls deep; '?' is a seam reached from no hook the model overrides. Regenerate with
 #   ./scripts/arbiter coverage --corpus manifests --update
 
-# models walked: 1613; seams produced: 77; producer edges: 256
+# models walked: 1613; seams produced: 78; producer edges: 269
 
 card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained  [1]
     RELIC.SCROLL_BOXES  dealt by neow
@@ -109,8 +109,9 @@ card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ RelicModel
 card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars  [1]
     EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
 
-card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions  [5]
+card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions  [6]
     EVENT.AROMA_OF_CHAOS  reached in ACT.OVERGROWTH
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
     EVENT.MORPHIC_GROVE  reached in ACT.OVERGROWTH
     EVENT.SYMBIOTE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.TRIAL  reached in ACT.GLORY
@@ -209,7 +210,7 @@ event-option @ AncientEventModel.AllPossibleOptions  [8]
     EVENT.TEZCATARA  reached in ACT.HIVE
     EVENT.VAKUU  reached in ACT.GLORY
 
-event-option @ EventModel.GenerateInitialOptions  [56]
+event-option @ EventModel.GenerateInitialOptions  [65]
     EVENT.ABYSSAL_BATHS  reached in ACT.UNDERDOCKS
     EVENT.AMALGAMATOR  reached in ACT.HIVE
     EVENT.AROMA_OF_CHAOS  reached in ACT.OVERGROWTH
@@ -220,6 +221,7 @@ event-option @ EventModel.GenerateInitialOptions  [56]
     EVENT.COLORFUL_PHILOSOPHERS  reached in ACT.HIVE
     EVENT.COLOSSAL_FLOWER  reached in ACT.HIVE
     EVENT.CRYSTAL_SPHERE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.DARV  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.DENSE_VEGETATION  reached in ACT.OVERGROWTH
     EVENT.DOLL_ROOM  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.DOORS_OF_LIGHT_AND_DARK  reached in ACT.UNDERDOCKS
@@ -233,6 +235,10 @@ event-option @ EventModel.GenerateInitialOptions  [56]
     EVENT.LOST_WISP  reached in ACT.HIVE
     EVENT.LUMINOUS_CHOIR  reached in ACT.OVERGROWTH
     EVENT.MORPHIC_GROVE  reached in ACT.OVERGROWTH
+    EVENT.NEOW  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS
+    EVENT.NONUPEIPE  reached in ACT.GLORY
+    EVENT.OROBAS  reached in ACT.HIVE
+    EVENT.PAEL  reached in ACT.HIVE
     EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
     EVENT.RANWID_THE_ELDER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
@@ -250,7 +256,10 @@ event-option @ EventModel.GenerateInitialOptions  [56]
     EVENT.SUNKEN_TREASURY  reached in ACT.UNDERDOCKS
     EVENT.SYMBIOTE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.TABLET_OF_TRUTH  reached in ACT.OVERGROWTH
+    EVENT.TANX  reached in ACT.GLORY
     EVENT.TEA_MASTER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+    EVENT.TEZCATARA  reached in ACT.HIVE
+    EVENT.THE_ARCHITECT  reached by the win
     EVENT.THE_FUTURE_OF_POTIONS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.THE_LANTERN_KEY  reached in ACT.HIVE
     EVENT.THE_LEGENDS_WERE_TRUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
@@ -259,6 +268,7 @@ event-option @ EventModel.GenerateInitialOptions  [56]
     EVENT.TRASH_HEAP  reached in ACT.UNDERDOCKS
     EVENT.TRIAL  reached in ACT.GLORY
     EVENT.UNREST_SITE  reached in ACT.OVERGROWTH
+    EVENT.VAKUU  reached in ACT.GLORY
     EVENT.WAR_HISTORIAN_REPY  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.WATERLOGGED_SCRIPTORIUM  reached in ACT.UNDERDOCKS
     EVENT.WELCOME_TO_WONGOS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
@@ -267,8 +277,11 @@ event-option @ EventModel.GenerateInitialOptions  [56]
     EVENT.WOOD_CARVINGS  reached in ACT.OVERGROWTH
     EVENT.ZEN_WEAVER  reached in ACT.HIVE
 
+event-option @ EventModel.OnRoomEnter  [1]
+    EVENT.THE_ARCHITECT  reached by the win
+
 event-option @ EventModel.SetInitialEventState  [1]
-    EVENT.THE_ARCHITECT  reached in no act
+    EVENT.THE_ARCHITECT  reached by the win
 
 rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions  [1]
     RELIC.PAELS_GROWTH  dealt by ancient EVENT.PAEL
@@ -334,8 +347,9 @@ reward-kind:potion @ AbstractModel.TryModifyRestSiteHealRewards  [1]
 reward-kind:potion @ EventModel.CalculateVars  [1]
     EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
 
-reward-kind:potion @ EventModel.GenerateInitialOptions  [7]
+reward-kind:potion @ EventModel.GenerateInitialOptions  [8]
     EVENT.DROWNING_BEACON  reached in ACT.UNDERDOCKS
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
     EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
     EVENT.THE_LEGENDS_WERE_TRUE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
@@ -383,12 +397,13 @@ reward-kind:special_card @ EventModel.GenerateInitialOptions  [1]
 rewards:OfferCustom @ EventModel.CalculateVars  [1]
     EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
 
-rewards:OfferCustom @ EventModel.GenerateInitialOptions  [13]
+rewards:OfferCustom @ EventModel.GenerateInitialOptions  [14]
     EVENT.BRAIN_LEECH  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.COLORFUL_PHILOSOPHERS  reached in ACT.HIVE
     EVENT.CRYSTAL_SPHERE  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.DENSE_VEGETATION  reached in ACT.OVERGROWTH
     EVENT.DROWNING_BEACON  reached in ACT.UNDERDOCKS
+    EVENT.ENDLESS_CONVEYOR  reached in ACT.UNDERDOCKS
     EVENT.POTION_COURIER  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
     EVENT.PUNCH_OFF  reached in ACT.UNDERDOCKS
     EVENT.THE_FUTURE_OF_POTIONS  reached in ACT.OVERGROWTH, ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY

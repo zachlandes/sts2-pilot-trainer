@@ -415,32 +415,37 @@ internal static class ChoiceEntryPoints
             .ToList();
     }
 
-    /// <summary>One construction of a type in a body: the last string and the last
-    /// integer constant loaded before its <c>newobj</c>, either null where the body
-    /// loaded none before it.</summary>
-    internal sealed record Construction(string? Literal, int? Constant);
+    /// <summary>One construction of a type in a body: every string loaded since the
+    /// previous construction of that type, in order, with the last of them and the
+    /// last integer constant loaded in the same span beside it, either null where the
+    /// body loaded none in between.</summary>
+    internal sealed record Construction(IReadOnlyList<string> Literals, string? Literal, int? Constant);
 
     /// <summary>
     /// Every construction of <paramref name="constructed"/> in a body, each with the
-    /// last string and the last integer constant loaded before it, in order: how an
-    /// id and an enum argument are read off a body that writes
-    /// <c>new Thing("ID", ..., Kind.Value)</c> without executing it. Which of the two
-    /// a caller trusts is the caller's, because a body may load either for another
-    /// reason on its way to the construction.
+    /// last string and the last integer constant loaded since the construction before
+    /// it, in order: how an id and an enum argument are read off a body that writes
+    /// <c>new Thing("ID", ..., Kind.Value)</c> without executing it. Both start over at
+    /// each construction, so a second one that loads neither reads as carrying neither
+    /// rather than inheriting the first's. Which of the two a caller trusts is the
+    /// caller's, because a body may load either for another reason on its way to the
+    /// construction.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
         var constructions = new List<Construction>();
-        string? literal = null;
+        var literals = new List<string>();
         int? constant = null;
         foreach (var operand in OperandsOf(method))
         {
-            if (operand.Literal is { } loaded) literal = loaded;
+            if (operand.Literal is { } loaded) literals.Add(loaded);
             if (operand.Constant is { } value) constant = value;
             if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
                 callee.DeclaringType == constructed)
             {
-                constructions.Add(new Construction(literal, constant));
+                constructions.Add(new Construction(literals, literals.LastOrDefault(), constant));
+                literals = [];
+                constant = null;
             }
         }
 

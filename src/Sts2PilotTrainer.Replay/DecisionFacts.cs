@@ -237,7 +237,7 @@ public static class DecisionFacts
 /// Why a point the build offers is allowed to stay unreached by the committed
 /// corpus, as a class the map can be held to.
 ///
-/// The first five are derived: the coverage map says, from the game assembly and the
+/// The first six are derived: the coverage map says, from the game assembly and the
 /// host's own tables, whether each is admissible for a point, and an excusal claiming
 /// one the map does not admit fails the bar. The last two are held by something
 /// else - a merge-gate row, or nothing yet - and are admissible only where no derived
@@ -252,7 +252,8 @@ public enum ExcusalClass
     NoProducerOnThisBuild,
 
     /// <summary>Offered only to a run with more than one player, which the recorder
-    /// never records.</summary>
+    /// never records: constructed under the game's own player-count branch, or a verb
+    /// the client offers only while another player has not acted.</summary>
     MultiplayerOnly,
 
     /// <summary>Answered on a screen the headless host has none for and stands in for
@@ -260,13 +261,20 @@ public enum ExcusalClass
     ScreenWithoutHeadlessHost,
 
     /// <summary>Reachable only in a window the retail client's own timing leaves open,
-    /// which the headless host runs inside another decision.</summary>
+    /// which the headless host runs inside another decision. Derived for no point on
+    /// v0.111.0: the one verb it was thought to class is offered to another player and
+    /// never to a singleplayer run, so it is multiplayer only.</summary>
     RetailOnlyTiming,
 
     /// <summary>An answer this build's driver refuses by name, because what the
     /// recording would have to carry after it is a decision the format has no record
     /// of; no recording of it can replay.</summary>
     NotReplayable,
+
+    /// <summary>The victory room's own event and its options: reached by the win and
+    /// by no act's roll, so it is neither on any act's list nor without a producer.
+    /// Every won run's last decisions are its lines and its PROCEED.</summary>
+    ReachedByTheWin,
 
     /// <summary>Reached by a generated recording on every merge, through the real
     /// recorder and replayed to parity; the recording is generated rather than
@@ -285,7 +293,7 @@ public static class ExcusalClasses
     public static readonly ExcusalClass[] Derived =
     [
         ExcusalClass.NoProducerOnThisBuild, ExcusalClass.MultiplayerOnly, ExcusalClass.ScreenWithoutHeadlessHost,
-        ExcusalClass.RetailOnlyTiming, ExcusalClass.NotReplayable,
+        ExcusalClass.RetailOnlyTiming, ExcusalClass.NotReplayable, ExcusalClass.ReachedByTheWin,
     ];
 
     /// <summary>The classes admissible where the map derives none: held by a row, or
@@ -302,6 +310,7 @@ public static class ExcusalClasses
         ExcusalClass.ScreenWithoutHeadlessHost => "screen-without-headless-host",
         ExcusalClass.RetailOnlyTiming => "retail-only-timing",
         ExcusalClass.NotReplayable => "not-replayable",
+        ExcusalClass.ReachedByTheWin => "reached-by-the-win",
         ExcusalClass.Generated => "generated",
         ExcusalClass.NotOnTheRoute => "not-on-the-route",
         _ => throw new ArgumentOutOfRangeException(nameof(excusalClass), excusalClass, "unknown excusal class"),
