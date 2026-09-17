@@ -98,7 +98,9 @@ internal static partial class Commands
             Console.WriteLine(
                 $"  unreadable bodies {unreadable.Count.ToString(CultureInfo.InvariantCulture),3} sender/syncer type(s), " +
                 $"{unreadable.Count(entry => DecisionLedger.UnreadableExcused.ContainsKey(entry.Type)).ToString(CultureInfo.InvariantCulture)} excused; " +
-                $"{DecisionSurface.UnloadableTypes().Count.ToString(CultureInfo.InvariantCulture)} unloadable type(s)");
+                $"{DecisionSurface.UnreadableTypeCount().ToString(CultureInfo.InvariantCulture)} unreadable and " +
+                $"{DecisionSurface.UnloadableTypes().Count.ToString(CultureInfo.InvariantCulture)} unloadable type(s) held to " +
+                DecisionSurface.UnreadableBodiesRecordPath);
         }
 
         if (Args.Has(args, "--update") && ledger.Count > 0)

@@ -338,7 +338,10 @@ public static class DecisionSurface
     /// Every type the message and synced-choice walks produced a caller from that has
     /// a body the IL reader could not read whole, with how many, by full name: a send
     /// or a sync inside one of those bodies is a candidate neither walk can produce, so
-    /// the ledger carries the set and holds it rather than letting it thin the count.
+    /// the ledger carries the set and excuses each in writing. It is the part of the
+    /// whole unreadable set the walks can point at; every other type on
+    /// <see cref="UnreadableBodiesRecord"/> is a place a send or sync could hide too,
+    /// and that record's diff is the guard for those.
     /// </summary>
     public static IReadOnlyList<(string Type, int Bodies)> UnreadableLedgerBodies() =>
         ChoiceEntryPoints.UnreadableBodiesAmong(
@@ -350,6 +353,17 @@ public static class DecisionSurface
     /// stubs, by full name: none of its bodies was walked, so none of its sends or syncs
     /// can be a candidate, and the ledger carries the set for the same reason.</summary>
     public static IReadOnlyList<string> UnloadableTypes() => ChoiceEntryPoints.UnloadableTypes();
+
+    /// <summary>How many types on this build have a body the IL reader could not read whole.</summary>
+    public static int UnreadableTypeCount() => ChoiceEntryPoints.UnreadableBodies().Count;
+
+    /// <summary>The whole unreadable set on this build - every type with a body the IL
+    /// reader could not read whole, and every type the runtime could not load - as the
+    /// text committed at <see cref="UnreadableBodiesRecordPath"/>.</summary>
+    public static string UnreadableBodiesRecord() => ChoiceEntryPoints.UnreadableBodiesRecord();
+
+    /// <summary>Where that record is committed, relative to the repository root.</summary>
+    public const string UnreadableBodiesRecordPath = ChoiceEntryPoints.UnreadableBodiesRecordPath;
 
     /// <summary>Every overlay screen this build draws. Walked once per process.</summary>
     public static IReadOnlyList<Type> OverlayScreenTypes() => OverlayScreenWalk.Value;

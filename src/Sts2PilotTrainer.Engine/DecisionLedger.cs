@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -214,18 +215,22 @@ public static class DecisionLedger
             ["MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.PeerInputSynchronizer"] =
                 "the unread body is a Control-taking member; its one SendMessage is in SendSyncMessage, which reads",
             ["MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawings"] =
-                "the unread bodies are the Vector2 and Line2D drawing members; every SendMessage is in SetDrawingModeLocal, ClearDrawnLinesLocal or QueueOrSendEvent, which read",
+                "the unread bodies are the Vector2 and Line2D drawing members; every SendMessage is in SetDrawingModeLocal, ClearDrawnLinesLocal, QueueOrSendEvent or SendSyncMessage, which read",
         };
 
     /// <summary>
     /// Every sender or syncer type the walks could not read whole that no excusal
-    /// names, and every excusal naming a type the walks no longer produce or can now
-    /// read whole, as sentences.
+    /// names, every excusal naming a type the walks no longer produce or can now read
+    /// whole, and every line on which the whole unreadable set of this build differs
+    /// from its committed record, as sentences. The last is what catches a type the
+    /// walks never reached: a send or sync inside one of its unreadable bodies produces
+    /// no caller, so the only thing that can name it is the record changing.
     /// </summary>
     public static IReadOnlyList<string> UnreadableProblems()
     {
         var unreadable = DecisionSurface.UnreadableLedgerBodies();
         var problems = new List<string>();
+        problems.AddRange(UnreadableRecordDrift());
         foreach (var (type, bodies) in unreadable.Where(entry => !UnreadableExcused.ContainsKey(entry.Type)))
         {
             problems.Add(
@@ -244,6 +249,60 @@ public static class DecisionLedger
 
         return problems;
     }
+
+    private static IReadOnlyList<string> UnreadableRecordDrift()
+    {
+        string root;
+        try
+        {
+            root = WorktreeLocator.Find();
+        }
+        catch (InvalidOperationException)
+        {
+            return
+            [
+                $"{DecisionSurface.UnreadableBodiesRecordPath} could not be found: no worktree root above here, so " +
+                "the unreadable set of this build cannot be held to its record.",
+            ];
+        }
+
+        var path = Path.Combine(root, DecisionSurface.UnreadableBodiesRecordPath);
+        if (!File.Exists(path))
+        {
+            return
+            [
+                $"{DecisionSurface.UnreadableBodiesRecordPath} is not committed, so the unreadable set of this build " +
+                "cannot be held to its record. Regenerate it with ./scripts/choice-entry-points.sh --update.",
+            ];
+        }
+
+        var recorded = RecordLines(File.ReadAllText(path));
+        var actual = RecordLines(DecisionSurface.UnreadableBodiesRecord());
+        var drift = new List<string>();
+        foreach (var line in actual.Except(recorded, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            drift.Add(
+                $"{line} has a body the IL reader cannot read whole on this build, or cannot be loaded, and " +
+                $"{DecisionSurface.UnreadableBodiesRecordPath} does not say so. A send or sync inside it is a " +
+                "candidate no walk produces. Read the type, then regenerate the record with " +
+                "./scripts/choice-entry-points.sh --update.");
+        }
+
+        foreach (var line in recorded.Except(actual, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            drift.Add(
+                $"{DecisionSurface.UnreadableBodiesRecordPath} lists {line}, which this build reads whole or no " +
+                "longer declares. Regenerate the record with ./scripts/choice-entry-points.sh --update.");
+        }
+
+        return drift;
+    }
+
+    private static HashSet<string> RecordLines(string record) =>
+        record.Split('\n')
+            .Select(line => line.TrimEnd('\r'))
+            .Where(line => line.Length > 0 && !line.StartsWith('#'))
+            .ToHashSet(StringComparer.Ordinal);
 
     /// <summary>Every candidate on this build with how it is accounted for, in the
     /// ledger's order. Classified once per process: the walks read the loaded assembly
@@ -344,8 +403,9 @@ public static class DecisionLedger
     }
 
     /// <summary>The committed record: one line per candidate under its kind, then the
-    /// sender and syncer types the walks could not read whole and the types the runtime
-    /// could not load, because a candidate inside either is one no walk produces.</summary>
+    /// size of the unreadable set this build is held to and the sender and syncer
+    /// types in it the walks reached, because a candidate inside any of them is one no
+    /// walk produces.</summary>
     public static string Record()
     {
         var text = new StringBuilder();
@@ -369,17 +429,16 @@ public static class DecisionLedger
 
         var unreadable = DecisionSurface.UnreadableLedgerBodies();
         text.AppendLine();
-        text.AppendLine($"# unreadable bodies ({unreadable.Count.ToString(CultureInfo.InvariantCulture)}): sender or syncer types with bodies the walks could not read whole, and how many");
+        text.AppendLine(
+            $"# unreadable bodies: {DecisionSurface.UnreadableTypeCount().ToString(CultureInfo.InvariantCulture)} type(s) " +
+            $"with a body the IL reader could not read whole and {DecisionSurface.UnloadableTypes().Count.ToString(CultureInfo.InvariantCulture)} " +
+            $"the runtime could not load, each a place a send or sync could hide, held to {DecisionSurface.UnreadableBodiesRecordPath};");
+        text.AppendLine($"# of them, the sender or syncer types the walks reached ({unreadable.Count.ToString(CultureInfo.InvariantCulture)}), with how many bodies, each excused in writing");
         foreach (var (type, bodies) in unreadable)
         {
             var account = UnreadableExcused.TryGetValue(type, out var reason) ? $"excused {reason}" : Unclassified;
             text.AppendLine($"{type} {bodies.ToString(CultureInfo.InvariantCulture)}  {account}");
         }
-
-        var unloadable = DecisionSurface.UnloadableTypes();
-        text.AppendLine();
-        text.AppendLine($"# unloadable types ({unloadable.Count.ToString(CultureInfo.InvariantCulture)}): types the runtime could not load, so no body of theirs was walked");
-        foreach (var type in unloadable) text.AppendLine(type);
 
         return text.ToString();
     }

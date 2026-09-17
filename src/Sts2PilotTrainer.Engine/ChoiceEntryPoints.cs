@@ -188,8 +188,15 @@ internal static class ChoiceEntryPoints
     /// </summary>
     internal static IReadOnlyList<string> UnloadableTypes() => Loaded.Value.Unloadable;
 
+    /// <summary>Where the record of <see cref="UnreadableBodies"/> and
+    /// <see cref="UnloadableTypes"/> is committed, relative to the repository root.</summary>
+    internal const string UnreadableBodiesRecordPath = "scripts/unreadable-choice-scan-bodies.txt";
+
     /// <summary>The committed record of <see cref="UnreadableBodies"/> and
-    /// <see cref="UnloadableTypes"/>, one type per line under two headings.</summary>
+    /// <see cref="UnloadableTypes"/>, one type per line under two headings. Every type
+    /// on it is a place a send or a sync could hide from <see cref="CallSites"/> as
+    /// well as a prompt from the funnel check, so the ledger holds the build to the
+    /// committed copy too.</summary>
     internal static string UnreadableBodiesRecord()
     {
         var text = new StringBuilder();
@@ -308,7 +315,10 @@ internal static class ChoiceEntryPoints
     /// <see cref="UnreadableBodies"/> makes, narrowed to the types a walk over
     /// <see cref="CallSites"/> produced a caller from. A call in one of those bodies is
     /// one the walk never saw, so a walk that counts what such a type calls says so
-    /// beside its count rather than thinning it.
+    /// beside its count rather than thinning it. This narrowing names only the types
+    /// the walk already reached; a type whose only call sits in an unreadable body
+    /// produces no caller and is not here, which is why the whole set is held to its
+    /// committed record as well.
     /// </summary>
     internal static IReadOnlyList<(Type Type, int Bodies)> UnreadableBodiesAmong(IEnumerable<MethodBase> members)
     {
