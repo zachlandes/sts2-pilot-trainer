@@ -316,6 +316,38 @@ public sealed class DecisionSurfaceTests
                 StateMachineOf(GameMethod("TabletOfTruth", "Decipher")), GameMethod("TabletOfTruth", "get_DecipherCount")));
     }
 
+    /// <summary>
+    /// A construction two bare key literals reach with no call between - the ternary
+    /// <c>done ? "PROCEED" : "DECLINE"</c>, which no event on this build writes - is
+    /// refused naming both, rather than read as keyed by the last one loaded and
+    /// listed as one option where the body offers two.
+    /// </summary>
+    [GameFact]
+    public void AConstructionTwoBareKeysCouldBeTheKeyOfIsRefusedByName()
+    {
+        var ternary = typeof(DecisionSurfaceTests).GetMethod(nameof(KeyedByATernary), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => ChoiceEntryPoints.ConstructionsIn(ternary, typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByATernary), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("'DECLINE'", refusal.Message);
+        Assert.Equal(
+            "PROCEED",
+            Assert.Single(ChoiceEntryPoints.ConstructionsIn(
+                typeof(DecisionSurfaceTests).GetMethod(nameof(KeyedByOneLiteral), BindingFlags.NonPublic | BindingFlags.Static)!,
+                typeof(KeyedOption))).KeyLiteral);
+    }
+
+    private sealed class KeyedOption(string key)
+    {
+        public string Key { get; } = key;
+    }
+
+    private static KeyedOption KeyedByATernary(bool done) => new(done ? "PROCEED" : "DECLINE");
+
+    private static KeyedOption KeyedByOneLiteral() => new("PROCEED");
+
     /// <summary>A game method by type and name, resolved at run time rather than by a
     /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where
     /// the game is.</summary>

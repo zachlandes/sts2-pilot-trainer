@@ -4,6 +4,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
@@ -445,7 +446,10 @@ internal static class ChoiceEntryPoints
     /// the construction is its <see cref="Construction.Template"/>, and a literal it
     /// loads right before is its <see cref="Construction.KeyLiteral"/>; a call in
     /// between - a helper, a concatenation, a raw text read - leaves both null, because
-    /// the key is then whatever that call returned.
+    /// the key is then whatever that call returned. Refuses a construction more than
+    /// one bare key literal could be the key of - <c>done ? "PROCEED" : "DECLINE"</c>
+    /// loads both with no call between - because reading the last as the key would
+    /// list one option where the body offers two.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
@@ -458,6 +462,7 @@ internal static class ChoiceEntryPoints
         StringBuilder? interpolation = null;
         string? template = null;
         string? keyLiteral = null;
+        var candidateKeys = new List<string>();
         foreach (var operand in OperandsOf(method))
         {
             if (operand.Literal is { } loaded)
@@ -470,6 +475,7 @@ internal static class ChoiceEntryPoints
                 if (interpolation is null)
                 {
                     keyLiteral = loaded;
+                    candidateKeys.Add(loaded);
                     template = null;
                 }
             }
@@ -501,6 +507,7 @@ internal static class ChoiceEntryPoints
                     if (interpolation is not null || template is not null)
                     {
                         keyLiteral = null;
+                        candidateKeys.Clear();
                         previousLoadedNull = operand.LoadsNull;
                         continue;
                     }
@@ -508,6 +515,15 @@ internal static class ChoiceEntryPoints
 
                 if (called.IsConstructor && operand.IsConstruction && called.DeclaringType == constructed)
                 {
+                    var bareKeys = candidateKeys.Where(key => BareKey.IsMatch(key)).Distinct(StringComparer.Ordinal).ToList();
+                    if (bareKeys.Count > 1)
+                    {
+                        throw new InvalidOperationException(
+                            $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading " +
+                            $"{string.Join(", ", bareKeys.Select(key => $"'{key}'"))} with no call between, so which is " +
+                            "its key cannot be read off the body.");
+                    }
+
                     constructions.Add(new Construction(
                         literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral, template, keyLiteral));
                     literals = [];
@@ -515,6 +531,7 @@ internal static class ChoiceEntryPoints
                     nullBeforeLastLiteral = false;
                     template = null;
                     keyLiteral = null;
+                    candidateKeys.Clear();
                 }
                 else if (TouchesAString(called))
                 {
@@ -525,6 +542,7 @@ internal static class ChoiceEntryPoints
                     // where it was
                     template = null;
                     keyLiteral = null;
+                    candidateKeys.Clear();
                 }
             }
 
@@ -533,6 +551,11 @@ internal static class ChoiceEntryPoints
 
         return constructions;
     }
+
+    /// <summary>A bare key: the <c>PROCEED</c> an event constructs an option with
+    /// directly, which is neither a whole key nor a name <c>InitialOptionKey</c>
+    /// completes. The one shape a construction is refused for carrying two of.</summary>
+    internal static readonly Regex BareKey = new(@"^[A-Z][A-Z0-9_]*$", RegexOptions.CultureInvariant);
 
     private static bool TouchesAString(MethodBase called) =>
         called is MethodInfo { ReturnType: var returns } && returns == typeof(string) ||

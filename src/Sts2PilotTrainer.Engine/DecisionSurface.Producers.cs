@@ -155,7 +155,7 @@ public static partial class DecisionSurface
     /// <summary>The templates of the options an event constructs keyed by an
     /// interpolation, as <see cref="ChoiceEntryPoints.Construction.Template"/> reads
     /// them, distinct and in order: what a runtime-built derivation is held to.</summary>
-    public static IReadOnlyList<string> BuiltOptionKeyTemplates(string eventId)
+    internal static IReadOnlyList<string> BuiltOptionKeyTemplates(string eventId)
     {
         EngineHost.Start();
         var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId);
@@ -167,11 +167,6 @@ public static partial class DecisionSurface
             .Distinct(StringComparer.Ordinal)
             .ToList();
     }
-
-    /// <summary>A bare option key: the <c>PROCEED</c> an event constructs an option
-    /// with directly, which is neither a whole key nor a name <c>InitialOptionKey</c>
-    /// completes.</summary>
-    private static readonly Regex BareOptionKey = new(@"^[A-Z][A-Z0-9_]*$", RegexOptions.CultureInvariant);
 
     /// <summary>The bound an event's own code compares a counter with, by event id:
     /// <see cref="CounterBound(EventModel, string, string)"/> for the test that holds
@@ -433,7 +428,7 @@ public static partial class DecisionSurface
                     continue;
                 }
 
-                if (construction.KeyLiteral is { } bare && BareOptionKey.IsMatch(bare))
+                if (construction.KeyLiteral is { } bare && ChoiceEntryPoints.BareKey.IsMatch(bare))
                 {
                     keys.Add(bare);
                     continue;
