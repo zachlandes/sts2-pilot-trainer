@@ -174,6 +174,27 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// leaving one undecided can be refused.</summary>
     private AbstractRoom? _chestRelicDecidedForRoom;
 
+    /// <summary>
+    /// The work of a purchase, a rest option or a reward claim that handed the run to
+    /// the player inside itself and has not finished, or null.
+    ///
+    /// A relic bought at the shop, a rest that heals or a relic claimed off a loot
+    /// screen can put a rewards set on offer from inside its own task - Orrery's and
+    /// Cauldron's <c>AfterObtained</c>, the heal's potions under Tiny Mailbox, the
+    /// rewards a relic Neow's Bones deals opens - and that task finishes only once
+    /// the set has been answered, by the decisions recorded after it. Waiting for it here
+    /// blocked the one thread those decisions arrive on, so the set is answered the
+    /// way a set a fight put up is, and the task is looked at again at the next action,
+    /// where a refusal it ended in is raised. The recorder reads the same decision as
+    /// settled once the set is on offer (<c>RunRecorder.HandedToThePlayerDuring</c>),
+    /// so both hosts read one state.
+    /// </summary>
+    private Task<bool>? _workHandedToThePlayer;
+
+    /// <summary>The action whose work <see cref="_workHandedToThePlayer"/> is, for the
+    /// refusal that names it.</summary>
+    private ActionRecord? _handedOverAction;
+
     /// <summary>Sequence numbers of card selections a screen has already consumed,
     /// so the action that records each one can insist it was used. Filled from what
     /// the selector reports it took, never from what was queued for it.</summary>
@@ -395,6 +416,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     public void Apply(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
         Pending = null;
+        RaiseWhatHandedOverWorkEndedIn();
 
         if (RunEnding.Reading is not null)
         {
@@ -424,6 +446,11 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 break;
 
             case ActionVerb.MapMove:
+                // A move into a fight deals the opening hand inside its own work, and
+                // a relic that prompts at the hand draw or the turn's start - Toolbox's
+                // choose-a-card, Gambling Chip's discard - asks there; the Toolbox
+                // coverage row's walk was refused here for as long as nothing was queued
+                QueueFollowingCardSelections(action, upcoming);
                 MoveToMapNode(
                     Arg.Int(action, "act"), Arg.Int(action, "row"), Arg.Int(action, "column"));
                 break;
@@ -505,9 +532,14 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         // Headlessly the engine has finished by now - the host drains it to idle and
         // the selector's own answer is handed back inside the call that asked - so what
-        // this step opened is settled here. Inside a running game nothing was ever
-        // queued for the seam: the screen is drawn and its own step answers it.
-        if (!_insideRunningGame) SettleAnyCardScreenTheLastStepOpened();
+        // this step opened is settled here, and a task handed over earlier that this
+        // step's answer finished is read here too. Inside a running game nothing was
+        // ever queued for the seam: the screen is drawn and its own step answers it.
+        if (!_insideRunningGame)
+        {
+            SettleAnyCardScreenTheLastStepOpened();
+            RaiseWhatHandedOverWorkEndedIn();
+        }
     }
 
     /// <summary>
@@ -615,8 +647,9 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     /// <summary>The screen answers the last action improvised, as the verb and
     /// arguments each records, in order - a <see cref="ActionVerb.SelectCardFromScreen"/>
-    /// per pick, and the <see cref="ActionVerb.ConfirmCardScreen"/> a range prompt ends
-    /// with.</summary>
+    /// per pick, the <see cref="ActionVerb.ConfirmCardScreen"/> a range prompt ends
+    /// with, and the <see cref="ActionVerb.SelectBundleFromScreen"/> a bundle screen
+    /// takes.</summary>
     internal IReadOnlyList<(ActionVerb Verb, IReadOnlyDictionary<string, string> Args)> TakeImprovisedCardSelections() =>
         _selector.TakeImprovised().Select(answer => answer switch
         {
@@ -632,6 +665,13 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 (IReadOnlyDictionary<string, string>)new SortedDictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["count"] = confirmation.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }),
+            ManifestCardSelector.BundlePick bundle => (
+                ActionVerb.SelectBundleFromScreen,
+                (IReadOnlyDictionary<string, string>)new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["card_ids"] = bundle.CardIds,
+                    ["option_index"] = bundle.OptionIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 }),
             _ => throw new EngineException($"An improvised answer of kind {answer.GetType().Name} has no record."),
         }).ToList();
@@ -1110,16 +1150,73 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         QueueFollowingCardSelections(action, upcoming);
 
-        var bought = entry.OnTryPurchaseWrapper(inventory).GetAwaiter().GetResult();
-        Pump.Drain();
+        var onOffer = _openRewards;
+        var bought = SettleOrHandOver(entry.OnTryPurchaseWrapper(inventory), onOffer, action);
 
         // A refusal the selector already recorded names the card that disagreed, and
         // Apply raises it; reporting the purchase failure over the top would bury it.
-        if (!bought && _selector.Refusal is null)
+        if (bought == false && _selector.Refusal is null)
         {
             throw new EngineException(
                 $"Action {action.Seq} bought a '{kind}' from the merchant and the engine refused the " +
                 "purchase.");
+        }
+    }
+
+    /// <summary>
+    /// Lets a purchase's, a rest option's or a claim's work finish, or hands the run
+    /// to the player where the work offered a rewards set of its own and is waiting
+    /// on it.
+    ///
+    /// Headless only; see <see cref="_workHandedToThePlayer"/>. The queue is drained
+    /// first so the work gets as far as it can on this thread: to its end for the
+    /// usual purchase, or to the set it offered. Handed over only where the set on
+    /// offer is one this work began - a claim off a loot screen has that screen's set
+    /// open beside it, and that set is not the claim's to wait on - so a task still
+    /// open that offered nothing is waited for as before, because whatever it waits
+    /// on is not the player's to answer.
+    /// </summary>
+    /// <param name="work">The decision's engine task, started with the set that was
+    /// on offer beforehand in <paramref name="onOfferBefore"/>.</param>
+    /// <returns>What the work returned, or null where it was handed over and has not
+    /// returned yet.</returns>
+    internal bool? SettleOrHandOver(Task<bool> work, RewardsSet? onOfferBefore, ActionRecord action)
+    {
+        Pump.Drain();
+        if (!work.IsCompleted && _openRewards is { } set && !ReferenceEquals(set, onOfferBefore) &&
+            !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set))
+        {
+            _workHandedToThePlayer = work;
+            _handedOverAction = action;
+            return null;
+        }
+
+        var result = work.GetAwaiter().GetResult();
+        Pump.Drain();
+        return result;
+    }
+
+    /// <summary>
+    /// Raises the refusal a decision handed to the player ended in, once its work has
+    /// finished, and forgets it; nothing while it is still waiting.
+    ///
+    /// Asked at the end of every action as well as at the start of the next, because
+    /// the decision that answers the set is often the recording's last - a relic
+    /// bought and its rewards taken, then the run given up - and a refusal read only
+    /// at a next action that never comes would leave the replay verified.
+    /// </summary>
+    private void RaiseWhatHandedOverWorkEndedIn()
+    {
+        if (_workHandedToThePlayer is not { IsCompleted: true } work || _handedOverAction is not { } action) return;
+        _workHandedToThePlayer = null;
+        _handedOverAction = null;
+
+        // GetResult rethrows a fault as the engine threw it
+        if (!work.GetAwaiter().GetResult() && _selector.Refusal is null)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} ({action.Verb}) handed the run to the player with a rewards set on " +
+                "offer, and once the set was answered the engine refused the decision.");
         }
     }
 
@@ -1447,13 +1544,13 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         QueueFollowingCardSelections(action, upcoming);
 
-        var taken = synchronizer.ChooseLocalOption(index).GetAwaiter().GetResult();
-        Pump.Drain();
+        var onOffer = _openRewards;
+        var taken = SettleOrHandOver(synchronizer.ChooseLocalOption(index), onOffer, action);
 
         // A refusal the selector already recorded names the card that disagreed, and
         // Apply raises it; reporting "the engine refused it" over the top would bury
         // the useful message.
-        if (!taken && _selector.Refusal is null)
+        if (taken == false && _selector.Refusal is null)
         {
             throw new EngineException(
                 $"Action {action.Seq} took rest site option {expectedId} and the engine refused it.");
@@ -1620,14 +1717,16 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     private void Select(ActionRecord action, RewardsSet set, Reward reward)
     {
-        var taken = RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(reward)
-            .GetAwaiter().GetResult();
-        Pump.Drain();
+        // A relic claimed can offer a set of its own from inside the claim's work -
+        // one Neow's Bones deals that opens its own rewards - and is handed over the
+        // way a purchase is
+        var onOffer = _openRewards;
+        var taken = SettleOrHandOver(RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(reward), onOffer, action);
 
         // A refusal the selector already recorded says exactly which card disagreed,
         // and is raised by Apply. Reporting "the engine refused it" over the top of it
         // would bury the useful message under a vaguer one.
-        if (!taken && !reward.SuccessfullySelected && _selector.Refusal is null)
+        if (taken == false && !reward.SuccessfullySelected && _selector.Refusal is null)
         {
             throw new EngineException(
                 $"Action {action.Seq} selected the {KindOf(reward)} reward and the engine refused it. " +

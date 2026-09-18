@@ -30,9 +30,12 @@ public sealed class CoverageTests
             Assert.Contains("verb  TakeCardRewardAlternative  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("card-reward-alternative  Skip  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("card-prompt  CardSelectCmd.FromHand(context, player, prefs, filter, source)  not projectable", result.Output, StringComparison.Ordinal);
-            Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.NEOW RELIC.ARCANE_SCROLL  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
-            Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:special_card @ EventModel.GenerateInitialOptions  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("rest-option  MEND  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("inadmissible excusals", result.Output, StringComparison.Ordinal);

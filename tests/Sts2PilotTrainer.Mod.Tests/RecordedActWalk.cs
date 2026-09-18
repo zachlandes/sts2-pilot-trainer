@@ -48,6 +48,7 @@ internal sealed class RecordedActWalk : IDisposable
         foreach (var type in CardPrompts.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
         foreach (var type in RunRecorder.PatchClasses) _harmony.CreateClassProcessor(type).Patch();
         _harmony.CreateClassProcessor(typeof(HeadlessCardRewardScreen)).Patch();
+        _harmony.CreateClassProcessor(typeof(HeadlessBundleScreen)).Patch();
         RunRecorder.ReadTheAnswers();
 
         RunRecorder.GameIdentitySource = () => EngineHost.Origin == EngineOrigin.HeadlessHost;

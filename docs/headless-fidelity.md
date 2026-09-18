@@ -178,7 +178,15 @@ minigame was built, from the event's own stream. Nothing on v0.111.0 opens the r
 screen, so a recorded relic pick refuses as an answer no screen consumed, with that
 sentence.
 
-Where the manifest is silent each of the three refuses, as the card seam does.
+Where the manifest is silent each of the three refuses, as the card seam does, with
+the one exception the card seam has: the generated walk that writes a recording
+rather than replaying one has no manifest to be silent, and its selector answers a
+bundle screen with the first bundle the way it answers a card screen from the front
+(`ManifestCardSelector.AnswersFromTheFrontWhenSilent`), so the Scroll Boxes coverage
+row can record the pick through the recorder and replay it. The recorder reads a
+bundle's answer off the choice the retail screen syncs, which the stand-in never
+does, so the test harness hands it the answer the stand-in gave
+(`HeadlessBundleScreen`), the way it hands it a card reward's.
 
 **The chest a treasure room puts in front of the player.** `NTreasureRoom.OpenChest`
 is what calls `TreasureRoom.DoNormalRewards` and `TreasureRoom.DoExtraRewardsIfNeeded`,

@@ -28,14 +28,17 @@ namespace Sts2PilotTrainer.Engine;
 /// </summary>
 internal sealed class ManifestCardSelector : ICardSelector
 {
+    /// <summary>One answer a screen took as the manifest recorded it, of any of the
+    /// kinds below, by the sequence number of the action that recorded it.</summary>
+    internal abstract record ScreenAnswer(int Seq);
+
     /// <summary>
-    /// One answer to a card prompt as the manifest recorded it, by the sequence number
-    /// of the action that recorded it. Two kinds, kept in one queue because the order
-    /// between them is the answer: a prompt that asked for a range is its picks and
-    /// then its confirmation, and a confirmation ahead of a pick would be a different
-    /// prompt's.
+    /// One answer to a card prompt as the manifest recorded it. Two kinds, kept in one
+    /// queue because the order between them is the answer: a prompt that asked for a
+    /// range is its picks and then its confirmation, and a confirmation ahead of a
+    /// pick would be a different prompt's.
     /// </summary>
-    internal abstract record CardAnswer(int Seq);
+    internal abstract record CardAnswer(int Seq) : ScreenAnswer(Seq);
 
     /// <summary>One card the manifest says was picked off a selection screen.</summary>
     internal sealed record Pick(int Seq, string CardId, int OptionIndex) : CardAnswer(Seq);
@@ -49,7 +52,7 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     /// <summary>One bundle the manifest says was picked off a bundle screen, by the
     /// joined ids of its cards and its position.</summary>
-    internal readonly record struct BundlePick(int Seq, string CardIds, int OptionIndex);
+    internal sealed record BundlePick(int Seq, string CardIds, int OptionIndex) : ScreenAnswer(Seq);
 
     /// <summary>One relic the manifest says was picked off a relic screen.</summary>
     internal readonly record struct RelicPick(int Seq, string RelicId, int OptionIndex);
@@ -84,17 +87,19 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// answering it would be inventing one. The generator is the one caller with no
     /// manifest to be silent - it is writing the manifest, and a card screen only
     /// exists inside the call that opens it, so what it answered is read back out of
-    /// <see cref="TakeImprovised"/> and recorded as the actions that opened it.
+    /// <see cref="TakeImprovised"/> and recorded as the actions that opened it. The
+    /// bundle screen is answered the same way, with its first bundle, because the
+    /// generated walk that obtains Scroll Boxes has no manifest either.
     /// </summary>
     internal bool AnswersFromTheFrontWhenSilent { get; set; }
 
-    private readonly List<CardAnswer> _improvised = [];
+    private readonly List<ScreenAnswer> _improvised = [];
 
     /// <summary>What this selector answered without being told, since the last time it
     /// was asked, as the records a manifest would carry for it - the confirmation a
-    /// range prompt takes included. Empty unless
+    /// range prompt takes and the bundle a bundle screen takes included. Empty unless
     /// <see cref="AnswersFromTheFrontWhenSilent"/> is on.</summary>
-    internal IReadOnlyList<CardAnswer> TakeImprovised()
+    internal IReadOnlyList<ScreenAnswer> TakeImprovised()
     {
         var taken = _improvised.ToList();
         _improvised.Clear();
@@ -165,6 +170,12 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// </summary>
     internal IReadOnlyList<CardModel> GetSelectedBundle(IReadOnlyList<IReadOnlyList<CardModel>> bundles)
     {
+        if (_pendingBundles.Count == 0 && AnswersFromTheFrontWhenSilent && bundles.Count > 0)
+        {
+            _improvised.Add(new BundlePick(-1, BundleIds(bundles[0]), 0));
+            return bundles[0];
+        }
+
         if (_pendingBundles.Count == 0)
         {
             Refuse(

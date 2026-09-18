@@ -1376,24 +1376,30 @@ internal sealed class RunRecorder : IDisposable
     /// decision holding <paramref name="ticket"/>: a rewards set on offer, or the
     /// Crystal Sphere's screen up, begun while that decision was the one executing.
     ///
-    /// Asked for an event option's work and for nothing else, which
-    /// <see cref="PendingDecision.SettlesOnceHandedToThePlayer"/> carries: the two
-    /// places that task waits on the player rather than on the engine, each read where
-    /// the engine begins the wait. A card prompt, the bundle screen and the relic
-    /// screen are not here, because the settle stands down for each on its own count
-    /// and the option's task finishes once it is answered - the picks are the option's
-    /// own answer, recorded after it, rather than decisions of the run. Work waiting on
-    /// anything else runs the settle's budget out and refuses the decision, naming it,
-    /// which is what a screen this build adds and nothing here watches should do.
+    /// Asked for an event option's, a purchase's, a rest option's and a reward
+    /// claim's work and for nothing else, which <see cref="PendingDecision.SettlesOnceHandedToThePlayer"/>
+    /// carries: the two places such a task waits on the player rather than on the
+    /// engine, each read where the engine begins the wait. A card prompt, the bundle
+    /// screen and the relic screen are not here, because the settle stands down for
+    /// each on its own count and the decision's task finishes once it is answered -
+    /// the picks are the decision's own answer, recorded after it, rather than
+    /// decisions of the run. Work waiting on anything else runs the settle's budget
+    /// out and refuses the decision, naming it, which is what a screen this build adds
+    /// and nothing here watches should do.
     ///
     /// Asked of the decision and not of the run, because a set on offer is the usual
     /// state of a loot screen: a reward claimed off it has work of its own - the gold
     /// flying, the card landing in the deck - and that work is waited for as before,
-    /// with the set the claim is answering still open beside it. Every other decision
-    /// waits for its own task whatever it began: a purchase or a rest whose own work
-    /// offers a set and awaits it is a decision the driver replays by awaiting the
-    /// same task, so a recording that read it as settled would replay by blocking,
-    /// and it is refused instead when the task does not finish.
+    /// with the set the claim is answering still open beside it. A purchase, a rest and
+    /// a claim are here because a relic bought at the shop, a heal under Tiny Mailbox
+    /// and a relic claimed that opens rewards of its own - one Neow's Bones deals -
+    /// offer a set from inside their own task - Orrery's and Cauldron's
+    /// <c>AfterObtained</c>, the heal's potions - and that task finishes only once the
+    /// set is answered, by the decisions recorded after it; read as unsettled, every
+    /// such purchase, rest and claim in normal play was refused. The driver replays them the same way
+    /// (<c>RunDriver.SettleOrHandOver</c>), so the reading each host takes is of the
+    /// same state: the set on offer and the engine quiet. Every other decision waits
+    /// for its own task whatever it began.
     /// </summary>
     private static bool HandedToThePlayerDuring(long ticket) =>
         RewardsOffered.OnOfferSince(ticket) || CrystalSphereOpened.OpenSince(ticket);
@@ -3195,13 +3201,15 @@ internal sealed class RunRecorder : IDisposable
 
         /// <summary>The task the engine handed back finishes when the reward is
         /// finished - including the card screen a card reward opens - which is the
-        /// moment there is a state worth reading.</summary>
+        /// moment there is a state worth reading; or, for a relic whose own work
+        /// offers a set of its own, once that set is on offer
+        /// (<see cref="HandedToThePlayerDuring"/>).</summary>
         [HarmonyPostfix]
         internal static void After(Task<bool> __result)
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before, settlesOnceHandedToThePlayer: true);
         }
     }
 
@@ -3351,12 +3359,15 @@ internal sealed class RunRecorder : IDisposable
             }
         }
 
+        /// <summary>Settled once the engine has handed the run to the player inside
+        /// the option's work, for the heal whose rewards a relic adds; see
+        /// <see cref="HandedToThePlayerDuring"/>.</summary>
         [HarmonyPostfix]
         internal static void After(Task<bool> __result)
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before, settlesOnceHandedToThePlayer: true);
         }
     }
 
@@ -3437,12 +3448,15 @@ internal sealed class RunRecorder : IDisposable
         /// synced meanwhile is this decision's.</summary>
         internal static bool Reading => _decision is not null;
 
+        /// <summary>Settled once the engine has handed the run to the player inside
+        /// the purchase's work, for the relic whose <c>AfterObtained</c> offers a set;
+        /// see <see cref="HandedToThePlayerDuring"/>.</summary>
         [HarmonyPostfix]
         internal static void After(Task<bool> __result)
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before, settlesOnceHandedToThePlayer: true);
         }
 
         [HarmonyPrefix]

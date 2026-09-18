@@ -465,9 +465,34 @@ internal static class ChoiceEntryPoints
     }
 
     /// <summary>One operand a body's instruction carries: a method token resolved, a
-    /// string token resolved, an integer constant loaded, and whether the instruction
-    /// constructs.</summary>
-    private sealed record Operand(MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null);
+    /// string token resolved, an integer constant loaded, whether the instruction
+    /// constructs, and the comparison an instruction makes where it is one of the
+    /// three that leave a boolean - <c>cgt</c>, <c>clt</c>, <c>ceq</c> - by opcode
+    /// name.</summary>
+    private sealed record Operand(
+        MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null);
+
+    /// <summary>
+    /// Whether a body reads the run's players and compares their count as greater
+    /// than one: the shape of a rule that admits only a run with another player in it
+    /// - <c>runState.Players.Count &gt; 1</c> - read off the operands in order, the
+    /// player read, then the count, then the constant, then the comparison. The
+    /// opposite rule, <c>== 1</c>, compares with <c>ceq</c> and is not this.
+    /// </summary>
+    internal static bool ComparesPlayerCountAsMoreThanOne(MethodBase method)
+    {
+        var operands = OperandsOf(method);
+        for (var i = 0; i + 3 < operands.Count; i++)
+        {
+            if (operands[i].Callee?.Name == "get_Players" && operands[i + 1].Callee?.Name == "get_Count"
+                && operands[i + 2].Constant == 1 && operands[i + 3].Comparison == nameof(OpCodes.Cgt))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     // The short forms of ldc.i4 carry their value in the opcode rather than as an operand
     private static readonly Dictionary<short, int> InlineIntegerOpCodes = new()
@@ -740,6 +765,10 @@ internal static class ChoiceEntryPoints
             else if (InlineIntegerOpCodes.TryGetValue(op.Value, out var inline))
             {
                 operands.Add(new Operand(null, null, false, inline));
+            }
+            else if (op == OpCodes.Cgt || op == OpCodes.Clt || op == OpCodes.Ceq)
+            {
+                operands.Add(new Operand(null, null, false, Comparison: op == OpCodes.Cgt ? nameof(OpCodes.Cgt) : op == OpCodes.Clt ? nameof(OpCodes.Clt) : nameof(OpCodes.Ceq)));
             }
 
             at += operandSize;
