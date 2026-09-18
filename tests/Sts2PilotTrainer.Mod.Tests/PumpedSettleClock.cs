@@ -19,8 +19,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// which is a wait that never lets the thing it is waiting for finish. So a poll suspends
 /// on a source nothing but <see cref="Drain"/> completes, and the budget never completes
 /// on its own: the engine is idle by pump time, so the settle reaches its idle condition
-/// within a couple of polls and the budget is never a real timeout here. A genuine wedge
-/// is bounded by the test session timeout instead.
+/// within a couple of polls and the budget is never a real timeout here. The one thing
+/// a settle waits on that is not the engine's queue is real time - Amalgamator sleeps
+/// three hundred milliseconds inside its option's work - so a pass past the first
+/// thousand lets a millisecond go by, the way a frame does, and a genuine wedge is
+/// bounded by a minute of them and by the test session timeout.
 /// </summary>
 internal sealed class PumpedSettleClock : SettleClock
 {
@@ -47,8 +50,9 @@ internal sealed class PumpedSettleClock : SettleClock
     internal void Drain()
     {
         var context = SynchronizationContext.Current as InlineSynchronizationContext;
-        for (var guard = 0; guard < 1_000_000; guard++)
+        for (var guard = 0; guard < 61_000; guard++)
         {
+            if (guard >= 1_000) Thread.Sleep(1);
             context?.DrainPending();
 
             List<TaskCompletionSource> waiting;
@@ -73,8 +77,8 @@ internal sealed class PumpedSettleClock : SettleClock
         }
 
         throw new InvalidOperationException(
-            "A headless settle did not quiesce after a million pumps; the engine is wedged or a settle is " +
-            "polling for a condition that never becomes true.");
+            "A headless settle did not quiesce after a thousand pumps and a minute more; the engine is wedged " +
+            "or a settle is polling for a condition that never becomes true.");
     }
 
     /// <summary>

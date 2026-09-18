@@ -35,7 +35,10 @@ public sealed class CoverageTests
             Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("seam  reward-kind:special_card @ EventModel.GenerateInitialOptions  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:special_card @ EventModel.GenerateInitialOptions  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:relic @ AbstractModel.TryModifyRewardsLate  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event  EVENT.AROMA_OF_CHAOS  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.ENDLESS_CONVEYOR ENDLESS_CONVEYOR.pages.ALL.options.LOCKED  excused [not-choosable]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("rest-option  MEND  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("inadmissible excusals", result.Output, StringComparison.Ordinal);

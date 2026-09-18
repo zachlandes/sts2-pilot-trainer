@@ -418,8 +418,10 @@ internal static class ChoiceEntryPoints
     /// <summary>One construction of a type in a body: every string loaded since the
     /// previous construction of that type, in order, with the last of them and the
     /// last integer constant loaded in the same span beside it, either null where the
-    /// body loaded none in between.</summary>
-    internal sealed record Construction(IReadOnlyList<string> Literals, string? Literal, int? Constant);
+    /// body loaded none in between, and whether the instruction before the last
+    /// literal loaded null - the shape of <c>new EventOption(this, null, "KEY")</c>,
+    /// an option constructed with no work.</summary>
+    internal sealed record Construction(IReadOnlyList<string> Literals, string? Literal, int? Constant, bool NullBeforeLiteral = false);
 
     /// <summary>
     /// Every construction of <paramref name="constructed"/> in a body, each with the
@@ -436,17 +438,27 @@ internal static class ChoiceEntryPoints
         var constructions = new List<Construction>();
         var literals = new List<string>();
         int? constant = null;
+        var previousLoadedNull = false;
+        var nullBeforeLastLiteral = false;
         foreach (var operand in OperandsOf(method))
         {
-            if (operand.Literal is { } loaded) literals.Add(loaded);
+            if (operand.Literal is { } loaded)
+            {
+                literals.Add(loaded);
+                nullBeforeLastLiteral = previousLoadedNull;
+            }
+
             if (operand.Constant is { } value) constant = value;
             if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
                 callee.DeclaringType == constructed)
             {
-                constructions.Add(new Construction(literals, literals.LastOrDefault(), constant));
+                constructions.Add(new Construction(literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral));
                 literals = [];
                 constant = null;
+                nullBeforeLastLiteral = false;
             }
+
+            previousLoadedNull = operand.LoadsNull;
         }
 
         return constructions;
@@ -470,7 +482,8 @@ internal static class ChoiceEntryPoints
     /// three that leave a boolean - <c>cgt</c>, <c>clt</c>, <c>ceq</c> - by opcode
     /// name.</summary>
     private sealed record Operand(
-        MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null);
+        MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null,
+        bool LoadsNull = false);
 
     /// <summary>
     /// Whether a body reads the run's players and compares their count as greater
@@ -550,6 +563,18 @@ internal static class ChoiceEntryPoints
     }
 
     private sealed record LoadedTypes(IReadOnlyList<Type> Types, IReadOnlyList<string> Unloadable);
+
+    /// <summary>The game's types the runtime could load against the stubs.</summary>
+    internal static IReadOnlyList<Type> LoadedGameTypes() => Loaded.Value.Types;
+
+    /// <summary>Every method a body calls, as far as the body could be read: the
+    /// reading the caller scan makes, for a walk that patches rather than counts.</summary>
+    internal static IReadOnlyList<MethodBase> CalleesAsFarAsReadable(MethodBase method)
+    {
+        TryReadCallees(method, out var callees);
+        return callees;
+    }
+
 
     private static readonly Lazy<LoadedTypes> Loaded = new(LoadAllTypes);
 
@@ -769,6 +794,10 @@ internal static class ChoiceEntryPoints
             else if (op == OpCodes.Cgt || op == OpCodes.Clt || op == OpCodes.Ceq)
             {
                 operands.Add(new Operand(null, null, false, Comparison: op == OpCodes.Cgt ? nameof(OpCodes.Cgt) : op == OpCodes.Clt ? nameof(OpCodes.Clt) : nameof(OpCodes.Ceq)));
+            }
+            else if (op == OpCodes.Ldnull)
+            {
+                operands.Add(new Operand(null, null, false, LoadsNull: true));
             }
 
             at += operandSize;

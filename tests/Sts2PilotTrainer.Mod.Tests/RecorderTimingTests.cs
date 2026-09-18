@@ -77,7 +77,9 @@ public sealed class RecorderTimingTests : IDisposable
     /// agreeing and the random streams apart. The animation is stood in for here by a
     /// task the test completes after frames have gone by; the recorder has to leave the
     /// decision unread through them and read it once the set is on offer, which is the
-    /// state the replay's own drain reaches.
+    /// state the replay's own drain reaches. The option is chosen through the game's
+    /// own member, as the retail button chooses it, because the driver waits for an
+    /// option's work the way the recorder does and would wait out the held animation.
     /// </summary>
     [GameFact]
     public void AnEventOptionThatRollsItsRewardAfterAnAnimationIsReadOnceTheRewardIsOnOffer()
@@ -116,8 +118,8 @@ public sealed class RecorderTimingTests : IDisposable
         var animation = new TaskCompletionSource();
         HitAnimation.Pending = animation;
         var seq = capture.NextSeq;
-        driver.Apply(Record(seq, ActionVerb.ChooseEventOption,
-            ("event_id", "EVENT.BRAIN_LEECH"), ("option_index", N(rip)), ("option_key", RunDriver.OptionKey(options[rip]))));
+        RunManager.Instance.EventSynchronizer!.ChooseLocalOption(rip);
+        Pump.Drain();
 
         // The health is gone and the reward is not rolled: the retail client's gap
         Assert.NotEqual(healthBefore, Field(session, "player.hp"));

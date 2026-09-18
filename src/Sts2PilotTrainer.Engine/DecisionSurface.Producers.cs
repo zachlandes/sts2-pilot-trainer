@@ -257,6 +257,38 @@ public static partial class DecisionSurface
             .ToList();
     }
 
+    /// <summary>
+    /// The options of an event that a player cannot choose: constructed with no work,
+    /// the way an event offers the locked form of an option the player cannot afford -
+    /// <c>new EventOption(this, null, "..._LOCKED")</c> - so its button refuses the
+    /// press (<c>NEventOptionButton.OnRelease</c>). Read off the IL as the null loaded
+    /// before the key the option is constructed with, the reading behind
+    /// <see cref="ExcusalClass.NotChoosable"/>; none for an ancient, whose options are
+    /// the game's own pools.
+    /// </summary>
+    public static IReadOnlyList<string> NotChoosableOptions(string eventId)
+    {
+        EngineHost.Start();
+        var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId);
+        if (model is null || model is AncientEventModel) return [];
+
+        var initialOptionKey = typeof(EventModel).GetMethod("InitialOptionKey", Every)
+            ?? throw new InvalidOperationException("EventModel.InitialOptionKey is not declared on this build.");
+        var locked = new List<string>();
+        foreach (var member in OwnMembersOf(model.GetType()))
+        {
+            var initialKeys = ChoiceEntryPoints.LiteralsBefore(member, callee => callee == initialOptionKey);
+            foreach (var construction in ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)))
+            {
+                if (!construction.NullBeforeLiteral || construction.Literal is not { } literal) continue;
+                if (OptionKeyLiteral.IsMatch(literal)) locked.Add(literal);
+                else if (initialKeys.Contains(literal, StringComparer.Ordinal)) locked.Add($"{model.Id.Entry}.pages.INITIAL.options.{literal}");
+            }
+        }
+
+        return locked.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+    }
+
     private static IReadOnlyList<string> OptionKeysOf(EventModel model)
     {
         if (model is AncientEventModel ancient)
@@ -709,8 +741,9 @@ public static partial class DecisionSurface
 
     /// <summary>
     /// Every event and ancient an act can reach, by id: the act's own lists and the
-    /// shared pool every act draws from, in the act's own order. An act id no act
-    /// ships is refused by name.
+    /// shared pool every act draws from, in the act's own order - the shared ancient
+    /// among them, though a run deals it only to an act after its first. An act id
+    /// no act ships is refused by name.
     /// </summary>
     public static IReadOnlyList<string> ReachableIn(string actId)
     {
@@ -725,8 +758,9 @@ public static partial class DecisionSurface
 
     /// <summary>
     /// The ancients an act rolls one of at its start, by act, in index order: the act's
-    /// own list and not the shared ancients every act's question mark can roll, since a
-    /// run whose acts list opens on that act alone opens on one of these. Which is what
+    /// own list and not the shared ancient, Darv, whom the run deals to one act after
+    /// the first as it is generated (<c>RunManager.GenerateRooms</c>), since a run
+    /// whose acts list opens on that act alone opens on one of these. Which is what
     /// the act-first coverage rows walk from.
     /// </summary>
     public static IReadOnlyList<(string ActId, string AncientId)> ActAncients()
@@ -886,6 +920,7 @@ public static partial class DecisionSurface
                 if (eventId == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
                 else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
                 if (TitleKeyedOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
+                if (NotChoosableOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotChoosable;
 
                 // A blessing granting a relic the game allows only with another player
                 // is never offered to the run the recorder records

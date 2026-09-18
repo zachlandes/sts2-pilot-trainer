@@ -5,23 +5,27 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
-/// Three ordinary singleplayer paths a recording of which the driver refused on
-/// v0.111.0, each played through the real recorder, replayed, and held to parity.
+/// Ordinary singleplayer paths a recording of which the driver refused on v0.111.0,
+/// each played through the real recorder, replayed, and held to parity.
 ///
 /// The first two were found by reading the game assembly for what a player can reach
 /// rather than by a recording: the driver enforced a rule of its own where the game
 /// has one, and the format could not say which of two rewards of one kind was taken.
 /// The third was found by the Stage 3 ancient row for Lord's Parasol: the recorder
 /// wrote the purchases the relic makes for itself as the merchant is entered as the
-/// player's, before the move that opened the shop. Each row is a recording that the
-/// driver before its change refused - as <c>Map node ... is not reachable</c>, as
+/// player's, before the move that opened the shop. The fourth was found by the event
+/// rows' walk into a second act: every act after the first opens on the map with
+/// nothing visited, and the driver refused the move to the act's starting point as
+/// unreachable from a node the run was not standing on. Each row is a recording that
+/// the driver before its change refused - as <c>Map node ... is not reachable</c>, as
 /// <c>2 of them are on offer</c>, as <c>buys from a merchant, but this floor is a
-/// Monster room</c> - and that now replays decision for decision through the same
-/// oracle <c>parity</c> uses, on a seed chosen because its opening event or its
-/// relic bag puts the producer on the walk's route. The rows live apart from
-/// <c>GeneratedCoverageTests</c> because they exercise no excused decision point of
-/// their own: a map move is not a point, a gold reward is one the corpus reaches,
-/// and the shop entered under Lord's Parasol is the ancient row's.
+/// Monster room</c>, as <c>The run has no current map node</c> - and that now replays
+/// decision for decision through the same oracle <c>parity</c> uses, on a seed chosen
+/// because its opening event, its relic bag or its survival puts the producer on the
+/// walk's route. The rows live apart from <c>GeneratedCoverageTests</c> because they
+/// exercise no excused decision point of their own: a map move is not a point, a gold
+/// reward is one the corpus reaches, the shop entered under Lord's Parasol is the
+/// ancient row's, and the second act's ancient is one of the ancient rows'.
 /// </summary>
 public sealed class ReplayRefusalRegressionTests
 {
@@ -135,5 +139,59 @@ public sealed class ReplayRefusalRegressionTests
         Assert.Contains(ActionVerb.SelectCardFromScreen, after);
 
         RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>
+    /// Every act after the first opens on the map with nothing visited - the act
+    /// change clears the run's visited coordinates and <c>RunManager.EnterAct</c>
+    /// enters the starting point itself for the first act only - so a run's first
+    /// decision in act 2 is a move to the act's starting point from no node at all,
+    /// which the map screen alone offers there. The driver refused it as unreachable,
+    /// which refused every recording of a run past its first act at that move. Walked
+    /// on the whole-act fixture's own seed, the one the journey's rules are known to
+    /// carry through a first act, into the second act's opening ancient, which is the
+    /// walk's ask (<see cref="WalkPolicy.OpeningTheNextActIsTheAsk"/>).
+    /// </summary>
+    [GameFact]
+    public void TheMoveToTheSecondActsStartingPointReplays()
+    {
+        using var harness = new RecordedActWalk();
+
+        var recorded = harness.Walk(
+            new WalkPolicy { AskInTheNextAct = true, StopOnceMet = true },
+            RecordedActWalk.FixtureSeed);
+        Assert.True(recorded.AskMet, "the walk finished without answering the second act's ancient");
+        RecordedActWalk.AssertWhole(recorded);
+
+        var proceed = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var opening = recorded.Manifest.Actions.First(action => action.Seq > proceed.Seq);
+        Assert.Equal(ActionVerb.MapMove, opening.Verb);
+        Assert.Equal("1", opening.Args["act"]);
+        var ancient = recorded.Manifest.Actions.First(action => action.Seq > opening.Seq);
+        Assert.Equal(ActionVerb.ChooseEventOption, ancient.Verb);
+        Assert.Contains(ancient.Args["event_id"], DecisionSurface.ActAncients().Select(pair => pair.AncientId).Append("EVENT.DARV"));
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The game's own rule at an act's start, as <c>MapTravelRule</c> reads
+    /// it: a run standing on no node of this map is offered the starting point and
+    /// nothing else.</summary>
+    [GameFact]
+    public void AtAnActsStartTheStartingPointIsTheOneTravelableNode()
+    {
+        if (MegaCrit.Sts2.Core.Runs.RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        session.StartRun(RecordedActWalk.FixtureSeed, "CHARACTER.IRONCLAD", 0, "standard", RecordedActWalk.Acts);
+        try
+        {
+            session.EnterActForMap(0);
+            var map = session.RunState.Map!;
+            Assert.Equal([map.StartingMapPoint], MapTravelRule.TravelableFrom(session.RunState, map, null));
+        }
+        finally
+        {
+            if (MegaCrit.Sts2.Core.Runs.RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+        }
     }
 }

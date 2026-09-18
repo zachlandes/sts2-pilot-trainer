@@ -20,11 +20,13 @@ namespace Sts2PilotTrainer.Engine;
 /// it" for a point a player can reach on this build. The generated walks retire that
 /// sentence for every point the fixture seed's route can be pointed at, for every
 /// seam a relic Neow deals or the run's own bag deals produces, each on a seed hunted
-/// so the run deals that relic, and for every ancient act 2 and act 3 open on, every
+/// so the run deals that relic, for every ancient act 2 and act 3 open on, every
 /// option of each and every seam the relics they deal produce, each on a run of that
-/// act alone (<c>GeneratedCoverageTests</c>); what is left is excused by what its
-/// producer is and why no walk yet reaches it, dated so its age is visible, for the
-/// event hunts and the retail soak.
+/// act alone, and for every event a first act's question mark or the Hive's or
+/// Glory's opens, every option of each, on a seed hunted so the first question mark
+/// opens that event (<c>GeneratedCoverageTests</c>); what is left is excused by what
+/// its producer is and why no walk yet reaches it, dated so its age is visible, for a
+/// line that survives an act and the retail soak.
 ///
 /// Every excusal carries an <see cref="ExcusalClass"/> beside its reason, and the
 /// coverage map says which classes it admits for each point
@@ -43,13 +45,60 @@ public static class DecisionExcusals
         $"no committed recording reaches it and the generated walk's route does not pass its producer - {producer}; " +
         "retired by a recording that does, from the retail soak (excused 2026-09-16)");
 
-    private const string EventOffTheRoute =
-        "an event is reached only where the map rolls it, the route refuses question marks, and a row per " +
-        "event would need a seed hunted per event";
+    /// <summary>Why nothing past a run's first act is reached by a generated walk on
+    /// this build: the journey's mechanical line does not survive a first act on a
+    /// seed it was not hunted for, and the one seed it is known to survive on is the
+    /// whole-act fixture's.</summary>
+    private const string BeyondTheFirstAct =
+        "reached only past a run's first act, which the journey's mechanical line survives on none of 300 seeds " +
+        "hunted on v0.111.0 with every room type on the route and none of 200 on the cheapest; a survival seed of " +
+        "the fifth stage's kind, or the retail soak, is what reaches it";
 
     private const string DarvOffTheRoute =
-        "Darv is the ancient every act's question mark can roll and no act opens on, so a row for it is a " +
-        "question-mark hunt like an event's rather than an act-first walk";
+        "Darv is dealt to one act after the first as the run is generated (RunManager.GenerateRooms) and rolled as " +
+        "that act's opening ancient, so a row for it is a walk through the first act to the second act's opening, " +
+        "and " + BeyondTheFirstAct;
+
+    /// <summary>The events no generated walk reaches, each with what stands in the way;
+    /// every one the game allows only from the second act on or only in a state the
+    /// first act's line never holds at its first question mark. By id, so an event a
+    /// game update adds is uncovered until somebody excuses it here.</summary>
+    private static readonly IReadOnlyDictionary<string, string> EventsOffTheRoute = new Dictionary<string, string>
+    {
+        ["EVENT.CRYSTAL_SPHERE"] = "allowed only from the second act on, with 100 gold in hand (CrystalSphere.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.DOLL_ROOM"] = "allowed in the second act only (DollRoom.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.FAKE_MERCHANT"] = "allowed only from the second act on, with 100 gold or a Foul Potion in hand (FakeMerchant.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
+            "allowed only to a deck with a card its Souls enchantment can take (GraveOfTheForgotten.IsAllowed), which a starter deck " +
+            "has none of and Glory's first rewards dealt on none of 500 seeds hunted on v0.111.0; retired by a walk that takes such " +
+            "a card first, or the retail soak (excused 2026-09-18)",
+        ["EVENT.POTION_COURIER"] = "allowed only from the second act on (PotionCourier.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.RANWID_THE_ELDER"] = "allowed only from the second act on, with a relic it can take (RanwidTheElder.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.RELIC_TRADER"] = "allowed only from the second act on, with five relics to trade (RelicTrader.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.STONE_OF_ALL_TIME"] = "allowed in the second act only, with a potion in hand (StoneOfAllTime.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.SYMBIOTE"] = "allowed only from the second act on (Symbiote.IsAllowed), so " + BeyondTheFirstAct,
+        ["EVENT.WAR_HISTORIAN_REPY"] =
+            "no act's roll allows it (WarHistorianRepy.IsAllowed is false); it is reached only through the Lantern Key card's own " +
+            "hook (LanternKey.ModifyNextEvent), at a second question mark of a run that kept the key from the first, which the " +
+            "Lantern Key row's walk ends at; retired by a walk that goes on to a second question mark, or the retail soak " +
+            "(excused 2026-09-18)",
+        ["EVENT.WELCOME_TO_WONGOS"] = "allowed in the second act only, with 100 gold in hand (WelcomeToWongos.IsAllowed), so " + BeyondTheFirstAct,
+    };
+
+    /// <summary>The options of events a row reaches that no row takes, each with what
+    /// stands in the way, by id.</summary>
+    private static readonly IReadOnlyDictionary<string, string> OptionsOffTheRoute = new Dictionary<string, string>
+    {
+        ["EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"] =
+            "offered to every character but the one played, and every generated walk is Ironclad's; a character row of the " +
+            "fifth stage takes it (excused 2026-09-18)",
+        ["EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"] =
+            "offered unlocked only with 250 gold in hand (ZenWeaver.GenerateInitialOptions), which the first act's line does not " +
+            "hold by any question mark it reaches; retired by the retail soak (excused 2026-09-18)",
+        ["EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"] =
+            "offered only to a deck with no attack, skill or power the book can enchant (SelfHelpBook.GenerateInitialOptions), " +
+            "which no deck the journey builds is; retired by the retail soak (excused 2026-09-18)",
+    };
 
     /// <summary>A rest option an act's ancient's relic adds, and the seam it is
     /// produced at: the ancient row obtains the relic at the act's first room, and a
@@ -86,6 +135,51 @@ public static class DecisionExcusals
         "list no client run has, admissible as the won-run proof's one-act run is and never listed or shared - " +
         "recorded through the real recorder and replayed to parity on every merge; the recording is generated " +
         "rather than committed");
+
+    /// <summary>A point a <c>GeneratedCoverageTests</c> event row reaches: a walk into
+    /// the first question mark of a first act - the Overgrowth's, or the Underdocks'
+    /// on the variant - on a seed hunted so that mark opens the event, the option
+    /// chosen through the real recorder and replayed to parity on every merge.</summary>
+    private static readonly Excusal GeneratedByAnEventRow = new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests event row - the first act's first question mark, on a seed hunted so " +
+        "it opens this event, the page answered by key - recorded through the real recorder and replayed to parity " +
+        "on every merge; the recording is generated rather than committed");
+
+    /// <summary>The same, on a run of the Hive or Glory alone: the acts list the
+    /// ancient rows run on, admissible on the same footing and said to be so here.</summary>
+    private static readonly Excusal GeneratedByAnActFirstEventRow = new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests event row on a run of the Hive or Glory alone - a generated-only acts " +
+        "list no client run has, admissible as the won-run proof's one-act run is and never listed or shared - the " +
+        "act's first question mark on a seed hunted so it opens this event, the page answered by key, recorded through " +
+        "the real recorder and replayed to parity on every merge; the recording is generated rather than committed");
+
+    /// <summary>A point the special card's producers reach: the thief row, a run of
+    /// the Hive alone whose first fight is the Thieving Hopper's, killed holding the
+    /// card it stole, and the Lantern Key row, whose fight puts the key on the loot
+    /// screen; both claimed off the screen through the real recorder and replayed to
+    /// parity on every merge.</summary>
+    private static readonly Excusal GeneratedByTheSpecialCardRows = new(
+        ExcusalClass.Generated,
+        "reached by two GeneratedCoverageTests rows on a run of the Hive alone - a generated-only acts list no " +
+        "client run has, admissible as the won-run proof's one-act run is and never listed or shared - the thief " +
+        "killed holding the card it stole, and the Lantern Key's fight, each special card claimed off the loot " +
+        "screen, recorded through the real recorder and replayed to parity on every merge; the recording is " +
+        "generated rather than committed");
+
+    /// <summary>The events the committed corpus reaches, whose rows retire their
+    /// options and nothing else; <c>GeneratedCoverageTests</c> holds its rows to that.</summary>
+    internal static readonly IReadOnlySet<string> EventsTheCorpusReaches =
+        new HashSet<string>(StringComparer.Ordinal) { "EVENT.BRAIN_LEECH", "EVENT.WATERLOGGED_SCRIPTORIUM" };
+
+    /// <summary>An option an event offers locked: constructed with no work where the
+    /// player cannot afford the real one, and refused by its own button.</summary>
+    private static readonly Excusal NotChoosable = new(
+        ExcusalClass.NotChoosable,
+        "constructed with no work - the locked form an event offers where the player cannot afford the real option - " +
+        "and its button refuses the press (NEventOptionButton.OnRelease), so no play chooses it " +
+        "(DecisionSurface.NotChoosableOptions)");
 
     /// <summary>An option of an event the committed corpus reaches, in a recording
     /// written before the recorder named options.</summary>
@@ -138,19 +232,15 @@ public static class DecisionExcusals
         "(scripts/producer-map.txt lists them); retired by a recording from the retail soak (excused 2026-09-17)");
 
     /// <summary>
-    /// The options of the events the committed corpus reaches - Neow's blessing and
-    /// two events - each recorded before the recorder wrote <c>option_key</c>, so
-    /// which option was chosen is not on the file. By id, so an option a game update
-    /// adds is uncovered until somebody reads it. Neow's list leaves out the blessings
-    /// a generated walk takes, which are below.
+    /// The options of Neow's blessing the committed corpus reaches, each recorded
+    /// before the recorder wrote <c>option_key</c>, so which option was chosen is not
+    /// on the file. By id, so an option a game update adds is uncovered until somebody
+    /// reads it; the blessings a generated walk takes are below, and the two events the
+    /// corpus reaches the same way - Brain Leech, the Scriptorium - have their options
+    /// taken by event rows now.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsRecordedWithoutAKey = new Dictionary<string, string[]>
     {
-        ["EVENT.BRAIN_LEECH"] =
-        [
-            "BRAIN_LEECH.pages.INITIAL.options.RIP",
-            "BRAIN_LEECH.pages.INITIAL.options.SHARE_KNOWLEDGE",
-        ],
         ["EVENT.NEOW"] =
         [
             "RELIC.ARCANE_SCROLL",
@@ -169,14 +259,6 @@ public static class DecisionExcusals
             "RELIC.SILKEN_TRESS",
             "RELIC.SILVER_CRUCIBLE",
             "RELIC.STONE_HUMIDIFIER",
-        ],
-        ["EVENT.WATERLOGGED_SCRIPTORIUM"] =
-        [
-            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.BLOODY_INK",
-            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE",
-            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE_LOCKED",
-            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.TENTACLE_QUILL",
-            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.TENTACLE_QUILL_LOCKED",
         ],
     };
 
@@ -201,9 +283,10 @@ public static class DecisionExcusals
         "RELIC.SMALL_CAPSULE",
     ];
 
-    /// <summary>The options of every event the route does not pass, by id under the
-    /// event, excused for the event's own reason.</summary>
-    private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsOffTheRoute = new Dictionary<string, string[]>
+    /// <summary>The options of every event a first act's question mark opens that a
+    /// <c>GeneratedCoverageTests</c> event row takes, by id under the event; the rows
+    /// hold this list to their table.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsTakenByEventRowsInTheFirstAct = new Dictionary<string, string[]>
     {
         ["EVENT.ABYSSAL_BATHS"] =
         [
@@ -212,65 +295,26 @@ public static class DecisionExcusals
             "ABYSSAL_BATHS.pages.INITIAL.options.ABSTAIN",
             "ABYSSAL_BATHS.pages.INITIAL.options.IMMERSE",
         ],
-        ["EVENT.AMALGAMATOR"] =
-        [
-            "AMALGAMATOR.pages.INITIAL.options.COMBINE_DEFENDS",
-            "AMALGAMATOR.pages.INITIAL.options.COMBINE_STRIKES",
-        ],
         ["EVENT.AROMA_OF_CHAOS"] =
         [
             "AROMA_OF_CHAOS.pages.INITIAL.options.LET_GO",
             "AROMA_OF_CHAOS.pages.INITIAL.options.MAINTAIN_CONTROL",
         ],
-        ["EVENT.BATTLEWORN_DUMMY"] =
+        ["EVENT.BRAIN_LEECH"] =
         [
-            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_1",
-            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_2",
-            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_3",
-        ],
-        ["EVENT.BUGSLAYER"] =
-        [
-            "BUGSLAYER.pages.INITIAL.options.EXTERMINATION",
-            "BUGSLAYER.pages.INITIAL.options.SQUASH",
+            "BRAIN_LEECH.pages.INITIAL.options.RIP",
+            "BRAIN_LEECH.pages.INITIAL.options.SHARE_KNOWLEDGE",
         ],
         ["EVENT.BYRDONIS_NEST"] =
         [
             "BYRDONIS_NEST.pages.INITIAL.options.EAT",
             "BYRDONIS_NEST.pages.INITIAL.options.TAKE",
         ],
-        ["EVENT.COLORFUL_PHILOSOPHERS"] =
-        [
-            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.DEFECT",
-            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD",
-            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.NECROBINDER",
-            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.REGENT",
-            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.SILENT",
-        ],
-        ["EVENT.COLOSSAL_FLOWER"] =
-        [
-            "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
-            "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_1",
-            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
-            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
-            "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD",
-            "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE",
-        ],
-        ["EVENT.CRYSTAL_SPHERE"] =
-        [
-            "CRYSTAL_SPHERE.pages.INITIAL.options.PAYMENT_PLAN",
-            "CRYSTAL_SPHERE.pages.INITIAL.options.UNCOVER_FUTURE",
-        ],
         ["EVENT.DENSE_VEGETATION"] =
         [
             "DENSE_VEGETATION.pages.INITIAL.options.REST",
             "DENSE_VEGETATION.pages.INITIAL.options.TRUDGE_ON",
             "DENSE_VEGETATION.pages.REST.options.FIGHT",
-        ],
-        ["EVENT.DOLL_ROOM"] =
-        [
-            "DOLL_ROOM.pages.INITIAL.options.EXAMINE",
-            "DOLL_ROOM.pages.INITIAL.options.RANDOM",
-            "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME",
         ],
         ["EVENT.DOORS_OF_LIGHT_AND_DARK"] =
         [
@@ -289,48 +333,20 @@ public static class DecisionExcusals
             "ENDLESS_CONVEYOR.pages.ALL.options.FRIED_EEL",
             "ENDLESS_CONVEYOR.pages.ALL.options.GOLDEN_FYSH",
             "ENDLESS_CONVEYOR.pages.ALL.options.JELLY_LIVER",
-            "ENDLESS_CONVEYOR.pages.ALL.options.LOCKED",
             "ENDLESS_CONVEYOR.pages.ALL.options.SEAPUNK_SALAD",
             "ENDLESS_CONVEYOR.pages.ALL.options.SPICY_SNAPPY",
             "ENDLESS_CONVEYOR.pages.ALL.options.SUSPICIOUS_CONDIMENT",
             "ENDLESS_CONVEYOR.pages.GRAB_SOMETHING_OFF_THE_BELT.options.LEAVE",
             "ENDLESS_CONVEYOR.pages.INITIAL.options.OBSERVE_CHEF",
         ],
-        ["EVENT.FIELD_OF_MAN_SIZED_HOLES"] =
-        [
-            "FIELD_OF_MAN_SIZED_HOLES.pages.INITIAL.options.ENTER_YOUR_HOLE",
-            "FIELD_OF_MAN_SIZED_HOLES.pages.INITIAL.options.RESIST",
-        ],
-        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
-        [
-            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.ACCEPT",
-            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT",
-            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT_LOCKED",
-        ],
-        ["EVENT.HUNGRY_FOR_MUSHROOMS"] =
-        [
-            "RELIC.BIG_MUSHROOM",
-            "RELIC.FRAGRANT_MUSHROOM",
-        ],
-        ["EVENT.INFESTED_AUTOMATON"] =
-        [
-            "INFESTED_AUTOMATON.pages.INITIAL.options.STUDY",
-            "INFESTED_AUTOMATON.pages.INITIAL.options.TOUCH_CORE",
-        ],
         ["EVENT.JUNGLE_MAZE_ADVENTURE"] =
         [
             "JUNGLE_MAZE_ADVENTURE.pages.INITIAL.options.JOIN_FORCES",
             "JUNGLE_MAZE_ADVENTURE.pages.INITIAL.options.SOLO_QUEST",
         ],
-        ["EVENT.LOST_WISP"] =
-        [
-            "LOST_WISP.pages.INITIAL.options.CLAIM",
-            "LOST_WISP.pages.INITIAL.options.SEARCH",
-        ],
         ["EVENT.LUMINOUS_CHOIR"] =
         [
             "LUMINOUS_CHOIR.pages.INITIAL.options.OFFER_TRIBUTE",
-            "LUMINOUS_CHOIR.pages.INITIAL.options.OFFER_TRIBUTE_LOCKED",
             "LUMINOUS_CHOIR.pages.INITIAL.options.REACH_INTO_THE_FLESH",
         ],
         ["EVENT.MORPHIC_GROVE"] =
@@ -338,47 +354,16 @@ public static class DecisionExcusals
             "MORPHIC_GROVE.pages.INITIAL.options.GROUP",
             "MORPHIC_GROVE.pages.INITIAL.options.LONER",
         ],
-        ["EVENT.POTION_COURIER"] =
-        [
-            "POTION_COURIER.pages.INITIAL.options.GRAB_POTIONS",
-            "POTION_COURIER.pages.INITIAL.options.RANSACK",
-        ],
         ["EVENT.PUNCH_OFF"] =
         [
             "PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM",
             "PUNCH_OFF.pages.INITIAL.options.NAB",
             "PUNCH_OFF.pages.I_CAN_TAKE_THEM.options.FIGHT",
         ],
-        ["EVENT.RANWID_THE_ELDER"] =
-        [
-            "RANWID_THE_ELDER.pages.INITIAL.options.GOLD",
-            "RANWID_THE_ELDER.pages.INITIAL.options.POTION",
-            "RANWID_THE_ELDER.pages.INITIAL.options.POTION_LOCKED",
-            "RANWID_THE_ELDER.pages.INITIAL.options.RELIC",
-            "RANWID_THE_ELDER.pages.INITIAL.options.RELIC_LOCKED",
-        ],
-        ["EVENT.REFLECTIONS"] =
-        [
-            "REFLECTIONS.pages.INITIAL.options.SHATTER",
-            "REFLECTIONS.pages.INITIAL.options.TOUCH_A_MIRROR",
-        ],
-        ["EVENT.RELIC_TRADER"] =
-        [
-            "PROCEED",
-            "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
-            "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
-            "RELIC_TRADER.pages.INITIAL.options.TOP",
-        ],
         ["EVENT.ROOM_FULL_OF_CHEESE"] =
         [
             "ROOM_FULL_OF_CHEESE.pages.INITIAL.options.GORGE",
             "ROOM_FULL_OF_CHEESE.pages.INITIAL.options.SEARCH",
-        ],
-        ["EVENT.ROUND_TEA_PARTY"] =
-        [
-            "ROUND_TEA_PARTY.pages.INITIAL.options.ENJOY_TEA",
-            "ROUND_TEA_PARTY.pages.INITIAL.options.PICK_FIGHT",
-            "ROUND_TEA_PARTY.pages.PICK_FIGHT.options.CONTINUE_FIGHT",
         ],
         ["EVENT.SAPPHIRE_SEED"] =
         [
@@ -387,13 +372,9 @@ public static class DecisionExcusals
         ],
         ["EVENT.SELF_HELP_BOOK"] =
         [
-            "SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS",
             "SELF_HELP_BOOK.pages.INITIAL.options.READ_ENTIRE_BOOK",
-            "SELF_HELP_BOOK.pages.INITIAL.options.READ_ENTIRE_BOOK_LOCKED",
             "SELF_HELP_BOOK.pages.INITIAL.options.READ_PASSAGE",
-            "SELF_HELP_BOOK.pages.INITIAL.options.READ_PASSAGE_LOCKED",
             "SELF_HELP_BOOK.pages.INITIAL.options.READ_THE_BACK",
-            "SELF_HELP_BOOK.pages.INITIAL.options.READ_THE_BACK_LOCKED",
         ],
         ["EVENT.SLIPPERY_BRIDGE"] =
         [
@@ -413,18 +394,6 @@ public static class DecisionExcusals
             "SPIRALING_WHIRLPOOL.pages.INITIAL.options.DRINK",
             "SPIRALING_WHIRLPOOL.pages.INITIAL.options.OBSERVE",
         ],
-        ["EVENT.SPIRIT_GRAFTER"] =
-        [
-            "SPIRIT_GRAFTER.pages.INITIAL.options.LET_IT_IN",
-            "SPIRIT_GRAFTER.pages.INITIAL.options.REJECTION",
-        ],
-        ["EVENT.STONE_OF_ALL_TIME"] =
-        [
-            "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT",
-            "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT_LOCKED",
-            "STONE_OF_ALL_TIME.pages.INITIAL.options.PUSH",
-            "STONE_OF_ALL_TIME.pages.INITIAL.options.PUSH_LOCKED",
-        ],
         ["EVENT.SUNKEN_STATUE"] =
         [
             "SUNKEN_STATUE.pages.INITIAL.options.DIVE_INTO_WATER",
@@ -434,12 +403,6 @@ public static class DecisionExcusals
         [
             "SUNKEN_TREASURY.pages.INITIAL.options.FIRST_CHEST",
             "SUNKEN_TREASURY.pages.INITIAL.options.SECOND_CHEST",
-        ],
-        ["EVENT.SYMBIOTE"] =
-        [
-            "SYMBIOTE.pages.INITIAL.options.APPROACH",
-            "SYMBIOTE.pages.INITIAL.options.APPROACH_LOCKED",
-            "SYMBIOTE.pages.INITIAL.options.KILL_WITH_FIRE",
         ],
         ["EVENT.TABLET_OF_TRUTH"] =
         [
@@ -454,20 +417,12 @@ public static class DecisionExcusals
         ["EVENT.TEA_MASTER"] =
         [
             "TEA_MASTER.pages.INITIAL.options.BONE_TEA",
-            "TEA_MASTER.pages.INITIAL.options.BONE_TEA_LOCKED",
             "TEA_MASTER.pages.INITIAL.options.EMBER_TEA",
-            "TEA_MASTER.pages.INITIAL.options.EMBER_TEA_LOCKED",
             "TEA_MASTER.pages.INITIAL.options.TEA_OF_DISCOURTESY",
         ],
         ["EVENT.THE_FUTURE_OF_POTIONS"] =
         [
             "THE_FUTURE_OF_POTIONS.pages.INITIAL.options.POTION",
-        ],
-        ["EVENT.THE_LANTERN_KEY"] =
-        [
-            "THE_LANTERN_KEY.pages.INITIAL.options.KEEP_THE_KEY",
-            "THE_LANTERN_KEY.pages.INITIAL.options.RETURN_THE_KEY",
-            "THE_LANTERN_KEY.pages.KEEP_THE_KEY.options.FIGHT",
         ],
         ["EVENT.THE_LEGENDS_WERE_TRUE"] =
         [
@@ -478,6 +433,118 @@ public static class DecisionExcusals
         [
             "THIS_OR_THAT.pages.INITIAL.options.ORNATE",
             "THIS_OR_THAT.pages.INITIAL.options.PLAIN",
+        ],
+        ["EVENT.TRASH_HEAP"] =
+        [
+            "TRASH_HEAP.pages.INITIAL.options.DIVE_IN",
+            "TRASH_HEAP.pages.INITIAL.options.GRAB",
+        ],
+        ["EVENT.UNREST_SITE"] =
+        [
+            "UNREST_SITE.pages.INITIAL.options.KILL",
+            "UNREST_SITE.pages.INITIAL.options.REST",
+        ],
+        ["EVENT.WATERLOGGED_SCRIPTORIUM"] =
+        [
+            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.BLOODY_INK",
+            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE",
+            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.TENTACLE_QUILL",
+        ],
+        ["EVENT.WELLSPRING"] =
+        [
+            "WELLSPRING.pages.INITIAL.options.BATHE",
+            "WELLSPRING.pages.INITIAL.options.BOTTLE",
+        ],
+        ["EVENT.WHISPERING_HOLLOW"] =
+        [
+            "WHISPERING_HOLLOW.pages.INITIAL.options.GOLD",
+            "WHISPERING_HOLLOW.pages.INITIAL.options.HUG",
+        ],
+        ["EVENT.WOOD_CARVINGS"] =
+        [
+            "WOOD_CARVINGS.pages.INITIAL.options.BIRD",
+            "WOOD_CARVINGS.pages.INITIAL.options.SNAKE",
+            "WOOD_CARVINGS.pages.INITIAL.options.TORUS",
+        ],
+    };
+
+    /// <summary>The same for the events the Hive's and Glory's question marks open,
+    /// each on a run of that act alone.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsTakenByEventRowsOnAnActAlone = new Dictionary<string, string[]>
+    {
+        ["EVENT.AMALGAMATOR"] =
+        [
+            "AMALGAMATOR.pages.INITIAL.options.COMBINE_DEFENDS",
+            "AMALGAMATOR.pages.INITIAL.options.COMBINE_STRIKES",
+        ],
+        ["EVENT.BATTLEWORN_DUMMY"] =
+        [
+            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_1",
+            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_2",
+            "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_3",
+        ],
+        ["EVENT.BUGSLAYER"] =
+        [
+            "BUGSLAYER.pages.INITIAL.options.EXTERMINATION",
+            "BUGSLAYER.pages.INITIAL.options.SQUASH",
+        ],
+        ["EVENT.COLORFUL_PHILOSOPHERS"] =
+        [
+            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.DEFECT",
+            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.NECROBINDER",
+            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.REGENT",
+            "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.SILENT",
+        ],
+        ["EVENT.COLOSSAL_FLOWER"] =
+        [
+            "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
+            "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_1",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD",
+            "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE",
+        ],
+        ["EVENT.FIELD_OF_MAN_SIZED_HOLES"] =
+        [
+            "FIELD_OF_MAN_SIZED_HOLES.pages.INITIAL.options.ENTER_YOUR_HOLE",
+            "FIELD_OF_MAN_SIZED_HOLES.pages.INITIAL.options.RESIST",
+        ],
+        ["EVENT.HUNGRY_FOR_MUSHROOMS"] =
+        [
+            "RELIC.BIG_MUSHROOM",
+            "RELIC.FRAGRANT_MUSHROOM",
+        ],
+        ["EVENT.INFESTED_AUTOMATON"] =
+        [
+            "INFESTED_AUTOMATON.pages.INITIAL.options.STUDY",
+            "INFESTED_AUTOMATON.pages.INITIAL.options.TOUCH_CORE",
+        ],
+        ["EVENT.LOST_WISP"] =
+        [
+            "LOST_WISP.pages.INITIAL.options.CLAIM",
+            "LOST_WISP.pages.INITIAL.options.SEARCH",
+        ],
+        ["EVENT.REFLECTIONS"] =
+        [
+            "REFLECTIONS.pages.INITIAL.options.SHATTER",
+            "REFLECTIONS.pages.INITIAL.options.TOUCH_A_MIRROR",
+        ],
+        ["EVENT.ROUND_TEA_PARTY"] =
+        [
+            "ROUND_TEA_PARTY.pages.INITIAL.options.ENJOY_TEA",
+            "ROUND_TEA_PARTY.pages.INITIAL.options.PICK_FIGHT",
+            "ROUND_TEA_PARTY.pages.PICK_FIGHT.options.CONTINUE_FIGHT",
+        ],
+        ["EVENT.SPIRIT_GRAFTER"] =
+        [
+            "SPIRIT_GRAFTER.pages.INITIAL.options.LET_IT_IN",
+            "SPIRIT_GRAFTER.pages.INITIAL.options.REJECTION",
+        ],
+        ["EVENT.THE_LANTERN_KEY"] =
+        [
+            "THE_LANTERN_KEY.pages.INITIAL.options.KEEP_THE_KEY",
+            "THE_LANTERN_KEY.pages.INITIAL.options.RETURN_THE_KEY",
+            "THE_LANTERN_KEY.pages.KEEP_THE_KEY.options.FIGHT",
         ],
         ["EVENT.TINKER_TIME"] =
         [
@@ -495,11 +562,6 @@ public static class DecisionExcusals
             "TINKER_TIME.pages.CHOOSE_RIDER.options.WISDOM",
             "TINKER_TIME.pages.INITIAL.options.CHOOSE_CARD_TYPE",
         ],
-        ["EVENT.TRASH_HEAP"] =
-        [
-            "TRASH_HEAP.pages.INITIAL.options.DIVE_IN",
-            "TRASH_HEAP.pages.INITIAL.options.GRAB",
-        ],
         ["EVENT.TRIAL"] =
         [
             "TRIAL.pages.INITIAL.options.ACCEPT",
@@ -513,10 +575,106 @@ public static class DecisionExcusals
             "TRIAL.pages.REJECT.options.ACCEPT",
             "TRIAL.pages.REJECT.options.DOUBLE_DOWN",
         ],
-        ["EVENT.UNREST_SITE"] =
+        ["EVENT.ZEN_WEAVER"] =
         [
-            "UNREST_SITE.pages.INITIAL.options.KILL",
-            "UNREST_SITE.pages.INITIAL.options.REST",
+            "ZEN_WEAVER.pages.INITIAL.options.BREATHING_TECHNIQUES",
+            "ZEN_WEAVER.pages.INITIAL.options.EMOTIONAL_AWARENESS",
+        ],
+    };
+
+    /// <summary>The options no play can choose, by id under the event: the locked
+    /// forms, each read off the IL by <c>DecisionSurface.NotChoosableOptions</c>. By
+    /// id so a locked option a game update adds is uncovered until somebody reads it.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> NotChoosableOptions = new Dictionary<string, string[]>
+    {
+        ["EVENT.ENDLESS_CONVEYOR"] = ["ENDLESS_CONVEYOR.pages.ALL.options.LOCKED"],
+        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] = ["GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT_LOCKED"],
+        ["EVENT.LUMINOUS_CHOIR"] = ["LUMINOUS_CHOIR.pages.INITIAL.options.OFFER_TRIBUTE_LOCKED"],
+        ["EVENT.RANWID_THE_ELDER"] =
+        [
+            "RANWID_THE_ELDER.pages.INITIAL.options.POTION_LOCKED",
+            "RANWID_THE_ELDER.pages.INITIAL.options.RELIC_LOCKED",
+        ],
+        ["EVENT.SELF_HELP_BOOK"] =
+        [
+            "SELF_HELP_BOOK.pages.INITIAL.options.READ_ENTIRE_BOOK_LOCKED",
+            "SELF_HELP_BOOK.pages.INITIAL.options.READ_PASSAGE_LOCKED",
+            "SELF_HELP_BOOK.pages.INITIAL.options.READ_THE_BACK_LOCKED",
+        ],
+        ["EVENT.STONE_OF_ALL_TIME"] =
+        [
+            "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT_LOCKED",
+            "STONE_OF_ALL_TIME.pages.INITIAL.options.PUSH_LOCKED",
+        ],
+        ["EVENT.SYMBIOTE"] = ["SYMBIOTE.pages.INITIAL.options.APPROACH_LOCKED"],
+        ["EVENT.TEA_MASTER"] =
+        [
+            "TEA_MASTER.pages.INITIAL.options.BONE_TEA_LOCKED",
+            "TEA_MASTER.pages.INITIAL.options.EMBER_TEA_LOCKED",
+        ],
+        ["EVENT.WATERLOGGED_SCRIPTORIUM"] =
+        [
+            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE_LOCKED",
+            "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.TENTACLE_QUILL_LOCKED",
+        ],
+        ["EVENT.WELCOME_TO_WONGOS"] =
+        [
+            "WELCOME_TO_WONGOS.pages.INITIAL.options.BARGAIN_BIN_LOCKED",
+            "WELCOME_TO_WONGOS.pages.INITIAL.options.FEATURED_ITEM_LOCKED",
+            "WELCOME_TO_WONGOS.pages.INITIAL.options.MYSTERY_BOX_LOCKED",
+        ],
+        ["EVENT.WOOD_CARVINGS"] = ["WOOD_CARVINGS.pages.INITIAL.options.SNAKE_LOCKED"],
+        ["EVENT.ZEN_WEAVER"] = ["ZEN_WEAVER.pages.INITIAL.options.LOCKED"],
+    };
+
+    /// <summary>The options of every event no walk reaches, by id under the event,
+    /// excused for the event's own reason in <see cref="EventsOffTheRoute"/>; the
+    /// locked forms are above and the Doll Room's title-keyed dolls below.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsOffTheRoute = new Dictionary<string, string[]>
+    {
+        ["EVENT.CRYSTAL_SPHERE"] =
+        [
+            "CRYSTAL_SPHERE.pages.INITIAL.options.PAYMENT_PLAN",
+            "CRYSTAL_SPHERE.pages.INITIAL.options.UNCOVER_FUTURE",
+        ],
+        ["EVENT.DOLL_ROOM"] =
+        [
+            "DOLL_ROOM.pages.INITIAL.options.EXAMINE",
+            "DOLL_ROOM.pages.INITIAL.options.RANDOM",
+            "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME",
+        ],
+        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
+        [
+            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.ACCEPT",
+            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT",
+        ],
+        ["EVENT.POTION_COURIER"] =
+        [
+            "POTION_COURIER.pages.INITIAL.options.GRAB_POTIONS",
+            "POTION_COURIER.pages.INITIAL.options.RANSACK",
+        ],
+        ["EVENT.RANWID_THE_ELDER"] =
+        [
+            "RANWID_THE_ELDER.pages.INITIAL.options.GOLD",
+            "RANWID_THE_ELDER.pages.INITIAL.options.POTION",
+            "RANWID_THE_ELDER.pages.INITIAL.options.RELIC",
+        ],
+        ["EVENT.RELIC_TRADER"] =
+        [
+            "PROCEED",
+            "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
+            "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
+            "RELIC_TRADER.pages.INITIAL.options.TOP",
+        ],
+        ["EVENT.STONE_OF_ALL_TIME"] =
+        [
+            "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT",
+            "STONE_OF_ALL_TIME.pages.INITIAL.options.PUSH",
+        ],
+        ["EVENT.SYMBIOTE"] =
+        [
+            "SYMBIOTE.pages.INITIAL.options.APPROACH",
+            "SYMBIOTE.pages.INITIAL.options.KILL_WITH_FIRE",
         ],
         ["EVENT.WAR_HISTORIAN_REPY"] =
         [
@@ -526,42 +684,15 @@ public static class DecisionExcusals
         ["EVENT.WELCOME_TO_WONGOS"] =
         [
             "WELCOME_TO_WONGOS.pages.INITIAL.options.BARGAIN_BIN",
-            "WELCOME_TO_WONGOS.pages.INITIAL.options.BARGAIN_BIN_LOCKED",
             "WELCOME_TO_WONGOS.pages.INITIAL.options.FEATURED_ITEM",
-            "WELCOME_TO_WONGOS.pages.INITIAL.options.FEATURED_ITEM_LOCKED",
             "WELCOME_TO_WONGOS.pages.INITIAL.options.LEAVE",
             "WELCOME_TO_WONGOS.pages.INITIAL.options.MYSTERY_BOX",
-            "WELCOME_TO_WONGOS.pages.INITIAL.options.MYSTERY_BOX_LOCKED",
-        ],
-        ["EVENT.WELLSPRING"] =
-        [
-            "WELLSPRING.pages.INITIAL.options.BATHE",
-            "WELLSPRING.pages.INITIAL.options.BOTTLE",
-        ],
-        ["EVENT.WHISPERING_HOLLOW"] =
-        [
-            "WHISPERING_HOLLOW.pages.INITIAL.options.GOLD",
-            "WHISPERING_HOLLOW.pages.INITIAL.options.HUG",
-        ],
-        ["EVENT.WOOD_CARVINGS"] =
-        [
-            "WOOD_CARVINGS.pages.INITIAL.options.BIRD",
-            "WOOD_CARVINGS.pages.INITIAL.options.SNAKE",
-            "WOOD_CARVINGS.pages.INITIAL.options.SNAKE_LOCKED",
-            "WOOD_CARVINGS.pages.INITIAL.options.TORUS",
-        ],
-        ["EVENT.ZEN_WEAVER"] =
-        [
-            "ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE",
-            "ZEN_WEAVER.pages.INITIAL.options.BREATHING_TECHNIQUES",
-            "ZEN_WEAVER.pages.INITIAL.options.EMOTIONAL_AWARENESS",
-            "ZEN_WEAVER.pages.INITIAL.options.LOCKED",
         ],
     };
 
-    /// <summary>The options of the one ancient no act opens on, by id: Darv is rolled
-    /// where a question mark rolls it, in every act, so its options wait on the event
-    /// hunt with the events.</summary>
+    /// <summary>The options of the one ancient no act opens on alone, by id: Darv is
+    /// dealt to an act after the first as the run is generated and rolled as that act's
+    /// opening ancient, so its options wait on a walk through a first act.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfAncientsOffTheRoute = new Dictionary<string, string[]>
     {
         ["EVENT.DARV"] =
@@ -678,25 +809,12 @@ public static class DecisionExcusals
     /// </summary>
     private static readonly string[] SeamsOffTheRoute =
     [
-        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ MonsterModel.GenerateMoveStateMachine",
-        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.AfterShuffle",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.BeforeHandDraw",
-        "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ CardModel.OnPlay",
-        "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter) @ CardModel.OnPlay",
-        "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars",
-        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse",
-        "card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ ModifierModel.GenerateNeowOption",
         "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions",
         "reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards",
@@ -706,17 +824,11 @@ public static class DecisionExcusals
         "reward-kind:gold @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.BeforeDeath",
         "reward-kind:gold @ AbstractModel.TryModifyRewardsLate",
-        "reward-kind:potion @ EventModel.CalculateVars",
-        "reward-kind:potion @ EventModel.GenerateInitialOptions",
         "reward-kind:potion @ EventModel.Resume",
         "reward-kind:relic @ ?",
         "reward-kind:relic @ AbstractModel.TryModifyRewardsLate",
         "reward-kind:relic @ EventModel.GenerateInitialOptions",
         "reward-kind:relic @ EventModel.Resume",
-        "reward-kind:special_card @ AbstractModel.BeforeDeath",
-        "reward-kind:special_card @ EventModel.GenerateInitialOptions",
-        "rewards:OfferCustom @ EventModel.CalculateVars",
-        "rewards:OfferCustom @ EventModel.Resume",
         "shop-kind:relic @ EventModel.BeforeEventStarted",
     ];
 
@@ -770,6 +882,41 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ RelicModel.AfterObtained",
         "card-reward-alternative @ AbstractModel.TryModifyCardRewardAlternatives",
         "event-option @ AncientEventModel.AllPossibleOptions",
+    ];
+
+    /// <summary>
+    /// The seams a <c>GeneratedCoverageTests</c> event row reaches - by id, for the
+    /// reason above - on a first act: the prompts the events' own pages open (a
+    /// removal, an upgrade, a transformation, an enchantment, the deck grid), the
+    /// potion and custom rewards their pages offer, and the prompts the cards and
+    /// potions met on the way to the mark open in its fights, reached by
+    /// co-occurrence like every seam.
+    /// </summary>
+    private static readonly string[] SeamsReachedByEventRows =
+    [
+        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay",
+        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ PotionModel.OnUse",
+        "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ CardModel.OnPlay",
+        "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ PotionModel.OnUse",
+        "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars",
+        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ EventModel.GenerateInitialOptions",
+        "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse",
+        "card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay",
+        "reward-kind:potion @ EventModel.CalculateVars",
+        "reward-kind:potion @ EventModel.GenerateInitialOptions",
+        "rewards:OfferCustom @ EventModel.CalculateVars",
+    ];
+
+    /// <summary>The same, on a run of the Hive or Glory alone: the custom rewards
+    /// the Battleworn Dummy offers as its event resumes after its fight.</summary>
+    private static readonly string[] SeamsReachedByActFirstEventRows =
+    [
+        "rewards:OfferCustom @ EventModel.Resume",
     ];
 
     /// <summary>The rest options an act's ancient's relic adds, by option, relic and
@@ -841,17 +988,19 @@ public static class DecisionExcusals
 
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "relic")] = Generated;
 
-        // A card removal is put on the loot screen by Forbidden Grimoire's power, an
-        // ancient card only Dusty Tome deals, which is Darv's; a special card by a thief
-        // that dies holding a stolen card or by the Lantern Key event. The route's one
-        // thief fight ends without a theft, and Darv and the Lantern Key are both a
-        // question mark's, so both wait on the event hunt
+        // A card removal is put on the loot screen by Forbidden Grimoire's power, a
+        // Necrobinder ancient card that only Dusty Tome deals, which is Darv's; a
+        // special card by a thief that dies holding a stolen card or by the Lantern Key
+        // event, and a row claims each
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = NotOnTheRoute(
-            "put on the loot screen by Forbidden Grimoire's power, an ancient card only Dusty Tome deals, and " +
-            $"{DarvOffTheRoute}");
-        excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = NotOnTheRoute(
-            "put on the loot screen by a thief that dies holding a stolen card or by the Lantern Key event; the " +
-            "route's one thief fight ends without a theft, and the Lantern Key is a question mark's in the Hive");
+            "put on the loot screen by Forbidden Grimoire's power, an ancient card of the Necrobinder's pool that only " +
+            "Dusty Tome deals, on a Necrobinder run, and every generated walk is Ironclad's; a character row of the fifth " +
+            $"stage, and {DarvOffTheRoute}");
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = GeneratedByTheSpecialCardRows;
+        foreach (var timing in new[] { "AbstractModel.BeforeDeath", "EventModel.GenerateInitialOptions" })
+        {
+            excusals[DecisionPoint.Seam("reward-kind:special_card", timing)] = GeneratedByTheSpecialCardRows;
+        }
 
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
 
@@ -902,69 +1051,23 @@ public static class DecisionExcusals
             "never records");
 
         // Every event by id rather than "every event not reached", so an event a game
-        // update adds is uncovered until somebody excuses it here. An event is reached
-        // only where the map rolls it, the route refuses question marks, and a row per
-        // event would need a seed hunted per event
-        foreach (var eventId in new[]
-                 {
-                     "EVENT.ABYSSAL_BATHS",
-                     "EVENT.AMALGAMATOR",
-                     "EVENT.AROMA_OF_CHAOS",
-                     "EVENT.BATTLEWORN_DUMMY",
-                     "EVENT.BUGSLAYER",
-                     "EVENT.BYRDONIS_NEST",
-                     "EVENT.COLORFUL_PHILOSOPHERS",
-                     "EVENT.COLOSSAL_FLOWER",
-                     "EVENT.CRYSTAL_SPHERE",
-                     "EVENT.DENSE_VEGETATION",
-                     "EVENT.DOLL_ROOM",
-                     "EVENT.DOORS_OF_LIGHT_AND_DARK",
-                     "EVENT.DROWNING_BEACON",
-                     "EVENT.ENDLESS_CONVEYOR",
-                     "EVENT.FAKE_MERCHANT",
-                     "EVENT.FIELD_OF_MAN_SIZED_HOLES",
-                     "EVENT.GRAVE_OF_THE_FORGOTTEN",
-                     "EVENT.HUNGRY_FOR_MUSHROOMS",
-                     "EVENT.INFESTED_AUTOMATON",
-                     "EVENT.JUNGLE_MAZE_ADVENTURE",
-                     "EVENT.LOST_WISP",
-                     "EVENT.LUMINOUS_CHOIR",
-                     "EVENT.MORPHIC_GROVE",
-                     "EVENT.POTION_COURIER",
-                     "EVENT.PUNCH_OFF",
-                     "EVENT.RANWID_THE_ELDER",
-                     "EVENT.REFLECTIONS",
-                     "EVENT.RELIC_TRADER",
-                     "EVENT.ROOM_FULL_OF_CHEESE",
-                     "EVENT.ROUND_TEA_PARTY",
-                     "EVENT.SAPPHIRE_SEED",
-                     "EVENT.SELF_HELP_BOOK",
-                     "EVENT.SLIPPERY_BRIDGE",
-                     "EVENT.SPIRALING_WHIRLPOOL",
-                     "EVENT.SPIRIT_GRAFTER",
-                     "EVENT.STONE_OF_ALL_TIME",
-                     "EVENT.SUNKEN_STATUE",
-                     "EVENT.SUNKEN_TREASURY",
-                     "EVENT.SYMBIOTE",
-                     "EVENT.TABLET_OF_TRUTH",
-                     "EVENT.TEA_MASTER",
-                     "EVENT.THE_FUTURE_OF_POTIONS",
-                     "EVENT.THE_LANTERN_KEY",
-                     "EVENT.THE_LEGENDS_WERE_TRUE",
-                     "EVENT.THIS_OR_THAT",
-                     "EVENT.TINKER_TIME",
-                     "EVENT.TRASH_HEAP",
-                     "EVENT.TRIAL",
-                     "EVENT.UNREST_SITE",
-                     "EVENT.WAR_HISTORIAN_REPY",
-                     "EVENT.WELCOME_TO_WONGOS",
-                     "EVENT.WELLSPRING",
-                     "EVENT.WHISPERING_HOLLOW",
-                     "EVENT.WOOD_CARVINGS",
-                     "EVENT.ZEN_WEAVER",
-                 })
+        // update adds is uncovered until somebody excuses it here: the ones an event
+        // row opens, by the acts list it opens them on, and the ones no walk reaches,
+        // each by what stands in the way. Brain Leech and the Scriptorium are the
+        // committed corpus's own and are not excused
+        foreach (var eventId in OptionsTakenByEventRowsInTheFirstAct.Keys.Where(id => !EventsTheCorpusReaches.Contains(id)))
         {
-            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = NotOnTheRoute(EventOffTheRoute);
+            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = GeneratedByAnEventRow;
+        }
+
+        foreach (var eventId in OptionsTakenByEventRowsOnAnActAlone.Keys)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = GeneratedByAnActFirstEventRow;
+        }
+
+        foreach (var (eventId, reason) in EventsOffTheRoute)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = NotOnTheRoute(reason);
         }
 
         excusals[new DecisionPoint(DecisionKinds.Event, "EVENT.THE_ARCHITECT")] = ReachedByTheWin;
@@ -1027,13 +1130,42 @@ public static class DecisionExcusals
             "through the real recorder and replayed to parity on every merge; the recording is generated rather " +
             "than committed");
 
+        foreach (var (eventId, keys) in OptionsTakenByEventRowsInTheFirstAct)
+        {
+            foreach (var key in keys)
+            {
+                excusals[DecisionPoint.EventOption(eventId, key)] = GeneratedByAnEventRow;
+            }
+        }
+
+        foreach (var (eventId, keys) in OptionsTakenByEventRowsOnAnActAlone)
+        {
+            foreach (var key in keys)
+            {
+                excusals[DecisionPoint.EventOption(eventId, key)] = GeneratedByAnActFirstEventRow;
+            }
+        }
+
+        foreach (var (eventId, keys) in NotChoosableOptions)
+        {
+            foreach (var key in keys)
+            {
+                excusals[DecisionPoint.EventOption(eventId, key)] = NotChoosable;
+            }
+        }
+
         foreach (var (eventId, keys) in OptionsOfEventsOffTheRoute)
         {
             foreach (var key in keys)
             {
-                excusals[DecisionPoint.EventOption(eventId, key)] = NotOnTheRoute(
-                    $"an option of {eventId}, and {EventOffTheRoute}");
+                excusals[DecisionPoint.EventOption(eventId, key)] = NotOnTheRoute($"an option of {eventId}, {EventsOffTheRoute[eventId]}");
             }
+        }
+
+        foreach (var (identity, reason) in OptionsOffTheRoute)
+        {
+            var space = identity.IndexOf(' ', StringComparison.Ordinal);
+            excusals[DecisionPoint.EventOption(identity[..space], identity[(space + 1)..])] = NotOnTheRoute(reason);
         }
 
         // The three dolls are keyed by their relic's title with no relic set, so a
@@ -1086,6 +1218,16 @@ public static class DecisionExcusals
         foreach (var seam in SeamsReachedByAncientRows)
         {
             excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = GeneratedByAnActFirstRow;
+        }
+
+        foreach (var seam in SeamsReachedByEventRows)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = GeneratedByAnEventRow;
+        }
+
+        foreach (var seam in SeamsReachedByActFirstEventRows)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = GeneratedByAnActFirstEventRow;
         }
 
         return excusals;

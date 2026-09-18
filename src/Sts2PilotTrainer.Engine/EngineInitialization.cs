@@ -245,6 +245,15 @@ internal static class HeadlessPatches
         // ScreenStandIns and docs/headless-fidelity.md.
         ScreenStandIns.Install(harmony, warnings);
 
+        // Five events reach the scene tree's singletons without asking whether they
+        // exist, and their options fault headlessly on the null. See
+        // PresentationStandIns and docs/headless-fidelity.md.
+        PresentationStandIns.Install(harmony, warnings);
+
+        // The task an event option's work runs as, read on its way past so the driver
+        // can wait for it and refuse a fault in it. See EventOptionWork.
+        EventOptionWork.Install(harmony, warnings);
+
         // Cmd.Wait(float) sleeps for an animation. With no frame loop the wait never
         // completes and the action executor stalls, so it returns immediately. It
         // gates presentation timing only; the game documents its animation-timing

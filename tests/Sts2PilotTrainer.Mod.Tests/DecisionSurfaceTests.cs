@@ -273,11 +273,12 @@ public sealed class DecisionSurfaceTests
     /// them, the mend from the game's own player-count branch and the undo from the
     /// driver's list of what the client offers only with another player, the reroll
     /// from the after-action its construction passes and the dolls from the title
-    /// their options are keyed by, the Architect and its options
-    /// and the seams it alone produces from the win, a seam from the screens its
-    /// answers are all on - and derives none for a point content produces. A
-    /// placeholder is admissible only where nothing is derived; a generated row is
-    /// admissible everywhere; retail-only timing is derived for nothing on this build.
+    /// their options are keyed by, a locked option from the null it is constructed
+    /// with, the Architect and its options and the seams it alone produces from the
+    /// win, a seam from the screens its answers are all on - and derives none for a
+    /// point content produces. A placeholder is admissible only where nothing is
+    /// derived; a generated row is admissible everywhere; retail-only timing is
+    /// derived for nothing on this build.
     /// </summary>
     [GameFact]
     public void TheMapDerivesAClassWhereItReadsOneAndAdmitsAPlaceholderOnlyElsewhere()
@@ -311,6 +312,21 @@ public sealed class DecisionSurfaceTests
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.RELIC_TRADER PROCEED"));
         Assert.Equal([ExcusalClass.NotReplayable], Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM relics.MR_STRUGGLES.title"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM DOLL_ROOM.pages.INITIAL.options.EXAMINE"));
+        Assert.Equal([ExcusalClass.NotChoosable], Derived(DecisionKinds.EventOption, "EVENT.WATERLOGGED_SCRIPTORIUM WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE_LOCKED"));
+        Assert.Equal([ExcusalClass.NotChoosable], Derived(DecisionKinds.EventOption, "EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.LOCKED"));
+        Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.WATERLOGGED_SCRIPTORIUM WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE"));
+        Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"));
+
+        // Every option the build offers locked is named so - twenty on this build,
+        // every one the locked form of an option the player cannot afford - and
+        // nothing else is: the reading is the null the option is constructed with
+        var locked = DecisionSurface.EventOptionKeys()
+            .Where(option => DecisionSurface.NotChoosableOptions(option.EventId).Contains(option.Key, StringComparer.Ordinal))
+            .Select(option => option.Key)
+            .ToList();
+        Assert.Equal(20, locked.Count);
+        Assert.All(locked, key => Assert.EndsWith("LOCKED", key, StringComparison.Ordinal));
+        Assert.Empty(DecisionSurface.NotChoosableOptions("EVENT.PAEL"));
         Assert.Equal(["relics.DAUGHTER_OF_THE_WIND.title", "relics.MR_STRUGGLES.title", "relics.BING_BONG.title"], DecisionSurface.TitleKeyedOptions("EVENT.DOLL_ROOM"));
         Assert.Empty(DecisionSurface.TitleKeyedOptions("EVENT.BRAIN_LEECH"));
         Assert.Equal(
