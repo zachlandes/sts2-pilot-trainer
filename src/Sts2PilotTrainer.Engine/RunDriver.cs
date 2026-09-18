@@ -384,13 +384,18 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>
     /// Does what the client does between the last decision and this one that is not
     /// itself a decision, so that a reading taken just before <see cref="Apply"/> is
-    /// the state the decision was made in. Today that is one thing: a decision about
+    /// the state the decision was made in. Today that is two things: a decision about
     /// what a treasure chest holds is made with the chest open, and the client opens
-    /// it on a click after the arrival. <see cref="Apply"/> opens it too, so a caller
-    /// that takes no reading before an action need not call this.
+    /// it on a click after the arrival; and the first decision after an event's own
+    /// fight is made back in the event, which the client resumes on the proceed off
+    /// the loot screen (<see cref="ResumeTheEventTheFightWasFoughtIn"/>).
+    /// <see cref="Apply"/> does both too, so a caller that takes no reading before an
+    /// action need not call this.
     /// </summary>
     public void Approach(ActionRecord action)
     {
+        ResumeTheEventTheFightWasFoughtIn();
+
         if (action.Verb is ActionVerb.TakeChestRelic or ActionVerb.SkipChestRelic
             or ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.TakeCardRewardAlternative
             or ActionVerb.SkipRewards)
@@ -960,15 +965,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         {
             Pump.Drain();
             _lastOptionWork = EventOptionWork.Last;
+            _lastOptionSeq = action.Seq;
             WaitForTheOptionsWork();
-            if (_lastOptionWork is not { IsFaulted: true } work) return;
-
-            var fault = work.Exception?.GetBaseException();
-            var where = fault?.StackTrace?.Split('\n').Take(3).Select(frame => frame.Trim()) ?? [];
-            throw new EngineException(
-                $"Action {action.Seq} chose an event option and the option's own work faulted: " +
-                $"{fault?.GetType().Name}: {fault?.Message} ({string.Join(" <- ", where)}). The game logs the fault " +
-                "and leaves the event where it was; a replay from there would not be the run the recording describes.");
         }
         finally
         {
@@ -976,37 +974,57 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         }
     }
 
+    /// <summary>The action that chose the option whose work <see cref="_lastOptionWork"/> is.</summary>
+    private int _lastOptionSeq;
+
     /// <summary>
-    /// Waits for the last event option's work unless it is waiting on the player:
-    /// asked as the option settles, and again where the next thing read is the page
-    /// the work produces once the player has answered what it offered.
+    /// Waits for the last event option's work unless it is waiting on the player, and
+    /// refuses a fault in it by name: asked as the option settles, and again where the
+    /// next thing read is the page the work produces once the player has answered
+    /// what it offered.
     ///
     /// Work that has put a rewards set on offer or the Crystal Sphere's screen up is
-    /// waiting for the player's next decision and is left alone; a fault is the
-    /// settle's to refuse, so the wait itself swallows one.
+    /// waiting for the player's next decision and is left alone. The fault check is
+    /// here rather than in the settle because work handed to the player can fault
+    /// after the hand-over, once the player has answered; read as a stale page, that
+    /// fault would be blamed on the recording at its next decision.
     /// </summary>
     internal void WaitForTheOptionsWork()
     {
-        if (_insideRunningGame || _lastOptionWork is not { IsCompleted: false } work) return;
-        if (_openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)) return;
-        if (ScreenStandIns.OpenMinigame is not null) return;
+        if (_insideRunningGame || _lastOptionWork is not { } work) return;
 
-        try
+        if (!work.IsCompleted)
         {
-            if (!work.Wait(Pump.Budget))
+            if (_openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)) return;
+            if (ScreenStandIns.OpenMinigame is not null) return;
+
+            try
             {
-                throw new EngineException(
-                    "An event option's own work did not finish within the pump's budget, and it is waiting on nothing " +
-                    "the player answers. The headless host is missing something the game waits on there; this is a host " +
-                    "defect, not a manifest defect.");
+                if (!work.Wait(Pump.Budget))
+                {
+                    throw new EngineException(
+                        "An event option's own work did not finish within the pump's budget, and it is waiting on nothing " +
+                        "the player answers. The headless host is missing something the game waits on there; this is a host " +
+                        "defect, not a manifest defect.");
+                }
             }
-        }
-        catch (AggregateException)
-        {
-            // The fault is refused by the settle, with the engine's own words
+            catch (AggregateException)
+            {
+                // Refused below, with the engine's own words
+            }
+
+            Pump.Drain();
         }
 
-        Pump.Drain();
+        if (!work.IsFaulted) return;
+        _lastOptionWork = null;
+
+        var fault = work.Exception?.GetBaseException();
+        var where = fault?.StackTrace?.Split('\n').Take(3).Select(frame => frame.Trim()) ?? [];
+        throw new EngineException(
+            $"Action {_lastOptionSeq} chose an event option and the option's own work faulted: " +
+            $"{fault?.GetType().Name}: {fault?.Message} ({string.Join(" <- ", where)}). The game logs the fault " +
+            "and leaves the event where it was; a replay from there would not be the run the recording describes.");
     }
 
     private static string DescribeOptions(IReadOnlyList<EventOption> options) =>

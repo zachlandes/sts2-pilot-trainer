@@ -1,4 +1,7 @@
+using System.Globalization;
 using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Rooms;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 
@@ -16,10 +19,14 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// player's, before the move that opened the shop. The fourth was found by the event
 /// rows' walk into a second act: every act after the first opens on the map with
 /// nothing visited, and the driver refused the move to the act's starting point as
-/// unreachable from a node the run was not standing on. Each row is a recording that
-/// the driver before its change refused - as <c>Map node ... is not reachable</c>, as
-/// <c>2 of them are on offer</c>, as <c>buys from a merchant, but this floor is a
-/// Monster room</c>, as <c>The run has no current map node</c> - and that now replays
+/// unreachable from a node the run was not standing on. The fifth was found in
+/// review of those rows: the replay's before-reading of the first decision after a
+/// fight fought inside an event was taken in the finished combat room, one resume
+/// short of where the recorder reads it. Each row is a recording that the driver
+/// before its change refused - as <c>Map node ... is not reachable</c>, as <c>2 of
+/// them are on offer</c>, as <c>buys from a merchant, but this floor is a Monster
+/// room</c>, as <c>The run has no current map node</c>, as <c>combat.outcome: none
+/// -> victory</c> at parity - and that now replays
 /// decision for decision through the same oracle <c>parity</c> uses, on a seed chosen
 /// because its opening event, its relic bag or its survival puts the producer on the
 /// walk's route. The rows live apart from <c>GeneratedCoverageTests</c> because they
@@ -170,6 +177,56 @@ public sealed class ReplayRefusalRegressionTests
         var ancient = recorded.Manifest.Actions.First(action => action.Seq > opening.Seq);
         Assert.Equal(ActionVerb.ChooseEventOption, ancient.Verb);
         Assert.Contains(ancient.Args["event_id"], DecisionSurface.ActAncients().Select(pair => pair.AncientId).Append("EVENT.DARV"));
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>
+    /// The first decision after a fight fought inside an event is made back in the
+    /// event: the retail proceed off the fight's loot screen resumes it before the
+    /// player can decide anything, and the recorder reads that decision there, with
+    /// no fight current. The replay samples a decision's before-reading between
+    /// <see cref="RunDriver.Approach"/> and <see cref="RunDriver.Apply"/>, and a
+    /// resume made in <c>Apply</c> alone left that reading in the finished combat
+    /// room, where <c>combat.outcome</c> reads <c>victory</c> against the recorder's
+    /// <c>none</c>. The event rows stop at the end of the event's floor, so the walk
+    /// is carried one decision further here, to the move that leaves the event.
+    /// </summary>
+    [GameFact]
+    public void TheFirstDecisionAfterAFightInsideAnEventReadsInTheResumedEvent()
+    {
+        using var harness = new RecordedActWalk();
+        var row = GeneratedCoverageTests.EventRowFor("ACT.GLORY", "EVENT.BATTLEWORN_DUMMY", "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_1");
+
+        var recorded = harness.Walk(
+            GeneratedCoverageTests.PolicyFor(row), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.GLORY"],
+            then: (session, driver, settle) =>
+            {
+                Assert.IsType<EventRoom>(session.RunState.CurrentRoom);
+                var map = session.RunState.Map!;
+                var coord = session.RunState.CurrentMapCoord!.Value;
+                var next = MapTravelRule.TravelableFrom(session.RunState, map, map.GetPoint(coord.col, coord.row))[0];
+                driver.Apply(new ActionRecord
+                {
+                    Seq = RunRecorder.Active!.Capture.Actions.Count,
+                    Verb = ActionVerb.MapMove,
+                    Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["act"] = session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture),
+                        ["row"] = next.coord.row.ToString(CultureInfo.InvariantCulture),
+                        ["column"] = next.coord.col.ToString(CultureInfo.InvariantCulture),
+                    },
+                    Source = FactSource.Declared,
+                });
+                settle();
+            });
+        Assert.True(recorded.AskMet, "the walk finished without choosing the dummy's first setting");
+        RecordedActWalk.AssertWhole(recorded);
+
+        var lastLoot = recorded.Manifest.Actions.Last(action => action.Verb is ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.SkipRewards);
+        var leaving = recorded.Manifest.Actions.Last();
+        Assert.Equal(ActionVerb.MapMove, leaving.Verb);
+        Assert.True(leaving.Seq > lastLoot.Seq, "the move that leaves the event was not recorded after the fight's loot");
 
         RecordedActWalk.ReplayToParity(recorded);
     }
