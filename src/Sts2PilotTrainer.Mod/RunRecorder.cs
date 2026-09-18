@@ -3445,7 +3445,12 @@ internal sealed class RunRecorder : IDisposable
     /// move that opened the shop - the move is written once the engine has settled at
     /// the other end - and a replay refused the first of them in the room the move
     /// left; unrecorded, the replay's own move reproduces them, since the engine and
-    /// not the player makes them.
+    /// not the player makes them. That is proven headlessly only: in the retail client
+    /// the relic's purchases run on scene-tree timers, unawaited from
+    /// <c>AfterRoomEntered</c>, so the move can settle and be written before they and
+    /// the relic's forced removal prompt have happened, and the move's after-reading
+    /// and the prompt's place in the journal are a known limitation owed to the
+    /// retail-timing follow-up.
     /// </summary>
     [HarmonyPatch(typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper))]
     internal static class ShopPurchased

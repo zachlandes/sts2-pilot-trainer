@@ -60,10 +60,6 @@ public static partial class SyntheticFixtureGenerator
     /// <summary>The choices the walk under way consults; the fixture's are the defaults.</summary>
     private static WalkPolicy _policy = WalkPolicy.Default;
 
-    /// <summary>The loot screen's own decline, the first alternative of every card
-    /// reward that can be skipped, by the id the engine gives it.</summary>
-    private const string SkipAlternative = "Skip";
-
     /// <summary>
     /// Whether the route under way passes its required types in the order the policy
     /// lists them and may end at the node that completes them, rather than passing
@@ -617,8 +613,7 @@ public static partial class SyntheticFixtureGenerator
         // for the TakeCard that follows, which is what a player who changed their mind
         // does; a relic's own alternative - Pael's Wing's sacrifice - ends the reward
         // and the screen offers no card after it
-        var wanted = _policy.CardRewardAlternative ?? (_policy.DeclineTheFirstCardReward ? SkipAlternative : null);
-        if (wanted is not null && !_declinedACardReward && driver.OpenCardReward is { } reward)
+        if (_policy.CardRewardAlternative is { } wanted && !_declinedACardReward && driver.OpenCardReward is { } reward)
         {
             var alternatives = CardRewardAlternative.Generate(reward);
             var offered = alternatives.ToList().FindIndex(alternative => alternative.OptionId == wanted);

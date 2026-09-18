@@ -56,13 +56,23 @@ public static class DecisionExcusals
     /// rest site is fights away that the journey's mechanical line does not survive
     /// at starter strength - none of 400 seeds hunted per relic on v0.111.0 reached
     /// one - so the row retires the relic's option and its other seams and falls
-    /// short of this; <c>GeneratedCoverageTests</c> holds the excusal to that sentence.</summary>
-    private static Excusal BeyondTheLinesSurvival(string addedBy) => new(
-        ExcusalClass.NotOnTheRoute,
-        $"no committed recording reaches it; added by {addedBy}, an ancient's relic the act-first ancient row " +
-        "obtains at the act's first room, and the journey's mechanical line does not survive from that ancient to " +
-        "a rest site at starter strength (none of 400 hunted seeds on v0.111.0); retired by a recording from the " +
-        "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)");
+    /// short of this; <c>GeneratedCoverageTests</c> holds each such seam to the
+    /// excusal for the relic that adds it, so the sentence is an owned one.</summary>
+    internal static Excusal BeyondTheLinesSurvival(string relicId)
+    {
+        var (_, _, addedBy) = RestOptionsBeyondTheLinesSurvival.SingleOrDefault(row => row.Relic == relicId);
+        if (addedBy is null)
+        {
+            throw new ArgumentException($"{relicId} adds no rest option the ancient rows fall short of.", nameof(relicId));
+        }
+
+        return new Excusal(
+            ExcusalClass.NotOnTheRoute,
+            $"no committed recording reaches it; added by {addedBy}, an ancient's relic the act-first ancient row " +
+            "obtains at the act's first room, and the journey's mechanical line does not survive from that ancient to " +
+            "a rest site at starter strength (none of 400 hunted seeds on v0.111.0); retired by a recording from the " +
+            "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)");
+    }
 
     /// <summary>A point a <c>GeneratedCoverageTests</c> ancient row reaches on a run
     /// whose acts list is act 2 or act 3 alone: a generated-only list no client run
@@ -762,14 +772,14 @@ public static class DecisionExcusals
         "event-option @ AncientEventModel.AllPossibleOptions",
     ];
 
-    /// <summary>The rest options an act's ancient's relic adds, by option and relic:
-    /// the one seam class the ancient rows fall short of, for the reason
-    /// <see cref="BeyondTheLinesSurvival"/> gives.</summary>
-    private static readonly (string Option, string AddedBy)[] RestOptionsBeyondTheLinesSurvival =
+    /// <summary>The rest options an act's ancient's relic adds, by option, relic and
+    /// the relic's title: the one seam class the ancient rows fall short of, for the
+    /// reason <see cref="BeyondTheLinesSurvival"/> gives.</summary>
+    private static readonly (string Option, string Relic, string AddedBy)[] RestOptionsBeyondTheLinesSurvival =
     [
-        ("CLONE", "Pael's Growth"),
-        ("COOK", "Meat Cleaver"),
-        ("KINDLE", "Pumpkin Candle"),
+        ("CLONE", "RELIC.PAELS_GROWTH", "Pael's Growth"),
+        ("COOK", "RELIC.MEAT_CLEAVER", "Meat Cleaver"),
+        ("KINDLE", "RELIC.PUMPKIN_CANDLE", "Pumpkin Candle"),
     ];
 
     /// <summary>The seams answered only on the screens the headless host stands in for
@@ -874,11 +884,11 @@ public static class DecisionExcusals
             excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = Generated;
         }
 
-        foreach (var (option, addedBy) in RestOptionsBeyondTheLinesSurvival)
+        foreach (var (option, relic, _) in RestOptionsBeyondTheLinesSurvival)
         {
-            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = BeyondTheLinesSurvival(addedBy);
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = BeyondTheLinesSurvival(relic);
             excusals[new DecisionPoint(DecisionKinds.Seam, $"rest-option:{option} @ AbstractModel.TryModifyRestSiteOptions")] =
-                BeyondTheLinesSurvival(addedBy);
+                BeyondTheLinesSurvival(relic);
         }
 
         excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(

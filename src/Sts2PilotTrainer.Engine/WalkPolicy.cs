@@ -29,11 +29,6 @@ public sealed record WalkPolicy
     /// <summary>Today's rules, exactly.</summary>
     public static WalkPolicy Default { get; } = new();
 
-    /// <summary>Decline the first card reward on its own screen - the loot screen's
-    /// Skip, answered past the cards - before taking a card from it; the reward stays
-    /// on the screen and the walk then takes the card it would have taken.</summary>
-    public bool DeclineTheFirstCardReward { get; init; }
-
     /// <summary>The rest option to take wherever a rest site offers it, by its own
     /// id, in place of the heal-when-hurt-else-smith rule; a site that does not offer
     /// it takes today's rule.</summary>
@@ -93,11 +88,11 @@ public sealed record WalkPolicy
     public bool ShopWhileHoldingIt { get; init; }
 
     /// <summary>Take the card-reward alternative with this option id on the first card
-    /// reward that offers it, by the alternative's own id - a relic's sacrifice - and
-    /// count that as the ask met; an alternative that keeps the reward's selection open
-    /// is followed by the card the walk would have taken, as the loot screen's Skip is.</summary>
+    /// reward that offers it, by the alternative's own id - the loot screen's Skip,
+    /// answered past the cards, or a relic's sacrifice - and count that as the ask met;
+    /// an alternative that keeps the reward's selection open, as Skip does, is followed
+    /// by the card the walk would have taken.</summary>
     public string? CardRewardAlternative { get; init; }
-
 
     /// <summary>At the first map move where the game's own travel rule offers a node
     /// the node being left does not lead to - the whole next row under Winged Boots
@@ -130,9 +125,9 @@ public sealed record WalkPolicy
     /// <summary>Whether the policy asks for a decision past obtaining its relic, which
     /// is then the ask.</summary>
     public bool AsksPastTheRelic =>
-        DeclineTheFirstCardReward || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
+        CardRewardAlternative is not null || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
         DiscardAPotionOnTheMap || ClaimTheRelicReward || SkipTheChest || TakeTheChest || TravelFreely ||
-        ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt || CardRewardAlternative is not null;
+        ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt;
 
     /// <summary>Whether obtaining the policy's relic is the ask: a relic named and
     /// nothing asked past it.</summary>

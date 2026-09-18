@@ -487,8 +487,8 @@ public sealed class GeneratedCoverageTests
 
     /// <summary>What an ancient row falls short of is a seam the map lists its relic
     /// under, and is excused by what stands in the way rather than credited to this
-    /// test: the sentence has to say the line does not survive there, so the excusal
-    /// is read for what it is and retired by a line that does.</summary>
+    /// test: the excusal has to be the line's-survival one for that relic, so it is
+    /// read for what it is and retired by a line that does survive.</summary>
     [GameFact]
     public void WhatAnAncientRowFallsShortOfIsExcusedByTheLinesSurvival()
     {
@@ -501,8 +501,7 @@ public sealed class GeneratedCoverageTests
                 seam => seam.Point == point && seam.Producers.Contains(relic, StringComparer.Ordinal));
             var excusal = Assert.Contains(point, DecisionExcusals.All);
             Assert.Equal(ExcusalClass.NotOnTheRoute, excusal.Class);
-            Assert.Contains("does not survive", excusal.Reason, StringComparison.Ordinal);
-            Assert.DoesNotContain(nameof(GeneratedCoverageTests), excusal.Reason, StringComparison.Ordinal);
+            Assert.Equal(DecisionExcusals.BeyondTheLinesSurvival(relic), excusal);
         }
     }
 
@@ -562,7 +561,7 @@ public sealed class GeneratedCoverageTests
 
     private static WalkPolicy PolicyFor(string row) => row switch
     {
-        "decline the first card reward" => new WalkPolicy { DeclineTheFirstCardReward = true },
+        "decline the first card reward" => new WalkPolicy { CardRewardAlternative = "Skip" },
         "rest HEAL" => new WalkPolicy { RestOption = "HEAL" },
         "shop relic" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Relic },
         "shop potion" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Potion },
