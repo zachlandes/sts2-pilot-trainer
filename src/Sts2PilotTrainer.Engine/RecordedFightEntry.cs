@@ -416,21 +416,17 @@ public sealed class RecordedFightEntry : IDisposable
     /// handed nothing at all; the screen it opens is answered from the recording's own
     /// selections immediately after it, exactly as a whole replay answers it.
     ///
-    /// No history on v0.111.0 reaches that last case, and the reason is worth writing
-    /// down because it is a fact about the game rather than about these fixtures.
     /// <see cref="BoundarySelector.PlanFor"/> refuses a turn boundary, so a plan only
-    /// ever ends at a combat start or a floor arrival. A floor arrival's action is
-    /// always a map move, and a map move is not one of the seven verbs
-    /// <c>RunDriver.Apply</c> hands the upcoming actions to - an opening blessing, an
-    /// event option, a potion, a shop purchase, a rest site option, a card played and
-    /// an end of turn - so nothing can follow it. A combat start's
-    /// action is that same map move unless an event option began the fight - and of the
-    /// five events that call <c>EventModel.EnterCombatWithoutExitingEvent</c> on this
-    /// build (Punch Off, Fake Merchant, Battleworn Dummy, Dense Vegetation, The Lantern
-    /// Key), not one opens a card-selection screen. The two sets do not intersect. An
-    /// event that both opens a screen and starts its room's fight would disprove this
-    /// and would be the history to generate; the branch is here because the rule is the
-    /// arbiter's, not because this build happens to exercise it.
+    /// ever ends at a combat start or a floor arrival, and the action of either is a
+    /// map move unless an event option began the fight. A map move into a fight deals
+    /// the opening hand inside its own work, and a relic that prompts at the hand draw
+    /// or the turn's start - Toolbox, Gambling Chip - asks there, so the move is one of
+    /// the verbs <c>RunDriver.Apply</c> hands the upcoming actions to and a combat
+    /// start can be followed by the selections that answered it; the Toolbox and
+    /// Gambling Chip coverage rows are the histories. Of the five events that call
+    /// <c>EventModel.EnterCombatWithoutExitingEvent</c> on this build (Punch Off, Fake
+    /// Merchant, Battleworn Dummy, Dense Vegetation, The Lantern Key), not one opens a
+    /// card-selection screen.
     /// </summary>
     private IReadOnlyList<ActionRecord> RemainingPrefix() =>
         StepsTaken + 1 < Plan.PrefixActions.Count

@@ -18,9 +18,11 @@ namespace Sts2PilotTrainer.Engine;
 ///
 /// The release bar (<c>docs/release-bar.md</c>) does not accept "no recording reaches
 /// it" for a point a player can reach on this build. The generated walks retire that
-/// sentence for every point the fixture seed's route can be pointed at; what is left
-/// is excused by what its producer is and why the route does not pass it, dated so
-/// its age is visible, for the retail soak.
+/// sentence for every point the fixture seed's route can be pointed at, and for every
+/// seam a relic Neow deals or the run's own bag deals produces, each on a seed hunted
+/// so the run deals that relic (<c>GeneratedCoverageTests</c>); what is left is
+/// excused by what its producer is and why no walk yet reaches it, dated so its age is
+/// visible, for the act-first walks, the event hunts and the retail soak.
 ///
 /// Every excusal carries an <see cref="ExcusalClass"/> beside its reason, and the
 /// coverage map says which classes it admits for each point
@@ -39,9 +41,10 @@ public static class DecisionExcusals
         $"no committed recording reaches it and the generated walk's route does not pass its producer - {producer}; " +
         "retired by a recording that does, from the retail soak (excused 2026-09-16)");
 
-    private const string RelicGated =
-        "the chest, the elite and the shops on the fixture seed's route deal none of them, and a relic granted " +
-        "outside a recorded decision is state no replay of the recording reproduces";
+    private const string AncientDealt =
+        "which an act's ancient deals at the start of act 2 or 3, so a row needs a run whose first act is that " +
+        "act, walked from its ancient; a relic granted outside a recorded decision is state no replay of the " +
+        "recording reproduces";
 
     private const string EventOffTheRoute =
         "an event is reached only where the map rolls it, the route refuses question marks, and a row per " +
@@ -93,8 +96,8 @@ public static class DecisionExcusals
         "won run plays through its lines to PROCEED through the real recorder and replays it on every merge, and " +
         "the recording is generated rather than committed");
 
-    /// <summary>A seam answered only on screens the headless host has none for: no
-    /// generated walk can draw it, whatever produces it.</summary>
+    /// <summary>A seam answered only on a screen the headless host has none for and
+    /// no generated walk answers through the stand-in.</summary>
     private static readonly Excusal SeamOnAScreenWithoutHeadlessHost = new(
         ExcusalClass.ScreenWithoutHeadlessHost,
         "answered only on a screen the headless host has no screen for (docs/headless-fidelity.md), so no generated " +
@@ -105,7 +108,8 @@ public static class DecisionExcusals
     /// The options of the events the committed corpus reaches - Neow's blessing and
     /// two events - each recorded before the recorder wrote <c>option_key</c>, so
     /// which option was chosen is not on the file. By id, so an option a game update
-    /// adds is uncovered until somebody reads it.
+    /// adds is uncovered until somebody reads it. Neow's list leaves out the blessings
+    /// a generated walk takes, which are below.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsRecordedWithoutAKey = new Dictionary<string, string[]>
     {
@@ -122,30 +126,16 @@ public static class DecisionExcusals
             "RELIC.DOWSING_ROD",
             "RELIC.FISHING_ROD",
             "RELIC.GOLDEN_PEARL",
-            "RELIC.HEFTY_TABLET",
-            "RELIC.KALEIDOSCOPE",
             "RELIC.LARGE_CAPSULE",
-            "RELIC.LAVA_ROCK",
-            "RELIC.LEAD_PAPERWEIGHT",
             "RELIC.LEAFY_POULTICE",
-            "RELIC.LOST_COFFER",
-            "RELIC.MASSIVE_SCROLL",
-            "RELIC.NEOWS_BONES",
             "RELIC.NEOWS_SACRIFICE",
             "RELIC.NEOWS_TALISMAN",
             "RELIC.NEOWS_TORMENT",
-            "RELIC.NEW_LEAF",
             "RELIC.NUTRITIOUS_OYSTER",
             "RELIC.PHIAL_HOLSTER",
-            "RELIC.POMANDER",
-            "RELIC.PRECARIOUS_SHEARS",
-            "RELIC.PRECISE_SCISSORS",
-            "RELIC.SCROLL_BOXES",
             "RELIC.SILKEN_TRESS",
             "RELIC.SILVER_CRUCIBLE",
-            "RELIC.SMALL_CAPSULE",
             "RELIC.STONE_HUMIDIFIER",
-            "RELIC.WINGED_BOOTS",
         ],
         ["EVENT.WATERLOGGED_SCRIPTORIUM"] =
         [
@@ -156,6 +146,27 @@ public static class DecisionExcusals
             "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.TENTACLE_QUILL_LOCKED",
         ],
     };
+
+    /// <summary>The blessings a <c>GeneratedCoverageTests</c> producer row takes, by
+    /// the relic each grants: every relic Neow deals that produces a seam, each on a
+    /// seed hunted so Neow offers it. Winged Boots is taken by
+    /// <c>ReplayRefusalRegressionTests</c>' flight row instead and excused beside
+    /// these by name.</summary>
+    private static readonly string[] BlessingsTakenByGeneratedWalks =
+    [
+        "RELIC.HEFTY_TABLET",
+        "RELIC.KALEIDOSCOPE",
+        "RELIC.LAVA_ROCK",
+        "RELIC.LEAD_PAPERWEIGHT",
+        "RELIC.LOST_COFFER",
+        "RELIC.NEOWS_BONES",
+        "RELIC.NEW_LEAF",
+        "RELIC.POMANDER",
+        "RELIC.PRECARIOUS_SHEARS",
+        "RELIC.PRECISE_SCISSORS",
+        "RELIC.SCROLL_BOXES",
+        "RELIC.SMALL_CAPSULE",
+    ];
 
     /// <summary>The options of every event and ancient the route does not pass, by id
     /// under the event, excused for the event's own reason.</summary>
@@ -615,39 +626,31 @@ public static class DecisionExcusals
     /// <summary>
     /// The seams at their timing classes no committed recording reaches by
     /// co-occurrence - met one of the seam's producers and answered its decision -
-    /// by id; <c>scripts/producer-map.txt</c> lists each one's producers and what deals
-    /// them. The seams the committed corpus does reach are not here, because an
-    /// excusal a corpus reaches is a sentence gone false.
+    /// and no generated walk reaches either, by id; <c>scripts/producer-map.txt</c>
+    /// lists each one's producers and what deals them. The seams the committed corpus
+    /// does reach are not here, because an excusal a corpus reaches is a sentence gone
+    /// false; nor are the seams <see cref="SeamsReachedByGeneratedWalks"/> lists.
     /// </summary>
     private static readonly string[] SeamsOffTheRoute =
     [
-        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ AbstractModel.BeforeHandDraw",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ MonsterModel.GenerateMoveStateMachine",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ PotionModel.OnUse",
-        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.AfterShuffle",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.BeforeHandDraw",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, prefs) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ AbstractModel.AfterRoomEntered",
         "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars",
         "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ RelicModel.AfterObtained",
         "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart",
         "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse",
-        "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay",
@@ -658,44 +661,68 @@ public static class DecisionExcusals
         "event-option @ AncientEventModel.AllPossibleOptions",
         "rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:COOK @ AbstractModel.TryModifyRestSiteOptions",
-        "rest-option:DIG @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:KINDLE @ AbstractModel.TryModifyRestSiteOptions",
-        "rest-option:LIFT @ AbstractModel.TryModifyRestSiteOptions",
         "reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards",
-        "reward-kind:card @ AbstractModel.TryModifyRewards",
         "reward-kind:card @ CardModel.OnPlay",
         "reward-kind:card @ ModifierModel.GenerateNeowOption",
-        "reward-kind:card @ RelicModel.AfterObtained",
         "reward-kind:card_removal @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.BeforeDeath",
-        "reward-kind:gold @ AbstractModel.TryModifyRewards",
         "reward-kind:gold @ AbstractModel.TryModifyRewardsLate",
-        "reward-kind:potion @ AbstractModel.TryModifyRestSiteHealRewards",
         "reward-kind:potion @ EventModel.CalculateVars",
         "reward-kind:potion @ EventModel.GenerateInitialOptions",
         "reward-kind:potion @ EventModel.Resume",
-        "reward-kind:potion @ RelicModel.AfterObtained",
         "reward-kind:relic @ ?",
-        "reward-kind:relic @ AbstractModel.TryModifyRewards",
         "reward-kind:relic @ AbstractModel.TryModifyRewardsLate",
         "reward-kind:relic @ EventModel.GenerateInitialOptions",
         "reward-kind:relic @ EventModel.Resume",
-        "reward-kind:relic @ RelicModel.AfterObtained",
         "reward-kind:special_card @ AbstractModel.BeforeDeath",
         "reward-kind:special_card @ EventModel.GenerateInitialOptions",
         "rewards:OfferCustom @ EventModel.CalculateVars",
         "rewards:OfferCustom @ EventModel.Resume",
-        "rewards:OfferCustom @ RelicModel.AfterObtained",
         "shop-kind:relic @ EventModel.BeforeEventStarted",
     ];
 
-    /// <summary>The seams answered only on the screens the headless host stands in for:
-    /// the bundle screen Scroll Boxes opens and the Crystal Sphere's own screen.</summary>
-    private static readonly string[] SeamsOnScreensWithoutHeadlessHost =
+    /// <summary>
+    /// The seams a relic Neow deals, or a relic the run's own bag deals at a chest or
+    /// the merchant's shelf, produces - by id, so a seam a game update adds to one of
+    /// those relics is uncovered until a row reaches it. Each is reached by a
+    /// <c>GeneratedCoverageTests</c> row that walks a seed hunted so the run deals the
+    /// relic, obtains it through the recorded decision that deals it, and answers the
+    /// seam; the rows hold this list to the map's own producers, so a seam listed here
+    /// that no row reaches fails there.
+    /// </summary>
+    private static readonly string[] SeamsReachedByGeneratedWalks =
     [
         "card-prompt:CardSelectCmd.FromChooseABundleScreen(player, bundles) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ AbstractModel.BeforeHandDraw",
+        "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, prefs) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ RelicModel.AfterObtained",
+        "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart",
+        "rest-option:DIG @ AbstractModel.TryModifyRestSiteOptions",
+        "rest-option:LIFT @ AbstractModel.TryModifyRestSiteOptions",
+        "reward-kind:card @ AbstractModel.TryModifyRewards",
+        "reward-kind:card @ RelicModel.AfterObtained",
+        "reward-kind:gold @ AbstractModel.TryModifyRewards",
+        "reward-kind:potion @ AbstractModel.TryModifyRestSiteHealRewards",
+        "reward-kind:potion @ RelicModel.AfterObtained",
+        "reward-kind:relic @ AbstractModel.TryModifyRewards",
+        "reward-kind:relic @ RelicModel.AfterObtained",
+        "rewards:OfferCustom @ RelicModel.AfterObtained",
+    ];
+
+    /// <summary>The seams answered only on the screens the headless host stands in for
+    /// and no generated walk answers: the Crystal Sphere's own screen. The bundle
+    /// screen is stood in for as well, and a generated walk answers it through the
+    /// stand-in, so its seam is above.</summary>
+    private static readonly string[] SeamsOnScreensWithoutHeadlessHost =
+    [
         "screen:NCrystalSphereScreen.ShowScreen @ EventModel.GenerateInitialOptions",
     ];
 
@@ -713,9 +740,14 @@ public static class DecisionExcusals
             "a container over other rewards that no singleplayer path on this build constructs; the format " +
             "has no kind for it on purpose (RewardKinds)");
 
+        // The bundle screen is one the headless host stands in for, and the walk that
+        // takes Scroll Boxes answers it through the stand-in; the range prompt's
+        // confirmation is what the choose-a-card screens Hefty Tablet and Lead
+        // Paperweight open and the discard Gambling Chip asks for each turn end in
         foreach (var verb in new[]
                  {
                      "TakeCardRewardAlternative", "UsePotion", "DiscardPotion", "TakeChestRelic", "SkipChestRelic",
+                     "SelectBundleFromScreen", "ConfirmCardScreen",
                  })
         {
             excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = Generated;
@@ -731,21 +763,16 @@ public static class DecisionExcusals
             "run, the one kind the recorder records, never reaches it: with one player the engine commits to the " +
             "enemy turn the moment the turn ends (RunDriver.UndoEndTurn)");
 
-        // The three screens the headless host has no screen for
-        foreach (var verb in new[] { "SelectBundleFromScreen", "SelectRelicFromScreen", "RevealCrystalSphereCell" })
+        // The two screens the headless host has no screen for and no generated walk
+        // answers: nothing on this build opens the relic screen, and the Crystal
+        // Sphere is an event the route does not pass
+        foreach (var verb in new[] { "SelectRelicFromScreen", "RevealCrystalSphereCell" })
         {
             excusals[new DecisionPoint(DecisionKinds.Verb, verb)] = new(
                 ExcusalClass.ScreenWithoutHeadlessHost,
                 "a screen the headless host has no screen for (docs/headless-fidelity.md); no generated walk " +
                 "reaches it (excused 2026-09-16)");
         }
-
-        // A range prompt on this build is the choose-a-card screen, opened by the
-        // Discovery family of cards, the card-choosing potions and four relics; the
-        // fixture seed's route deals none of them
-        excusals[new DecisionPoint(DecisionKinds.Verb, "ConfirmCardScreen")] = NotOnTheRoute(
-            "a range prompt, which on this build is the choose-a-card screen the Discovery family of cards, the " +
-            "card-choosing potions and four relics open, none of which the route deals");
 
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "relic")] = Generated;
 
@@ -769,26 +796,31 @@ public static class DecisionExcusals
 
         // Pael's Wing adds the sacrifice, and a rest option past heal and smith is one
         // a relic or a quest card adds: Girya lifts, Pael's Growth clones, Pumpkin
-        // Candle kindles, Shovel digs, Meat Cleaver cooks, Byrdonis Egg hatches. The
-        // chest, the elite and the shops on the fixture seed's route deal none of
-        // them, and a relic granted outside a recorded decision is state a replay of
-        // the recording never reproduces, so it cannot be given to the walk's player
+        // Candle kindles, Shovel digs, Meat Cleaver cooks, Byrdonis Egg hatches. Girya
+        // and Shovel are the bag's and a walk on a seed whose bag front holds one
+        // reaches its option; the other four are an ancient's or an event's, which
+        // no walk from act 1's first room reaches, and a relic granted outside a
+        // recorded decision is state a replay of the recording never reproduces, so
+        // none can be given to the walk's player
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "SACRIFICE")] = NotOnTheRoute(
-            $"added by Pael's Wing; {RelicGated}");
+            $"added by Pael's Wing, {AncientDealt}");
 
         foreach (var kind in new[] { "colorless_card", "relic", "potion" })
         {
             excusals[new DecisionPoint(DecisionKinds.ShopKind, kind)] = Generated;
         }
 
-        excusals[new DecisionPoint(DecisionKinds.RestOption, "HEAL")] = Generated;
+        foreach (var option in new[] { "HEAL", "DIG", "LIFT" })
+        {
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = Generated;
+        }
+
         foreach (var (option, addedBy) in new[]
                  {
-                     ("CLONE", "Pael's Growth"), ("COOK", "Meat Cleaver"), ("DIG", "Shovel"),
-                     ("KINDLE", "Pumpkin Candle"), ("LIFT", "Girya"),
+                     ("CLONE", "Pael's Growth"), ("COOK", "Meat Cleaver"), ("KINDLE", "Pumpkin Candle"),
                  })
         {
-            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotOnTheRoute($"added by {addedBy}; {RelicGated}");
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotOnTheRoute($"added by {addedBy}, {AncientDealt}");
         }
 
         excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(
@@ -915,6 +947,25 @@ public static class DecisionExcusals
             }
         }
 
+        foreach (var relic in BlessingsTakenByGeneratedWalks)
+        {
+            excusals[DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic)] = Generated;
+        }
+
+        // Massive Scroll's own rule admits it only to a run with another player in it
+        // (DecisionSurface.OfferedOnlyWithAnotherPlayer), so no singleplayer run is
+        // ever offered it and no row can take it
+        excusals[DecisionPoint.EventOption(DecisionFacts.NeowEventId, "RELIC.MASSIVE_SCROLL")] = new(
+            ExcusalClass.MultiplayerOnly,
+            "Neow offers it only to a run with more than one player (MassiveScroll.IsAllowed), which the " +
+            "recorder never records");
+
+        excusals[DecisionPoint.EventOption(DecisionFacts.NeowEventId, "RELIC.WINGED_BOOTS")] = new(
+            ExcusalClass.Generated,
+            "reached by ReplayRefusalRegressionTests' flight row, which takes the blessing by name, recorded " +
+            "through the real recorder and replayed to parity on every merge; the recording is generated rather " +
+            "than committed");
+
         foreach (var (eventId, keys) in OptionsOfEventsOffTheRoute)
         {
             foreach (var key in keys)
@@ -956,6 +1007,11 @@ public static class DecisionExcusals
         foreach (var seam in SeamsOnScreensWithoutHeadlessHost)
         {
             excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = SeamOnAScreenWithoutHeadlessHost;
+        }
+
+        foreach (var seam in SeamsReachedByGeneratedWalks)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = Generated;
         }
 
         return excusals;

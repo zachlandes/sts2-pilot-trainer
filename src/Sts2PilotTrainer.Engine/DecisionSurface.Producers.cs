@@ -681,6 +681,33 @@ public static partial class DecisionSurface
         ModelDb.AllAncients.Any(ancient => ancient.Id.ToString() == eventId);
 
     /// <summary>
+    /// Whether a relic is allowed only in a run with another player in it: its own
+    /// <c>IsAllowed</c> or <c>IsAllowedAtNeow</c> override, on its type or a base short
+    /// of <c>RelicModel</c>, compares the run's player count as more than one - Massive
+    /// Scroll's rule on this build, which is why Neow never offers it to the run the
+    /// recorder records. Read off the IL the way a rest option's player-count branch
+    /// is, so a build that lifts the rule shows here before a hunt for it fails.
+    /// </summary>
+    public static bool OfferedOnlyWithAnotherPlayer(string relicId)
+    {
+        EngineHost.Start();
+        var relic = ModelDb.AllRelics.FirstOrDefault(model => model.Id.ToString() == relicId)
+            ?? throw new ArgumentException($"{relicId} is not a relic the database registers on this build.", nameof(relicId));
+        for (var type = relic.GetType(); type is not null && type != typeof(RelicModel); type = type.BaseType)
+        {
+            foreach (var name in new[] { nameof(RelicModel.IsAllowed), nameof(RelicModel.IsAllowedAtNeow) })
+            {
+                if (type.GetMethod(name, Declared) is { } rule && ChoiceEntryPoints.ComparesPlayerCountAsMoreThanOne(rule))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Every event and ancient an act can reach, by id: the act's own lists and the
     /// shared pool every act draws from, in the act's own order. An act id no act
     /// ships is refused by name.
@@ -837,9 +864,19 @@ public static partial class DecisionSurface
             case DecisionKinds.EventOption:
                 var space = point.Identity.IndexOf(' ', StringComparison.Ordinal);
                 var eventId = point.Identity[..space];
+                var key = point.Identity[(space + 1)..];
                 if (eventId == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
                 else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
-                if (TitleKeyedOptions(eventId).Contains(point.Identity[(space + 1)..], StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
+                if (TitleKeyedOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
+
+                // A blessing granting a relic the game allows only with another player
+                // is never offered to the run the recorder records
+                if (eventId == DecisionFacts.NeowEventId && key.StartsWith("RELIC.", StringComparison.Ordinal)
+                    && OfferedOnlyWithAnotherPlayer(key))
+                {
+                    yield return ExcusalClass.MultiplayerOnly;
+                }
+
                 break;
             case DecisionKinds.Seam:
                 if (ProducerMap().FirstOrDefault(row => row.Point == point) is not { } seam) break;

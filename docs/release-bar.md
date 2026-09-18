@@ -77,3 +77,18 @@ Neither was fixed by widening what parity holds; each is a change to when the re
   The recorder now reads a set the move declines from the move's own before-reading on both sides of the decision, which is the state the driver declines it from; the skip changes nothing the projection reads.
   The ascension-6 journal shows the reading it would have written: at both of its skips (decisions 144 and 164) the move's before-digest is the digest the decision before the skip settled into, which is the state the replay's own skip begins from and leaves.
   On this build the v5 journal is one the standard does not read, so the finding is retired in the number only by recordings the fixed recorder makes.
+
+## The producer rows, 2026-09-17
+
+The second stage of the coverage design put a row on the merge gate for every relic that produces a seam and that a run of act 1 deals from game-produced state: the twelve Neow offers that produce one and the fifteen relics the run's own bag deals at a chest or the merchant's shelf, each on a seed hunted so the run deals that relic (`GeneratedCoverageTests.ProducerRows`, `SeedHunt`).
+Massive Scroll, the thirteenth Neow producer, is admitted by its own `IsAllowed` only to a run with another player in it, which the recorder never records; `DecisionSurface.OfferedOnlyWithAnotherPlayer` reads that off the IL and its blessing is excused `multiplayer-only`.
+The rows retire the excusals the design named - `SelectBundleFromScreen`, `ConfirmCardScreen`, the lift and the dig, the second card reward Prayer Wheel and White Star add, and twenty seams - and the twelve blessings they take; the sacrifice, the clone, the cook and the kindle are an ancient's relics and wait on the act-first walks of the third stage.
+Two recorder findings came out of the rows, both fixed beside them and both invisible to the committed corpus:
+
+- **A rewards set offered inside a purchase's, a rest's or a claim's own work.**
+  Orrery and the Cauldron bought from a shop, a heal under Tiny Mailbox and a relic claimed off Neow's Bones offer a set from inside their own task, and that task finishes only once the set is answered by the decisions recorded after it.
+  The recorder waited for it and refused every such purchase, rest and claim as unsettled, in its own words; the driver awaited the same task on the one thread the answering decisions arrive on.
+  Both now read the decision as settled once the set is on offer, the way an event option's was already read (`RunRecorder.HandedToThePlayerDuring`, `RunDriver.SettleOrHandOver`), and the rows for those four relics hold each recording to a fresh replay through `TraceParity`.
+- **A potion thrown at one of two enemies.**
+  The fight observer wrote a drink without its target, and the driver refuses a targeted potion in a fight with two enemies alive unless the recording names one; the Orrery hunt's walk drank a Fire Potion that way and its replay was refused.
+  The observer now writes `target_index` for a drink the way it does for a play (`PlayerFightObserver.AddTargetIndex`).

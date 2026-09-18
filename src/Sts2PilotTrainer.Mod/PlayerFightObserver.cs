@@ -201,7 +201,7 @@ internal sealed class PlayerFightObserver : IDisposable
                 case UsePotionAction potion:
                     opened = Begin(
                         action, nameof(ActionVerb.UsePotion),
-                        PotionArgs(potion.PotionIndex, "drunk"), previousFinished);
+                        PotionArgs(potion.PotionIndex, "drunk", potion.TargetId), previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
                     opened = Begin(
@@ -534,19 +534,25 @@ internal sealed class PlayerFightObserver : IDisposable
                 substitute.HandIndex.ToString(CultureInfo.InvariantCulture);
         }
 
-        // The same index the driver resolves a recorded target by: position among the
-        // enemies alive at the moment of the play. Written only where the card's own
-        // target type is an enemy, which is the driver's own rule - RunDriver.ResolveTarget
-        // refuses a target_index on anything else, so recording one on a card the engine
-        // aimed itself would write a play that cannot be replayed.
-        if (play.TargetId is { } targetId && card is { TargetType: TargetType.AnyEnemy })
-        {
-            var alive = _combat.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is { IsAlive: true }).ToList() ?? [];
-            var index = alive.FindIndex(enemy => enemy.CombatId == targetId);
-            if (index >= 0) args["target_index"] = index.ToString(CultureInfo.InvariantCulture);
-        }
-
+        AddTargetIndex(args, card.TargetType, play.TargetId);
         return new Arguments(args);
+    }
+
+    /// <summary>
+    /// Writes the same index the driver resolves a recorded target by: position among
+    /// the enemies alive at the moment of the play or the drink. Written only where
+    /// the card's or potion's own target type is an enemy, which is the driver's own
+    /// rule - <c>RunDriver.ResolveTarget</c> refuses a target_index on anything else,
+    /// so recording one on a card the engine aimed itself would write a play that
+    /// cannot be replayed. A potion thrown at one of two enemies was recorded without
+    /// it and refused at replay, which the Orrery coverage row's walk found.
+    /// </summary>
+    private void AddTargetIndex(SortedDictionary<string, string> args, TargetType targetType, uint? targetId)
+    {
+        if (targetId is not { } target || targetType != TargetType.AnyEnemy) return;
+        var alive = _combat.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is { IsAlive: true }).ToList() ?? [];
+        var index = alive.FindIndex(enemy => enemy.CombatId == target);
+        if (index >= 0) args["target_index"] = index.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -577,9 +583,10 @@ internal sealed class PlayerFightObserver : IDisposable
     ///
     /// Where the slot holds nothing this recorder can see the id is absent and the
     /// reason is reported beside the slot, the way the recorder's own out-of-fight
-    /// potion patches say it.
+    /// potion patches say it. A drink aimed at an enemy carries the enemy's position
+    /// the way a play does, since the driver resolves both the same way.
     /// </summary>
-    private Arguments PotionArgs(uint slot, string what)
+    private Arguments PotionArgs(uint slot, string what, uint? targetId = null)
     {
         var index = slot.ToString(CultureInfo.InvariantCulture);
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
@@ -596,6 +603,7 @@ internal sealed class PlayerFightObserver : IDisposable
         }
 
         args["potion_id"] = potion.Id.ToString();
+        AddTargetIndex(args, potion.TargetType, targetId);
         return new Arguments(args);
     }
 

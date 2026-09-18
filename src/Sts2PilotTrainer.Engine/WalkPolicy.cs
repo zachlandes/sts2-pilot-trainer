@@ -13,6 +13,15 @@ namespace Sts2PilotTrainer.Engine;
 /// so a walk that names no policy is the fixture's walk unchanged; a walk that names
 /// one and never meets the decision it asks for finishes the act without it, and the
 /// test that asked is what says so.
+///
+/// A policy can name a relic as well as a decision - the opening blessing that grants
+/// it, or the relic the run's own bag deals at a chest, an elite's loot or the
+/// merchant's shelf - so the walk can be pointed at what that relic adds. Which
+/// decision is the ask then follows one rule: where the policy asks for nothing past
+/// the relic, obtaining it is the ask, which is what a relic that opens its prompt on
+/// being obtained wants; where it does - a rest option, a fight, a second gold, a
+/// flight - that decision is the ask and counts only once the relic is held, because a
+/// decision a relic adds to is the relic's only after the relic.
 /// </summary>
 public sealed record WalkPolicy
 {
@@ -56,8 +65,20 @@ public sealed record WalkPolicy
 
     /// <summary>Take the opening blessing that grants the relic with this id where
     /// Neow offers it, in place of the first option; an opening that does not offer it
-    /// takes today's rule. What a walk after Winged Boots' free travel asks for.</summary>
+    /// takes today's rule. What a walk after Winged Boots' free travel asks for, and
+    /// what a walk after any relic Neow deals asks for.</summary>
     public string? NeowRelic { get; init; }
+
+    /// <summary>Obtain the relic with this id wherever the run deals it on the route:
+    /// the chest that offers it, the merchant's relic shelf before anything else on
+    /// it, the loot screen of a fight that offers it. A route that deals it nowhere
+    /// takes today's rules throughout.</summary>
+    public string? BagRelic { get; init; }
+
+    /// <summary>Count the first fight entered while holding the policy's relic, played
+    /// to its end and its loot taken, as the ask met: what a relic that changes a
+    /// fight's turns or its loot asks for.</summary>
+    public bool FightWhileHoldingIt { get; init; }
 
     /// <summary>At the first map move where the game's own travel rule offers a node
     /// the node being left does not lead to - the whole next row under Winged Boots
@@ -82,4 +103,19 @@ public sealed record WalkPolicy
     /// is after one decision rather than a finished act, on a run the journey's
     /// survival rules were not tuned to carry past that decision.</summary>
     public bool StopOnceMet { get; init; }
+
+    /// <summary>The relic this policy names, or null: the one the bag deals where
+    /// both are named, since a walk is after one relic.</summary>
+    public string? Relic => BagRelic ?? NeowRelic;
+
+    /// <summary>Whether the policy asks for a decision past obtaining its relic, which
+    /// is then the ask.</summary>
+    public bool AsksPastTheRelic =>
+        DeclineTheFirstCardReward || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
+        DiscardAPotionOnTheMap || ClaimTheRelicReward || SkipTheChest || TakeTheChest || TravelFreely ||
+        ClaimTwoOfAKind || FightWhileHoldingIt;
+
+    /// <summary>Whether obtaining the policy's relic is the ask: a relic named and
+    /// nothing asked past it.</summary>
+    public bool ObtainingIsTheAsk => Relic is not null && !AsksPastTheRelic;
 }

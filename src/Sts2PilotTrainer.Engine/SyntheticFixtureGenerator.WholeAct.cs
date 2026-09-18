@@ -45,14 +45,27 @@ public static partial class SyntheticFixtureGenerator
     private static readonly MapPointType[] RequiredTypes =
         [MapPointType.Shop, MapPointType.RestSite, MapPointType.Treasure, MapPointType.Elite];
 
-    private static readonly int RequiredCoverage = (1 << RequiredTypes.Length) - 1;
+    /// <summary>The node types the route under way has to pass through, one coverage
+    /// bit each: the fixture's four, the policy's own list, or none for a walk that
+    /// only has to reach the boss.</summary>
+    private static MapPointType[] _requiredTypes = RequiredTypes;
 
-    /// <summary>The coverage the walk under way demands of its route: every required
-    /// type for the fixture, or none for a walk that only has to reach the boss.</summary>
-    private static int _requiredCoverage = RequiredCoverage;
+    /// <summary>The coverage the walk under way demands of its route: every bit of
+    /// <see cref="_requiredTypes"/>.</summary>
+    private static int RequiredCoverage => (1 << _requiredTypes.Length) - 1;
 
     /// <summary>The choices the walk under way consults; the fixture's are the defaults.</summary>
     private static WalkPolicy _policy = WalkPolicy.Default;
+
+    /// <summary>
+    /// Whether the route under way passes its required types in the order the policy
+    /// lists them and may end at the node that completes them, rather than passing
+    /// them in any order on the way to the boss: a walk after a relic the bag deals is
+    /// after the room that deals it and then the room its ask is met in - the chest
+    /// and then a fight or a rest site, the shop and then a fight - and a map whose
+    /// only way from there to the boss passes a question mark still has both rooms.
+    /// </summary>
+    private static bool RouteIsOrdered => _policy.BagRelic is not null && _policy.StopOnceMet && _policy.RouteThrough is not null;
 
     /// <summary>Which of the policy's one-time asks the walk under way has met, and
     /// whether any ask has been, for a walk that stops there.</summary>
@@ -144,12 +157,12 @@ public static partial class SyntheticFixtureGenerator
         Action? afterEachDecision = null, bool visitEveryRoomType = true, WalkPolicy? policy = null)
     {
         var actions = new List<ActionRecord>();
-        var previous = (_afterEachDecision, _requiredCoverage, _policy);
+        var previous = (_afterEachDecision, _requiredTypes, _policy);
         _policy = policy ?? WalkPolicy.Default;
-        (_afterEachDecision, _requiredCoverage) =
+        (_afterEachDecision, _requiredTypes) =
             (afterEachDecision, _policy.RouteThrough is { } through
-                ? through.Aggregate(0, (covered, type) => covered | Coverage(type))
-                : visitEveryRoomType ? RequiredCoverage : 0);
+                ? [.. through]
+                : visitEveryRoomType ? RequiredTypes : []);
         (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _travelledFreely, _askMet) =
             (false, false, false, false, false);
         try
@@ -159,7 +172,7 @@ public static partial class SyntheticFixtureGenerator
         }
         finally
         {
-            (_afterEachDecision, _requiredCoverage, _policy) = previous;
+            (_afterEachDecision, _requiredTypes, _policy) = previous;
         }
     }
 
@@ -173,6 +186,13 @@ public static partial class SyntheticFixtureGenerator
         Apply(driver, actions, ActionVerb.ChooseNeowBlessing,
             ("option_index", NeowOption(session).ToString(CultureInfo.InvariantCulture)));
 
+        // A blessing that grants a relic can put a rewards set on offer from the relic's
+        // own work - Kaleidoscope's cards, Small Capsule's relic - which is answered
+        // before the run moves, the way a player answers it before the map opens
+        MeetTheAskIf(session, _policy.ObtainingIsTheAsk);
+        TakeWhatWasOffered(driver, session, actions);
+        if (_policy.StopOnceMet && _askMet) return;
+
         var route = PlannedRoute(session);
         while (route.Count > 0)
         {
@@ -185,7 +205,7 @@ public static partial class SyntheticFixtureGenerator
             {
                 next = flown;
                 _travelledFreely = true;
-                _askMet = true;
+                MeetTheAskIf(session, true);
             }
 
             Apply(driver, actions, ActionVerb.MapMove,
@@ -202,6 +222,10 @@ public static partial class SyntheticFixtureGenerator
             if (_policy.StopOnceMet && _askMet) return;
             if (flown is not null) route = PlannedRoute(session);
         }
+
+        // A route that ended at the room that completed its coverage stands nowhere
+        // an act can be left from; the walk is over, its ask met or not
+        if (RouteIsOrdered && session.RunState.CurrentRoom is not { RoomType: RoomType.Boss }) return;
 
         Apply(driver, actions, ActionVerb.ProceedToNextAct);
         checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
@@ -220,6 +244,28 @@ public static partial class SyntheticFixtureGenerator
         }
 
         return new Queue<MapPoint>(route);
+    }
+
+    /// <summary>Whether the run holds the relic the policy names, or the policy names
+    /// none: the condition under which an ask past the relic counts, read off the
+    /// run rather than remembered, because the run is what holds it.</summary>
+    private static bool HoldsTheRelic(GameSession session) =>
+        _policy.Relic is not { } relic ||
+        session.RunState.Players[0].Relics.Any(held => held.Id.ToString() == relic);
+
+    /// <summary>Counts the ask met where the condition holds and the policy's relic,
+    /// if it names one, is held.</summary>
+    private static void MeetTheAskIf(GameSession session, bool condition)
+    {
+        if (condition && HoldsTheRelic(session)) _askMet = true;
+    }
+
+    /// <summary>Answers a rewards set a decision's own work put on offer - a relic's
+    /// <c>AfterObtained</c>, a heal's potions - the way a fight's loot is answered,
+    /// so the room is left holding no undecided offer.</summary>
+    private static void TakeWhatWasOffered(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        if (driver.UnclaimedRewardKinds.Count > 0) TakeTheLoot(driver, session, actions);
     }
 
     /// <summary>The opening blessing the walk takes: the option granting the relic the
@@ -306,7 +352,11 @@ public static partial class SyntheticFixtureGenerator
         RoutePlan? best = null;
         if (node.PointType == MapPointType.Boss)
         {
-            best = (covered & _requiredCoverage) == _requiredCoverage ? new RoutePlan(0, []) : null;
+            best = (covered & RequiredCoverage) == RequiredCoverage ? new RoutePlan(0, []) : null;
+        }
+        else if (RouteIsOrdered && (covered & RequiredCoverage) == RequiredCoverage)
+        {
+            best = new RoutePlan(0, []);
         }
         else
         {
@@ -315,7 +365,7 @@ public static partial class SyntheticFixtureGenerator
                          .Where(child => child.PointType != NotRouted)
                          .OrderBy(child => child.coord.col))
             {
-                var onward = BestRoute(child, covered | Coverage(child.PointType), memo);
+                var onward = BestRoute(child, covered | Coverage(child.PointType, covered), memo);
                 if (onward is null) continue;
 
                 var cost = Cost(child.PointType) + onward.Cost;
@@ -328,10 +378,16 @@ public static partial class SyntheticFixtureGenerator
         return best;
     }
 
-    private static int Coverage(MapPointType type)
+    /// <summary>The coverage bit passing a node of this type earns, given what the
+    /// route has covered so far: on an ordered route a type counts only once every
+    /// type listed before it has been passed, so a fight before the chest is not the
+    /// fight the walk is after.</summary>
+    private static int Coverage(MapPointType type, int covered)
     {
-        var index = Array.IndexOf(RequiredTypes, type);
-        return index < 0 ? 0 : 1 << index;
+        var index = Array.IndexOf(_requiredTypes, type);
+        if (index < 0) return 0;
+        var earlier = (1 << index) - 1;
+        return RouteIsOrdered && (covered & earlier) != earlier ? 0 : 1 << index;
     }
 
     /// <summary>
@@ -408,6 +464,9 @@ public static partial class SyntheticFixtureGenerator
             "combat.turn", "combat.energy", "combat.player_hp", "combat.hand", "combat.encounter",
             "combat.enemy_count"));
 
+        // Read at the fight's start, because a relic the loot deals is held by the
+        // next fight and not this one
+        var heldOnEntry = _policy.FightWhileHoldingIt && HoldsTheRelic(session);
         DrinkPotions(driver, session, actions, entered);
         PlayToTheEndOfTheFight(driver, session, actions, SurvivingIndex);
 
@@ -417,6 +476,7 @@ public static partial class SyntheticFixtureGenerator
             "combat.outcome", "combat.in_progress", "player.hp", "run.act_floor"));
 
         TakeTheLoot(driver, session, actions);
+        if (heldOnEntry) _askMet = true;
     }
 
     /// <summary>
@@ -475,7 +535,7 @@ public static partial class SyntheticFixtureGenerator
         // relic's second beside the fight's own - and by kind alone otherwise, which is
         // the one form a recording written before the position can hold
         var gold = driver.UnclaimedRewardPositions(RewardKinds.Gold);
-        if (gold.Count > 1 && _policy.ClaimTwoOfAKind) _askMet = true;
+        MeetTheAskIf(session, gold.Count > 1 && _policy.ClaimTwoOfAKind);
         foreach (var position in gold)
         {
             Apply(driver, actions, ActionVerb.ClaimReward,
@@ -487,10 +547,21 @@ public static partial class SyntheticFixtureGenerator
             ]);
         }
 
-        if (_policy.ClaimTheRelicReward && driver.OfferedRelicId is { } relicId)
+        // The relic the policy is after is claimed wherever a loot screen offers it;
+        // any relic is, where the policy asks for the claim itself - the first of
+        // them, by position where a set offers two, as Neow's Bones does
+        var relics = driver.UnclaimedRewardPositions(RewardKinds.Relic);
+        if (driver.OfferedRelicId is { } relicId && (_policy.ClaimTheRelicReward || relicId == _policy.BagRelic))
         {
-            _askMet = true;
-            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "relic"), ("relic_id", relicId));
+            Apply(driver, actions, ActionVerb.ClaimReward,
+            [
+                ("reward_type", RewardKinds.Relic),
+                ("relic_id", relicId),
+                .. relics.Count > 1
+                    ? new[] { (RewardKinds.IndexArgument, relics[0].ToString(CultureInfo.InvariantCulture)) }
+                    : [],
+            ]);
+            MeetTheAskIf(session, _policy.ClaimTheRelicReward || _policy.ObtainingIsTheAsk);
         }
 
         // The loot screen's Skip is the first alternative of every card reward that
@@ -503,22 +574,41 @@ public static partial class SyntheticFixtureGenerator
             if (skip >= 0)
             {
                 _declinedACardReward = true;
-                _askMet = true;
+                MeetTheAskIf(session, true);
                 Apply(driver, actions, ActionVerb.TakeCardRewardAlternative,
                     ("option_id", "Skip"),
                     ("option_index", (reward.Cards.Count() + skip).ToString(CultureInfo.InvariantCulture)));
             }
         }
 
-        if (driver.OfferedCardIds is [var firstCard, ..])
+        // Every card reward the screen offers, first card of each, by position where
+        // the screen offers more than one - Kaleidoscope's, or a relic's second beside
+        // the fight's own - and by kind alone otherwise
+        while (driver.OfferedCardIds is [var firstCard, ..])
         {
-            Apply(driver, actions, ActionVerb.TakeCard, ("card_id", firstCard), ("option_index", "0"));
+            var cards = driver.UnclaimedRewardPositions(DecisionFacts.CardRewardKind);
+            Apply(driver, actions, ActionVerb.TakeCard,
+            [
+                ("card_id", firstCard),
+                ("option_index", "0"),
+                .. cards.Count > 1
+                    ? new[] { (RewardKinds.IndexArgument, cards[0].ToString(CultureInfo.InvariantCulture)) }
+                    : [],
+            ]);
         }
 
-        if (driver.UnclaimedRewardKinds.Contains("potion", StringComparer.Ordinal) &&
-            session.RunState.Players[0].HasOpenPotionSlots)
+        // Every potion the belt has room for, by position where the screen offers
+        // more than one - Cauldron's five - and by kind alone otherwise
+        while (driver.UnclaimedRewardPositions(RewardKinds.Potion) is { Count: > 0 } potions &&
+               session.RunState.Players[0].HasOpenPotionSlots)
         {
-            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "potion"));
+            Apply(driver, actions, ActionVerb.ClaimReward,
+            [
+                ("reward_type", RewardKinds.Potion),
+                .. potions.Count > 1
+                    ? new[] { (RewardKinds.IndexArgument, potions[0].ToString(CultureInfo.InvariantCulture)) }
+                    : [],
+            ]);
         }
 
         if (driver.UnclaimedRewardKinds.Count > 0)
@@ -540,7 +630,7 @@ public static partial class SyntheticFixtureGenerator
         var options = RunManager.Instance.RestSiteSynchronizer.GetLocalOptions().ToList();
         var wanted = Hurt(session) ? RestSiteHeal : RestSiteSmith;
         var index = _policy.RestOption is { } asked ? options.FindIndex(option => option.OptionId == asked) : -1;
-        if (index >= 0) _askMet = true;
+        MeetTheAskIf(session, index >= 0);
         if (index < 0) index = options.FindIndex(option => option.OptionId == wanted);
         if (index < 0) index = options.FindIndex(option => option.OptionId == RestSiteHeal);
 
@@ -555,6 +645,9 @@ public static partial class SyntheticFixtureGenerator
         Apply(driver, actions, ActionVerb.ChooseRestSiteOption,
             ("option_id", options[index].OptionId),
             ("option_index", index.ToString(CultureInfo.InvariantCulture)));
+
+        // A heal under Tiny Mailbox offers potions from inside the option's own work
+        TakeWhatWasOffered(driver, session, actions);
     }
 
     private static void OpenTheChest(RunDriver driver, GameSession session, List<ActionRecord> actions)
@@ -569,15 +662,15 @@ public static partial class SyntheticFixtureGenerator
 
         if (_policy.SkipTheChest)
         {
-            _askMet = true;
+            MeetTheAskIf(session, true);
             Apply(driver, actions, ActionVerb.SkipChestRelic);
         }
         else
         {
-            if (_policy.TakeTheChest) _askMet = true;
             Apply(driver, actions, ActionVerb.TakeChestRelic,
                 ("relic_id", relics[0].Id.ToString()),
                 ("option_index", "0"));
+            MeetTheAskIf(session, _policy.TakeTheChest || _policy.ObtainingIsTheAsk);
         }
 
         if (driver.UnclaimedRewardKinds.Count > 0)
@@ -629,9 +722,11 @@ public static partial class SyntheticFixtureGenerator
             // A potion nobody can carry is bought and immediately lost, which would be
             // a purchase this history could not explain.
             .Where(candidate => candidate.Kind != ShopPurchaseKinds.Potion || player.HasOpenPotionSlots)
-            // Everything affordable on the shelf the policy asks for before any other
-            // shelf, since the sort is redone per purchase; then the purse's own order
-            .OrderBy(candidate => candidate.Kind == _policy.ShopKind ? 0 : 1)
+            // The relic the policy is after before anything, then everything
+            // affordable on the shelf the policy asks for before any other shelf,
+            // since the sort is redone per purchase; then the purse's own order
+            .OrderBy(candidate => candidate.entry is MerchantRelicEntry { Model: { } model } && model.Id.ToString() == _policy.BagRelic ? 0 : 1)
+            .ThenBy(candidate => candidate.Kind == _policy.ShopKind ? 0 : 1)
             .ThenBy(candidate => candidate.entry.Cost)
             .ThenBy(candidate => candidate.Kind, StringComparer.Ordinal)
             .ThenBy(candidate => candidate.index)
@@ -640,11 +735,16 @@ public static partial class SyntheticFixtureGenerator
         if (affordable.Count == 0) return false;
 
         var (kind, chosen, position) = affordable[0];
-        if (kind == _policy.ShopKind) _askMet = true;
+        var purchasedId = PurchasedId(chosen);
         Apply(driver, actions, ActionVerb.ShopPurchase,
             ("kind", kind),
-            (ShopPurchaseKinds.IdArgument(kind)!, PurchasedId(chosen)),
+            (ShopPurchaseKinds.IdArgument(kind)!, purchasedId),
             ("option_index", position.ToString(CultureInfo.InvariantCulture)));
+        MeetTheAskIf(session, kind == _policy.ShopKind || _policy.ObtainingIsTheAsk);
+
+        // A relic bought can put a rewards set on offer from its own work - Orrery's
+        // cards, Cauldron's potions - answered before the next purchase
+        TakeWhatWasOffered(driver, session, actions);
         return true;
     }
 
@@ -667,7 +767,7 @@ public static partial class SyntheticFixtureGenerator
             if (slot >= 0)
             {
                 _drankOnTheMap = true;
-                _askMet = true;
+                MeetTheAskIf(session, true);
                 Apply(driver, actions, ActionVerb.UsePotion,
                     ("potion_id", belt[slot]!.Id.ToString()),
                     ("slot_index", slot.ToString(CultureInfo.InvariantCulture)));
@@ -680,7 +780,7 @@ public static partial class SyntheticFixtureGenerator
             if (slot >= 0)
             {
                 _discardedOnTheMap = true;
-                _askMet = true;
+                MeetTheAskIf(session, true);
                 Apply(driver, actions, ActionVerb.DiscardPotion,
                     ("potion_id", belt[slot]!.Id.ToString()),
                     ("slot_index", slot.ToString(CultureInfo.InvariantCulture)));
