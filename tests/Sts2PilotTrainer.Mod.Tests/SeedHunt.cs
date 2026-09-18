@@ -30,10 +30,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// on Neow, rolled from the act's own ancients at the act's start and offering three
 /// relics from its option pools, and the same reading takes the ancient and its offer
 /// off the first room; a row after a relic an ancient deals hunts a seed of that act
-/// alone whose ancient offers it. The ancient every act after the first rolls one of
-/// - Darv, dealt to one act after the first at the run's start
-/// (<c>RunManager.GenerateRooms</c>) and opened on by no act alone - is read off the
-/// second act's room set the same way, and a row after it walks the first act through.
+/// alone whose ancient offers it. Darv, dealt to one act after the first at the run's
+/// start (<c>RunManager.GenerateRooms</c>) and opened on by no act alone, is not read
+/// here: a row after it walks the first act through, and the reading of the second
+/// act's room set goes in with the survival seed such a row needs.
 ///
 /// The event a question mark opens is fixed at the run's start as well: the act's
 /// events are shuffled into its room set as the run is generated and dealt in that
@@ -60,8 +60,6 @@ internal static class SeedHunt
     /// opening room's own, that the run allows at its start: what the first question
     /// mark opens where it rolls an event, short of what the run's state between
     /// allows or forbids by then.</param>
-    /// <param name="NextActAncientId">The ancient the second act of the acts list
-    /// opens on, or null on a list of one act.</param>
     /// <param name="FirstEncounterId">The encounter the act's first monster room
     /// fights, the first of the act's shuffled set.</param>
     internal sealed record Opening(
@@ -72,7 +70,6 @@ internal static class SeedHunt
         string FirstChestRarity,
         string FirstQuestionMarkRoom,
         string? FirstEventId,
-        string? NextActAncientId,
         string? FirstEncounterId)
     {
         /// <summary>Whether the act's first question mark opens the event with this
@@ -94,24 +91,20 @@ internal static class SeedHunt
             Dealer.Chest => SharedBagFronts.TryGetValue(FirstChestRarity, out var front) && front == relicId,
             Dealer.Shop => PlayerBagBacks.TryGetValue(nameof(RelicRarity.Shop), out var back) && back == relicId,
             Dealer.Ancient => OpeningEventId != DecisionFacts.NeowEventId && OfferedRelics.Contains(relicId, StringComparer.Ordinal),
-            Dealer.NextActAncient => NextActAncientId is not null && NextActAncientId == relicId,
             _ => throw new ArgumentOutOfRangeException(nameof(dealer), dealer, "not a dealer"),
         };
     }
 
     /// <summary>How a run deals a relic: the opening blessing, the chest that draws
     /// the front of the relic's rarity bag, the merchant's shelf that draws the back
-    /// of the shop bag, the ancient an act opens on where the run's first act is
-    /// act 2 or 3, or the ancient the second act of the list opens on - read by the
-    /// ancient's id rather than a relic's, since which relics it offers is rolled as
-    /// its room is entered, an act away.</summary>
+    /// of the shop bag, or the ancient an act opens on where the run's first act is
+    /// act 2 or 3.</summary>
     internal enum Dealer
     {
         Neow,
         Chest,
         Shop,
         Ancient,
-        NextActAncient,
     }
 
     /// <summary>The game's own seed alphabet.</summary>
@@ -167,9 +160,6 @@ internal static class SeedHunt
                 .Skip(1)
                 .Select(id => ModelDb.GetById<EventModel>(id))
                 .FirstOrDefault(model => model.IsAllowed(session.RunState))?.Id.ToString();
-            var nextActAncient = session.RunState.Acts.Count > 1
-                ? session.RunState.Acts[1].ToSave().SerializableRooms.AncientId?.ToString()
-                : null;
             return new Opening(
                 opening.Id.ToString(),
                 offered,
@@ -178,7 +168,6 @@ internal static class SeedHunt
                 firstChestRarity,
                 firstQuestionMark,
                 firstEvent,
-                nextActAncient,
                 rooms.NormalEncounterIds.FirstOrDefault()?.ToString());
         }
         finally

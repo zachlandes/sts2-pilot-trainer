@@ -384,17 +384,21 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>
     /// Does what the client does between the last decision and this one that is not
     /// itself a decision, so that a reading taken just before <see cref="Apply"/> is
-    /// the state the decision was made in. Today that is two things: a decision about
-    /// what a treasure chest holds is made with the chest open, and the client opens
-    /// it on a click after the arrival; and the first decision after an event's own
+    /// the state the decision was made in. Today that is three things: a decision
+    /// about what a treasure chest holds is made with the chest open, and the client
+    /// opens it on a click after the arrival; the first decision after an event's own
     /// fight is made back in the event, which the client resumes on the proceed off
-    /// the loot screen (<see cref="ResumeTheEventTheFightWasFoughtIn"/>).
-    /// <see cref="Apply"/> does both too, so a caller that takes no reading before an
-    /// action need not call this.
+    /// the loot screen (<see cref="ResumeTheEventTheFightWasFoughtIn"/>); and the
+    /// next page of an event whose option handed the run to the player is the page
+    /// the option's own work produces once the player has answered, which the
+    /// recorder reads finished (<see cref="WaitForTheOptionsWork"/>).
+    /// <see cref="Apply"/> does all three too, so a caller that takes no reading
+    /// before an action need not call this.
     /// </summary>
     public void Approach(ActionRecord action)
     {
         ResumeTheEventTheFightWasFoughtIn();
+        if (action.Verb is ActionVerb.ChooseEventOption) WaitForTheOptionsWork();
 
         if (action.Verb is ActionVerb.TakeChestRelic or ActionVerb.SkipChestRelic
             or ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.TakeCardRewardAlternative
@@ -987,7 +991,13 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// waiting for the player's next decision and is left alone. The fault check is
     /// here rather than in the settle because work handed to the player can fault
     /// after the hand-over, once the player has answered; read as a stale page, that
-    /// fault would be blamed on the recording at its next decision.
+    /// fault would be blamed on the recording at its next decision. The second ask
+    /// is from <see cref="Approach"/>, before the replay samples the next option's
+    /// before-reading, because the recorder reads that decision with the work
+    /// finished; no generated row holds that ordering, since every event a row
+    /// reaches on this build finishes its work inside the answering claim, and the
+    /// two whose work goes on past it - Potion Courier and Relic Trader - are dealt
+    /// only from the second act on.
     /// </summary>
     internal void WaitForTheOptionsWork()
     {

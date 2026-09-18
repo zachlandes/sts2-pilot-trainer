@@ -67,7 +67,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// turn, and every point only the second act on deals - Darv's options, the events
 /// the game allows from act 2 on, the card removal only a Necrobinder's Forbidden
 /// Grimoire puts on the loot screen - because no hunted seed of the walk's own line
-/// survives the first act; a seed that does is a character row of the fifth stage.
+/// survives the first act, and the one that does opens its second act on Orobas; a
+/// row there takes a survival seed of the fifth stage, with the row field and the
+/// hunt reading it needs added beside it (the walk into a second act itself,
+/// <see cref="WalkPolicy.AskInTheNextAct"/>, is built and held by
+/// <c>ReplayRefusalRegressionTests</c>).
 /// </summary>
 public sealed class GeneratedCoverageTests
 {
@@ -382,19 +386,13 @@ public sealed class GeneratedCoverageTests
     /// longer opens the event fails the row by name at the mark rather than at a
     /// reading of the opening.
     /// </summary>
-    /// <param name="InTheNextAct">The event is one the game allows only from the
-    /// second act on, so the walk plays the first act through and routes to the
-    /// second act's first question mark (<see cref="WalkPolicy.AskInTheNextAct"/>).
-    /// No row on this build sets it: none of three hundred hunted seeds survives the
-    /// first act on the walk's own line, and <c>ReplayRefusalRegressionTests</c> holds
-    /// the walk into a second act on the fixture seed instead.</param>
     /// <param name="ClaimsReward">The reward kind the row is after past the option -
     /// the special card the Lantern Key's fight earns - claimed off the loot screen
     /// the option's fight ends on, which is then the ask rather than the option.</param>
     /// <param name="FightsFirst">How many fights the route passes before the question
     /// mark: an event allowed only with gold in hand is reached with the fights' gold.</param>
     internal sealed record EventRow(
-        string Event, string Key, string Seed, string[]? Via = null, string[]? AlsoRetires = null, bool InTheNextAct = false,
+        string Event, string Key, string Seed, string[]? Via = null, string[]? AlsoRetires = null,
         string? ClaimsReward = null, int FightsFirst = 0);
 
     /// <summary>The acts lists the event rows run on: the default progression for act
@@ -667,7 +665,6 @@ public sealed class GeneratedCoverageTests
         EventOptionsOnTheWay = row.Via,
         RewardKindToClaim = row.ClaimsReward,
         RouteThrough = [.. Enumerable.Repeat(MapPointType.Monster, row.FightsFirst), MapPointType.Unknown],
-        AskInTheNextAct = row.InTheNextAct,
     };
 
     /// <summary>The seed the thief row walks: a run of the Hive alone whose first
