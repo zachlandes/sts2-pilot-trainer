@@ -199,7 +199,7 @@ public static class Arbiter
                     Caveats = Caveats(),
                     Diagnostics = preflight.Fields
                         .Where(f => !f.Matches)
-                        .Select(f => $"{f.Field}: manifest says '{f.Expected}', this machine has '{f.Actual}'. {f.Diagnostic}")
+                        .Select(f => f.Refusal)
                         .ToList(),
                 },
                 FinalState: null);

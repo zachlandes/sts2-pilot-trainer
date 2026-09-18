@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -24,6 +25,10 @@ public sealed record GameIdentity(
     string PristineAssemblySha256,
     IReadOnlyList<string> Notes)
 {
+    /// <summary>This build in the three fields a manifest records of one, which is
+    /// what a corpus command hands the standing of every recording it counts.</summary>
+    public LocalBuild Build => new(BuildVersion, BuildDateUtc, ContentHash);
+
     /// <summary>
     /// Reads identity from whichever engine this process is using.
     /// The retail client is its own authority; a headless process uses the receipted

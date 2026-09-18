@@ -45,6 +45,7 @@ public sealed class CoverageTests
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
             Assert.True(artifact.GetProperty("covered").GetBoolean());
+            Assert.Equal("v0.111.0", artifact.GetProperty("build").GetProperty("build_version").GetString());
             var totals = artifact.GetProperty("totals");
             Assert.Equal(522, totals.GetProperty("points").GetInt32());
             Assert.Equal(0, totals.GetProperty("uncovered").GetInt32());
@@ -138,6 +139,73 @@ public sealed class CoverageTests
             Assert.Equal(0, restSite.GetProperty("recordings").GetInt32());
             Assert.Equal(1, restSite.GetProperty("unverified_recordings").GetInt32());
             Assert.Equal("Uncovered", restSite.GetProperty("state").GetString());
+        });
+    }
+
+    /// <summary>
+    /// A recording made on another build credits nothing, the way <c>replay</c>
+    /// refuses the same file and <c>parity</c> names it: the audit's reproduction, a
+    /// committed manifest relabelled to another version and content hash in a scratch
+    /// corpus, which credited 17 points and 5 seams while the replay refused it on
+    /// <c>build_version</c>. Every point it reached is tallied beside the row as
+    /// unverified, the recording is named with the preflight's own three fields in the
+    /// preflight's own words, and the artifact's header says which build the number
+    /// is about.
+    /// </summary>
+    [GameFact]
+    public void ARecordingOfAnotherBuildCreditsNothingAndIsNamedInThePreflightsWords()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "corpus");
+            Directory.CreateDirectory(corpus);
+            const string otherBuildRun = "native-3LACFJ5NJ371-otherbuild";
+            var relabelled = JsonNode.Parse(File.ReadAllText(
+                Path.Combine(Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json")))!;
+            relabelled["run_id"] = otherBuildRun;
+            relabelled["environment"]!["build_version"]!["Value"] = "v0.112.0";
+            relabelled["environment"]!["content_hash"]!["Value"] = "999999999";
+            File.WriteAllText(Path.Combine(corpus, $"{otherBuildRun}{RecordingLibrary.ManifestExtension}"), relabelled.ToJsonString());
+
+            var outDir = Path.Combine(directory, "evidence");
+            var result = Arbiter.Run("coverage", "--corpus", corpus, "--out", outDir);
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains("NOT COVERED", result.Output, StringComparison.Ordinal);
+            Assert.Contains("verb  ChooseNeowBlessing  uncovered; reached by 1 unverified recording(s), not credited", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event  EVENT.BRAIN_LEECH  uncovered; reached by 1 unverified recording(s), not credited", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  uncovered; reached by 1 unverified recording(s), not credited", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                $"{otherBuildRun}  build_version: manifest says 'v0.112.0', this machine has 'v0.111.0'. Replaying on a different build",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "content_hash: manifest says '999999999', this machine has '1568834832'. The content hash is a checksum",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains("covered: 0  co-occurrence: 0", result.Output, StringComparison.Ordinal);
+            Assert.Contains("recordings credited: 0  unverified: 1  unreadable: 0", result.Output, StringComparison.Ordinal);
+
+            var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
+            var build = artifact.GetProperty("build");
+            Assert.Equal("v0.111.0", build.GetProperty("build_version").GetString());
+            Assert.Equal("2026.08.14", build.GetProperty("build_date_utc").GetString());
+            Assert.Equal("1568834832", build.GetProperty("content_hash").GetString());
+            var totals = artifact.GetProperty("totals");
+            Assert.Equal(0, totals.GetProperty("covered").GetInt32());
+            Assert.Equal(0, totals.GetProperty("co_occurrence").GetInt32());
+            Assert.Equal(0, totals.GetProperty("credited_recordings").GetInt32());
+            Assert.Equal(1, totals.GetProperty("unverified_recordings").GetInt32());
+            var unverified = Assert.Single(artifact.GetProperty("unverified_recordings").EnumerateArray());
+            Assert.Equal(otherBuildRun, unverified.GetProperty("run_id").GetString());
+            Assert.Equal("AnotherBuild", unverified.GetProperty("standing").GetString());
+            Assert.Equal(
+                [("build_version", false), ("build_date_utc", true), ("content_hash", false)],
+                unverified.GetProperty("build").EnumerateArray()
+                    .Select(field => (field.GetProperty("field").GetString(), field.GetProperty("matches").GetBoolean())));
+            var neow = artifact.GetProperty("points").EnumerateArray()
+                .Single(point => point.GetProperty("identity").GetString() == "ChooseNeowBlessing");
+            Assert.Equal(0, neow.GetProperty("recordings").GetInt32());
+            Assert.Equal(1, neow.GetProperty("unverified_recordings").GetInt32());
+            Assert.Equal("Uncovered", neow.GetProperty("state").GetString());
         });
     }
 

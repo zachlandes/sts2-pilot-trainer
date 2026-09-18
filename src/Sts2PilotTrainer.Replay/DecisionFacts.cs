@@ -354,11 +354,12 @@ public sealed record ProducerSeam(
 /// projected. Pure, so it is held on inputs written by hand.
 ///
 /// A recording credits a point only where <see cref="RecordingStanding"/> says it
-/// holds. One the recorder marked broken, unmapped or non-standard is projected all
-/// the same and tallied apart, as reached and unverified: a point only such a
-/// recording reaches stays uncovered, or excused, and the tally is printed beside it
-/// so the corpus is not read as shorter than it is. A manifest this build cannot read
-/// projects nothing and is listed by name for the same reason.
+/// holds. One made on another build, or one the recorder marked broken, unmapped or
+/// non-standard, is projected all the same and tallied apart, as reached and
+/// unverified: a point only such a recording reaches stays uncovered, or excused, and
+/// the tally is printed beside it so the corpus is not read as shorter than it is. A
+/// manifest this build cannot read projects nothing and is listed by name for the
+/// same reason.
 ///
 /// A seam point is credited by co-occurrence: a crediting recording that met one of
 /// the seam's producers and answered one of the points the seam is answered at. Every

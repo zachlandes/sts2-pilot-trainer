@@ -200,6 +200,15 @@ public sealed record PreflightField
     [JsonPropertyName("diagnostic")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Diagnostic { get; init; }
+
+    /// <summary>
+    /// A failed rule as one sentence: the field, what the manifest says, what this
+    /// machine has, and the rule's own diagnostic. The one spelling of a refusal at
+    /// the prerequisites, so the arbiter's refusal and a corpus command's classification
+    /// of the same recording read the same.
+    /// </summary>
+    [JsonIgnore]
+    public string Refusal => $"{Field}: manifest says '{Expected}', this machine has '{Actual}'. {Diagnostic}";
 }
 
 public sealed record CheckpointResult(

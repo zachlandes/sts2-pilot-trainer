@@ -38,6 +38,11 @@ internal static class SelfProcess
     /// or zero while none has.</summary>
     private static volatile int StopExitCode;
 
+    /// <summary>The engine's own test hook for a forced initialisation failure, and
+    /// the variable a test sets to have it fire in this process's children only.</summary>
+    internal const string RequiredInitFailure = "STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE";
+    internal const string ChildRequiredInitFailure = "STS2_PILOT_TRAINER_TEST_CHILD_REQUIRED_INIT_FAILURE";
+
     internal static Result Run(params string[] args)
     {
         var executable = Environment.ProcessPath
@@ -65,6 +70,14 @@ internal static class SelfProcess
 
         startInfo.Environment[ParentProcess.Variable] =
             Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // A test that wants the child alone to fail engine initialisation hands the
+        // failure over here, because the parent starts the engine too: a corpus command
+        // reads the build under test off it before it spawns anything
+        if (Environment.GetEnvironmentVariable(ChildRequiredInitFailure) is { Length: > 0 } childFailure)
+        {
+            startInfo.Environment[RequiredInitFailure] = childFailure;
+        }
 
         // Registered before the child exists, so there is no moment a child is alive
         // and a signal would not reach it.

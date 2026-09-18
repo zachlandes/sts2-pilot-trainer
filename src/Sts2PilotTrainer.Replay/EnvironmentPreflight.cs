@@ -72,19 +72,8 @@ public static class EnvironmentPreflight
     public static PreflightResult Prerequisites(
         EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod")
     {
-        var fields = new List<PreflightField>
+        var fields = new List<PreflightField>(Build(expected, actual.Build))
         {
-            Compare("build_version", expected.BuildVersion.Value, actual.BuildVersion,
-                "Replaying on a different build means different content and different balance. There is no " +
-                "migration path: record the build a run came from and refuse anything else. Install the " +
-                "matching build through the game's own version selection; this tool never changes it for you."),
-
-            Compare("build_date_utc", expected.BuildDateUtc.Value, actual.BuildDateUtc,
-                "The game's version overlay renders the release timestamp in UTC. A mismatch here with a " +
-                "matching version usually means the date was compared in local time."),
-
-            Compare("content_hash", expected.ContentHash.Value, actual.ContentHash, ContentHashScope),
-
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
             EvaluateSourceMods(expected.Mods.Value, sourceKind),
@@ -95,6 +84,30 @@ public static class EnvironmentPreflight
         fields.AddRange(EvaluateUnlocks(expected, actual));
         return new PreflightResult(fields.All(field => field.Matches), fields);
     }
+
+    /// <summary>
+    /// The build rule on its own: whether this machine's game is the build the
+    /// manifest was made on, in the three fields the manifest records of it.
+    ///
+    /// The first three fields of <see cref="Prerequisites"/>, and the same three
+    /// objects, so a reader that asks only this - the standing a recording has on the
+    /// build under test, before any run is constructed - refuses on the fields and in
+    /// the words the replay's own preflight refuses on, rather than on a second
+    /// spelling of the rule that a game update could leave behind.
+    /// </summary>
+    public static IReadOnlyList<PreflightField> Build(EnvironmentIdentity expected, LocalBuild actual) =>
+    [
+        Compare("build_version", expected.BuildVersion.Value, actual.BuildVersion,
+            "Replaying on a different build means different content and different balance. There is no " +
+            "migration path: record the build a run came from and refuse anything else. Install the " +
+            "matching build through the game's own version selection; this tool never changes it for you."),
+
+        Compare("build_date_utc", expected.BuildDateUtc.Value, actual.BuildDateUtc,
+            "The game's version overlay renders the release timestamp in UTC. A mismatch here with a " +
+            "matching version usually means the date was compared in local time."),
+
+        Compare("content_hash", expected.ContentHash.Value, actual.ContentHash, ContentHashScope),
+    ];
 
     /// <summary>
     /// Whether the run that exists right now is the run the manifest describes.
