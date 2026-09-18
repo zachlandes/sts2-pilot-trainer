@@ -2,8 +2,8 @@ using System.Globalization;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Rooms;
-using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;

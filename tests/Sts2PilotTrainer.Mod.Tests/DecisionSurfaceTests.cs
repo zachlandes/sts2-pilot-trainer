@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 
@@ -191,6 +193,149 @@ public sealed class DecisionSurfaceTests
     }
 
     /// <summary>
+    /// The three derivations that used to write this build's numbers down are read
+    /// off the IL: the flower's dig bound is the constant <c>ReachDeeper</c> compares
+    /// <c>NumberOfDigs</c> with and branches past the page on, the tablet's finish is
+    /// the one <c>Decipher</c> compares <c>DecipherCount</c> with and branches past
+    /// the finish on, and the trader's <c>PROCEED</c> is the literal its construction
+    /// loads, which needs no derivation at all. Every option those events and the
+    /// Architect build by interpolation is read as a template, and every key their
+    /// derivations list fits one, which is what the walk refuses on when a build
+    /// moves a bound or renames a page.
+    /// </summary>
+    [GameFact]
+    public void TheBuiltOptionKeysAreReadAsTemplatesAndTheirBoundsOffTheIl()
+    {
+        Assert.Equal(2, DecisionSurface.CounterBound("EVENT.COLOSSAL_FLOWER", "NumberOfDigs", "Bge"));
+        Assert.Equal(5, DecisionSurface.CounterBound("EVENT.TABLET_OF_TRUTH", "DecipherCount", "Bne_Un"));
+        var noSuchShape = Assert.Throws<InvalidOperationException>(
+            () => DecisionSurface.CounterBound("EVENT.COLOSSAL_FLOWER", "NumberOfDigs", "Beq"));
+        Assert.Contains("compares NumberOfDigs with Beq against no constant", noSuchShape.Message, StringComparison.Ordinal);
+
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.REACH_DEEPER_{}",
+            ],
+            DecisionSurface.BuiltOptionKeyTemplates("EVENT.COLOSSAL_FLOWER"));
+        Assert.Equal(
+            ["TABLET_OF_TRUTH.pages.DECIPHER_{}.options.DECIPHER"],
+            DecisionSurface.BuiltOptionKeyTemplates("EVENT.TABLET_OF_TRUTH"));
+        Assert.Equal(["{}.dialogue.{}"], DecisionSurface.BuiltOptionKeyTemplates("EVENT.THE_ARCHITECT"));
+        Assert.Empty(DecisionSurface.BuiltOptionKeyTemplates("EVENT.RELIC_TRADER"));
+        Assert.Empty(DecisionSurface.BuiltOptionKeyTemplates("EVENT.PAEL"));
+
+        var options = DecisionSurface.EventOptionKeys();
+        foreach (var eventId in new[] { "EVENT.COLOSSAL_FLOWER", "EVENT.TABLET_OF_TRUTH", "EVENT.THE_ARCHITECT" })
+        {
+            var keys = options.Where(option => option.EventId == eventId).Select(option => option.Key).ToList();
+            Assert.All(
+                DecisionSurface.BuiltOptionKeyTemplates(eventId),
+                template => Assert.Contains(keys, key => DecisionSurface.Fits(template, key)));
+        }
+
+        Assert.True(DecisionSurface.Fits("{}.dialogue.{}", "THE_ARCHITECT.dialogue.0"));
+        Assert.False(DecisionSurface.Fits("{}.dialogue.{}", "THE_ARCHITECT.dialogue.0.x"));
+        Assert.False(DecisionSurface.Fits("TABLET_OF_TRUTH.pages.DECIPHER_{}.options.DECIPHER", "TABLET_OF_TRUTH.pages.DECIPHER.options.GIVE_UP"));
+
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
+                "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_1",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE",
+            ],
+            options.Where(option => option.EventId == "EVENT.COLOSSAL_FLOWER").Select(option => option.Key));
+        Assert.Equal(
+            [
+                "TABLET_OF_TRUTH.pages.DECIPHER.options.GIVE_UP",
+                "TABLET_OF_TRUTH.pages.DECIPHER_1.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_2.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_3.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_4.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.INITIAL.options.DECIPHER_1",
+                "TABLET_OF_TRUTH.pages.INITIAL.options.SMASH",
+            ],
+            options.Where(option => option.EventId == "EVENT.TABLET_OF_TRUTH").Select(option => option.Key));
+        Assert.Equal(
+            [
+                "PROCEED",
+                "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
+                "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
+                "RELIC_TRADER.pages.INITIAL.options.TOP",
+            ],
+            options.Where(option => option.EventId == "EVENT.RELIC_TRADER").Select(option => option.Key));
+    }
+
+    /// <summary>
+    /// The reading behind that, on the game's own bodies: a construction keyed by a
+    /// literal carries it as its key literal, with a params default or a hover-tip
+    /// call between the two leaving it in place; one keyed by an interpolation the
+    /// body finishes right before it carries the template; and a counter compared
+    /// with a constant is read as the constant and the branch that compares it, so
+    /// the reader itself is held to this build's shapes rather than to a fixture.
+    /// </summary>
+    [GameFact]
+    public void AConstructionsKeyAndACountersBoundAreReadOffTheGamesOwnBodies()
+    {
+        var trader = ChoiceEntryPoints.ConstructionsIn(GameMethod("RelicTrader", "GenerateInitialOptions"), EventOptionType());
+        Assert.Equal(4, trader.Count);
+        Assert.Equal("RELIC_TRADER.pages.INITIAL.options.TOP", trader[0].KeyLiteral);
+        Assert.Equal("PROCEED", trader[3].KeyLiteral);
+        Assert.All(trader, construction => Assert.Null(construction.Template));
+
+        var flower = ChoiceEntryPoints.ConstructionsIn(GameMethod("ColossalFlower", "GenerateInitialOptions"), EventOptionType());
+        Assert.Equal(
+            ["COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_{}", "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_{}"],
+            flower.Select(construction => construction.Template));
+        Assert.All(flower, construction => Assert.Null(construction.KeyLiteral));
+
+        var reachDeeper = StateMachineOf(GameMethod("ColossalFlower", "ReachDeeper"));
+        var deeper = ChoiceEntryPoints.ConstructionsIn(reachDeeper, EventOptionType());
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.REACH_DEEPER_{}",
+                null,
+                null,
+            ],
+            deeper.Select(construction => construction.Template));
+        Assert.Equal(
+            [null, null, "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD", "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE"],
+            deeper.Select(construction => construction.KeyLiteral));
+        Assert.Equal(
+            [(2, "Bge")],
+            ChoiceEntryPoints.ConstantsComparedWith(reachDeeper, GameMethod("ColossalFlower", "get_NumberOfDigs")));
+        Assert.Equal(
+            [(5, "Bne_Un")],
+            ChoiceEntryPoints.ConstantsComparedWith(
+                StateMachineOf(GameMethod("TabletOfTruth", "Decipher")), GameMethod("TabletOfTruth", "get_DecipherCount")));
+    }
+
+    /// <summary>A game method by type and name, resolved at run time rather than by a
+    /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where
+    /// the game is.</summary>
+    private static MethodBase GameMethod(string eventType, string name)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        var type = ChoiceEntryPoints.Game.GetType($"MegaCrit.Sts2.Core.Models.Events.{eventType}", throwOnError: true)!;
+        return type.GetMethod(name, every) ?? throw new InvalidOperationException($"{eventType} declares no {name} on this build.");
+    }
+
+    private static Type EventOptionType() => ChoiceEntryPoints.Game.GetType("MegaCrit.Sts2.Core.Events.EventOption", throwOnError: true)!;
+
+    /// <summary>The <c>MoveNext</c> an async method's body is compiled into.</summary>
+    private static MethodBase StateMachineOf(MethodBase method) =>
+        method.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType
+            .GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException($"{method.Name} is not async on this build.");
+
+    /// <summary>
     /// The producer map is the scout's walk on this build: 269 edges from the models
     /// the database registers to 78 seams at their timing classes, the transitive
     /// edges among them, and the six declared seams no content reaches. Pinned by the
@@ -360,6 +505,43 @@ public sealed class DecisionSurfaceTests
         Assert.All(
             DecisionExcusals.All,
             excusal => Assert.Contains(excusal.Value.Class, admissible[excusal.Key]));
+    }
+
+    /// <summary>Every producer an excusal names is one the map lists for its point,
+    /// which is what lets <c>coverage</c> hold a sentence about who produces a point
+    /// to the build rather than to the person who wrote it; the three the audit found
+    /// naming their producer in prose alone name it by id now, beside the rest
+    /// options the ancient rows fall short of.</summary>
+    [GameFact]
+    public void EveryProducerAnExcusalNamesIsOneTheMapListsForItsPoint()
+    {
+        var map = DecisionSurface.ProducerMap();
+        var named = DecisionExcusals.All.Where(excusal => excusal.Value.NamedProducers.Count > 0).ToList();
+
+        Assert.All(
+            named,
+            excusal => Assert.All(
+                excusal.Value.NamedProducers,
+                producer => Assert.Contains(producer, DecisionCoverage.ProducersListedAt(excusal.Key, map))));
+        Assert.Equal(
+            ["CARD.BYRDONIS_EGG"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "HATCH")].NamedProducers);
+        Assert.Equal(
+            ["POWER.FORBIDDEN_GRIMOIRE_POWER"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")].NamedProducers);
+        Assert.Equal(
+            ["POWER.SWIPE_POWER", "EVENT.THE_LANTERN_KEY"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RewardKind, "special_card")].NamedProducers);
+        Assert.Equal(
+            ["POWER.SWIPE_POWER"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:special_card", "AbstractModel.BeforeDeath")].NamedProducers);
+        Assert.Equal(
+            ["EVENT.THE_LANTERN_KEY"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:special_card", "EventModel.GenerateInitialOptions")].NamedProducers);
+        Assert.Equal(
+            ["RELIC.PAELS_GROWTH"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "CLONE")].NamedProducers);
+        Assert.Equal(11, named.Count);
     }
 
     /// <summary>The committed producer map is what the walk produces on this build,

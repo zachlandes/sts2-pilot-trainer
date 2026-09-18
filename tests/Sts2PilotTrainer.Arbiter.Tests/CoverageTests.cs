@@ -35,13 +35,14 @@ public sealed class CoverageTests
             Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("seam  reward-kind:special_card @ EventModel.GenerateInitialOptions  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:special_card @ EventModel.GenerateInitialOptions  excused [generated; names EVENT.THE_LANTERN_KEY]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:relic @ AbstractModel.TryModifyRewardsLate  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event  EVENT.AROMA_OF_CHAOS  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.ENDLESS_CONVEYOR ENDLESS_CONVEYOR.pages.ALL.options.LOCKED  excused [not-choosable]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("rest-option  MEND  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("inadmissible excusals", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("misnamed producers", result.Output, StringComparison.Ordinal);
             // The excusals describe the committed corpus, so none of them is reached by
             // it: an excusal this corpus reaches has a sentence that has gone false
             Assert.DoesNotContain("excused and reached by this corpus", result.Output, StringComparison.Ordinal);
@@ -54,6 +55,7 @@ public sealed class CoverageTests
             Assert.Equal(0, totals.GetProperty("uncovered").GetInt32());
             Assert.Equal(6, totals.GetProperty("co_occurrence").GetInt32());
             Assert.Equal(0, totals.GetProperty("inadmissible_excusals").GetInt32());
+            Assert.Equal(0, totals.GetProperty("misnamed_producers").GetInt32());
             Assert.Equal(3, totals.GetProperty("recordings").GetInt32());
             Assert.Equal(
                 totals.GetProperty("points").GetInt32(),
@@ -65,6 +67,10 @@ public sealed class CoverageTests
             var mend = artifact.GetProperty("points").EnumerateArray()
                 .Single(point => point.GetProperty("identity").GetString() == "MEND" && point.GetProperty("kind").GetString() == "rest-option");
             Assert.Equal("multiplayer-only", mend.GetProperty("excuse_class").GetString());
+            Assert.False(mend.TryGetProperty("excuse_producers", out _), "an excusal naming no producer writes none");
+            var hatch = artifact.GetProperty("points").EnumerateArray()
+                .Single(point => point.GetProperty("identity").GetString() == "HATCH" && point.GetProperty("kind").GetString() == "rest-option");
+            Assert.Equal(["CARD.BYRDONIS_EGG"], hatch.GetProperty("excuse_producers").EnumerateArray().Select(producer => producer.GetString()));
         });
     }
 

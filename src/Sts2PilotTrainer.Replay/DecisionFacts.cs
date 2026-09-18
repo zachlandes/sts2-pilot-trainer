@@ -326,12 +326,42 @@ public static class ExcusalClasses
     };
 }
 
-/// <summary>An excusal: its class, which the map is held to, and the reason a person
-/// wrote, which is the whole of what the class cannot say.</summary>
-public sealed record Excusal(ExcusalClass Class, string Reason)
+/// <summary>An excusal: its class, which the map is held to, the reason a person
+/// wrote, which is the whole of what the class cannot say, and the producers the
+/// reason names, by id, which the map is held to as well. A reason that says who
+/// produces the point - the card that adds a rest option, the power that puts a
+/// reward on the loot screen, the event whose fight deals it - is a claim about the
+/// build, and a build that moves the producer leaves the class true and the sentence
+/// false; naming the producer here beside the prose is what lets <c>coverage</c> say
+/// so. Two excusals are equal by class, reason and the producers named, in order.</summary>
+public sealed record Excusal(ExcusalClass Class, string Reason, IReadOnlyList<string>? Producers = null)
 {
-    /// <summary>The excusal as the record and the report print it.</summary>
-    public string Describe() => $"excused [{ExcusalClasses.Name(Class)}]: {Reason}";
+    /// <summary>The producers the reason names, none where it names none.</summary>
+    public IReadOnlyList<string> NamedProducers => Producers ?? [];
+
+    /// <summary>The excusal as the record and the report print it, the producers it
+    /// names beside its class so the record shows what it is held to.</summary>
+    public string Describe() =>
+        $"excused [{ExcusalClasses.Name(Class)}" +
+        (NamedProducers.Count == 0 ? "" : $"; names {string.Join(", ", NamedProducers)}") +
+        $"]: {Reason}";
+
+    public bool Equals(Excusal? other) =>
+        other is not null && Class == other.Class && Reason == other.Reason &&
+        NamedProducers.SequenceEqual(other.NamedProducers, StringComparer.Ordinal);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(Class, Reason, NamedProducers.Count);
+}
+
+/// <summary>An excusal naming a producer the map does not list for its point, with
+/// the producers it does: for a seam, the seam's own producers; for any other point,
+/// the producers of every seam answered at it.</summary>
+public sealed record MisnamedProducer(DecisionPoint Point, string Producer, IReadOnlyList<string> Listed)
+{
+    public string Describe() =>
+        $"{Point}  excused naming {Producer}, and the map lists " +
+        (Listed.Count == 0 ? "no producer here" : string.Join(", ", Listed));
 }
 
 /// <summary>
@@ -371,7 +401,8 @@ public sealed record ProducerSeam(
 /// A seam point is credited by co-occurrence: a crediting recording that met one of
 /// the seam's producers and answered one of the points the seam is answered at. Every
 /// excusal is held to the classes the map admits for its point; one claiming a class
-/// the map contradicts is named and fails the bar the way a stale excusal does.
+/// the map contradicts is named and fails the bar the way a stale excusal does, and
+/// so is one naming a producer the map does not list for its point.
 /// </summary>
 public static class DecisionCoverage
 {
@@ -453,12 +484,39 @@ public static class DecisionCoverage
             .Select(entry => new InadmissibleExcusal(entry.Point, entry.Class, entry.Admitted.Order().ToList()))
             .ToList();
 
+        // An excusal naming a producer the map does not list for its point is a
+        // sentence about another build - the class may still be admitted while the
+        // thing it says produces the point no longer does - and is named with what
+        // the map lists there instead
+        var misnamed = excusals
+            .Where(entry => known.Contains(entry.Key) && producerMap is not null && entry.Value.NamedProducers.Count > 0)
+            .SelectMany(entry =>
+            {
+                var listed = ProducersListedAt(entry.Key, producerMap!);
+                return entry.Value.NamedProducers
+                    .Where(producer => !listed.Contains(producer, StringComparer.Ordinal))
+                    .Select(producer => new MisnamedProducer(entry.Key, producer, listed));
+            })
+            .OrderBy(entry => Array.IndexOf(DecisionKinds.All, entry.Point.Kind))
+            .ThenBy(entry => entry.Point.Identity, StringComparer.Ordinal)
+            .ThenBy(entry => entry.Producer, StringComparer.Ordinal)
+            .ToList();
+
         return new CoverageReport(
-            rows, outside, staleExcusals, excusedAndReached, inadmissible,
+            rows, outside, staleExcusals, excusedAndReached, inadmissible, misnamed,
             recordings.Where(recording => !recording.Credits).ToList(),
             unreadable ?? [],
             recordings.Count + (unreadable?.Count ?? 0));
     }
+
+    /// <summary>The producers the map lists for a point: a seam's own, or for any
+    /// other point those of every seam answered at it, distinct and in the map's order.</summary>
+    public static IReadOnlyList<string> ProducersListedAt(DecisionPoint point, IReadOnlyList<ProducerSeam> producerMap) =>
+        producerMap
+            .Where(seam => seam.Point == point || seam.AnsweredAt.Contains(point))
+            .SelectMany(seam => seam.Producers)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>The seam points one recording reached by co-occurrence: a producer met
     /// and the seam's decision answered, in the same recording.</summary>
@@ -536,6 +594,7 @@ public sealed record CoverageRow(
 /// <param name="ExcusedAndReached">Excused points a crediting recording of this corpus reached: over the
 /// committed corpus, an excusal whose sentence has gone false; over a wider one, progress.</param>
 /// <param name="InadmissibleExcusals">Excusals claiming a class the map does not admit for their point.</param>
+/// <param name="MisnamedProducers">Excusals naming a producer the map does not list for their point.</param>
 /// <param name="Unverified">The recordings projected and credited nothing, each with the recorder's own reason.</param>
 /// <param name="Unreadable">The manifests this build could not read, each with the parser's words.</param>
 /// <param name="Recordings">How many recordings the corpus held, unverified and unreadable included.</param>
@@ -545,6 +604,7 @@ public sealed record CoverageReport(
     IReadOnlyList<DecisionPoint> StaleExcusals,
     IReadOnlyList<DecisionPoint> ExcusedAndReached,
     IReadOnlyList<InadmissibleExcusal> InadmissibleExcusals,
+    IReadOnlyList<MisnamedProducer> MisnamedProducers,
     IReadOnlyList<CoveredRecording> Unverified,
     IReadOnlyList<UnreadableRecording> Unreadable,
     int Recordings)
@@ -558,10 +618,11 @@ public sealed record CoverageReport(
     public int CreditedRecordings => Recordings - Unverified.Count - Unreadable.Count;
 
     /// <summary>Whether the bar holds: no point is uncovered, no recording reached a
-    /// point outside the denominator, no excusal is stale, and none claims a class
-    /// the map does not admit.</summary>
+    /// point outside the denominator, no excusal is stale, none claims a class the
+    /// map does not admit, and none names a producer the map does not list.</summary>
     public bool Holds =>
-        Uncovered == 0 && OutsideTheDenominator.Count == 0 && StaleExcusals.Count == 0 && InadmissibleExcusals.Count == 0;
+        Uncovered == 0 && OutsideTheDenominator.Count == 0 && StaleExcusals.Count == 0 &&
+        InadmissibleExcusals.Count == 0 && MisnamedProducers.Count == 0;
 
     private int Count(CoverageState state) => Rows.Count(row => row.State == state);
 
@@ -591,6 +652,11 @@ public sealed record CoverageReport(
         if (InadmissibleExcusals.Count > 0)
         {
             yield return $"inadmissible excusals: {n(InadmissibleExcusals.Count)}";
+        }
+
+        if (MisnamedProducers.Count > 0)
+        {
+            yield return $"misnamed producers: {n(MisnamedProducers.Count)}";
         }
 
         if (ExcusedAndReached.Count > 0)

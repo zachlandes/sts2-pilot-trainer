@@ -420,8 +420,17 @@ internal static class ChoiceEntryPoints
     /// last integer constant loaded in the same span beside it, either null where the
     /// body loaded none in between, and whether the instruction before the last
     /// literal loaded null - the shape of <c>new EventOption(this, null, "KEY")</c>,
-    /// an option constructed with no work.</summary>
-    internal sealed record Construction(IReadOnlyList<string> Literals, string? Literal, int? Constant, bool NullBeforeLiteral = false);
+    /// an option constructed with no work. <paramref name="Template"/> is the string
+    /// the construction is keyed by where the body built it by interpolation just
+    /// before constructing - its literal parts with <c>{}</c> at each hole, the shape
+    /// of <c>new EventOption(this, Dig, $"FLOWER.pages.DIG_{digs}")</c> - and
+    /// <paramref name="KeyLiteral"/> the literal it is keyed by where that literal was
+    /// the last string the body produced before constructing, the shape of
+    /// <c>new EventOption(this, Done, "PROCEED")</c>; each null where a call came
+    /// between, because then the key is what the call returned.</summary>
+    internal sealed record Construction(
+        IReadOnlyList<string> Literals, string? Literal, int? Constant, bool NullBeforeLiteral = false,
+        string? Template = null, string? KeyLiteral = null);
 
     /// <summary>
     /// Every construction of <paramref name="constructed"/> in a body, each with the
@@ -431,7 +440,12 @@ internal static class ChoiceEntryPoints
     /// each construction, so a second one that loads neither reads as carrying neither
     /// rather than inheriting the first's. Which of the two a caller trusts is the
     /// caller's, because a body may load either for another reason on its way to the
-    /// construction.
+    /// construction. The key each is constructed with is read beside them where the
+    /// body's shape says what it is: an interpolation the body finishes right before
+    /// the construction is its <see cref="Construction.Template"/>, and a literal it
+    /// loads right before is its <see cref="Construction.KeyLiteral"/>; a call in
+    /// between - a helper, a concatenation, a raw text read - leaves both null, because
+    /// the key is then whatever that call returned.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
@@ -440,28 +454,112 @@ internal static class ChoiceEntryPoints
         int? constant = null;
         var previousLoadedNull = false;
         var nullBeforeLastLiteral = false;
+        string? lastLiteral = null;
+        StringBuilder? interpolation = null;
+        string? template = null;
+        string? keyLiteral = null;
         foreach (var operand in OperandsOf(method))
         {
             if (operand.Literal is { } loaded)
             {
                 literals.Add(loaded);
                 nullBeforeLastLiteral = previousLoadedNull;
+                lastLiteral = loaded;
+                // A literal inside an interpolation is a part of the string being
+                // built, appended by the call that follows it, never a key on its own
+                if (interpolation is null)
+                {
+                    keyLiteral = loaded;
+                    template = null;
+                }
             }
 
             if (operand.Constant is { } value) constant = value;
-            if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
-                callee.DeclaringType == constructed)
+            if (operand.Callee is { } called)
             {
-                constructions.Add(new Construction(literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral));
-                literals = [];
-                constant = null;
-                nullBeforeLastLiteral = false;
+                if (called.DeclaringType == typeof(DefaultInterpolatedStringHandler))
+                {
+                    switch (called.Name)
+                    {
+                        case ".ctor":
+                            interpolation = new StringBuilder();
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.AppendLiteral):
+                            interpolation?.Append(lastLiteral);
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.AppendFormatted):
+                            interpolation?.Append("{}");
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.ToStringAndClear):
+                            template = interpolation?.ToString();
+                            interpolation = null;
+                            break;
+                    }
+
+                    // The handler's own calls are how the string is built and produce
+                    // no other string, so the last-produced reading is theirs to set
+                    if (interpolation is not null || template is not null)
+                    {
+                        keyLiteral = null;
+                        previousLoadedNull = operand.LoadsNull;
+                        continue;
+                    }
+                }
+
+                if (called.IsConstructor && operand.IsConstruction && called.DeclaringType == constructed)
+                {
+                    constructions.Add(new Construction(
+                        literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral, template, keyLiteral));
+                    literals = [];
+                    constant = null;
+                    nullBeforeLastLiteral = false;
+                    template = null;
+                    keyLiteral = null;
+                }
+                else if (TouchesAString(called))
+                {
+                    // A call that returns a string may have produced the key, and one
+                    // that takes a string may have consumed the literal; neither
+                    // reading survives it. One that does neither - the empty hover-tip
+                    // array a construction's params default loads - leaves the key
+                    // where it was
+                    template = null;
+                    keyLiteral = null;
+                }
             }
 
             previousLoadedNull = operand.LoadsNull;
         }
 
         return constructions;
+    }
+
+    private static bool TouchesAString(MethodBase called) =>
+        called is MethodInfo { ReturnType: var returns } && returns == typeof(string) ||
+        called.GetParameters().Any(parameter => parameter.ParameterType == typeof(string));
+
+    /// <summary>
+    /// Every integer constant a body compares what <paramref name="read"/> returns
+    /// with, each with the comparison's opcode: the operands in order, the call, then
+    /// the constant, then the comparison - <c>NumberOfDigs &lt; 2</c> compiled to the
+    /// getter, <c>ldc.i4.2</c> and the <c>bge</c> that jumps past the block. How a
+    /// bound an event's own code keeps in a constant is read off the build rather
+    /// than written down, so a build that moves it moves the reading.
+    /// </summary>
+    internal static IReadOnlyList<(int Constant, string Comparison)> ConstantsComparedWith(MethodBase method, MethodBase read)
+    {
+        var operands = OperandsOf(method);
+        var comparisons = new List<(int, string)>();
+        for (var i = 0; i + 2 < operands.Count; i++)
+        {
+            if (operands[i].Callee == read && operands[i + 1].Constant is { } constant &&
+                operands[i + 2].Comparison is { } comparison)
+            {
+                comparisons.Add((constant, comparison));
+            }
+        }
+
+        return comparisons;
     }
 
     private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
@@ -478,9 +576,8 @@ internal static class ChoiceEntryPoints
 
     /// <summary>One operand a body's instruction carries: a method token resolved, a
     /// string token resolved, an integer constant loaded, whether the instruction
-    /// constructs, and the comparison an instruction makes where it is one of the
-    /// three that leave a boolean - <c>cgt</c>, <c>clt</c>, <c>ceq</c> - by opcode
-    /// name.</summary>
+    /// constructs, and the comparison an instruction makes where it is one of
+    /// <see cref="ComparisonOpCodes"/>, by the name of its long signed form.</summary>
     private sealed record Operand(
         MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null,
         bool LoadsNull = false);
@@ -506,6 +603,38 @@ internal static class ChoiceEntryPoints
 
         return false;
     }
+
+    /// <summary>The instructions that compare two values, by the name of the long
+    /// signed form: the three that leave a boolean, and the conditional branches,
+    /// which are how a compiled <c>if</c> compares - <c>x &lt; 2</c> is <c>ldc.i4.2</c>
+    /// and a <c>bge</c> past the block, never a <c>clt</c>. The short and unsigned
+    /// forms of a branch are the same comparison.</summary>
+    private static readonly Dictionary<short, string> ComparisonOpCodes = new()
+    {
+        [OpCodes.Cgt.Value] = nameof(OpCodes.Cgt),
+        [OpCodes.Clt.Value] = nameof(OpCodes.Clt),
+        [OpCodes.Ceq.Value] = nameof(OpCodes.Ceq),
+        [OpCodes.Beq.Value] = nameof(OpCodes.Beq),
+        [OpCodes.Beq_S.Value] = nameof(OpCodes.Beq),
+        [OpCodes.Bge.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_S.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_Un.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_Un_S.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bgt.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_S.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_Un.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_Un_S.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Ble.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_S.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_Un.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_Un_S.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Blt.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_S.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_Un.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_Un_S.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Bne_Un.Value] = nameof(OpCodes.Bne_Un),
+        [OpCodes.Bne_Un_S.Value] = nameof(OpCodes.Bne_Un),
+    };
 
     // The short forms of ldc.i4 carry their value in the opcode rather than as an operand
     private static readonly Dictionary<short, int> InlineIntegerOpCodes = new()
@@ -791,9 +920,9 @@ internal static class ChoiceEntryPoints
             {
                 operands.Add(new Operand(null, null, false, inline));
             }
-            else if (op == OpCodes.Cgt || op == OpCodes.Clt || op == OpCodes.Ceq)
+            else if (ComparisonOpCodes.TryGetValue(op.Value, out var comparison))
             {
-                operands.Add(new Operand(null, null, false, Comparison: op == OpCodes.Cgt ? nameof(OpCodes.Cgt) : op == OpCodes.Clt ? nameof(OpCodes.Clt) : nameof(OpCodes.Ceq)));
+                operands.Add(new Operand(null, null, false, Comparison: comparison));
             }
             else if (op == OpCodes.Ldnull)
             {

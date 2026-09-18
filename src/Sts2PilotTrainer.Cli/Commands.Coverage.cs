@@ -116,6 +116,13 @@ internal static partial class Commands
             foreach (var excusal in report.InadmissibleExcusals) Console.WriteLine($"  {excusal.Describe()}");
         }
 
+        if (report.MisnamedProducers.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  excused naming a producer the map does not list for the point, which fails the bar; each names what the map lists:");
+            foreach (var producer in report.MisnamedProducers) Console.WriteLine($"  {producer.Describe()}");
+        }
+
         Console.WriteLine();
         foreach (var line in report.Totals()) Console.WriteLine(line);
         Console.WriteLine(report.Holds
@@ -143,7 +150,8 @@ internal static partial class Commands
                     arbiter_version = Arbiter.Version,
                     standard =
                         "Every decision point this build offers, walked off the game assembly, is reached by a " +
-                        "recording in the corpus or excused in writing in a class the map admits; a seam is " +
+                        "recording in the corpus or excused in writing in a class the map admits, naming no " +
+                        "producer the map does not list for the point; a seam is " +
                         "reached by co-occurrence, a recording that met one of its producers and answered its " +
                         "decision; a kind this format cannot project is listed as such and counted neither way. " +
                         "A recording made on another build, or one the recorder marked broken, unmapped or " +
@@ -168,6 +176,7 @@ internal static partial class Commands
                         outside_the_denominator = report.OutsideTheDenominator.Count,
                         stale_excusals = report.StaleExcusals.Count,
                         inadmissible_excusals = report.InadmissibleExcusals.Count,
+                        misnamed_producers = report.MisnamedProducers.Count,
                         excused_and_reached = report.ExcusedAndReached.Count,
                         recordings = report.Recordings,
                         credited_recordings = report.CreditedRecordings,
@@ -183,6 +192,7 @@ internal static partial class Commands
                         state = row.State.ToString(),
                         excuse = row.Excuse?.Reason,
                         excuse_class = row.Excuse is { } excuse ? ExcusalClasses.Name(excuse.Class) : null,
+                        excuse_producers = row.Excuse is { NamedProducers.Count: > 0 } named ? named.NamedProducers : null,
                     }),
                     stale_excusals = report.StaleExcusals,
                     inadmissible_excusals = report.InadmissibleExcusals.Select(excusal => new
@@ -191,6 +201,13 @@ internal static partial class Commands
                         identity = excusal.Point.Identity,
                         claimed = ExcusalClasses.Name(excusal.Claimed),
                         admitted = excusal.Admitted.Select(ExcusalClasses.Name),
+                    }),
+                    misnamed_producers = report.MisnamedProducers.Select(producer => new
+                    {
+                        kind = producer.Point.Kind,
+                        identity = producer.Point.Identity,
+                        producer = producer.Producer,
+                        listed = producer.Listed,
                     }),
                     excused_and_reached = report.ExcusedAndReached,
                     unverified_recordings = report.Unverified.Select(recording => new
