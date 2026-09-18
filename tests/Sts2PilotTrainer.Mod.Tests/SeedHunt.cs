@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -29,7 +30,18 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// on Neow, rolled from the act's own ancients at the act's start and offering three
 /// relics from its option pools, and the same reading takes the ancient and its offer
 /// off the first room; a row after a relic an ancient deals hunts a seed of that act
-/// alone whose ancient offers it.
+/// alone whose ancient offers it. Darv, dealt to one act after the first at the run's
+/// start (<c>RunManager.GenerateRooms</c>) and opened on by no act alone, is not read
+/// here: a row after it walks the first act through, and the reading of the second
+/// act's room set goes in with the survival seed such a row needs.
+///
+/// The event a question mark opens is fixed at the run's start as well: the act's
+/// events are shuffled into its room set as the run is generated and dealt in that
+/// order (<c>ActModel.GenerateRooms</c>, <c>RoomSet.NextEvent</c>), and whether the
+/// first question mark opens an event at all is the first roll of a stream only
+/// question marks consume (<c>RunRngType.UnknownMapPoint</c>,
+/// <c>UnknownMapPointOdds.Roll</c>). So the reading takes both off the fresh run: the
+/// first event the act allows, and what the first mark rolls.
 ///
 /// The hunt is run once, by hand, and the seed it finds is pinned as a constant in
 /// the row with this reading as its criterion; a game update that moves the RNG fails
@@ -42,13 +54,29 @@ internal static class SeedHunt
     /// run opened on - Neow's, or an act's ancient - and the relics it offers, the
     /// relic at the front of each rarity's shared bag, the relic at the back of each
     /// rarity's player bag, and the rarity the act's first chest will draw.</summary>
+    /// <param name="FirstQuestionMarkRoom">The room type the act's first question mark
+    /// rolls, as <c>RoomType</c> names it.</param>
+    /// <param name="FirstEventId">The first event of the act's shuffled set, past the
+    /// opening room's own, that the run allows at its start: what the first question
+    /// mark opens where it rolls an event, short of what the run's state between
+    /// allows or forbids by then.</param>
+    /// <param name="FirstEncounterId">The encounter the act's first monster room
+    /// fights, the first of the act's shuffled set.</param>
     internal sealed record Opening(
         string OpeningEventId,
         IReadOnlyList<string> OfferedRelics,
         IReadOnlyDictionary<string, string> SharedBagFronts,
         IReadOnlyDictionary<string, string> PlayerBagBacks,
-        string FirstChestRarity)
+        string FirstChestRarity,
+        string FirstQuestionMarkRoom,
+        string? FirstEventId,
+        string? FirstEncounterId)
     {
+        /// <summary>Whether the act's first question mark opens the event with this
+        /// id: the mark rolls an event, and the event is the first the act deals.</summary>
+        internal bool OpensAtTheFirstQuestionMark(string eventId) =>
+            FirstQuestionMarkRoom == nameof(RoomType.Event) && FirstEventId == eventId;
+
         /// <summary>The relics Neow offers: the opening's offer where the run opened
         /// on Neow's room, and none otherwise.</summary>
         internal IReadOnlyList<string> NeowRelics =>
@@ -115,15 +143,32 @@ internal static class SeedHunt
             var shared = session.RunState.SharedRelicGrabBag.ToSerializable().RelicIdLists;
             var own = session.RunState.Players[0].RelicGrabBag.ToSerializable().RelicIdLists;
 
-            // The roll the first chest makes, taken now off a stream nothing else
-            // consumes, on a run that is cleaned up below
+            // The roll the first chest makes, and the roll the first question mark
+            // makes, each taken now off a stream nothing else consumes, on a run that
+            // is cleaned up below
             var firstChestRarity = RelicFactory.RollRarity(session.RunState.Rng.TreasureRoomRelics).ToString();
+            var firstQuestionMark = session.RunState.Odds.UnknownMapPoint.Roll([], session.RunState).ToString();
+
+            // The act's events in the order its room set deals them, past the first:
+            // the opening room is an event room too and is counted as one dealt, so
+            // the first question mark takes the second entry the run allows. Allowed
+            // as the run stands at its start, which is a reading and not the roll -
+            // an event allowed only with gold or a potion in hand is allowed later,
+            // one allowed only without a pet is not - so a walk confirms it
+            var rooms = session.RunState.Act.ToSave().SerializableRooms;
+            var firstEvent = rooms.EventIds
+                .Skip(1)
+                .Select(id => ModelDb.GetById<EventModel>(id))
+                .FirstOrDefault(model => model.IsAllowed(session.RunState))?.Id.ToString();
             return new Opening(
                 opening.Id.ToString(),
                 offered,
                 shared.Where(entry => entry.Value.Count > 0).ToDictionary(entry => entry.Key.ToString(), entry => entry.Value[0].ToString(), StringComparer.Ordinal),
                 own.Where(entry => entry.Value.Count > 0).ToDictionary(entry => entry.Key.ToString(), entry => entry.Value[^1].ToString(), StringComparer.Ordinal),
-                firstChestRarity);
+                firstChestRarity,
+                firstQuestionMark,
+                firstEvent,
+                rooms.NormalEncounterIds.FirstOrDefault()?.ToString());
         }
         finally
         {
@@ -138,13 +183,19 @@ internal static class SeedHunt
     /// the seeds a hunt found are the constants in <c>GeneratedCoverageTests</c>.
     /// </summary>
     internal static string? Find(
-        string relicId, Dealer dealer, Func<string, bool> walks, int maxCandidates = 40, IReadOnlyList<string>? acts = null)
+        string relicId, Dealer dealer, Func<string, bool> walks, int maxCandidates = 40, IReadOnlyList<string>? acts = null) =>
+        Find(opening => opening.Deals(relicId, dealer), walks, maxCandidates, acts);
+
+    /// <summary>The same, for any reading of the opening: a row after an event hunts
+    /// the seed whose first question mark opens it.</summary>
+    internal static string? Find(
+        Func<Opening, bool> criterion, Func<string, bool> walks, int maxCandidates = 40, IReadOnlyList<string>? acts = null)
     {
         var candidates = 0;
         foreach (var seed in Candidates())
         {
             if (candidates >= maxCandidates) return null;
-            if (!ReadOpening(seed, acts).Deals(relicId, dealer)) continue;
+            if (!criterion(ReadOpening(seed, acts))) continue;
             candidates++;
             if (walks(seed)) return seed;
         }

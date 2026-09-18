@@ -384,13 +384,22 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>
     /// Does what the client does between the last decision and this one that is not
     /// itself a decision, so that a reading taken just before <see cref="Apply"/> is
-    /// the state the decision was made in. Today that is one thing: a decision about
-    /// what a treasure chest holds is made with the chest open, and the client opens
-    /// it on a click after the arrival. <see cref="Apply"/> opens it too, so a caller
-    /// that takes no reading before an action need not call this.
+    /// the state the decision was made in. Today that is three things: a decision
+    /// about what a treasure chest holds is made with the chest open, and the client
+    /// opens it on a click after the arrival; the first decision after an event's own
+    /// fight is made back in the event, which the client resumes on the proceed off
+    /// the loot screen (<see cref="ResumeTheEventTheFightWasFoughtIn"/>); and the
+    /// next page of an event whose option handed the run to the player is the page
+    /// the option's own work produces once the player has answered, which the
+    /// recorder reads finished (<see cref="WaitForTheOptionsWork"/>).
+    /// <see cref="Apply"/> does all three too, so a caller that takes no reading
+    /// before an action need not call this.
     /// </summary>
     public void Approach(ActionRecord action)
     {
+        ResumeTheEventTheFightWasFoughtIn();
+        if (action.Verb is ActionVerb.ChooseEventOption) WaitForTheOptionsWork();
+
         if (action.Verb is ActionVerb.TakeChestRelic or ActionVerb.SkipChestRelic
             or ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.TakeCardRewardAlternative
             or ActionVerb.SkipRewards)
@@ -433,6 +442,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 "itself is the player's, and answering a screen they are looking at would take a decision " +
                 "away from them.");
         }
+
+        ResumeTheEventTheFightWasFoughtIn();
 
         switch (action.Verb)
         {
@@ -634,6 +645,47 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     }
 
     /// <summary>
+    /// Returns the run to the event a fight was fought inside, once that fight's loot
+    /// is decided, exactly where the retail client does.
+    ///
+    /// An event that fights without leaving itself - Battleworn Dummy's three settings
+    /// - pushes its combat room over its own, and the retail proceed off the loot
+    /// screen (<c>NRewardsScreen</c>) or off a fight with no loot (<c>NCombatUi</c>)
+    /// calls <c>RunManager.ProceedFromTerminalRewardsScreen</c>, whose engine half for
+    /// such a room is the private <c>ResumePreviousRoom</c>: the event's own
+    /// <c>Resume</c> then runs, finishes the event and offers what the fight earned as
+    /// a rewards set of the event's own. The press is no decision and the recorder
+    /// writes nothing for it, so the driver makes the transition where the engine
+    /// would - before the next action, once the fight is over and nothing is left on
+    /// its loot screen - and a walk asks for it as soon as the loot is decided, because
+    /// the page it answers next is the resumed one. Headlessly only: inside the retail
+    /// client the player's own press does this.
+    /// </summary>
+    internal void ResumeTheEventTheFightWasFoughtIn()
+    {
+        if (_insideRunningGame) return;
+
+        // Every combat room carries the resume flag; the room stack says whether
+        // there is an event under this one to resume, which is the engine's own test
+        if (_session.RunState.CurrentRoom is not CombatRoom { ParentEventId: not null, ShouldResumeParentEventAfterCombat: true } room) return;
+        if (_session.RunState.CurrentRoomCount <= 1) return;
+        if (CombatManager.Instance is not { IsInProgress: false }) return;
+        if (Player.Creature is { IsAlive: false }) return;
+
+        // The loot is the player's until every reward is taken or the set skipped
+        OfferRoomEndRewardsIfCombatEnded();
+        if (_openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)) return;
+
+        Settle(RunManager.Instance.ProceedFromTerminalRewardsScreen());
+        if (ReferenceEquals(_session.RunState.CurrentRoom, room))
+        {
+            throw new EngineException(
+                "The fight's loot is decided and the engine's own proceed did not return the run to the event it " +
+                "was fought inside.");
+        }
+    }
+
+    /// <summary>
     /// Answers a card screen the manifest is silent about from the front of what it
     /// offered, and remembers what it answered.
     ///
@@ -722,6 +774,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             ? set.Rewards.OfType<RelicReward>().Where(reward => !reward.SuccessfullySelected)
                 .Select(LootRewards.IdOf).FirstOrDefault()
             : null;
+
+    /// <summary>The ids of the loot screen's unclaimed rewards of a kind, by position,
+    /// or empty: a claim of a special card names the card it took, and a generated
+    /// history has to be able to name it before the claim is made.</summary>
+    internal IReadOnlyList<string?> UnclaimedRewardIds(string kind) =>
+        _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
+            ? set.Rewards.Where(reward => !reward.SuccessfullySelected && KindOf(reward) == kind)
+                .Select(LootRewards.IdOf).ToList()
+            : [];
 
     /// <summary>The loot screen's unclaimed card reward itself, or null when there is
     /// none: what a test that holds an answer to the alternatives the engine generates
@@ -835,6 +896,10 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         var localEvent = LocalEvent()
             ?? throw new EngineException("No event is in progress, so no option can be chosen.");
 
+        // The page this option is on is the one the last option's work produced,
+        // which Amalgamator produces only after a real-time delay
+        WaitForTheOptionsWork();
+
         var options = localEvent.CurrentOptions;
         if (optionIndex < 0 || optionIndex >= options.Count)
         {
@@ -856,14 +921,120 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 "diverged from the recorded history before this point.");
         }
 
+        EventOptionWork.Forget();
         synchronizer.ChooseLocalOption(optionIndex);
-        Settle();
+        SettleTheOptionsWork(action);
 
         // Some events fight without leaving the event, so the run may now be in a
         // combat room rather than back on the map; nothing here assumes the event
         // ended. A fight that ended inside the option's own work - possible for an
         // event that resolves its combat at once - offers its loot here.
         OfferRoomEndRewardsIfCombatEnded();
+    }
+
+    /// <summary>The work of the last event option chosen, kept until the next is
+    /// chosen; null where the engine started none.</summary>
+    private Task? _lastOptionWork;
+
+    /// <summary>
+    /// Waits for an option's own work the way the recorder waits for it, and refuses
+    /// a fault in it by name.
+    ///
+    /// The synchronizer keeps the option's task to itself, so it is read on its way
+    /// past (<see cref="EventOptionWork"/>) rather than returned. The reading the
+    /// recorder writes for this decision is taken once that task has finished, or
+    /// once the engine has handed the run to the player inside it - a rewards set it
+    /// offered, the Crystal Sphere's screen - and the task is waiting on the player's
+    /// next decision (<c>RunRecorder.HandedToThePlayerDuring</c>); the replay's
+    /// reading is taken at the same instant or it is a reading of another state.
+    /// Amalgamator is the event that made the difference visible: it combines the
+    /// cards, sleeps three hundred milliseconds of real time and only then adds the
+    /// combined card, so a reading taken as the action queue went idle was one card
+    /// short of the recorder's. The wait is the engine's own task, bounded by the
+    /// pump's budget so a host that is missing something the game waits on there
+    /// fails by name rather than hangs. A fault is refused with the engine's own
+    /// words, because the game logs it and goes on as if nothing happened, and a
+    /// replay that did the same would blame the recording at its next decision for
+    /// naming an option the event no longer offers.
+    /// </summary>
+    private void SettleTheOptionsWork(ActionRecord action)
+    {
+        if (_insideRunningGame)
+        {
+            Pending = Task.CompletedTask;
+            return;
+        }
+
+        try
+        {
+            Pump.Drain();
+            _lastOptionWork = EventOptionWork.Last;
+            _lastOptionSeq = action.Seq;
+            WaitForTheOptionsWork();
+        }
+        finally
+        {
+            EventOptionWork.Forget();
+        }
+    }
+
+    /// <summary>The action that chose the option whose work <see cref="_lastOptionWork"/> is.</summary>
+    private int _lastOptionSeq;
+
+    /// <summary>
+    /// Waits for the last event option's work unless it is waiting on the player, and
+    /// refuses a fault in it by name: asked as the option settles, and again where the
+    /// next thing read is the page the work produces once the player has answered
+    /// what it offered.
+    ///
+    /// Work that has put a rewards set on offer or the Crystal Sphere's screen up is
+    /// waiting for the player's next decision and is left alone. The fault check is
+    /// here rather than in the settle because work handed to the player can fault
+    /// after the hand-over, once the player has answered; read as a stale page, that
+    /// fault would be blamed on the recording at its next decision. The second ask
+    /// is from <see cref="Approach"/>, before the replay samples the next option's
+    /// before-reading, because the recorder reads that decision with the work
+    /// finished; every event a row reaches on this build finishes its work inside
+    /// the answering claim, so <c>ReplayRefusalRegressionTests</c> holds that
+    /// ordering with a stand-in that carries the conveyor's work on past its
+    /// hand-over.
+    /// </summary>
+    internal void WaitForTheOptionsWork()
+    {
+        if (_insideRunningGame || _lastOptionWork is not { } work) return;
+
+        if (!work.IsCompleted)
+        {
+            if (_openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)) return;
+            if (ScreenStandIns.OpenMinigame is not null) return;
+
+            try
+            {
+                if (!work.Wait(Pump.Budget))
+                {
+                    throw new EngineException(
+                        "An event option's own work did not finish within the pump's budget, and it is waiting on nothing " +
+                        "the player answers. The headless host is missing something the game waits on there; this is a host " +
+                        "defect, not a manifest defect.");
+                }
+            }
+            catch (AggregateException)
+            {
+                // Refused below, with the engine's own words
+            }
+
+            Pump.Drain();
+        }
+
+        if (!work.IsFaulted) return;
+        _lastOptionWork = null;
+
+        var fault = work.Exception?.GetBaseException();
+        var where = fault?.StackTrace?.Split('\n').Take(3).Select(frame => frame.Trim()) ?? [];
+        throw new EngineException(
+            $"Action {_lastOptionSeq} chose an event option and the option's own work faulted: " +
+            $"{fault?.GetType().Name}: {fault?.Message} ({string.Join(" <- ", where)}). The game logs the fault " +
+            "and leaves the event where it was; a replay from there would not be the run the recording describes.");
     }
 
     private static string DescribeOptions(IReadOnlyList<EventOption> options) =>
@@ -1763,10 +1934,14 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             throw new EngineException($"Map node (row {row}, column {column}) is empty in this act.");
         }
 
-        var currentCoord = _session.RunState.CurrentMapCoord
-            ?? throw new EngineException("The run has no current map node, so reachability cannot be established.");
-        var currentPoint = map.GetPoint(currentCoord.col, currentCoord.row)
-            ?? throw new EngineException($"The current map node {currentCoord} does not exist in this act.");
+        // The node the run stands on, or none at the start of an act after the
+        // first, where the act change has cleared the visited coordinates and the
+        // map screen offers the act's starting point alone
+        var currentCoord = _session.RunState.CurrentMapCoord;
+        var currentPoint = currentCoord is { } coordinate
+            ? map.GetPoint(coordinate.col, coordinate.row)
+              ?? throw new EngineException($"The current map node {coordinate} does not exist in this act.")
+            : null;
 
         // The game's own rule rather than the node's children: a free-travel hook
         // opens the whole next row, and MapTravelRule is the one reader of it
@@ -1775,7 +1950,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         {
             throw new EngineException(
                 $"Map node (row {row}, column {column}) is not reachable from " +
-                $"(row {currentCoord.row}, column {currentCoord.col}); the game offers " +
+                (currentCoord is { } from ? $"(row {from.row}, column {from.col})" : "the start of the act") +
+                $"; the game offers " +
                 $"{string.Join(", ", travelable.Select(reachable => $"(row {reachable.coord.row}, column {reachable.coord.col})"))}.");
         }
 

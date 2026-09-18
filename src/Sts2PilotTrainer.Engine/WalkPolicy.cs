@@ -101,11 +101,48 @@ public sealed record WalkPolicy
     /// from there.</summary>
     public bool TravelFreely { get; init; }
 
+    /// <summary>Claim every reward of this kind a loot screen offers - one of the
+    /// format's reward kinds the walk declines by today's rule, the special card a
+    /// thief dies holding or the removal a power earns - and count the first claim as
+    /// the ask met. A screen that offers none takes today's rule.</summary>
+    public string? RewardKindToClaim { get; init; }
+
     /// <summary>Count the first loot screen that offers two unclaimed rewards of one
     /// kind, both of which the walk claims by position, as the ask met. The walk
     /// claims every gold reward a screen offers under any policy; this one says
     /// reaching a screen with two is what the walk is for.</summary>
     public bool ClaimTwoOfAKind { get; init; }
+
+    /// <summary>The event the walk is after, by id: the route passes through the first
+    /// question mark it can reach and ends there, and the room it opens is answered
+    /// page by page (<see cref="EventOptionKey"/>). A question mark is routed only for
+    /// a walk that names one, because what it resolves to is the run's own stream's
+    /// business - a seed is hunted so the first one opens this event, and a walk whose
+    /// question mark opened something else finishes without meeting its ask.</summary>
+    public string? EventId { get; init; }
+
+    /// <summary>The option to take on the first page of that event that offers it,
+    /// by the key the recorder writes - the option's text key, or the relic's id for an
+    /// option that deals one - and the ask of a walk after an event: choosing it is
+    /// the ask met. Every other page takes today's rule, or the way named by
+    /// <see cref="EventOptionsOnTheWay"/>.</summary>
+    public string? EventOptionKey { get; init; }
+
+    /// <summary>The options to take on the pages before the one the key is offered
+    /// on, by key, where a page offers one of them: how a walk reaches a page behind
+    /// another - Punch Off's fight behind its challenge, a trial's verdict behind its
+    /// acceptance - without a rule per event. A page that offers none of them takes
+    /// today's rule.</summary>
+    public IReadOnlyList<string>? EventOptionsOnTheWay { get; init; }
+
+    /// <summary>Make the ask in the act after the first: walk the first act through to
+    /// the far side of its boss on the cheapest route, and only then take the
+    /// ancient the next act opens on (<see cref="AncientRelic"/>) or route to its
+    /// first question mark (<see cref="EventId"/>). The one way to what a run reaches
+    /// only past its first act: Darv, who is rolled for an act after the first and
+    /// opened on by no act alone, and the events the game allows only from the second
+    /// act on.</summary>
+    public bool AskInTheNextAct { get; init; }
 
     /// <summary>The node types the route has to pass through on a walk that otherwise
     /// only has to reach the boss, from the journey's own required set; null leaves
@@ -127,9 +164,15 @@ public sealed record WalkPolicy
     public bool AsksPastTheRelic =>
         CardRewardAlternative is not null || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
         DiscardAPotionOnTheMap || ClaimTheRelicReward || SkipTheChest || TakeTheChest || TravelFreely ||
-        ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt;
+        ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt || EventOptionKey is not null ||
+        RewardKindToClaim is not null;
 
     /// <summary>Whether obtaining the policy's relic is the ask: a relic named and
     /// nothing asked past it.</summary>
     public bool ObtainingIsTheAsk => Relic is not null && !AsksPastTheRelic;
+
+    /// <summary>Whether opening the next act is the ask: the walk is into the next
+    /// act and names nothing to obtain or choose there, so answering the room that
+    /// act opens on is what it is after.</summary>
+    public bool OpeningTheNextActIsTheAsk => AskInTheNextAct && Relic is null && EventId is null && !AsksPastTheRelic;
 }

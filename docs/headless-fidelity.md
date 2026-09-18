@@ -54,6 +54,8 @@ mechanism rather than an unsupported hook.
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 | `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards`, `ScrollBoxes.GenerateRandomBundles` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these four sites — see [four places the flag changes what the game generates](#four-places-the-flag-changes-what-the-game-generates). |
 | `CardSelectCmd.FromChooseABundleScreen`, `RelicSelectCmd.FromChooseARelicScreen`, `NCrystalSphereScreen.ShowScreen` | Prompts no seam answers, stood in for at the prompt itself — see [four screens the host has to stand in for](#four-screens-the-host-has-to-stand-in-for). Installed only where a driver is answering; with none, the game's own path runs. |
+| The scene-tree calls in five events' own bodies: `NGame.Instance`, `ScreenRumble`, `ScreenShakeTrauma`, `ScreenShake`; `NDebugAudioManager.Instance`, `Play`, `Stop`, `StopAll`; `NEventRoom.Instance`, `Layout`, `VfxContainer`, `SetPortrait`; `NEventLayout.RemoveNodesOnPortrait`, `AddVfxAnchoredToPortrait`; `NModalContainer.Instance`, `Add`; `AssetCache.GetScene`, `GetTexture2D` | **Rewritten at the call, in event bodies only.** Five events dereference a scene-tree singleton without asking whether there is one, and their options fault headlessly on the null — see [five events that reach the scene tree](#five-events-that-reach-the-scene-tree). |
+| `EventOption.Chosen` | A postfix that reads and changes nothing: the option's own task, on its way past, so the driver can refuse a fault in it and wait for the page it produces — see the same section. |
 
 ### The run save, collected rather than dropped
 
@@ -240,6 +242,44 @@ client's action executor runs on the frame loop, on the thread the call arrives 
 so waiting for it there wedges the game rather than settling it. The driver hands the
 engine's task back through `RunDriver.Pending` and the in-game host waits for it on
 the game's own frames.
+
+### Five events that reach the scene tree
+
+Most of the game's content reaches the presentation layer through a null-conditional - `NRun.Instance?.GlobalUi` - and does nothing with no scene tree.
+Five events on v0.111.0 do not.
+Dense Vegetation plays its hiss and rumbles the screen before it offers the fight, Jungle Maze Adventure plays a line before it pays, Amalgamator and Punch Off shake the screen as they resolve, and the Trial redraws its portrait and opens the abandon popup its double-down is.
+Each dereferences a static `Instance` that is null here; the option's task faults on the null, and the game's own `TaskHelper.RunSafely` logs the fault and swallows it, so the event stood on the same page for ever, the next recorded decision named an option the event no longer offered, and the refusal blamed the recording.
+A player's recording of any of those options could not be replayed on this host at all, which the event-coverage walk found on its first pass.
+
+The singletons cannot be stood in for at the getter.
+The engine reads `NGame.Instance` to ask whether there is a client at all, and its own commands read it with a null-conditional and go on to a member of it - `RelicCmd.Obtain` reaches the run node under it as a blessing is taken - so a non-null answer fails inside the engine's own work; `RunManager.CleanUp` clears the modal container where there is one, and found the first version of the stand-ins that way.
+So `PresentationStandIns` rewrites the calls where they are made instead: in every body of every event model that makes one of them, each call in its table becomes a call to a static stand-in that takes the same arguments off the stack - the instance first - leaves the same shape behind, and does nothing.
+An `Instance` reads as null there, so a body that reads one with a null-conditional goes on as it does today, and a member reached on it that the table does not name fails on the null it always failed on.
+The bodies are found by reading the IL rather than named, so an event a game update adds is covered and one that stops making the calls is not patched for nothing; the compiler-written state machines and closures nested in an event count as its bodies, because that is where an async option's code lives.
+Nothing decides anything: the sound, the shake, the portrait and the popup are effects, and the gameplay either side of them is the engine's own.
+The rewrite is at the call rather than at the callee because two of the callees cannot be compiled against the stubs at all, and a prefix on a body Harmony cannot compile is no patch.
+
+Two things make the fault visible and the page readable, both in the driver.
+`EventSynchronizer.ChooseLocalOption` returns nothing - it starts the option's `Chosen` task and keeps it to itself, wrapped so a fault is swallowed - so `EventOptionWork` reads the raw task on its way past, the way the recorder's own `OptionChosen` reads it, and `RunDriver` refuses a faulted one with the engine's own words rather than replaying from a page the option never left.
+And the reading a replay takes after the option is taken when the recorder takes it: once the option's task has finished, or once the engine has handed the run to the player inside it - a rewards set on offer, the Crystal Sphere's screen up - and the task is waiting on the player's next decision (`RunRecorder.HandedToThePlayerDuring`).
+Amalgamator combines the cards, sleeps three hundred milliseconds of real time and only then adds the combined card and finishes its page, so a reading taken as the action queue went idle was one card short of the recorder's and failed parity at the run's end, and a reader that took the next page before the sleep was over found the option it had just chosen still offered and the event unfinished, two dozen times in a row.
+`RunDriver.SettleTheOptionsWork` waits for the task, bounded by the pump's budget, and `WaitForTheOptionsWork` is asked again by whatever reads the next page - the driver's next `ChooseEventOption`, the generated walk's answerer - for the work a hand-over left open and the player's answer let go on.
+The replay asks it once more from `RunDriver.Approach`, before it samples the next option's before-reading, because the recorder reads that decision with the work finished; `ReplayRefusalRegressionTests` holds that ordering with a stand-in that carries the conveyor's condiment on past its hand-over and tips the chef, which fails parity on `player.gold` at the option after the claim without the Approach-side ask.
+
+### A fight inside an event, and the act after the first
+
+Two more engine transitions have no decision behind them and were missing from the driver until the event walk reached them.
+
+An event that fights without leaving itself - Battleworn Dummy's three settings, Dense Vegetation's rest, Punch Off's challenge, the Lantern Key's fight - pushes its combat room over its own.
+In the retail client the proceed off that fight's loot screen (`NRewardsScreen`) or off a fight with no loot (`NCombatUi.ProceedWithoutRewards`) calls `RunManager.ProceedFromTerminalRewardsScreen`, whose engine half for a room that resumes its parent event is the private `ResumePreviousRoom`: the event's own `Resume` then runs, finishes the event and offers what the fight earned as a rewards set of the event's own.
+The press is no decision and the recorder writes nothing for it, so `RunDriver.ResumeTheEventTheFightWasFoughtIn` makes the transition where the engine would - before the next action, once the fight is over and nothing is left on its loot screen - and the walk asks for it as soon as the loot is decided, because the page it answers next is the resumed one.
+It runs from `RunDriver.Approach` as well as from `Apply`, because the replay samples the next decision's before-reading between the two and the recorder reads that decision in the resumed event; sampled with the finished combat room still current, `combat.outcome` reads `victory` where the recorder's reading says `none`, and parity fails at the first decision after the fight.
+Headlessly only: inside the retail client the player's own press does this.
+
+Every act after the first opens on the map, not in a room: `RunManager.EnterAct` enters the starting point itself only for the first act, and after that the act change has cleared the run's visited coordinates and the map screen lights the act's starting point alone (`NMapScreen.RecalculateTravelability`, the branch with nothing visited).
+The player's first decision in act 2 is therefore a `MapMove` to that node, from nowhere.
+`MapTravelRule.TravelableFrom` now answers that case the way the map screen does - the starting point, and nothing else, for a run standing on no node of this map - and the driver's map move reads it; before that the driver refused every recording of a run past its first act at the second act's own opening move, as unreachable from a node the run was not standing on.
+No committed recording reaches a second act, and the won-run proof plays a run of one act, which is how it stayed unnoticed.
 
 ### Recording a run headless, and the two seams it needs
 

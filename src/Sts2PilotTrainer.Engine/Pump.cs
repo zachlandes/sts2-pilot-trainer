@@ -21,7 +21,7 @@ internal static class Pump
     /// an extra second is fine, a replay that reports success because it gave up on a
     /// half-finished turn is not.
     /// </summary>
-    private static readonly TimeSpan Budget = TimeSpan.FromSeconds(30);
+    internal static readonly TimeSpan Budget = TimeSpan.FromSeconds(30);
 
     internal static void Drain()
     {

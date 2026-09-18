@@ -84,8 +84,12 @@ internal sealed class RecordedActWalk : IDisposable
     /// <param name="acts">The run's acts list: the default progression, or the one act
     /// alone whose ancient a row is after - a generated-only list no client run has,
     /// which the engine builds the way it builds the won-run proof's one-act run.</param>
+    /// <param name="then">Decisions a test makes through the driver after the walk has
+    /// stopped and before the run is abandoned, each settled for the recorder the way
+    /// the walk's own are: for a test after the decision past the walk's floor.</param>
     internal Recorded Walk(
-        WalkPolicy policy, string seed = FixtureSeed, bool visitEveryRoomType = true, IReadOnlyList<string>? acts = null)
+        WalkPolicy policy, string seed = FixtureSeed, bool visitEveryRoomType = true, IReadOnlyList<string>? acts = null,
+        Action<GameSession, RunDriver, Action>? then = null)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
@@ -97,6 +101,7 @@ internal sealed class RecordedActWalk : IDisposable
 
         var walk = SyntheticFixtureGenerator.WalkTheAct(
             session, driver, [], DrainSettles, visitEveryRoomType, policy with { StopOnceMet = true });
+        then?.Invoke(session, driver, DrainSettles);
 
         // Abandoned after the act, the way the natural-run proof abandons: the
         // engine's own abandon path is a Godot wait this process cannot run, so its

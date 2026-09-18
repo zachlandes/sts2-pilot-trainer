@@ -34,14 +34,33 @@ namespace Sts2PilotTrainer.Engine;
 public static partial class SyntheticFixtureGenerator
 {
     /// <summary>
-    /// The one node type this route will not enter.
+    /// The one node type this route will not enter unless the policy asks for it.
     ///
     /// A question mark resolves to whatever the run's own stream says when it is
-    /// entered, and what it resolves to can open a room this journey has no rules for.
-    /// A history that walked into one and then refused would be a fixture that fails
-    /// for a reason nobody is testing.
+    /// entered, and a fixture that walked into one and met something the seed was not
+    /// chosen for would fail for a reason nobody is testing. A walk after an event
+    /// (<see cref="WalkPolicy.EventId"/>) is the one that asks: its route ends at the
+    /// first question mark it reaches, on a seed hunted so that one opens the event,
+    /// and whatever the mark opens instead - a fight, a merchant, a chest - is a room
+    /// the journey has rules for and the walk finishes without meeting its ask.
     /// </summary>
     private const MapPointType NotRouted = MapPointType.Unknown;
+
+    /// <summary>Whether the route under way is allowed through a question mark: the
+    /// policy names an event and the route is after the first mark, or the ask is in
+    /// the act after this one and the route has to reach the boss whatever the map
+    /// puts in the way, which on many seeds is a question mark on every path.</summary>
+    private static bool RouteMayPassAQuestionMark => _requiredTypes.Contains(NotRouted) || _beforeTheAskedAct;
+
+    /// <summary>Whether the walk under way is still in the act before the one its ask
+    /// is in: the first act of a walk whose ask is in the next, walked through to
+    /// its boss by the fixture's own rules.</summary>
+    private static bool _beforeTheAskedAct;
+
+    /// <summary>How many pages this journey answers in one event before it decides the
+    /// event is not finishing: the longest event on this build is Slippery Bridge's
+    /// eight holds; anything past this is an event that loops.</summary>
+    private const int EventPageLimit = 24;
 
     /// <summary>The room types the journey has to visit for the verbs that only exist
     /// there to be exercised at all.</summary>
@@ -53,9 +72,13 @@ public static partial class SyntheticFixtureGenerator
     /// only has to reach the boss.</summary>
     private static MapPointType[] _requiredTypes = RequiredTypes;
 
-    /// <summary>The coverage the walk under way demands of its route: every bit of
-    /// <see cref="_requiredTypes"/>.</summary>
-    private static int RequiredCoverage => (1 << _requiredTypes.Length) - 1;
+    /// <summary>The coverage the walk under way demands of its route: on an ordered
+    /// route the whole list passed in order, counted as the prefix fulfilled, so a
+    /// type listed twice is passed twice - two fights and then a question mark; on an
+    /// unordered one every type's bit.</summary>
+    private static int RequiredCoverage => RouteIsOrdered ? _requiredTypes.Length : (1 << _requiredTypes.Length) - 1;
+
+    private static bool Complete(int covered) => RouteIsOrdered ? covered >= RequiredCoverage : (covered & RequiredCoverage) == RequiredCoverage;
 
     /// <summary>The choices the walk under way consults; the fixture's are the defaults.</summary>
     private static WalkPolicy _policy = WalkPolicy.Default;
@@ -68,9 +91,12 @@ public static partial class SyntheticFixtureGenerator
     /// and then a fight or a rest site, the shop and then a fight - and a map whose
     /// only way from there to the boss passes a question mark still has both rooms.
     /// A walk after a relic an ancient deals holds it from the first room and is
-    /// after the one room its ask is met in, for the same reason.
+    /// after the one room its ask is met in, for the same reason; a walk after an
+    /// event is after the first question mark and nothing past it.
     /// </summary>
-    private static bool RouteIsOrdered => _policy.Relic is not null && _policy.StopOnceMet && _policy.RouteThrough is not null;
+    private static bool RouteIsOrdered =>
+        !_beforeTheAskedAct && (_policy.Relic is not null || _policy.EventId is not null) && _policy.StopOnceMet &&
+        _requiredTypes.Length > 0;
 
     /// <summary>Which of the policy's one-time asks the walk under way has met, and
     /// whether any ask has been, for a walk that stops there.</summary>
@@ -164,12 +190,18 @@ public static partial class SyntheticFixtureGenerator
         var actions = new List<ActionRecord>();
         var previous = (_afterEachDecision, _requiredTypes, _policy);
         _policy = policy ?? WalkPolicy.Default;
+        // The first act of a walk whose ask is in the next is the fixture's own route,
+        // every room type on the way to the boss: a line that reaches a second act
+        // needs the chest's relic and the merchant's cards the cheapest route has
+        // none of, and the every-room route is the one the journey's rules are
+        // known to survive an act on
         (_afterEachDecision, _requiredTypes) =
-            (afterEachDecision, _policy.RouteThrough is { } through
-                ? [.. through]
+            (afterEachDecision, _policy.AskInTheNextAct ? RequiredTypes
+                : _policy.RouteThrough is { } through ? [.. through]
                 : visitEveryRoomType ? RequiredTypes : []);
         (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _travelledFreely, _askMet) =
             (false, false, false, false, false);
+        _beforeTheAskedAct = _policy.AskInTheNextAct;
         try
         {
             WalkTheActFrom(session, driver, actions, checkpoints);
@@ -188,16 +220,61 @@ public static partial class SyntheticFixtureGenerator
     private static void WalkTheActFrom(
         GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
     {
-        OpenTheRun(driver, session, actions);
+        if (OpenTheActAndMeetTheAsk(driver, session, actions, theAskIsHere: !_policy.AskInTheNextAct)) return;
+        if (!WalkTheRoute(session, driver, actions, checkpoints)) return;
 
-        // A blessing or an ancient's offer that grants a relic can put a rewards set on
-        // offer from the relic's own work - Kaleidoscope's cards, Small Capsule's
-        // relic, Toy Box's - which is answered before the run moves, the way a player
-        // answers it before the map opens
-        MeetTheAskIf(session, _policy.ObtainingIsTheAsk);
+        Apply(driver, actions, ActionVerb.ProceedToNextAct);
+        checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
+            "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
+
+        // A walk whose ask is in the next act enters that act's starting point, the
+        // one node the map offers a run that has visited none of the act's, and
+        // opens the act the way it opened the run - on the ancient the act rolls,
+        // Darv among them - then walks the act's own route to the ask, which is the
+        // one way to what a run reaches only past its first act
+        if (!_policy.AskInTheNextAct) return;
+        _beforeTheAskedAct = false;
+        var start = session.RunState.Map?.StartingMapPoint
+            ?? throw new EngineException("The act the run moved on to has no generated map.");
+        Apply(driver, actions, ActionVerb.MapMove,
+            ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
+            ("row", start.coord.row.ToString(CultureInfo.InvariantCulture)),
+            ("column", start.coord.col.ToString(CultureInfo.InvariantCulture)));
+        checkpoints.Add(Capture(
+            $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
+            "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
+
+        _requiredTypes = _policy.RouteThrough is { } through ? [.. through] : [];
+        if (OpenTheActAndMeetTheAsk(driver, session, actions, theAskIsHere: true)) return;
+        WalkTheRoute(session, driver, actions, checkpoints);
+    }
+
+    /// <summary>
+    /// Answers the room an act opens on and what the answer offered, and says whether
+    /// the walk is over there: the ask met and the walk one that stops on it.
+    ///
+    /// A blessing or an ancient's offer that grants a relic can put a rewards set on
+    /// offer from the relic's own work - Kaleidoscope's cards, Small Capsule's
+    /// relic, Toy Box's - which is answered before the run moves, the way a player
+    /// answers it before the map opens.
+    /// </summary>
+    /// <param name="theAskIsHere">Whether this is the act the policy's ask is in:
+    /// on the first act of a walk whose ask is in the next, the ancient's first
+    /// option is taken and nothing is the ask yet.</param>
+    private static bool OpenTheActAndMeetTheAsk(RunDriver driver, GameSession session, List<ActionRecord> actions, bool theAskIsHere)
+    {
+        OpenTheRun(driver, session, actions, theAskIsHere ? _policy.AncientRelic : null);
+        MeetTheAskIf(session, theAskIsHere && (_policy.ObtainingIsTheAsk || _policy.OpeningTheNextActIsTheAsk));
         TakeWhatWasOffered(driver, session, actions);
-        if (_policy.StopOnceMet && _askMet) return;
+        return _policy.StopOnceMet && _askMet;
+    }
 
+    /// <summary>Walks the act's planned route room by room. False where the walk is
+    /// over before the boss: its ask met on a walk that stops there, or an ordered
+    /// route that ended at the room completing it.</summary>
+    private static bool WalkTheRoute(
+        GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
+    {
         var route = PlannedRoute(session);
         while (route.Count > 0)
         {
@@ -224,17 +301,13 @@ public static partial class SyntheticFixtureGenerator
 
             HandleRoom(driver, session, actions, checkpoints, next.PointType);
             UseTheBeltOnTheMap(driver, session, actions);
-            if (_policy.StopOnceMet && _askMet) return;
+            if (_policy.StopOnceMet && _askMet) return false;
             if (flown is not null) route = PlannedRoute(session);
         }
 
         // A route that ended at the room that completed its coverage stands nowhere
         // an act can be left from; the walk is over, its ask met or not
-        if (RouteIsOrdered && session.RunState.CurrentRoom is not { RoomType: RoomType.Boss }) return;
-
-        Apply(driver, actions, ActionVerb.ProceedToNextAct);
-        checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
-            "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
+        return !RouteIsOrdered || session.RunState.CurrentRoom is { RoomType: RoomType.Boss };
     }
 
     private static Queue<MapPoint> PlannedRoute(GameSession session)
@@ -282,7 +355,9 @@ public static partial class SyntheticFixtureGenerator
     /// carries no event id and the ancient's page is answered by
     /// <see cref="ActionVerb.ChooseEventOption"/> naming the ancient and the key.
     /// </summary>
-    private static void OpenTheRun(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    /// <param name="ancientRelic">The relic to take where the room is an ancient's,
+    /// or null for the first option.</param>
+    private static void OpenTheRun(RunDriver driver, GameSession session, List<ActionRecord> actions, string? ancientRelic)
     {
         var opening = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
             ?? throw new EngineException("The act journey is not standing in the opening event.");
@@ -302,7 +377,7 @@ public static partial class SyntheticFixtureGenerator
                 "no rule for the first room of such a run.");
         }
 
-        var index = OpeningOption(options, _policy.AncientRelic);
+        var index = OpeningOption(options, ancientRelic);
         Apply(driver, actions, ActionVerb.ChooseEventOption,
             ("event_id", opening.Id.ToString()),
             ("option_index", index.ToString(CultureInfo.InvariantCulture)),
@@ -394,9 +469,9 @@ public static partial class SyntheticFixtureGenerator
         RoutePlan? best = null;
         if (node.PointType == MapPointType.Boss)
         {
-            best = (covered & RequiredCoverage) == RequiredCoverage ? new RoutePlan(0, []) : null;
+            best = Complete(covered) ? new RoutePlan(0, []) : null;
         }
-        else if (RouteIsOrdered && (covered & RequiredCoverage) == RequiredCoverage)
+        else if (RouteIsOrdered && Complete(covered))
         {
             best = new RoutePlan(0, []);
         }
@@ -404,10 +479,10 @@ public static partial class SyntheticFixtureGenerator
         {
             foreach (var child in node.Children
                          .Where(child => child.PointType != MapPointType.Unassigned)
-                         .Where(child => child.PointType != NotRouted)
+                         .Where(child => child.PointType != NotRouted || RouteMayPassAQuestionMark)
                          .OrderBy(child => child.coord.col))
             {
-                var onward = BestRoute(child, covered | Coverage(child.PointType, covered), memo);
+                var onward = BestRoute(child, Coverage(child.PointType, covered), memo);
                 if (onward is null) continue;
 
                 var cost = Cost(child.PointType) + onward.Cost;
@@ -420,16 +495,19 @@ public static partial class SyntheticFixtureGenerator
         return best;
     }
 
-    /// <summary>The coverage bit passing a node of this type earns, given what the
-    /// route has covered so far: on an ordered route a type counts only once every
-    /// type listed before it has been passed, so a fight before the chest is not the
-    /// fight the walk is after.</summary>
+    /// <summary>What the route has covered once it passes a node of this type, given
+    /// what it had covered: on an ordered route the next entry of the list is
+    /// fulfilled where this is its type and nothing otherwise, so a fight before the
+    /// chest is not the fight the walk is after; on an unordered one the type's bit.</summary>
     private static int Coverage(MapPointType type, int covered)
     {
+        if (RouteIsOrdered)
+        {
+            return covered < _requiredTypes.Length && _requiredTypes[covered] == type ? covered + 1 : covered;
+        }
+
         var index = Array.IndexOf(_requiredTypes, type);
-        if (index < 0) return 0;
-        var earlier = (1 << index) - 1;
-        return RouteIsOrdered && (covered & earlier) != earlier ? 0 : 1 << index;
+        return index < 0 ? covered : covered | (1 << index);
     }
 
     /// <summary>
@@ -444,6 +522,9 @@ public static partial class SyntheticFixtureGenerator
         MapPointType.Monster => 3,
         MapPointType.Elite => 12,
         MapPointType.RestSite => -6,
+        // What a fight costs, on the routes that may pass one: one mark in seven
+        // opens a fight, and an event can cost health too
+        MapPointType.Unknown => 3,
         _ => 0,
     };
 
@@ -486,6 +567,10 @@ public static partial class SyntheticFixtureGenerator
             case RoomType.Shop:
                 MeetTheAskIf(session, _policy.ShopWhileHoldingIt);
                 BuyEverythingAffordable(driver, session, actions, checkpoints);
+                break;
+
+            case RoomType.Event:
+                AnswerTheEvent(driver, session, actions, checkpoints, entered);
                 break;
 
             default:
@@ -605,6 +690,28 @@ public static partial class SyntheticFixtureGenerator
                     : [],
             ]);
             MeetTheAskIf(session, _policy.ClaimTheRelicReward || _policy.ObtainingIsTheAsk);
+        }
+
+        // Every reward of the kind the policy is after, by position where the screen
+        // offers more than one, which no card reward is: the special card a thief
+        // died holding, the removal a power earned
+        if (_policy.RewardKindToClaim is { } wantedKind && wantedKind != DecisionFacts.CardRewardKind)
+        {
+            var offered = driver.UnclaimedRewardPositions(wantedKind).Zip(driver.UnclaimedRewardIds(wantedKind)).ToList();
+            foreach (var (position, id) in offered)
+            {
+                Apply(driver, actions, ActionVerb.ClaimReward,
+                [
+                    ("reward_type", wantedKind),
+                    .. RewardKinds.IdArgument(wantedKind) is { } idArgument && id is not null
+                        ? new[] { (idArgument, id) }
+                        : [],
+                    .. offered.Count > 1
+                        ? new[] { (RewardKinds.IndexArgument, position.ToString(CultureInfo.InvariantCulture)) }
+                        : [],
+                ]);
+                MeetTheAskIf(session, true);
+            }
         }
 
         // The alternative the policy is after, past the reward's cards, on the first
@@ -841,6 +948,174 @@ public static partial class SyntheticFixtureGenerator
         MerchantPotionEntry potion => potion.Model!.Id.ToString(),
         _ => throw new EngineException($"A {entry.GetType().Name} has no id this journey can record."),
     };
+
+    // ── The event ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Answers the event a question mark opened, page by page, until it is finished.
+    ///
+    /// Each page is one decision, made by a fixed rule over the options the engine
+    /// offers: the policy's option where the page offers it, which is the ask met;
+    /// one the policy names on the way to it where the page offers that; and
+    /// otherwise the last option that is not locked and does not kill the player, a
+    /// proceed before any other - last rather than first because the option that
+    /// leaves is written last more often than not, and this is a rule over the page
+    /// rather than an opinion about the event. A locked option is never taken, because
+    /// the game's own button refuses the press.
+    ///
+    /// What an option does is the engine's: one that opens a fight without leaving the
+    /// event is played to its end and looted like any other and the event resumed the
+    /// way the retail proceed resumes it (<see cref="RunDriver.ResumeTheEventTheFightWasFoughtIn"/>);
+    /// one that opens the Crystal Sphere's own screen is played by revealing hidden
+    /// cells until its divination is spent; one whose work offers rewards has them
+    /// answered before the next page; one that opens a card screen is answered from
+    /// the front by the driver like every other screen a generated history opens.
+    /// </summary>
+    private static void AnswerTheEvent(
+        RunDriver driver, GameSession session, List<ActionRecord> actions, List<Checkpoint> checkpoints,
+        MapPointType entered)
+    {
+        var pages = 0;
+        while (true)
+        {
+            // A fight the last option opened, inside the event: played, looted, and
+            // the event resumed where it resumes
+            if (session.RunState.CurrentRoom is CombatRoom)
+            {
+                FightAndTakeTheLoot(driver, session, actions, checkpoints, entered);
+                driver.ResumeTheEventTheFightWasFoughtIn();
+                if (session.RunState.CurrentRoom is CombatRoom) return;
+                TakeWhatWasOffered(driver, session, actions);
+                continue;
+            }
+
+            if (ScreenStandIns.OpenMinigame is not null)
+            {
+                RevealTheCrystalSphere(driver, session, actions);
+                continue;
+            }
+
+            var local = RunManager.Instance.EventSynchronizer?.GetLocalEvent();
+            if (local is null || local.IsFinished) return;
+            if (session.RunState.CurrentRoom is not EventRoom) return;
+
+            if (++pages > EventPageLimit)
+            {
+                throw new EngineException(
+                    $"The act journey has answered {EventPageLimit.ToString(CultureInfo.InvariantCulture)} pages of " +
+                    $"{local.Id} and the event is not finished; this journey has no rule that ends it.");
+            }
+
+            var options = local.CurrentOptions;
+            var index = EventOptionToTake(local, options, session);
+            if (index < 0)
+            {
+                throw new EngineException(
+                    $"{local.Id} offers no option this journey can take " +
+                    $"({string.Join(", ", options.Select(RunDriver.OptionKey))}): every one is locked or kills the run.");
+            }
+
+            var key = RunDriver.OptionKey(options[index]);
+            Apply(driver, actions, ActionVerb.ChooseEventOption,
+                ("event_id", local.Id.ToString()),
+                ("option_index", index.ToString(CultureInfo.InvariantCulture)),
+                ("option_key", key));
+            // The option is the ask, unless the policy is after a reward the option's
+            // fight earns, which is claimed off that fight's loot screen
+            MeetTheAskIf(session, local.Id.ToString() == _policy.EventId && key == _policy.EventOptionKey && _policy.RewardKindToClaim is null);
+
+            // An option whose own work offers rewards - a courier's potions, a
+            // trader's relic - is answered before the next page, the way a blessing's
+            // offer is answered before the map; the next page is then the option's
+            // work's to produce, and is waited for
+            if (session.RunState.CurrentRoom is EventRoom)
+            {
+                TakeWhatWasOffered(driver, session, actions);
+                driver.WaitForTheOptionsWork();
+            }
+        }
+    }
+
+    /// <summary>The option this journey takes on a page, by the rule above, or -1
+    /// where the page offers none it can take.</summary>
+    private static int EventOptionToTake(EventModel local, IReadOnlyList<EventOption> options, GameSession session)
+    {
+        var player = session.RunState.Players[0];
+        bool Takeable(EventOption option) => !option.IsLocked && option.WillKillPlayer?.Invoke(player) != true;
+        int IndexOfKey(string? wanted) =>
+            wanted is null ? -1 : options.ToList().FindIndex(option => Takeable(option) && RunDriver.OptionKey(option) == wanted);
+
+        if (local.Id.ToString() == _policy.EventId)
+        {
+            // The option asked for is taken once, whatever it says it does to the
+            // player - a row that asks for the Trial's double-down asks for the
+            // abandon it opens - and never a second time where the page keeps
+            // offering it, as that page does
+            var asked = _askMet || _policy.EventOptionKey is null
+                ? -1
+                : options.ToList().FindIndex(option => !option.IsLocked && RunDriver.OptionKey(option) == _policy.EventOptionKey);
+            if (asked >= 0) return asked;
+            foreach (var onTheWay in _policy.EventOptionsOnTheWay ?? [])
+            {
+                var step = IndexOfKey(onTheWay);
+                if (step >= 0) return step;
+            }
+
+            // The page the key is on is reached, more often than not, through the
+            // option named for it - Punch Off's challenge opens the page its fight is
+            // on, a dig opens the deeper page - so that option is the way where no
+            // way is named
+            if (PageOf(_policy.EventOptionKey) is { } page)
+            {
+                var towards = options.ToList().FindIndex(option =>
+                    Takeable(option) && RunDriver.OptionKey(option).EndsWith($".options.{page}", StringComparison.Ordinal));
+                if (towards >= 0) return towards;
+            }
+        }
+
+        var proceed = options.ToList().FindIndex(option => Takeable(option) && option.IsProceed);
+        if (proceed >= 0) return proceed;
+        return options.ToList().FindLastIndex(Takeable);
+    }
+
+    /// <summary>The page an option key names, as an event's code writes one -
+    /// <c>EVENT.pages.PAGE.options.OPTION</c> - or null for a key of another shape.</summary>
+    private static string? PageOf(string? key)
+    {
+        if (key is null) return null;
+        var pages = key.IndexOf(".pages.", StringComparison.Ordinal);
+        var options = key.IndexOf(".options.", StringComparison.Ordinal);
+        return pages >= 0 && options > pages ? key[(pages + ".pages.".Length)..options] : null;
+    }
+
+    /// <summary>
+    /// Plays the Crystal Sphere's screen the way a player clicks it: the first hidden
+    /// cell in reading order with the small tool, until the divination is spent and
+    /// the minigame ends itself. Which cells hold what is the engine's roll; nothing
+    /// here decides anything.
+    /// </summary>
+    private static void RevealTheCrystalSphere(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        while (ScreenStandIns.OpenMinigame is { IsFinished: false } minigame)
+        {
+            var size = minigame.GridSize;
+            var hidden = Enumerable.Range(0, size.Y)
+                .SelectMany(y => Enumerable.Range(0, size.X).Select(x => (X: x, Y: y)))
+                .FirstOrDefault(cell => minigame.cells[cell.X, cell.Y].IsHidden, (X: -1, Y: -1));
+            if (hidden.X < 0)
+            {
+                throw new EngineException("The Crystal Sphere has divination left and no hidden cell to spend it on.");
+            }
+
+            Apply(driver, actions, ActionVerb.RevealCrystalSphereCell,
+                ("x", hidden.X.ToString(CultureInfo.InvariantCulture)),
+                ("y", hidden.Y.ToString(CultureInfo.InvariantCulture)),
+                ("tool", CrystalSphereTools.Small));
+        }
+
+        // The minigame's end offers what was uncovered as a rewards set
+        TakeWhatWasOffered(driver, session, actions);
+    }
 
     // ── The fight ───────────────────────────────────────────────────────────
 
