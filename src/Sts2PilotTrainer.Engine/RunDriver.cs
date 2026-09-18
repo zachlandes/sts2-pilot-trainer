@@ -532,9 +532,14 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         // Headlessly the engine has finished by now - the host drains it to idle and
         // the selector's own answer is handed back inside the call that asked - so what
-        // this step opened is settled here. Inside a running game nothing was ever
-        // queued for the seam: the screen is drawn and its own step answers it.
-        if (!_insideRunningGame) SettleAnyCardScreenTheLastStepOpened();
+        // this step opened is settled here, and a task handed over earlier that this
+        // step's answer finished is read here too. Inside a running game nothing was
+        // ever queued for the seam: the screen is drawn and its own step answers it.
+        if (!_insideRunningGame)
+        {
+            SettleAnyCardScreenTheLastStepOpened();
+            RaiseWhatHandedOverWorkEndedIn();
+        }
     }
 
     /// <summary>
@@ -1145,7 +1150,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         QueueFollowingCardSelections(action, upcoming);
 
-        var bought = SettleOrHandOver(entry.OnTryPurchaseWrapper(inventory), action);
+        var onOffer = _openRewards;
+        var bought = SettleOrHandOver(entry.OnTryPurchaseWrapper(inventory), onOffer, action);
 
         // A refusal the selector already recorded names the card that disagreed, and
         // Apply raises it; reporting the purchase failure over the top would bury it.
@@ -1159,20 +1165,25 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     /// <summary>
     /// Lets a purchase's, a rest option's or a claim's work finish, or hands the run
-    /// to the player where the work offered a rewards set and is waiting on it.
+    /// to the player where the work offered a rewards set of its own and is waiting
+    /// on it.
     ///
     /// Headless only; see <see cref="_workHandedToThePlayer"/>. The queue is drained
     /// first so the work gets as far as it can on this thread: to its end for the
-    /// usual purchase, or to the set it offered. A task still open with no set on
-    /// offer is waited for as before, because whatever it waits on is not the
-    /// player's to answer.
+    /// usual purchase, or to the set it offered. Handed over only where the set on
+    /// offer is one this work began - a claim off a loot screen has that screen's set
+    /// open beside it, and that set is not the claim's to wait on - so a task still
+    /// open that offered nothing is waited for as before, because whatever it waits
+    /// on is not the player's to answer.
     /// </summary>
+    /// <param name="work">The decision's engine task, started with the set that was
+    /// on offer beforehand in <paramref name="onOfferBefore"/>.</param>
     /// <returns>What the work returned, or null where it was handed over and has not
     /// returned yet.</returns>
-    private bool? SettleOrHandOver(Task<bool> work, ActionRecord action)
+    private bool? SettleOrHandOver(Task<bool> work, RewardsSet? onOfferBefore, ActionRecord action)
     {
         Pump.Drain();
-        if (!work.IsCompleted && _openRewards is { } set &&
+        if (!work.IsCompleted && _openRewards is { } set && !ReferenceEquals(set, onOfferBefore) &&
             !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set))
         {
             _workHandedToThePlayer = work;
@@ -1185,8 +1196,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         return result;
     }
 
-    /// <summary>Raises the refusal a decision handed to the player ended in, once its
-    /// work has finished, and forgets it; nothing while it is still waiting.</summary>
+    /// <summary>
+    /// Raises the refusal a decision handed to the player ended in, once its work has
+    /// finished, and forgets it; nothing while it is still waiting.
+    ///
+    /// Asked at the end of every action as well as at the start of the next, because
+    /// the decision that answers the set is often the recording's last - a relic
+    /// bought and its rewards taken, then the run given up - and a refusal read only
+    /// at a next action that never comes would leave the replay verified.
+    /// </summary>
     private void RaiseWhatHandedOverWorkEndedIn()
     {
         if (_workHandedToThePlayer is not { IsCompleted: true } work || _handedOverAction is not { } action) return;
@@ -1526,7 +1544,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
         QueueFollowingCardSelections(action, upcoming);
 
-        var taken = SettleOrHandOver(synchronizer.ChooseLocalOption(index), action);
+        var onOffer = _openRewards;
+        var taken = SettleOrHandOver(synchronizer.ChooseLocalOption(index), onOffer, action);
 
         // A refusal the selector already recorded names the card that disagreed, and
         // Apply raises it; reporting "the engine refused it" over the top would bury
@@ -1701,7 +1720,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         // A relic claimed can offer a set of its own from inside the claim's work -
         // one Neow's Bones deals that opens its own rewards - and is handed over the
         // way a purchase is
-        var taken = SettleOrHandOver(RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(reward), action);
+        var onOffer = _openRewards;
+        var taken = SettleOrHandOver(RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(reward), onOffer, action);
 
         // A refusal the selector already recorded says exactly which card disagreed,
         // and is raised by Apply. Reporting "the engine refused it" over the top of it
