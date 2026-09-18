@@ -339,14 +339,69 @@ public sealed class DecisionSurfaceTests
                 typeof(KeyedOption))).KeyLiteral);
     }
 
+    /// <summary>
+    /// A construction keyed by a bare literal or a string read from a field -
+    /// <c>flag ? "PROCEED" : storedKey</c> - is refused naming the field, rather than
+    /// read as keyed by the literal with the field-keyed option dropped; one keyed by
+    /// a local the literal was stored in is still that literal.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByALiteralOrAStringFromAFieldIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByALiteralOrAField)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByALiteralOrAField), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("field storedKey", refusal.Message);
+        Assert.Equal(
+            "PROCEED",
+            Assert.Single(ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByALocalTheLiteralWasStoredIn)), typeof(KeyedOption))).KeyLiteral);
+    }
+
+    /// <summary>
+    /// A bare literal beside a whole key - <c>cond ? "PROCEED" : "X.pages.Y.options.Z"</c>
+    /// - is refused naming both, rather than the whole key explaining the construction
+    /// and the bare one going unlisted.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByABareLiteralOrAWholeKeyIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByABareLiteralOrAWholeKey)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByABareLiteralOrAWholeKey), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("'X.pages.Y.options.Z'", refusal.Message);
+    }
+
+    private static MethodBase TestMethod(string name) =>
+        typeof(DecisionSurfaceTests).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
+
     private sealed class KeyedOption(string key)
     {
         public string Key { get; } = key;
     }
 
+    private readonly string storedKey = "STORED";
+
     private static KeyedOption KeyedByATernary(bool done) => new(done ? "PROCEED" : "DECLINE");
 
     private static KeyedOption KeyedByOneLiteral() => new("PROCEED");
+
+    private KeyedOption KeyedByALiteralOrAField(bool flag)
+    {
+        var key = flag ? "PROCEED" : storedKey;
+        return new KeyedOption(key);
+    }
+
+    private static KeyedOption KeyedByALocalTheLiteralWasStoredIn()
+    {
+        var key = "PROCEED";
+        return new KeyedOption(key);
+    }
+
+    private static KeyedOption KeyedByABareLiteralOrAWholeKey(bool cond) => new(cond ? "PROCEED" : "X.pages.Y.options.Z");
 
     /// <summary>A game method by type and name, resolved at run time rather than by a
     /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where

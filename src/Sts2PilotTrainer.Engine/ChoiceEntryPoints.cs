@@ -446,10 +446,12 @@ internal static class ChoiceEntryPoints
     /// the construction is its <see cref="Construction.Template"/>, and a literal it
     /// loads right before is its <see cref="Construction.KeyLiteral"/>; a call in
     /// between - a helper, a concatenation, a raw text read - leaves both null, because
-    /// the key is then whatever that call returned. Refuses a construction more than
-    /// one bare key literal could be the key of - <c>done ? "PROCEED" : "DECLINE"</c>
-    /// loads both with no call between - because reading the last as the key would
-    /// list one option where the body offers two.
+    /// the key is then whatever that call returned. Refuses a construction whose key
+    /// cannot be attributed to one literal: a bare key literal loaded beside another
+    /// literal - <c>done ? "PROCEED" : "DECLINE"</c> loads both with no call between -
+    /// or beside a string read from a field, an argument or a local no literal was
+    /// stored in, because reading the literal as the key would list one option where
+    /// the body offers two.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
@@ -463,8 +465,25 @@ internal static class ChoiceEntryPoints
         string? template = null;
         string? keyLiteral = null;
         var candidateKeys = new List<string>();
+        var literalFed = new HashSet<string>(StringComparer.Ordinal);
+        string? fedByNoLiteral = null;
+        Operand? previous = null;
         foreach (var operand in OperandsOf(method))
         {
+            // A slot stored right after a literal holds that literal, and a key loaded
+            // from it is the literal; loaded from any other slot it is not one
+            if (operand.StoresTo is { } stored)
+            {
+                if (previous?.Literal is not null && interpolation is null) literalFed.Add(stored);
+                else literalFed.Remove(stored);
+            }
+
+            previous = operand;
+            if (operand.LoadsStringFrom is { } slot && !literalFed.Contains(slot) && interpolation is null)
+            {
+                fedByNoLiteral = slot;
+            }
+
             if (operand.Literal is { } loaded)
             {
                 literals.Add(loaded);
@@ -508,6 +527,7 @@ internal static class ChoiceEntryPoints
                     {
                         keyLiteral = null;
                         candidateKeys.Clear();
+                        fedByNoLiteral = null;
                         previousLoadedNull = operand.LoadsNull;
                         continue;
                     }
@@ -515,13 +535,22 @@ internal static class ChoiceEntryPoints
 
                 if (called.IsConstructor && operand.IsConstruction && called.DeclaringType == constructed)
                 {
-                    var bareKeys = candidateKeys.Where(key => BareKey.IsMatch(key)).Distinct(StringComparer.Ordinal).ToList();
-                    if (bareKeys.Count > 1)
+                    var candidates = candidateKeys.Distinct(StringComparer.Ordinal).ToList();
+                    var bareKeyAmong = candidates.Any(key => BareKey.IsMatch(key));
+                    if (bareKeyAmong && candidates.Count > 1)
                     {
                         throw new InvalidOperationException(
                             $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading " +
-                            $"{string.Join(", ", bareKeys.Select(key => $"'{key}'"))} with no call between, so which is " +
+                            $"{string.Join(", ", candidates.Select(key => $"'{key}'"))} with no call between, so which is " +
                             "its key cannot be read off the body.");
+                    }
+
+                    if (bareKeyAmong && fedByNoLiteral is { } source)
+                    {
+                        throw new InvalidOperationException(
+                            $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading " +
+                            $"{string.Join(", ", candidates.Select(key => $"'{key}'"))} and a string from {source} with no " +
+                            "call between, so its key cannot be attributed to a literal on the way to it.");
                     }
 
                     constructions.Add(new Construction(
@@ -532,6 +561,7 @@ internal static class ChoiceEntryPoints
                     template = null;
                     keyLiteral = null;
                     candidateKeys.Clear();
+                    fedByNoLiteral = null;
                 }
                 else if (TouchesAString(called))
                 {
@@ -543,6 +573,7 @@ internal static class ChoiceEntryPoints
                     template = null;
                     keyLiteral = null;
                     candidateKeys.Clear();
+                    fedByNoLiteral = null;
                 }
             }
 
@@ -603,7 +634,7 @@ internal static class ChoiceEntryPoints
     /// <see cref="ComparisonOpCodes"/>, by the name of its long signed form.</summary>
     private sealed record Operand(
         MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null,
-        bool LoadsNull = false);
+        bool LoadsNull = false, string? LoadsStringFrom = null, string? StoresTo = null);
 
     /// <summary>
     /// Whether a body reads the run's players and compares their count as greater
@@ -897,6 +928,7 @@ internal static class ChoiceEntryPoints
         var module = method.Module;
         var typeArguments = method.DeclaringType?.IsGenericType == true ? method.DeclaringType.GetGenericArguments() : null;
         var methodArguments = method.IsGenericMethod ? method.GetGenericArguments() : null;
+        var slots = new Slots(method, module, typeArguments, methodArguments);
         var at = 0;
         while (at < il.Length)
         {
@@ -951,10 +983,102 @@ internal static class ChoiceEntryPoints
             {
                 operands.Add(new Operand(null, null, false, LoadsNull: true));
             }
+            else if (slots.Load(op, il, at) is { } load)
+            {
+                operands.Add(new Operand(null, null, false, LoadsStringFrom: load));
+            }
+            else if (slots.Store(op, il, at) is { } store)
+            {
+                operands.Add(new Operand(null, null, false, StoresTo: store));
+            }
 
             at += operandSize;
         }
 
         return readable;
+    }
+
+    /// <summary>The places a body keeps a value between instructions - its locals,
+    /// its arguments and the fields it reads - named so a key loaded from one can be
+    /// attributed to the literal stored there, or refused as fed by something that is
+    /// not a literal. A field, a local or a signature the stubs cannot resolve is a
+    /// Godot member's and no key, and leaves the body as readable as it was.</summary>
+    private sealed class Slots(MethodBase method, Module module, Type[]? typeArguments, Type[]? methodArguments)
+    {
+        private readonly Lazy<IList<LocalVariableInfo>> locals = new(() =>
+            Resolved(() => method.GetMethodBody()?.LocalVariables) ?? []);
+
+        private readonly Lazy<ParameterInfo[]> parameters = new(() => Resolved(method.GetParameters) ?? []);
+
+        private static T? Resolved<T>(Func<T?> read) where T : class
+        {
+            try
+            {
+                return read();
+            }
+#pragma warning disable CA1031
+            catch (Exception)
+            {
+                return null;
+            }
+#pragma warning restore CA1031
+        }
+
+        public string? Load(OpCode op, byte[] il, int at)
+        {
+            if (op == OpCodes.Ldloc_0) return Local(0);
+            if (op == OpCodes.Ldloc_1) return Local(1);
+            if (op == OpCodes.Ldloc_2) return Local(2);
+            if (op == OpCodes.Ldloc_3) return Local(3);
+            if (op == OpCodes.Ldloc_S) return Local(il[at]);
+            if (op == OpCodes.Ldloc) return Local(BitConverter.ToUInt16(il, at));
+            if (op == OpCodes.Ldarg_0) return Argument(0);
+            if (op == OpCodes.Ldarg_1) return Argument(1);
+            if (op == OpCodes.Ldarg_2) return Argument(2);
+            if (op == OpCodes.Ldarg_3) return Argument(3);
+            if (op == OpCodes.Ldarg_S) return Argument(il[at]);
+            if (op == OpCodes.Ldarg) return Argument(BitConverter.ToUInt16(il, at));
+            if (op == OpCodes.Ldfld || op == OpCodes.Ldsfld) return Field(BitConverter.ToInt32(il, at), typed: true);
+            return null;
+        }
+
+        public string? Store(OpCode op, byte[] il, int at)
+        {
+            if (op == OpCodes.Stloc_0) return $"local {0}";
+            if (op == OpCodes.Stloc_1) return $"local {1}";
+            if (op == OpCodes.Stloc_2) return $"local {2}";
+            if (op == OpCodes.Stloc_3) return $"local {3}";
+            if (op == OpCodes.Stloc_S) return $"local {il[at]}";
+            if (op == OpCodes.Stloc) return $"local {BitConverter.ToUInt16(il, at)}";
+            if (op == OpCodes.Stfld || op == OpCodes.Stsfld) return Field(BitConverter.ToInt32(il, at), typed: false);
+            return null;
+        }
+
+        private string? Local(int index)
+        {
+            var known = locals.Value;
+            return index < known.Count && Resolved(() => known[index].LocalType) == typeof(string) ? $"local {index}" : null;
+        }
+
+        private string? Argument(int index)
+        {
+            if (!method.IsStatic)
+            {
+                if (index == 0) return null;
+                index--;
+            }
+
+            var known = parameters.Value;
+            return index < known.Length && Resolved(() => known[index].ParameterType) == typeof(string)
+                ? $"argument {known[index].Name}"
+                : null;
+        }
+
+        private string? Field(int token, bool typed)
+        {
+            var field = Resolved(() => module.ResolveField(token, typeArguments, methodArguments));
+            if (field is null) return null;
+            return !typed || Resolved(() => field.FieldType) == typeof(string) ? $"field {field.Name}" : null;
+        }
     }
 }
