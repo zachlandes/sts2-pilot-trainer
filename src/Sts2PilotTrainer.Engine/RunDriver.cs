@@ -1180,7 +1180,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// on offer beforehand in <paramref name="onOfferBefore"/>.</param>
     /// <returns>What the work returned, or null where it was handed over and has not
     /// returned yet.</returns>
-    private bool? SettleOrHandOver(Task<bool> work, RewardsSet? onOfferBefore, ActionRecord action)
+    internal bool? SettleOrHandOver(Task<bool> work, RewardsSet? onOfferBefore, ActionRecord action)
     {
         Pump.Drain();
         if (!work.IsCompleted && _openRewards is { } set && !ReferenceEquals(set, onOfferBefore) &&
