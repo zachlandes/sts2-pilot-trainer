@@ -227,12 +227,11 @@ public sealed class ParityTests
     /// <summary>
     /// A recording of another build is classified before anything is replayed, on the
     /// preflight's own three fields and in the sentence <c>replay</c> refuses the same
-    /// file with, and holds nothing: counted in the denominator, never replayed, and
-    /// not a failure of the bar, because a store spans builds once the game updates
-    /// and a recording this build cannot replay is no evidence about the recorder on
-    /// it. The same reading <c>coverage</c> makes of the file, through
-    /// <see cref="RecordingStanding"/>; before it, the recording reached the replay and
-    /// was reported refused there.
+    /// file with, and fails the bar as that refusal did: never replayed, and never
+    /// laundered into an AT PARITY verdict, because a recording this build cannot
+    /// replay is unproven on it. The same reading <c>coverage</c> makes of the file,
+    /// through <see cref="RecordingStanding"/>; before it, the recording reached the
+    /// replay and was reported refused there.
     /// </summary>
     [GameFact]
     public void ARecordingOfAnotherBuildIsNamedBeforeAnythingIsReplayedAndHoldsNothing()
@@ -253,7 +252,7 @@ public sealed class ParityTests
             var outDir = Path.Combine(directory, "evidence");
             var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
 
-            Assert.True(result.Verified, result.All);
+            Assert.False(result.Verified, result.All);
             Assert.Contains($"PARITY      {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
             Assert.Contains($"other build {otherBuildRun}", result.Output, StringComparison.Ordinal);
             Assert.Contains(
@@ -267,12 +266,12 @@ public sealed class ParityTests
                 "0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, " +
                 "0 refused; 0 not native)",
                 result.Output, StringComparison.Ordinal);
-            Assert.Contains("AT PARITY", result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("REFUSED", result.Output, StringComparison.Ordinal);
             Assert.False(Directory.Exists(Path.Combine(outDir, "parity", otherBuildRun)));
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
-            Assert.True(artifact.GetProperty("at_parity").GetBoolean());
+            Assert.False(artifact.GetProperty("at_parity").GetBoolean());
             var build = artifact.GetProperty("build");
             Assert.Equal("v0.111.0", build.GetProperty("build_version").GetString());
             Assert.Equal("1568834832", build.GetProperty("content_hash").GetString());

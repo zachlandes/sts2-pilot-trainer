@@ -38,9 +38,9 @@ internal static partial class Commands
     /// one <c>coverage</c> makes of the same file against the same build under test,
     /// read once here and written into the artifact's header. A recording of another
     /// build is named as that before anything is replayed, in the words the replay's
-    /// own preflight would refuse it in, and holds nothing rather than failing the
-    /// bar: a store spans builds once the game updates, and a recording this build
-    /// cannot replay is no evidence either way about the recorder on this build.
+    /// own preflight would refuse it in, and fails the bar as a refusal does: a
+    /// recording this build cannot replay is unproven on it, and a store that spans a
+    /// game update is not at parity until it is measured on the build under test.
     /// </summary>
     internal static int Parity(string[] args)
     {
@@ -79,9 +79,9 @@ internal static partial class Commands
                     standard =
                         "Every recording with a journal this build reads replays through the real engine to " +
                         "the journal's own sample and complete digest either side of every decision, and " +
-                        "every recording's integrity is complete. A recording made on another build, one " +
-                        "without a journal, or one whose continuity is broken, is counted in the denominator " +
-                        "and holds nothing.",
+                        "every recording's integrity is complete. A recording without a journal, or whose " +
+                        "continuity is broken, is counted in the denominator and holds nothing; a recording " +
+                        "made on another build is refused before it is replayed and fails the bar.",
                     build = new
                     {
                         build_version = build.BuildVersion,
@@ -337,8 +337,8 @@ internal static partial class Commands
         Diverged,
 
         /// <summary>Made on a build other than the one under test, by the preflight's
-        /// own build rule; counted, never replayed and never held, because nothing it
-        /// says is about this build.</summary>
+        /// own build rule; never replayed, and a failure of the bar as a refusal is,
+        /// because a recording this build cannot replay is unproven on it.</summary>
         AnotherBuild,
 
         NoJournal,
@@ -441,12 +441,12 @@ internal static partial class Commands
         [property: JsonPropertyName("not_native")] int NotNative)
     {
         [JsonIgnore]
-        public bool Holds => Diverged == 0 && IntegrityNotComplete == 0 && Refused == 0;
+        public bool Holds => Diverged == 0 && IntegrityNotComplete == 0 && Refused == 0 && AnotherBuild == 0;
 
-        // Native by the manifest's own kind rather than by status, because a
-        // reconstruction of another build is classified as another build's before it
-        // is classified as not native, and a manifest this build could not read
-        // states no kind and is counted
+        // Native and not native by the manifest's own kind rather than by status,
+        // because a reconstruction of another build is classified as another build's
+        // before it is classified as not native, and a manifest this build could not
+        // read states no kind and is counted
         internal static ParitySummary Of(IReadOnlyList<ParityEntry> entries) =>
             new(
                 entries.Count(entry => entry.SourceKind is null or "native"),
@@ -458,7 +458,7 @@ internal static partial class Commands
                 entries.Count(entry => entry.Status == ParityStatus.Integrity),
                 entries.Count(entry => entry.Status == ParityStatus.Continuity),
                 entries.Count(entry => entry.Status == ParityStatus.Refused),
-                entries.Count(entry => entry.Status == ParityStatus.NotNative));
+                entries.Count(entry => entry.SourceKind is not (null or "native")));
 
         internal IEnumerable<string> Describe()
         {
@@ -473,7 +473,7 @@ internal static partial class Commands
                          $"{n(Refused)} refused; {n(NotNative)} not native)";
             yield return Holds
                 ? "AT PARITY - every recording with a journal replays decision for decision, and none is incomplete"
-                : "NOT AT PARITY - see the recording marked above";
+                : "NOT AT PARITY - see the recording marked above; a recording of another build is unproven on this one";
         }
     }
 }

@@ -30,7 +30,7 @@ The store is `user://Runmobile/<platform>/<account>/<profile>/recordings/`, copi
 The artifacts under `--out` - `parity.json` and `coverage.json` - are the release evidence, and the release note carries:
 
 - the parity figure as printed, with every recording that holds nothing named by why - made on another build, no journal, a journal in a schema this build does not read, a continuity the recorder marked broken;
-  a recording made on another build is named by `RecordingStanding` in the words the replay preflight refuses it in, counted in the denominator of both numbers and credited to neither, so a store that spans a game update measures the build under test alone, and each artifact's header names that build.
+  a recording made on another build is named by `RecordingStanding` in the words the replay preflight refuses it in, credited to neither number and a failure of the parity bar, because it is unproven on the build under test; a store that spans a game update is measured once it holds only that build's recordings, and each artifact's header names that build.
 - every point still excused, with its class and its reason.
   An excusal that says no committed recording reaches the point (`not-on-the-route`) is a placeholder, and at release it is not acceptable for a point a player can reach on this build: such a point is played, recorded and committed, or the release note says why not.
   An excusal that names `GeneratedCoverageTests` is held by a generated walk through the real recorder on every merge and stands.
