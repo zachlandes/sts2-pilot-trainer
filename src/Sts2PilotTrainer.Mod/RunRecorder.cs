@@ -3437,6 +3437,20 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// Read before the purchase rather than after, because afterwards the shelf entry
     /// is sold and the only honest answer would be the position of nothing.
+    ///
+    /// A purchase the engine makes for itself is not a decision and is not recorded:
+    /// Lord's Parasol buys the whole shop as the merchant is entered, through the same
+    /// member with <c>ignoreCost</c> set, which no button press sets, from inside the
+    /// map move's own work. Recorded, those purchases stood in the journal before the
+    /// move that opened the shop - the move is written once the engine has settled at
+    /// the other end - and a replay refused the first of them in the room the move
+    /// left; unrecorded, the replay's own move reproduces them, since the engine and
+    /// not the player makes them. That is proven headlessly only: in the retail client
+    /// the relic's purchases run on scene-tree timers, unawaited from
+    /// <c>AfterRoomEntered</c>, so the move can settle and be written before they and
+    /// the relic's forced removal prompt have happened, and the move's after-reading
+    /// and the prompt's place in the journal are a known limitation owed to the
+    /// retail-timing follow-up.
     /// </summary>
     [HarmonyPatch(typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper))]
     internal static class ShopPurchased
@@ -3460,10 +3474,11 @@ internal sealed class RunRecorder : IDisposable
         }
 
         [HarmonyPrefix]
-        internal static void Before(MerchantEntry __instance, MerchantInventory? inventory)
+        internal static void Before(MerchantEntry __instance, MerchantInventory? inventory, bool ignoreCost)
         {
             _decision = null;
             if (Active is null) return;
+            if (ignoreCost) return;
 
             try
             {
@@ -3564,8 +3579,8 @@ internal sealed class RunRecorder : IDisposable
     internal static class ShopCardRemovalPurchased
     {
         [HarmonyPrefix]
-        internal static void Before(MerchantCardRemovalEntry __instance, MerchantInventory? inventory) =>
-            ShopPurchased.Before(__instance, inventory);
+        internal static void Before(MerchantCardRemovalEntry __instance, MerchantInventory? inventory, bool ignoreCost) =>
+            ShopPurchased.Before(__instance, inventory, ignoreCost);
 
         [HarmonyPostfix]
         internal static void After(Task<bool> __result) => ShopPurchased.After(__result);

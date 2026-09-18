@@ -4,7 +4,10 @@ using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Potions;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
@@ -64,8 +67,10 @@ public static partial class SyntheticFixtureGenerator
     /// after the room that deals it and then the room its ask is met in - the chest
     /// and then a fight or a rest site, the shop and then a fight - and a map whose
     /// only way from there to the boss passes a question mark still has both rooms.
+    /// A walk after a relic an ancient deals holds it from the first room and is
+    /// after the one room its ask is met in, for the same reason.
     /// </summary>
-    private static bool RouteIsOrdered => _policy.BagRelic is not null && _policy.StopOnceMet && _policy.RouteThrough is not null;
+    private static bool RouteIsOrdered => _policy.Relic is not null && _policy.StopOnceMet && _policy.RouteThrough is not null;
 
     /// <summary>Which of the policy's one-time asks the walk under way has met, and
     /// whether any ask has been, for a walk that stops there.</summary>
@@ -183,12 +188,12 @@ public static partial class SyntheticFixtureGenerator
     private static void WalkTheActFrom(
         GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
     {
-        Apply(driver, actions, ActionVerb.ChooseNeowBlessing,
-            ("option_index", NeowOption(session).ToString(CultureInfo.InvariantCulture)));
+        OpenTheRun(driver, session, actions);
 
-        // A blessing that grants a relic can put a rewards set on offer from the relic's
-        // own work - Kaleidoscope's cards, Small Capsule's relic - which is answered
-        // before the run moves, the way a player answers it before the map opens
+        // A blessing or an ancient's offer that grants a relic can put a rewards set on
+        // offer from the relic's own work - Kaleidoscope's cards, Small Capsule's
+        // relic, Toy Box's - which is answered before the run moves, the way a player
+        // answers it before the map opens
         MeetTheAskIf(session, _policy.ObtainingIsTheAsk);
         TakeWhatWasOffered(driver, session, actions);
         if (_policy.StopOnceMet && _askMet) return;
@@ -268,13 +273,47 @@ public static partial class SyntheticFixtureGenerator
         if (driver.UnclaimedRewardKinds.Count > 0) TakeTheLoot(driver, session, actions);
     }
 
-    /// <summary>The opening blessing the walk takes: the option granting the relic the
-    /// policy names where Neow offers it, and the first option otherwise.</summary>
-    private static int NeowOption(GameSession session)
+    /// <summary>
+    /// The run's opening decision: Neow's blessing where the run opens on Neow's room,
+    /// which every run of the default progression does, and the ancient's offer where
+    /// it opens on an act's ancient - a run whose acts list begins at act 2 or 3, which
+    /// the engine builds the way it builds the won-run proof's one-act run. The
+    /// recorder writes the two as different verbs, so the walk does too: the blessing
+    /// carries no event id and the ancient's page is answered by
+    /// <see cref="ActionVerb.ChooseEventOption"/> naming the ancient and the key.
+    /// </summary>
+    private static void OpenTheRun(RunDriver driver, GameSession session, List<ActionRecord> actions)
     {
-        if (_policy.NeowRelic is not { } relic) return 0;
-        var options = RunManager.Instance.EventSynchronizer?.GetLocalEvent()?.CurrentOptions
+        var opening = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
             ?? throw new EngineException("The act journey is not standing in the opening event.");
+        var options = opening.CurrentOptions;
+
+        if (opening is Neow)
+        {
+            Apply(driver, actions, ActionVerb.ChooseNeowBlessing,
+                ("option_index", OpeningOption(options, _policy.NeowRelic).ToString(CultureInfo.InvariantCulture)));
+            return;
+        }
+
+        if (opening is not AncientEventModel)
+        {
+            throw new EngineException(
+                $"The act journey opened on {opening.Id}, which is neither Neow nor an act's ancient, and it has " +
+                "no rule for the first room of such a run.");
+        }
+
+        var index = OpeningOption(options, _policy.AncientRelic);
+        Apply(driver, actions, ActionVerb.ChooseEventOption,
+            ("event_id", opening.Id.ToString()),
+            ("option_index", index.ToString(CultureInfo.InvariantCulture)),
+            ("option_key", RunDriver.OptionKey(options[index])));
+    }
+
+    /// <summary>The opening option the walk takes: the one granting the relic the
+    /// policy names where the opening offers it, and the first option otherwise.</summary>
+    private static int OpeningOption(IReadOnlyList<EventOption> options, string? relic)
+    {
+        if (relic is null) return 0;
         var index = options.ToList().FindIndex(option => option.Relic?.Id.ToString() == relic);
         return index < 0 ? 0 : index;
     }
@@ -329,11 +368,14 @@ public static partial class SyntheticFixtureGenerator
             ?? throw new EngineException($"The current map node {coord} does not exist in this act.");
 
         var memo = new Dictionary<(MapPoint Node, int Covered), RoutePlan?>();
+        var required = _requiredTypes.Length == 0
+            ? "nothing in particular"
+            : string.Join(RouteIsOrdered ? " and then " : ", ", _requiredTypes.Select(type => type.ToString().ToLowerInvariant()));
         return (BestRoute(start, 0, memo)
             ?? throw new EngineException(
-                "No route through this act reaches the boss while visiting a shop, a rest site, a treasure " +
-                "room and an elite without passing through a question mark. This seed's act was chosen " +
-                $"because one does; either the map generation changed or {NotRouted} nodes now block it."))
+                $"No route through this act {(RouteIsOrdered ? "passes" : "reaches the boss while visiting")} " +
+                $"{required} without passing through a question mark. A seed is chosen because one does; either " +
+                $"the map generation changed or {NotRouted} nodes block it on this seed."))
             .Path;
     }
 
@@ -442,6 +484,7 @@ public static partial class SyntheticFixtureGenerator
                 break;
 
             case RoomType.Shop:
+                MeetTheAskIf(session, _policy.ShopWhileHoldingIt);
                 BuyEverythingAffordable(driver, session, actions, checkpoints);
                 break;
 
@@ -564,20 +607,23 @@ public static partial class SyntheticFixtureGenerator
             MeetTheAskIf(session, _policy.ClaimTheRelicReward || _policy.ObtainingIsTheAsk);
         }
 
-        // The loot screen's Skip is the first alternative of every card reward that
-        // can be skipped, past its cards; the reward stays on the screen for the
-        // TakeCard that follows, which is what a player who changed their mind does
-        if (_policy.DeclineTheFirstCardReward && !_declinedACardReward && driver.OpenCardReward is { } reward)
+        // The alternative the policy is after, past the reward's cards, on the first
+        // card reward that offers it: the loot screen's Skip is the first alternative
+        // of every card reward that can be skipped, and the reward stays on the screen
+        // for the TakeCard that follows, which is what a player who changed their mind
+        // does; a relic's own alternative - Pael's Wing's sacrifice - ends the reward
+        // and the screen offers no card after it
+        if (_policy.CardRewardAlternative is { } wanted && !_declinedACardReward && driver.OpenCardReward is { } reward)
         {
             var alternatives = CardRewardAlternative.Generate(reward);
-            var skip = alternatives.ToList().FindIndex(alternative => alternative.OptionId == "Skip");
-            if (skip >= 0)
+            var offered = alternatives.ToList().FindIndex(alternative => alternative.OptionId == wanted);
+            if (offered >= 0)
             {
                 _declinedACardReward = true;
                 MeetTheAskIf(session, true);
                 Apply(driver, actions, ActionVerb.TakeCardRewardAlternative,
-                    ("option_id", "Skip"),
-                    ("option_index", (reward.Cards.Count() + skip).ToString(CultureInfo.InvariantCulture)));
+                    ("option_id", wanted),
+                    ("option_index", (reward.Cards.Count() + offered).ToString(CultureInfo.InvariantCulture)));
             }
         }
 

@@ -81,11 +81,15 @@ internal sealed class RecordedActWalk : IDisposable
     /// way the natural-run proof finishes one, because the journey's survival rules
     /// were tuned for its own choices and not the policy's.
     /// </summary>
-    internal Recorded Walk(WalkPolicy policy, string seed = FixtureSeed, bool visitEveryRoomType = true)
+    /// <param name="acts">The run's acts list: the default progression, or the one act
+    /// alone whose ancient a row is after - a generated-only list no client run has,
+    /// which the engine builds the way it builds the won-run proof's one-act run.</param>
+    internal Recorded Walk(
+        WalkPolicy policy, string seed = FixtureSeed, bool visitEveryRoomType = true, IReadOnlyList<string>? acts = null)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
-        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", Acts);
+        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", acts ?? Acts);
         using var driver = new RunDriver(session);
         driver.ImproviseUnrecordedCardSelections();
         driver.EnterFirstRoom();

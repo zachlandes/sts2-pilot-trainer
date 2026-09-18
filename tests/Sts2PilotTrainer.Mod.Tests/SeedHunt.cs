@@ -3,6 +3,7 @@ using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -24,6 +25,12 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// hunt is that reading over candidate seeds until one deals the relic, then the
 /// row's own walk to confirm the run survives to the decision.
 ///
+/// A run whose acts list opens on act 2 or 3 opens on that act's ancient rather than
+/// on Neow, rolled from the act's own ancients at the act's start and offering three
+/// relics from its option pools, and the same reading takes the ancient and its offer
+/// off the first room; a row after a relic an ancient deals hunts a seed of that act
+/// alone whose ancient offers it.
+///
 /// The hunt is run once, by hand, and the seed it finds is pinned as a constant in
 /// the row with this reading as its criterion; a game update that moves the RNG fails
 /// the row on the reading, naming the seed and the relic, and the hunt is run again.
@@ -31,35 +38,45 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 internal static class SeedHunt
 {
-    /// <summary>What a fresh run's first room says about who deals what: the relics
-    /// Neow offers, the relic at the front of each rarity's shared bag, the relic at
-    /// the back of each rarity's player bag, and the rarity the act's first chest
-    /// will draw.</summary>
+    /// <summary>What a fresh run's first room says about who deals what: the event the
+    /// run opened on - Neow's, or an act's ancient - and the relics it offers, the
+    /// relic at the front of each rarity's shared bag, the relic at the back of each
+    /// rarity's player bag, and the rarity the act's first chest will draw.</summary>
     internal sealed record Opening(
-        IReadOnlyList<string> NeowRelics,
+        string OpeningEventId,
+        IReadOnlyList<string> OfferedRelics,
         IReadOnlyDictionary<string, string> SharedBagFronts,
         IReadOnlyDictionary<string, string> PlayerBagBacks,
         string FirstChestRarity)
     {
+        /// <summary>The relics Neow offers: the opening's offer where the run opened
+        /// on Neow's room, and none otherwise.</summary>
+        internal IReadOnlyList<string> NeowRelics =>
+            OpeningEventId == DecisionFacts.NeowEventId ? OfferedRelics : [];
+
         /// <summary>Whether this opening deals the relic through the dealer named: at
-        /// the chest, the front of the shared bag the chest's own roll draws from.</summary>
+        /// the chest, the front of the shared bag the chest's own roll draws from; at
+        /// an ancient, the run opened on that ancient and it offers the relic.</summary>
         internal bool Deals(string relicId, Dealer dealer) => dealer switch
         {
             Dealer.Neow => NeowRelics.Contains(relicId, StringComparer.Ordinal),
             Dealer.Chest => SharedBagFronts.TryGetValue(FirstChestRarity, out var front) && front == relicId,
             Dealer.Shop => PlayerBagBacks.TryGetValue(nameof(RelicRarity.Shop), out var back) && back == relicId,
+            Dealer.Ancient => OpeningEventId != DecisionFacts.NeowEventId && OfferedRelics.Contains(relicId, StringComparer.Ordinal),
             _ => throw new ArgumentOutOfRangeException(nameof(dealer), dealer, "not a dealer"),
         };
     }
 
-    /// <summary>How a run deals a relic in act 1: the opening blessing, the chest that
-    /// draws the front of the relic's rarity bag, or the merchant's shelf that draws
-    /// the back of the shop bag.</summary>
+    /// <summary>How a run deals a relic: the opening blessing, the chest that draws
+    /// the front of the relic's rarity bag, the merchant's shelf that draws the back
+    /// of the shop bag, or the ancient an act opens on where the run's first act is
+    /// act 2 or 3.</summary>
     internal enum Dealer
     {
         Neow,
         Chest,
         Shop,
+        Ancient,
     }
 
     /// <summary>The game's own seed alphabet.</summary>
@@ -76,19 +93,22 @@ internal static class SeedHunt
         }
     }
 
-    /// <summary>The opening of a run of this seed, read off a run started and stood in
-    /// its first room and cleaned up again.</summary>
-    internal static Opening ReadOpening(string seed)
+    /// <summary>The opening of a run of this seed, read off a run started on the acts
+    /// list - the default progression where none is given - and stood in its first
+    /// room and cleaned up again.</summary>
+    internal static Opening ReadOpening(string seed, IReadOnlyList<string>? acts = null)
     {
         EngineHost.Start();
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
-        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", RecordedActWalk.Acts);
+        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", acts ?? RecordedActWalk.Acts);
         try
         {
             using var driver = new RunDriver(session);
             driver.EnterFirstRoom();
-            var neow = (RunManager.Instance.EventSynchronizer?.GetLocalEvent()?.CurrentOptions ?? [])
+            var opening = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
+                ?? throw new InvalidOperationException($"seed {seed} did not open on an event room");
+            var offered = opening.CurrentOptions
                 .Select(option => option.Relic?.Id.ToString())
                 .OfType<string>()
                 .ToList();
@@ -99,7 +119,8 @@ internal static class SeedHunt
             // consumes, on a run that is cleaned up below
             var firstChestRarity = RelicFactory.RollRarity(session.RunState.Rng.TreasureRoomRelics).ToString();
             return new Opening(
-                neow,
+                opening.Id.ToString(),
+                offered,
                 shared.Where(entry => entry.Value.Count > 0).ToDictionary(entry => entry.Key.ToString(), entry => entry.Value[0].ToString(), StringComparer.Ordinal),
                 own.Where(entry => entry.Value.Count > 0).ToDictionary(entry => entry.Key.ToString(), entry => entry.Value[^1].ToString(), StringComparer.Ordinal),
                 firstChestRarity);
@@ -116,13 +137,14 @@ internal static class SeedHunt
     /// Run by hand from a scratch test when a row's seed no longer deals its relic;
     /// the seeds a hunt found are the constants in <c>GeneratedCoverageTests</c>.
     /// </summary>
-    internal static string? Find(string relicId, Dealer dealer, Func<string, bool> walks, int maxCandidates = 40)
+    internal static string? Find(
+        string relicId, Dealer dealer, Func<string, bool> walks, int maxCandidates = 40, IReadOnlyList<string>? acts = null)
     {
         var candidates = 0;
         foreach (var seed in Candidates())
         {
             if (candidates >= maxCandidates) return null;
-            if (!ReadOpening(seed).Deals(relicId, dealer)) continue;
+            if (!ReadOpening(seed, acts).Deals(relicId, dealer)) continue;
             candidates++;
             if (walks(seed)) return seed;
         }

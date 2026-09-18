@@ -34,9 +34,23 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// every relic the map says Neow, a chest or a shop deals has a row, but for one the
 /// game withholds from a singleplayer run.
 ///
+/// The ancient rows are the third table: one per option of every ancient an act
+/// opens on - act 2's and act 3's, every option of which is a relic - each on a run
+/// whose acts list is that act alone, which the engine builds the way it builds the
+/// won-run proof's one-act run and which opens on the act's ancient rather than on
+/// Neow, on a seed hunted so that ancient is rolled and offers the relic. A
+/// generated-only acts list: no client run has one, the recording is admissible as
+/// coverage evidence on the footing of the won-run proof's one-act run and is never
+/// listed or shared, and the row says so in its own words. A row obtains the relic
+/// through the recorded <c>ChooseEventOption</c> naming the ancient and the key,
+/// answers what the relic adds, and retires the ancient, its option and every seam
+/// the map lists the relic under. The table is held to the map: every option of every
+/// act's ancient has a row, and every relic the map says an act's ancient deals has
+/// one; Darv's are a question mark's and wait on the event hunt.
+///
 /// What no row here can reach is what <c>DecisionExcusals</c> leaves excused with a
 /// reason of its own: what the headless host has no screen for, the undo of an ended
-/// turn, and every point whose producer an act's ancient or an event deals.
+/// turn, and every point whose producer an event deals.
 /// </summary>
 public sealed class GeneratedCoverageTests
 {
@@ -179,6 +193,191 @@ public sealed class GeneratedCoverageTests
         RecordedActWalk.ReplayToParity(recorded);
     }
 
+    /// <summary>
+    /// One ancient row: the ancient, the relic its option grants, the seed the hunt
+    /// found on the run of the ancient's act alone, and the ask the walk is after once
+    /// it holds the relic, with the points past the relic's seams the row retires and
+    /// the seams of the relic's it falls short of. The seed is a constant with the
+    /// hunt's criterion beside it, as <see cref="SeedHunt"/> says; the row checks the
+    /// criterion first, so a game update that moves the RNG fails by name rather than
+    /// as a walk that met nothing.
+    /// </summary>
+    /// <param name="ShortOf">The seams the map lists the relic under that this row does
+    /// not reach, each excused in <c>DecisionExcusals</c> by what stands in the way:
+    /// the rest option a relic adds is a rest site away from the ancient, and the
+    /// journey's mechanical line does not survive there at starter strength.</param>
+    internal sealed record AncientRow(
+        string Ancient, string Relic, string Seed, string Ask, string[]? AlsoRetires = null, string[]? ShortOf = null);
+
+    /// <summary>The rest option a relic adds, which an ancient row falls short of: the
+    /// seam of the option at its timing class.</summary>
+    private static string[] ShortOfTheRest(string option) =>
+        [$"seam  rest-option:{option} @ AbstractModel.TryModifyRestSiteOptions"];
+
+    private const string AShopHoldingIt = "a shop holding it";
+    private const string SacrificeACardReward = "sacrifice a card reward";
+
+    /// <summary>The ancient rows, by relic. The seeds were found by
+    /// <c>SeedHunt.Find</c> over its own candidates on v0.111.0, each on the acts
+    /// list of the ancient's act alone.</summary>
+    internal static readonly IReadOnlyDictionary<string, AncientRow> AncientRows = new[]
+    {
+        // Act 2: the Hive's three
+        new AncientRow("EVENT.OROBAS", "RELIC.ALCHEMICAL_COFFER", "ADX2BRHFBC", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.ARCHAIC_TOOTH", "C1GAV23WHA", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.DRIFTWOOD", "C1GAV23WHA", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.ELECTRIC_SHRYMP", "8CKSJT78DB", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.GLASS_EYE", "C1GAV23WHA", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.PRISMATIC_GEM", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.RADIANT_PEARL", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.SAND_CASTLE", "HCM40F3ZGY", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.SEA_GLASS", "HCM40F3ZGY", ObtainIt),
+        new AncientRow("EVENT.OROBAS", "RELIC.TOUCH_OF_OROBAS", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_BLOOD", "Y1NN8NJF3P", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_CLAW", "X7KJSBLHQ6", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_EYE", "BEWP9FJU9V", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_FLESH", "6KGKGA4S8P", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_GROWTH", "87NGC17B9A", ObtainIt, ShortOf: ShortOfTheRest("CLONE")),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_HORN", "ZBCVW5ENJ4", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_LEGION", "KNU8ZJM21D", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_TEARS", "BEWP9FJU9V", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_TOOTH", "BEWP9FJU9V", ObtainIt),
+        new AncientRow("EVENT.PAEL", "RELIC.PAELS_WING", "0WA4C6C2KF", SacrificeACardReward, ["card-reward-alternative  SACRIFICE"]),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.BIIIG_HUG", "S7LTRQKC10", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.GOLDEN_COMPASS", "41MV0020T4", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.NUTRITIOUS_SOUP", "RAGWB3H44W", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.PUMPKIN_CANDLE", "HQUHYBESLV", ObtainIt, ShortOf: ShortOfTheRest("KINDLE")),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.SEAL_OF_GOLD", "RAGWB3H44W", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.STORYBOOK", "HHNZNPJV6W", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.TOASTY_MITTENS", "RAGWB3H44W", AFightHoldingIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.TOY_BOX", "S7LTRQKC10", ClaimTheRelicItOffers),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.VERY_HOT_COCOA", "S7LTRQKC10", ObtainIt),
+        new AncientRow("EVENT.TEZCATARA", "RELIC.YUMMY_COOKIE", "XTXVMBG3WB", ObtainIt),
+        // Act 3: Glory's three
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.BEAUTIFUL_BRACELET", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.BLESSED_ANTLER", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.BRILLIANT_SCARF", "N2E2AGFGSN", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.DELICATE_FROND", "KNU8ZJM21D", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.DIAMOND_DIADEM", "X5KY7YB3AE", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.FUR_COAT", "KNU8ZJM21D", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.GLITTER", "C1GAV23WHA", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.JEWELRY_BOX", "0WA4C6C2KF", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.LOOMING_FRUIT", "X5KY7YB3AE", ObtainIt),
+        new AncientRow("EVENT.NONUPEIPE", "RELIC.SIGNET_RING", "C1GAV23WHA", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.CLAWS", "S7LTRQKC10", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.CROSSBOW", "X7KJSBLHQ6", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.IRON_CLUB", "X7KJSBLHQ6", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.MEAT_CLEAVER", "XTXVMBG3WB", ObtainIt, ShortOf: ShortOfTheRest("COOK")),
+        new AncientRow("EVENT.TANX", "RELIC.SAI", "HQUHYBESLV", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.SPIKED_GAUNTLETS", "HCM40F3ZGY", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.TANXS_WHISTLE", "HQUHYBESLV", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.THROWING_AXE", "S7LTRQKC10", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.TRI_BOOMERANG", "HCM40F3ZGY", ObtainIt),
+        new AncientRow("EVENT.TANX", "RELIC.WAR_HAMMER", "S7LTRQKC10", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.BLOOD_SOAKED_ROSE", "ZBCVW5ENJ4", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.CHOICES_PARADOX", "41MV0020T4", AFightHoldingIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.DISTINGUISHED_CAPE", "BEWP9FJU9V", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.FIDDLE", "BEWP9FJU9V", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.JEWELED_MASK", "3DKM6HUFZY", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.LORDS_PARASOL", "5U7CT06HNS", AShopHoldingIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.MUSIC_BOX", "ZBCVW5ENJ4", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.PRESERVED_FOG", "41MV0020T4", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.SERE_TALON", "ZBCVW5ENJ4", ObtainIt),
+        new AncientRow("EVENT.VAKUU", "RELIC.WHISPERING_EARRING", "8DYGVNBPVT", ObtainIt),
+    }.ToDictionary(row => row.Relic, StringComparer.Ordinal);
+
+    public static IEnumerable<object[]> AncientRelics() => AncientRows.Keys.Order(StringComparer.Ordinal).Select(relic => new object[] { relic });
+
+    /// <summary>The acts list an ancient row's run is built on: the ancient's own act
+    /// alone, so the run opens on that act's ancient.</summary>
+    internal static IReadOnlyList<string> ActsOf(AncientRow row) =>
+        [DecisionSurface.ActAncients().Single(pair => pair.AncientId == row.Ancient).ActId];
+
+    /// <summary>
+    /// Each ancient row on its own hunted seed and its own one-act list: the run opens
+    /// on the row's ancient offering the relic, the walk obtains it through the recorded
+    /// decision that names both and meets the ask past it, the recording reaches the
+    /// ancient, its option, every seam the map lists for the relic and the points the
+    /// row retires, and a fresh replay reproduces the journal decision for decision.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(AncientRelics))]
+    public void AnAncientRowDealsTheRelicReachesItsSeamsAndReplaysToParity(string relic)
+    {
+        var row = AncientRows[relic];
+        var acts = ActsOf(row);
+        var opening = SeedHunt.ReadOpening(row.Seed, acts);
+        Assert.True(
+            opening.OpeningEventId == row.Ancient && opening.Deals(row.Relic, SeedHunt.Dealer.Ancient),
+            $"seed {row.Seed} on {acts[0]} alone no longer opens on {row.Ancient} offering {row.Relic} (it opens on " +
+            $"{opening.OpeningEventId} offering {string.Join(", ", opening.OfferedRelics)}): the game's RNG has moved, " +
+            "so rerun SeedHunt.Find for this row");
+
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(PolicyFor(row), row.Seed, visitEveryRoomType: false, acts);
+        Assert.True(
+            recorded.AskMet,
+            $"the walk finished without meeting the ask of the {row.Relic} row ({row.Ask}); actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+
+        // The relic came through the ancient's own recorded decision naming it, so a
+        // replay deals it the same way
+        Assert.Contains(recorded.Manifest.Actions, action =>
+            action.Verb == ActionVerb.ChooseEventOption
+            && action.Args.TryGetValue("event_id", out var eventId) && eventId == row.Ancient
+            && action.Args.TryGetValue("option_key", out var key) && key == row.Relic);
+
+        var points = DecisionFacts.Of(recorded.Manifest);
+        var reached = DecisionCoverage.SeamsReachedBy(
+                new CoveredRecording(
+                    recorded.Manifest.RunId, points, RecordingStanding.Of(recorded.Manifest.Source.Native),
+                    DecisionFacts.ModelsMet(recorded.Manifest)),
+                DecisionSurface.ProducerMap())
+            .ToHashSet();
+        foreach (var point in RetiredBy(row))
+        {
+            Assert.True(
+                points.Contains(point) || reached.Contains(point),
+                $"the {row.Relic} row's recording does not reach {point}; it reaches " +
+                string.Join(", ", points.Concat(reached).Select(reachedPoint => reachedPoint.ToString())));
+        }
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The ancient rows are exactly the options of the ancients act 2 and act
+    /// 3 open on - every one a relic - and cover every relic the map says one of those
+    /// ancients deals: an option a game update adds is a row somebody has to hunt a
+    /// seed for, and a row for one the ancient no longer offers is a walk for nothing.
+    /// Neow is act 1's and its rows are the producer table's; Darv is every act's
+    /// question mark's and waits on the event hunt.</summary>
+    [GameFact]
+    public void TheAncientRowsAreTheOptionsOfTheActsAncients()
+    {
+        var ancients = DecisionSurface.ActAncients()
+            .Where(pair => pair.AncientId != DecisionFacts.NeowEventId)
+            .ToList();
+        Assert.All(ancients, pair => Assert.Single(DecisionSurface.ActsReaching(pair.AncientId)));
+
+        var options = DecisionSurface.EventOptionKeys()
+            .Where(option => ancients.Any(pair => pair.AncientId == option.EventId))
+            .ToList();
+        Assert.All(options, option => Assert.StartsWith("RELIC.", option.Key, StringComparison.Ordinal));
+        Assert.Equal(
+            options.Select(option => (option.EventId, option.Key)).Order(),
+            AncientRows.Values.Select(row => (row.Ancient, row.Relic)).Order());
+
+        var dealtByAnActsAncient = DecisionSurface.ProducerMap()
+            .SelectMany(seam => seam.Producers)
+            .Where(producer => producer.StartsWith("RELIC.", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .Where(relic => DecisionSurface.DealtBy(relic)
+                .Any(dealing => dealing.Mechanism == "ancient" && ancients.Any(pair => pair.AncientId == dealing.By)))
+            .ToList();
+        Assert.All(dealtByAnActsAncient, relic => Assert.Contains(relic, AncientRows.Keys));
+    }
+
     /// <summary>The producer rows are exactly the relics the map says Neow, a chest or
     /// a shop deals, less the one the game allows only with another player: a relic
     /// the map adds is a row somebody has to hunt a seed for, and a row for a relic
@@ -225,6 +424,7 @@ public sealed class GeneratedCoverageTests
             .SelectMany(row => new[] { (string)row[1], (string)row[2] })
             .Where(point => point.Length > 0)
             .Concat(ProducerRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
+            .Concat(AncientRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
             .ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All
             .Where(excusal => excusal.Value.Reason.Contains(nameof(GeneratedCoverageTests), StringComparison.Ordinal))
@@ -250,6 +450,73 @@ public sealed class GeneratedCoverageTests
             var parts = point.Split("  ", 2);
             yield return new DecisionPoint(parts[0], parts[1]);
         }
+    }
+
+    /// <summary>The seam every ancient's page is answered at, retired by every ancient
+    /// row: the ancients' own option pools. The initial-options seam the ancients
+    /// share with every event is the committed corpus's already.</summary>
+    private const string AncientOptionSeam = "seam  event-option @ AncientEventModel.AllPossibleOptions";
+
+    /// <summary>The points an ancient row retires: the ancient, its option granting the
+    /// relic, the ancients' own option seam, every seam the map lists the relic under
+    /// but the ones the row falls short of, and the points its policy is for.</summary>
+    private static IEnumerable<DecisionPoint> RetiredBy(AncientRow row)
+    {
+        yield return new DecisionPoint(DecisionKinds.Event, row.Ancient);
+        yield return DecisionPoint.EventOption(row.Ancient, row.Relic);
+        yield return Point(AncientOptionSeam);
+        var shortOf = ShortOf(row).ToHashSet();
+        foreach (var seam in DecisionSurface.ProducerMap().Where(seam => seam.Producers.Contains(row.Relic, StringComparer.Ordinal)))
+        {
+            if (!shortOf.Contains(seam.Point)) yield return seam.Point;
+        }
+
+        foreach (var point in row.AlsoRetires ?? [])
+        {
+            yield return Point(point);
+        }
+    }
+
+    private static IEnumerable<DecisionPoint> ShortOf(AncientRow row) => (row.ShortOf ?? []).Select(Point);
+
+    private static DecisionPoint Point(string point)
+    {
+        var parts = point.Split("  ", 2);
+        return new DecisionPoint(parts[0], parts[1]);
+    }
+
+    /// <summary>What an ancient row falls short of is a seam the map lists its relic
+    /// under, and is excused by what stands in the way rather than credited to this
+    /// test: the excusal has to be the line's-survival one for that relic, so it is
+    /// read for what it is and retired by a line that does survive.</summary>
+    [GameFact]
+    public void WhatAnAncientRowFallsShortOfIsExcusedByTheLinesSurvival()
+    {
+        var shortOf = AncientRows.Values.SelectMany(row => ShortOf(row).Select(point => (row.Relic, Point: point))).ToList();
+        Assert.NotEmpty(shortOf);
+        foreach (var (relic, point) in shortOf)
+        {
+            Assert.Contains(
+                DecisionSurface.ProducerMap(),
+                seam => seam.Point == point && seam.Producers.Contains(relic, StringComparer.Ordinal));
+            var excusal = Assert.Contains(point, DecisionExcusals.All);
+            Assert.Equal(ExcusalClass.NotOnTheRoute, excusal.Class);
+            Assert.Equal(DecisionExcusals.BeyondTheLinesSurvival(relic), excusal);
+        }
+    }
+
+    internal static WalkPolicy PolicyFor(AncientRow row)
+    {
+        var policy = new WalkPolicy { AncientRelic = row.Relic };
+        return row.Ask switch
+        {
+            ObtainIt => policy,
+            ClaimTheRelicItOffers => policy with { ClaimTheRelicReward = true },
+            AFightHoldingIt => policy with { FightWhileHoldingIt = true, RouteThrough = [MapPointType.Monster] },
+            AShopHoldingIt => policy with { ShopWhileHoldingIt = true, RouteThrough = [MapPointType.Shop] },
+            SacrificeACardReward => policy with { CardRewardAlternative = "SACRIFICE", RouteThrough = [MapPointType.Monster] },
+            _ => throw new ArgumentOutOfRangeException(nameof(row), row.Ask, "no such ask"),
+        };
     }
 
     /// <summary>Whether an action is the recorded decision that dealt the relic.</summary>
@@ -294,7 +561,7 @@ public sealed class GeneratedCoverageTests
 
     private static WalkPolicy PolicyFor(string row) => row switch
     {
-        "decline the first card reward" => new WalkPolicy { DeclineTheFirstCardReward = true },
+        "decline the first card reward" => new WalkPolicy { CardRewardAlternative = "Skip" },
         "rest HEAL" => new WalkPolicy { RestOption = "HEAL" },
         "shop relic" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Relic },
         "shop potion" => new WalkPolicy { ShopKind = ShopPurchaseKinds.Potion },

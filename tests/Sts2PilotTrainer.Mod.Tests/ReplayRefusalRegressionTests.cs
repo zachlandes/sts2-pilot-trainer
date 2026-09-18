@@ -5,19 +5,23 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
-/// Two ordinary singleplayer paths a recording of which the driver refused on
+/// Three ordinary singleplayer paths a recording of which the driver refused on
 /// v0.111.0, each played through the real recorder, replayed, and held to parity.
 ///
-/// Both were found by reading the game assembly for what a player can reach rather
-/// than by a recording: the driver enforced a rule of its own where the game has one,
-/// and the format could not say which of two rewards of one kind was taken. Each row
-/// is a recording that the driver before this change refused - the first as
-/// <c>Map node ... is not reachable</c>, the second as <c>2 of them are on offer</c> -
-/// and that now replays decision for decision through the same oracle
-/// <c>parity</c> uses, on a seed chosen because its opening event or its relic bag
-/// puts the producer on the walk's route. The rows live apart from
-/// <c>GeneratedCoverageTests</c> because they exercise no excused decision point:
-/// a map move is not a point and a gold reward is one the corpus reaches.
+/// The first two were found by reading the game assembly for what a player can reach
+/// rather than by a recording: the driver enforced a rule of its own where the game
+/// has one, and the format could not say which of two rewards of one kind was taken.
+/// The third was found by the Stage 3 ancient row for Lord's Parasol: the recorder
+/// wrote the purchases the relic makes for itself as the merchant is entered as the
+/// player's, before the move that opened the shop. Each row is a recording that the
+/// driver before its change refused - as <c>Map node ... is not reachable</c>, as
+/// <c>2 of them are on offer</c>, as <c>buys from a merchant, but this floor is a
+/// Monster room</c> - and that now replays decision for decision through the same
+/// oracle <c>parity</c> uses, on a seed chosen because its opening event or its
+/// relic bag puts the producer on the walk's route. The rows live apart from
+/// <c>GeneratedCoverageTests</c> because they exercise no excused decision point of
+/// their own: a map move is not a point, a gold reward is one the corpus reaches,
+/// and the shop entered under Lord's Parasol is the ancient row's.
 /// </summary>
 public sealed class ReplayRefusalRegressionTests
 {
@@ -34,6 +38,10 @@ public sealed class ReplayRefusalRegressionTests
     /// and whose route past the chest survives to a fight: every fight from then on
     /// offers the fight's own gold and the relic's beside it.</summary>
     private const string AubergineSeed = "KSP00HAL6M";
+
+    /// <summary>A seed of Glory alone whose ancient is Vakuu offering Lord's Parasol,
+    /// and whose route past the ancient survives to a merchant.</summary>
+    private const string LordsParasolSeed = "5U7CT06HNS";
 
     /// <summary>
     /// Winged Boots lets the player walk to any node of the next row, and the game
@@ -92,6 +100,39 @@ public sealed class ReplayRefusalRegressionTests
         Assert.NotEqual(golds[0].Args[RewardKinds.IndexArgument], golds[1].Args[RewardKinds.IndexArgument]);
         Assert.All(recorded.Manifest.Actions.Where(action => action.Verb is ActionVerb.ClaimReward or ActionVerb.TakeCard),
             action => Assert.Contains(RewardKinds.IndexArgument, action.Args.Keys));
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>
+    /// Lord's Parasol buys the whole shop as the merchant is entered, through the
+    /// purchase member with <c>ignoreCost</c> set from inside the map move's own work;
+    /// the recorder wrote each as a purchase the player made, ahead of the move that
+    /// opened the shop, and the replay refused the first in the room the move left. A
+    /// purchase the engine makes for itself is not a decision and is recorded nowhere;
+    /// the replay's own move reproduces it, and the removal the relic then opens is a
+    /// card selection behind the move.
+    /// </summary>
+    [GameFact]
+    public void TheShopLordsParasolBuysOnEntryIsNotARecordedDecision()
+    {
+        using var harness = new RecordedActWalk();
+
+        var recorded = harness.Walk(
+            new WalkPolicy { AncientRelic = "RELIC.LORDS_PARASOL", ShopWhileHoldingIt = true, RouteThrough = [MapPointType.Shop] },
+            LordsParasolSeed, visitEveryRoomType: false, acts: ["ACT.GLORY"]);
+        Assert.True(recorded.AskMet, "the walk finished without entering a merchant holding Lord's Parasol");
+        RecordedActWalk.AssertWhole(recorded);
+
+        var offer = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ChooseEventOption);
+        Assert.Equal("RELIC.LORDS_PARASOL", offer.Args["option_key"]);
+        Assert.DoesNotContain(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ShopPurchase);
+
+        // The move that opened the shop is followed by the relic's own removal,
+        // answered on the screen it opened, and by nothing bought
+        var intoTheShop = recorded.Manifest.Actions.Last(action => action.Verb == ActionVerb.MapMove);
+        var after = recorded.Manifest.Actions.Where(action => action.Seq > intoTheShop.Seq).Select(action => action.Verb).ToList();
+        Assert.Contains(ActionVerb.SelectCardFromScreen, after);
 
         RecordedActWalk.ReplayToParity(recorded);
     }

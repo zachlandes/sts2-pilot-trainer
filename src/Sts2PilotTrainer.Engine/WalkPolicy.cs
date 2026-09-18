@@ -15,8 +15,9 @@ namespace Sts2PilotTrainer.Engine;
 /// test that asked is what says so.
 ///
 /// A policy can name a relic as well as a decision - the opening blessing that grants
-/// it, or the relic the run's own bag deals at a chest, an elite's loot or the
-/// merchant's shelf - so the walk can be pointed at what that relic adds. Which
+/// it, the relic the run's own bag deals at a chest, an elite's loot or the
+/// merchant's shelf, or the relic an act's ancient offers where the run opens on an
+/// ancient rather than on Neow - so the walk can be pointed at what that relic adds. Which
 /// decision is the ask then follows one rule: where the policy asks for nothing past
 /// the relic, obtaining it is the ask, which is what a relic that opens its prompt on
 /// being obtained wants; where it does - a rest option, a fight, a second gold, a
@@ -27,11 +28,6 @@ public sealed record WalkPolicy
 {
     /// <summary>Today's rules, exactly.</summary>
     public static WalkPolicy Default { get; } = new();
-
-    /// <summary>Decline the first card reward on its own screen - the loot screen's
-    /// Skip, answered past the cards - before taking a card from it; the reward stays
-    /// on the screen and the walk then takes the card it would have taken.</summary>
-    public bool DeclineTheFirstCardReward { get; init; }
 
     /// <summary>The rest option to take wherever a rest site offers it, by its own
     /// id, in place of the heal-when-hurt-else-smith rule; a site that does not offer
@@ -69,6 +65,13 @@ public sealed record WalkPolicy
     /// what a walk after any relic Neow deals asks for.</summary>
     public string? NeowRelic { get; init; }
 
+    /// <summary>Take the ancient's option that grants the relic with this id where the
+    /// run's first room is an act's ancient rather than Neow's - a run whose acts list
+    /// opens on act 2 or 3 - in place of the first option; an ancient that does not
+    /// offer it takes today's rule. What a walk after any relic an ancient deals asks
+    /// for.</summary>
+    public string? AncientRelic { get; init; }
+
     /// <summary>Obtain the relic with this id wherever the run deals it on the route:
     /// the chest that offers it, the merchant's relic shelf before anything else on
     /// it, the loot screen of a fight that offers it. A route that deals it nowhere
@@ -79,6 +82,17 @@ public sealed record WalkPolicy
     /// to its end and its loot taken, as the ask met: what a relic that changes a
     /// fight's turns or its loot asks for.</summary>
     public bool FightWhileHoldingIt { get; init; }
+
+    /// <summary>Count the first merchant entered while holding the policy's relic as
+    /// the ask met: what a relic whose own work runs as the shop is entered asks for.</summary>
+    public bool ShopWhileHoldingIt { get; init; }
+
+    /// <summary>Take the card-reward alternative with this option id on the first card
+    /// reward that offers it, by the alternative's own id - the loot screen's Skip,
+    /// answered past the cards, or a relic's sacrifice - and count that as the ask met;
+    /// an alternative that keeps the reward's selection open, as Skip does, is followed
+    /// by the card the walk would have taken.</summary>
+    public string? CardRewardAlternative { get; init; }
 
     /// <summary>At the first map move where the game's own travel rule offers a node
     /// the node being left does not lead to - the whole next row under Winged Boots
@@ -105,15 +119,15 @@ public sealed record WalkPolicy
     public bool StopOnceMet { get; init; }
 
     /// <summary>The relic this policy names, or null: the one the bag deals where
-    /// both are named, since a walk is after one relic.</summary>
-    public string? Relic => BagRelic ?? NeowRelic;
+    /// more than one is named, since a walk is after one relic.</summary>
+    public string? Relic => BagRelic ?? NeowRelic ?? AncientRelic;
 
     /// <summary>Whether the policy asks for a decision past obtaining its relic, which
     /// is then the ask.</summary>
     public bool AsksPastTheRelic =>
-        DeclineTheFirstCardReward || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
+        CardRewardAlternative is not null || RestOption is not null || ShopKind is not null || DrinkAPotionOnTheMap ||
         DiscardAPotionOnTheMap || ClaimTheRelicReward || SkipTheChest || TakeTheChest || TravelFreely ||
-        ClaimTwoOfAKind || FightWhileHoldingIt;
+        ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt;
 
     /// <summary>Whether obtaining the policy's relic is the ask: a relic named and
     /// nothing asked past it.</summary>
