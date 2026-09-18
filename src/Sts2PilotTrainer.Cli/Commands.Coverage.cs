@@ -20,9 +20,13 @@ internal static partial class Commands
     /// held to.
     ///
     /// A recording is credited only where <see cref="RecordingStanding"/> says it holds,
-    /// the reading <c>parity</c> makes of the same file; one it says holds nothing is
+    /// the reading <c>parity</c> makes of the same file against the build this process
+    /// would replay with; one it says holds nothing - a recording of another build
+    /// first among them, because a store spans builds once the game updates - is
     /// tallied apart as reached and unverified, and a manifest this build cannot read is
-    /// named with the parser's words and the rest of the corpus is still counted.
+    /// named with the parser's words and the rest of the corpus is still counted. The
+    /// build under test is read once, here, and written into the artifact's header, so
+    /// the number says which build it is a number about.
     ///
     /// <c>--update</c> rewrites the committed record of the denominator and the
     /// excusals on this build, which the game-gated test holds the walks to, so a game
@@ -40,6 +44,7 @@ internal static partial class Commands
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         var artifact = EvidenceArtifact.Prepare(outDir, "coverage.json");
 
+        var build = GameIdentity.Read().Build;
         var recordings = new List<CoveredRecording>();
         var unreadable = new List<UnreadableRecording>();
         foreach (var recording in RecordingCorpus.Enumerate(corpora))
@@ -48,7 +53,8 @@ internal static partial class Commands
             if (reading.Manifest is { } manifest)
             {
                 recordings.Add(new CoveredRecording(
-                    manifest.RunId, DecisionFacts.Of(manifest), RecordingStanding.Of(manifest.Source.Native),
+                    manifest.RunId, DecisionFacts.Of(manifest),
+                    RecordingStanding.Of(manifest.Source.Native, manifest.Environment, build),
                     DecisionFacts.ModelsMet(manifest)));
             }
             else
@@ -66,8 +72,13 @@ internal static partial class Commands
         if (report.Unverified.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine("  reached by these recordings and credited to nothing, because the recorder says each holds nothing:");
-            foreach (var recording in report.Unverified) Console.WriteLine($"  {recording.RunId}  {recording.Standing.Detail}");
+            Console.WriteLine("  reached by these recordings and credited to nothing, because each holds nothing on this build:");
+            foreach (var recording in report.Unverified)
+            {
+                var lines = recording.Standing.Detail.Split('\n');
+                Console.WriteLine($"  {recording.RunId}  {lines[0]}");
+                foreach (var line in lines.Skip(1)) Console.WriteLine($"  {new string(' ', recording.RunId.Length)}  {line}");
+            }
         }
 
         if (report.Unreadable.Count > 0)
@@ -128,16 +139,22 @@ internal static partial class Commands
             JsonSerializer.Serialize(
                 new
                 {
-                    schema = "sts2-pilot-trainer/coverage/v2",
+                    schema = "sts2-pilot-trainer/coverage/v3",
                     arbiter_version = Arbiter.Version,
                     standard =
                         "Every decision point this build offers, walked off the game assembly, is reached by a " +
                         "recording in the corpus or excused in writing in a class the map admits; a seam is " +
                         "reached by co-occurrence, a recording that met one of its producers and answered its " +
                         "decision; a kind this format cannot project is listed as such and counted neither way. " +
-                        "A recording the recorder marked broken, unmapped or non-standard credits nothing and is " +
-                        "tallied apart as unverified, and a manifest this build cannot read is named and counts " +
-                        "for nothing.",
+                        "A recording made on another build, or one the recorder marked broken, unmapped or " +
+                        "non-standard, credits nothing and is tallied apart as unverified, and a manifest this " +
+                        "build cannot read is named and counts for nothing.",
+                    build = new
+                    {
+                        build_version = build.BuildVersion,
+                        build_date_utc = build.BuildDateUtc,
+                        content_hash = build.ContentHash,
+                    },
                     corpus = corpora.Select(Paths.Display).ToList(),
                     covered = report.Holds,
                     totals = new
@@ -181,6 +198,9 @@ internal static partial class Commands
                         run_id = recording.RunId,
                         standing = recording.Standing.Kind.ToString(),
                         detail = recording.Standing.Detail,
+                        build = recording.Standing.Kind == RecordingStandingKind.AnotherBuild
+                            ? recording.Standing.Build
+                            : null,
                     }),
                     unreadable_recordings = report.Unreadable.Select(recording => new
                     {

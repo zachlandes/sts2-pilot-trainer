@@ -35,16 +35,18 @@ public sealed class ParityTests
             var result = Arbiter.Run("parity", "--corpus", "manifests", "--out", outDir);
 
             Assert.True(result.Verified, result.All);
-            Assert.Contains("no journal native-3LACFJ5NJ371-20260906-015901", result.Output, StringComparison.Ordinal);
-            Assert.Contains("no journal native-9F8CY60C5BK7-20260906-005737", result.Output, StringComparison.Ordinal);
-            Assert.Contains("not native navegreed-OJ-6QXhNgdg", result.Output, StringComparison.Ordinal);
+            Assert.Contains("no journal  native-3LACFJ5NJ371-20260906-015901", result.Output, StringComparison.Ordinal);
+            Assert.Contains("no journal  native-9F8CY60C5BK7-20260906-005737", result.Output, StringComparison.Ordinal);
+            Assert.Contains("not native  navegreed-OJ-6QXhNgdg", result.Output, StringComparison.Ordinal);
             Assert.Contains("parity: 0 of 2 native recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("AT PARITY", result.Output, StringComparison.Ordinal);
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
             Assert.True(artifact.GetProperty("at_parity").GetBoolean());
+            Assert.Equal("v0.111.0", artifact.GetProperty("build").GetProperty("build_version").GetString());
             var summary = artifact.GetProperty("summary");
             Assert.Equal(2, summary.GetProperty("native_recordings").GetInt32());
+            Assert.Equal(0, summary.GetProperty("another_build").GetInt32());
             Assert.Equal(0, summary.GetProperty("at_parity").GetInt32());
             Assert.Equal(2, summary.GetProperty("without_journal").GetInt32());
             Assert.Equal(1, summary.GetProperty("not_native").GetInt32());
@@ -184,12 +186,12 @@ public sealed class ParityTests
             var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
 
             Assert.False(result.Verified, result.All);
-            Assert.Contains($"PARITY     {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
-            Assert.Contains($"DIVERGED   {divergedRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"PARITY      {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"DIVERGED    {divergedRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
             Assert.Contains($"decision 5 ({verb}) before: player.hp: 1 -> ", result.Output, StringComparison.Ordinal);
-            Assert.Contains($"broken     {brokenRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"broken      {brokenRun}", result.Output, StringComparison.Ordinal);
             Assert.Contains(
-                "parity: 1 of 3 native recording(s) (2 compared, 0 without a journal, " +
+                "parity: 1 of 3 native recording(s) (2 compared, 0 of another build, 0 without a journal, " +
                 "0 with a journal it cannot read, 0 with an integrity other than complete, 1 with a broken continuity, " +
                 "0 refused; 0 not native)",
                 result.Output, StringComparison.Ordinal);
@@ -222,6 +224,65 @@ public sealed class ParityTests
         });
     }
 
+    /// <summary>
+    /// A recording of another build is classified before anything is replayed, on the
+    /// preflight's own three fields and in the sentence <c>replay</c> refuses the same
+    /// file with, and fails the bar as that refusal did: never replayed, and never
+    /// laundered into an AT PARITY verdict, because a recording this build cannot
+    /// replay is unproven on it. The same reading <c>coverage</c> makes of the file,
+    /// through <see cref="RecordingStanding"/>; before it, the recording reached the
+    /// replay and was reported refused there.
+    /// </summary>
+    [GameFact]
+    public void ARecordingOfAnotherBuildIsNamedBeforeAnythingIsReplayedAndHoldsNothing()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "corpus");
+            Directory.CreateDirectory(corpus);
+            var (manifestPath, journalPath) = RecordingWithAJournal(corpus);
+            const string otherBuildRun = "native-9F8CY60C5BK7-20260906-005738";
+            var otherBuildManifest = Path.Combine(corpus, $"{otherBuildRun}{RecordingLibrary.ManifestExtension}");
+            CopyUnder(manifestPath, journalPath, corpus, otherBuildRun);
+            var relabelled = JsonNode.Parse(File.ReadAllText(otherBuildManifest))!;
+            relabelled["environment"]!["build_version"]!["Value"] = "v0.112.0";
+            relabelled["environment"]!["content_hash"]!["Value"] = "999999999";
+            File.WriteAllText(otherBuildManifest, relabelled.ToJsonString());
+
+            var outDir = Path.Combine(directory, "evidence");
+            var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
+
+            Assert.False(result.Verified, result.All);
+            Assert.Contains($"PARITY      {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"other build {otherBuildRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "build_version: manifest says 'v0.112.0', this machine has 'v0.111.0'. Replaying on a different build",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "content_hash: manifest says '999999999', this machine has '1568834832'. The content hash is a checksum",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "parity: 1 of 2 native recording(s) (1 compared, 1 of another build, 0 without a journal, " +
+                "0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, " +
+                "0 refused; 0 not native)",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("REFUSED", result.Output, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(Path.Combine(outDir, "parity", otherBuildRun)));
+
+            var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
+            Assert.False(artifact.GetProperty("at_parity").GetBoolean());
+            var build = artifact.GetProperty("build");
+            Assert.Equal("v0.111.0", build.GetProperty("build_version").GetString());
+            Assert.Equal("1568834832", build.GetProperty("content_hash").GetString());
+            Assert.Equal(1, artifact.GetProperty("summary").GetProperty("another_build").GetInt32());
+            var entry = artifact.GetProperty("recordings").EnumerateArray()
+                .Single(recording => recording.GetProperty("run_id").GetString() == otherBuildRun);
+            Assert.Equal("another-build", entry.GetProperty("status").GetString());
+            Assert.StartsWith("build_version: manifest says 'v0.112.0'", entry.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        });
+    }
+
     /// <summary>A stale child artifact is never a verdict: the parent clears it before
     /// the child runs, so a child that dies before writing leaves nothing to read as
     /// the previous run's answer.</summary>
@@ -243,15 +304,17 @@ public sealed class ParityTests
             var second = Arbiter.RunWithEnvironment(
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE"] = "parity-child",
+                    // The child's alone: the parent starts the engine too, to read the
+                    // build under test, and is meant to live to read the child's answer
+                    ["STS2_PILOT_TRAINER_TEST_CHILD_REQUIRED_INIT_FAILURE"] = "parity-child",
                 },
                 "parity", "--corpus", corpus, "--out", outDir);
 
             Assert.False(second.Verified, second.All);
-            Assert.Contains($"REFUSED    {ShortRun}", second.Output, StringComparison.Ordinal);
+            Assert.Contains($"REFUSED     {ShortRun}", second.Output, StringComparison.Ordinal);
             Assert.Contains("exited 1 without writing its result", second.Output, StringComparison.Ordinal);
             Assert.Contains("Required engine initialization failed", second.All, StringComparison.Ordinal);
-            Assert.DoesNotContain($"PARITY     {ShortRun}", second.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain($"PARITY      {ShortRun}", second.Output, StringComparison.Ordinal);
             Assert.False(File.Exists(childArtifact));
         });
     }

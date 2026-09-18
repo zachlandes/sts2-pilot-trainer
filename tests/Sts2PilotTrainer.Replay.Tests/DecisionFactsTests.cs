@@ -136,11 +136,20 @@ public sealed class DecisionFactsTests
     private static readonly DecisionPoint Relic = new(DecisionKinds.RewardKind, "relic");
     private static readonly DecisionPoint Potion = new(DecisionKinds.RewardKind, "potion");
     private static readonly DecisionPoint Prompt = new(DecisionKinds.CardPrompt, "CardSelectCmd.FromHand(context)");
-    private static readonly RecordingStanding Holds = RecordingStanding.Of(Fixtures.NativeSourceBlock());
+    /// <summary>The build the fixtures record, as the build under test: the standing
+    /// of every recording below is asked against it.</summary>
+    private static readonly EnvironmentIdentity Environment = Fixtures.NativeManifest().Environment;
+    private static readonly LocalBuild ThisBuild = new(
+        Environment.BuildVersion.Value, Environment.BuildDateUtc.Value, Environment.ContentHash.Value);
+    private static readonly RecordingStanding Holds = Standing(Fixtures.NativeSourceBlock());
     private static readonly RecordingStanding Broken =
-        RecordingStanding.Of(Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity));
+        Standing(Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity));
     private static readonly RecordingStanding Unmapped =
-        RecordingStanding.Of(Fixtures.NativeSourceBlock(integrity: NativeSource.UnmappedIntegrity));
+        Standing(Fixtures.NativeSourceBlock(integrity: NativeSource.UnmappedIntegrity));
+    private static readonly RecordingStanding OtherBuild =
+        RecordingStanding.Of(Fixtures.NativeSourceBlock(), Environment, ThisBuild with { BuildVersion = "v0.112.0" });
+
+    private static RecordingStanding Standing(NativeSource? native) => RecordingStanding.Of(native, Environment, ThisBuild);
 
     /// <summary>The standing is the reading parity makes of the same file: a video
     /// reconstruction and a rewound recording hold, the two the recorder refused do
@@ -148,16 +157,52 @@ public sealed class DecisionFactsTests
     [Fact]
     public void AStandingIsReadOffWhatTheRecorderSaidOfTheRun()
     {
-        Assert.True(RecordingStanding.Of(null).Holds);
+        Assert.True(Standing(null).Holds);
         Assert.True(Holds.Holds);
-        Assert.True(RecordingStanding.Of(Fixtures.NativeSourceBlock(continuity: NativeSource.RewoundContinuity)).Holds);
+        Assert.True(Standing(Fixtures.NativeSourceBlock(continuity: NativeSource.RewoundContinuity)).Holds);
         Assert.Equal(RecordingStandingKind.ContinuityBroken, Broken.Kind);
         Assert.StartsWith("continuity is 'broken'", Broken.Detail, StringComparison.Ordinal);
         Assert.Equal(RecordingStandingKind.IntegrityNotComplete, Unmapped.Kind);
         Assert.StartsWith("integrity is 'unmapped'", Unmapped.Detail, StringComparison.Ordinal);
         Assert.Equal(
             RecordingStandingKind.IntegrityNotComplete,
-            RecordingStanding.Of(Fixtures.NativeSourceBlock(integrity: NativeSource.NonStandardIntegrity)).Kind);
+            Standing(Fixtures.NativeSourceBlock(integrity: NativeSource.NonStandardIntegrity)).Kind);
+        Assert.Equal(["build_version", "build_date_utc", "content_hash"], Holds.Build.Select(field => field.Field));
+        Assert.All(Holds.Build, field => Assert.True(field.Matches));
+    }
+
+    /// <summary>
+    /// A recording of another build holds nothing whatever the recorder said of the
+    /// run, a reconstruction included, and is refused on the preflight's own three
+    /// fields in the preflight's own words - the sentence <c>replay</c> refuses the
+    /// same file with - so the two numbers and the arbiter cannot disagree about which
+    /// build a recording is evidence about.
+    /// </summary>
+    [Fact]
+    public void ARecordingOfAnotherBuildHoldsNothingInThePreflightsOwnWords()
+    {
+        Assert.Equal(RecordingStandingKind.AnotherBuild, OtherBuild.Kind);
+        Assert.False(OtherBuild.Holds);
+        var expected = EnvironmentPreflight.Build(Environment, ThisBuild with { BuildVersion = "v0.112.0" });
+        Assert.Equal(expected, OtherBuild.Build);
+        Assert.Equal(expected.Single(field => !field.Matches).Refusal, OtherBuild.Detail);
+        Assert.StartsWith(
+            "build_version: manifest says 'v0.111.0', this machine has 'v0.112.0'. Replaying on a different build",
+            OtherBuild.Detail, StringComparison.Ordinal);
+
+        // Each mismatching field is its own line, and the build outranks the recorder's
+        // own account: a broken recording of another build is another build's
+        var twoFields = RecordingStanding.Of(
+            Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity), Environment,
+            ThisBuild with { BuildVersion = "v0.112.0", ContentHash = "999999999" });
+        Assert.Equal(RecordingStandingKind.AnotherBuild, twoFields.Kind);
+        Assert.Equal(
+            ["build_version: manifest says 'v0.111.0', this machine has 'v0.112.0'. ", "content_hash: manifest says '1568834832', this machine has '999999999'. "],
+            twoFields.Detail.Split('\n').Select(line => line[..(line.IndexOf(". ", StringComparison.Ordinal) + 2)]));
+        Assert.Equal(
+            RecordingStandingKind.AnotherBuild,
+            RecordingStanding.Of(null, Environment, ThisBuild with { BuildDateUtc = "2026.08.15" }).Kind);
+        Assert.False(new CoveredRecording("other", new HashSet<DecisionPoint> { Gold }, OtherBuild).Credits);
     }
 
     /// <summary>A recording the recorder says holds nothing credits no point: what it

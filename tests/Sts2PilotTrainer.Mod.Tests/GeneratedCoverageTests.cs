@@ -58,6 +58,10 @@ public sealed class GeneratedCoverageTests
     /// harness names resolves; the harness's own teardown forgets it again.</summary>
     public GeneratedCoverageTests() => EngineHost.Start();
 
+    /// <summary>The build every row's recording is made on and stood against, read
+    /// once because reading it hashes the prepared assemblies.</summary>
+    private static readonly Lazy<LocalBuild> ThisBuild = new(() => GameIdentity.Read().Build);
+
     public static IEnumerable<object[]> Rows() =>
     [
         ["decline the first card reward", "verb  TakeCardRewardAlternative", "card-reward-alternative  Skip"],
@@ -178,7 +182,8 @@ public sealed class GeneratedCoverageTests
         var points = DecisionFacts.Of(recorded.Manifest);
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
-                    recorded.Manifest.RunId, points, RecordingStanding.Of(recorded.Manifest.Source.Native),
+                    recorded.Manifest.RunId, points,
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();
@@ -331,7 +336,8 @@ public sealed class GeneratedCoverageTests
         var points = DecisionFacts.Of(recorded.Manifest);
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
-                    recorded.Manifest.RunId, points, RecordingStanding.Of(recorded.Manifest.Source.Native),
+                    recorded.Manifest.RunId, points,
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();

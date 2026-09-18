@@ -3,6 +3,19 @@ using System.Text.Json.Serialization;
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
+/// Which build this machine's game is, in the three fields a manifest records of the
+/// build it was made on and the preflight compares first: the version, the release
+/// date and the content hash.
+///
+/// The build half of <see cref="LocalPrerequisites"/>, on its own because two readers
+/// ask only this: the preflight's build rule, and the standing a corpus recording has
+/// on the build under test, which is asked of every recording in a corpus before a
+/// run is constructed for any of them. It carries no game code for the same reason
+/// the prerequisites carry none; producing one is the engine's job.
+/// </summary>
+public sealed record LocalBuild(string BuildVersion, string BuildDateUtc, string ContentHash);
+
+/// <summary>
 /// The installation identity and unlock state the replay host reports.
 ///
 /// The unlock state may come from this process's profile or from an explicitly named
@@ -22,6 +35,11 @@ public sealed record LocalPrerequisites
 
     [JsonPropertyName("content_hash")]
     public required string ContentHash { get; init; }
+
+    /// <summary>The three fields above as the build they name, for the readers that
+    /// ask only which build this is.</summary>
+    [JsonIgnore]
+    public LocalBuild Build => new(BuildVersion, BuildDateUtc, ContentHash);
 
     /// <summary>
     /// Every mod the running engine discovered and its resulting load state.

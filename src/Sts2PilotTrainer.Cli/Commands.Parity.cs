@@ -33,6 +33,14 @@ internal static partial class Commands
     /// runs. The directories are given, never derived: a player's store is copied by
     /// the person and named with <c>--corpus</c>, and nothing read from it is written
     /// back.
+    ///
+    /// Every recording's standing is <see cref="RecordingStanding"/>'s reading, the
+    /// one <c>coverage</c> makes of the same file against the same build under test,
+    /// read once here and written into the artifact's header. A recording of another
+    /// build is named as that before anything is replayed, in the words the replay's
+    /// own preflight would refuse it in, and fails the bar as a refusal does: a
+    /// recording this build cannot replay is unproven on it, and a store that spans a
+    /// game update is not at parity until it is measured on the build under test.
     /// </summary>
     internal static int Parity(string[] args)
     {
@@ -40,9 +48,10 @@ internal static partial class Commands
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         var artifact = EvidenceArtifact.Prepare(outDir, "parity.json");
 
+        var build = GameIdentity.Read().Build;
         var entries = corpora.Count > 0
-            ? RecordingCorpus.Enumerate(corpora).Select(recording => ParityInAChildProcess(recording, outDir)).ToList()
-            : [ParityOfOne(Args.Positional(args, 0, "manifest path"), Args.Value(args, "--journal"), print: true)];
+            ? RecordingCorpus.Enumerate(corpora).Select(recording => ParityInAChildProcess(recording, outDir, build)).ToList()
+            : [ParityOfOne(Args.Positional(args, 0, "manifest path"), Args.Value(args, "--journal"), build, print: true)];
 
         if (corpora.Count > 0 && entries.Count == 0)
         {
@@ -65,13 +74,20 @@ internal static partial class Commands
             JsonSerializer.Serialize(
                 new
                 {
-                    schema = "sts2-pilot-trainer/parity/v1",
+                    schema = "sts2-pilot-trainer/parity/v2",
                     arbiter_version = Arbiter.Version,
                     standard =
                         "Every recording with a journal this build reads replays through the real engine to " +
                         "the journal's own sample and complete digest either side of every decision, and " +
                         "every recording's integrity is complete. A recording without a journal, or whose " +
-                        "continuity is broken, is counted in the denominator and holds nothing.",
+                        "continuity is broken, is counted in the denominator and holds nothing; a recording " +
+                        "made on another build is refused before it is replayed and fails the bar.",
+                    build = new
+                    {
+                        build_version = build.BuildVersion,
+                        build_date_utc = build.BuildDateUtc,
+                        content_hash = build.ContentHash,
+                    },
                     corpus = corpora.Count > 0 ? corpora.Select(Paths.Display).ToList() : null,
                     at_parity = summary.Holds,
                     summary,
@@ -84,7 +100,7 @@ internal static partial class Commands
     }
 
     /// <summary>One recording, replayed here: the shape a corpus run spawns per recording.</summary>
-    private static ParityEntry ParityOfOne(string manifestPath, string? journalArg, bool print)
+    private static ParityEntry ParityOfOne(string manifestPath, string? journalArg, LocalBuild build, bool print)
     {
         if (journalArg is not null && !File.Exists(journalArg))
         {
@@ -94,7 +110,7 @@ internal static partial class Commands
         }
 
         var sibling = JournalBeside(manifestPath);
-        var classified = Classify(manifestPath, journalArg ?? (File.Exists(sibling) ? sibling : null));
+        var classified = Classify(manifestPath, journalArg ?? (File.Exists(sibling) ? sibling : null), build);
         var entry = classified.Entry;
         if (entry.Status == ParityStatus.Comparable)
         {
@@ -122,10 +138,12 @@ internal static partial class Commands
 
     /// <summary>
     /// What can be said of a recording before anything is replayed. Only a native
-    /// recording with a journal this build reads and an integrity of <c>complete</c>
-    /// goes on to a replay; everything else is its own answer.
+    /// recording of this build, with a journal this build reads and an integrity of
+    /// <c>complete</c>, goes on to a replay; everything else is its own answer, and
+    /// the standing is asked before anything else because a recording of another
+    /// build is no kind of recording this build can say anything about.
     /// </summary>
-    private static Classified Classify(string manifestPath, string? journalPath)
+    private static Classified Classify(string manifestPath, string? journalPath, LocalBuild build)
     {
         var manifestName = Path.GetFileName(manifestPath);
         var journalName = journalPath is null ? null : Path.GetFileName(journalPath);
@@ -142,6 +160,12 @@ internal static partial class Commands
             manifest.RunId, manifestName, journalName, manifest.Source.Kind, native?.Integrity, native?.Continuity,
             ParityStatus.Comparable, "");
 
+        var standing = RecordingStanding.Of(native, manifest.Environment, build);
+        if (standing.Kind == RecordingStandingKind.AnotherBuild)
+        {
+            return new Classified(entry with { Status = ParityStatus.AnotherBuild, Detail = standing.Detail });
+        }
+
         if (native is null)
         {
             return new Classified(entry with
@@ -152,7 +176,6 @@ internal static partial class Commands
             });
         }
 
-        var standing = RecordingStanding.Of(native);
         if (!standing.Holds)
         {
             return new Classified(entry with
@@ -256,9 +279,9 @@ internal static partial class Commands
     /// read back from its artifact rather than its exit code, because a recording
     /// with nothing to compare exits clean and is still not at parity.
     /// </summary>
-    private static ParityEntry ParityInAChildProcess(CorpusRecording recording, string outDir)
+    private static ParityEntry ParityInAChildProcess(CorpusRecording recording, string outDir, LocalBuild build)
     {
-        var classified = Classify(recording.ManifestPath, recording.JournalPath).Entry;
+        var classified = Classify(recording.ManifestPath, recording.JournalPath, build).Entry;
         if (classified.Status != ParityStatus.Comparable) return classified;
 
         var childOut = WorktreePath.RequireChild(
@@ -291,13 +314,13 @@ internal static partial class Commands
             ? $"  {decisions.ToString(CultureInfo.InvariantCulture)} in the journal, " +
               $"{(entry.ReplayedDecisions ?? 0).ToString(CultureInfo.InvariantCulture)} replayed"
             : "";
-        Console.WriteLine($"  {entry.Mark,-10} {entry.RunId}{counts}");
+        Console.WriteLine($"  {entry.Mark,-11} {entry.RunId}{counts}");
         foreach (var line in entry.Detail.Split('\n').Where(line => line.Length > 0))
         {
-            Console.WriteLine($"             {line}");
+            Console.WriteLine($"              {line}");
         }
 
-        foreach (var diagnostic in entry.ReplayDiagnostics) Console.WriteLine($"             ! {diagnostic}");
+        foreach (var diagnostic in entry.ReplayDiagnostics) Console.WriteLine($"              ! {diagnostic}");
     }
 
     private static string JournalBeside(string manifestPath) =>
@@ -312,6 +335,12 @@ internal static partial class Commands
 
         Parity,
         Diverged,
+
+        /// <summary>Made on a build other than the one under test, by the preflight's
+        /// own build rule; never replayed, and a failure of the bar as a refusal is,
+        /// because a recording this build cannot replay is unproven on it.</summary>
+        AnotherBuild,
+
         NoJournal,
         JournalUnreadable,
         NotNative,
@@ -359,6 +388,7 @@ internal static partial class Commands
         {
             ParityStatus.Parity => "PARITY",
             ParityStatus.Diverged => "DIVERGED",
+            ParityStatus.AnotherBuild => "other build",
             ParityStatus.NoJournal => "no journal",
             ParityStatus.JournalUnreadable => "unread",
             ParityStatus.NotNative => "not native",
@@ -375,6 +405,7 @@ internal static partial class Commands
                 "PARITY - every decision replays to the sample and digest the recorder wrote" +
                 (Detail.Length == 0 ? "" : $"\n{Detail}"),
             ParityStatus.Diverged => $"DIVERGED\n{Detail}",
+            ParityStatus.AnotherBuild => $"ANOTHER BUILD - {Detail}",
             ParityStatus.NoJournal => $"NO JOURNAL - {Detail}",
             ParityStatus.JournalUnreadable => $"JOURNAL NOT READ - {Detail}",
             ParityStatus.NotNative => $"NOT COMPARED - {Detail}",
@@ -401,6 +432,7 @@ internal static partial class Commands
         [property: JsonPropertyName("native_recordings")] int NativeRecordings,
         [property: JsonPropertyName("at_parity")] int AtParity,
         [property: JsonPropertyName("diverged")] int Diverged,
+        [property: JsonPropertyName("another_build")] int AnotherBuild,
         [property: JsonPropertyName("without_journal")] int WithoutJournal,
         [property: JsonPropertyName("journal_unreadable")] int JournalUnreadable,
         [property: JsonPropertyName("integrity_not_complete")] int IntegrityNotComplete,
@@ -409,25 +441,31 @@ internal static partial class Commands
         [property: JsonPropertyName("not_native")] int NotNative)
     {
         [JsonIgnore]
-        public bool Holds => Diverged == 0 && IntegrityNotComplete == 0 && Refused == 0;
+        public bool Holds => Diverged == 0 && IntegrityNotComplete == 0 && Refused == 0 && AnotherBuild == 0;
 
+        // Native and not native by the manifest's own kind rather than by status,
+        // because a reconstruction of another build is classified as another build's
+        // before it is classified as not native, and a manifest this build could not
+        // read states no kind and is counted
         internal static ParitySummary Of(IReadOnlyList<ParityEntry> entries) =>
             new(
-                entries.Count(entry => entry.Status != ParityStatus.NotNative),
+                entries.Count(entry => entry.SourceKind is null or "native"),
                 entries.Count(entry => entry.Status == ParityStatus.Parity),
                 entries.Count(entry => entry.Status == ParityStatus.Diverged),
+                entries.Count(entry => entry.Status == ParityStatus.AnotherBuild),
                 entries.Count(entry => entry.Status == ParityStatus.NoJournal),
                 entries.Count(entry => entry.Status == ParityStatus.JournalUnreadable),
                 entries.Count(entry => entry.Status == ParityStatus.Integrity),
                 entries.Count(entry => entry.Status == ParityStatus.Continuity),
                 entries.Count(entry => entry.Status == ParityStatus.Refused),
-                entries.Count(entry => entry.Status == ParityStatus.NotNative));
+                entries.Count(entry => entry.SourceKind is not (null or "native")));
 
         internal IEnumerable<string> Describe()
         {
             var n = (int value) => value.ToString(CultureInfo.InvariantCulture);
             yield return $"parity: {n(AtParity)} of {n(NativeRecordings)} native recording(s) " +
                          $"({n(AtParity + Diverged)} compared, " +
+                         $"{n(AnotherBuild)} of another build, " +
                          $"{n(WithoutJournal)} without a journal, " +
                          $"{n(JournalUnreadable)} with a journal it cannot read, " +
                          $"{n(IntegrityNotComplete)} with an integrity other than complete, " +
@@ -435,7 +473,7 @@ internal static partial class Commands
                          $"{n(Refused)} refused; {n(NotNative)} not native)";
             yield return Holds
                 ? "AT PARITY - every recording with a journal replays decision for decision, and none is incomplete"
-                : "NOT AT PARITY - see the recording marked above";
+                : "NOT AT PARITY - see the recording marked above; a recording of another build is unproven on this one";
         }
     }
 }
