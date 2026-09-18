@@ -447,11 +447,13 @@ internal static class ChoiceEntryPoints
     /// loads right before is its <see cref="Construction.KeyLiteral"/>; a call in
     /// between - a helper, a concatenation, a raw text read - leaves both null, because
     /// the key is then whatever that call returned. Refuses a construction whose key
-    /// cannot be attributed to one literal: a bare key literal loaded beside another
-    /// literal - <c>done ? "PROCEED" : "DECLINE"</c> loads both with no call between -
-    /// or beside a string read from a field, an argument or a local no literal was
-    /// stored in, because reading the literal as the key would list one option where
-    /// the body offers two.
+    /// cannot be attributed to one literal: a literal loaded beside another -
+    /// <c>done ? "PROCEED" : "DECLINE"</c> loads both with no call between - or
+    /// beside a string read from a field, an argument or a local no literal was
+    /// stored in, or two interpolations built with no call between, because reading
+    /// one as the key would list one option where the body offers two. A value
+    /// stored into a slot the instruction after it is loaded feeds nothing until
+    /// that slot is loaded, so a local a literal was put in is that literal.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
@@ -465,38 +467,47 @@ internal static class ChoiceEntryPoints
         string? template = null;
         string? keyLiteral = null;
         var candidateKeys = new List<string>();
-        var literalFed = new HashSet<string>(StringComparer.Ordinal);
+        var slotHolds = new Dictionary<string, string?>(StringComparer.Ordinal);
         string? fedByNoLiteral = null;
-        Operand? previous = null;
-        foreach (var operand in OperandsOf(method))
+        var pendingTemplates = new List<string>();
+        var operands = OperandsOf(method);
+        for (var i = 0; i < operands.Count; i++)
         {
-            // A slot stored right after a literal holds that literal, and a key loaded
-            // from it is the literal; loaded from any other slot it is not one
+            var operand = operands[i];
+            // A value stored the instruction after it is loaded is in a slot, not on
+            // the stack, so it feeds nothing until the slot is loaded; the slot then
+            // holds the literal, or holds a string that is no literal
+            var storedNext = i + 1 < operands.Count ? operands[i + 1].StoresTo : null;
             if (operand.StoresTo is { } stored)
             {
-                if (previous?.Literal is not null && interpolation is null) literalFed.Add(stored);
-                else literalFed.Remove(stored);
+                var fed = i > 0 ? operands[i - 1] : null;
+                if (fed?.Literal is { } literalStored && interpolation is null) slotHolds[stored] = literalStored;
+                else if (fed?.LoadsStringFrom is { } from && interpolation is null) slotHolds[stored] = slotHolds.GetValueOrDefault(from);
+                else slotHolds.Remove(stored);
             }
 
-            previous = operand;
-            if (operand.LoadsStringFrom is { } slot && !literalFed.Contains(slot) && interpolation is null)
+            var loaded = operand.Literal;
+            if (operand.LoadsStringFrom is { } slot && interpolation is null && storedNext is null)
             {
-                fedByNoLiteral = slot;
+                if (slotHolds.TryGetValue(slot, out var held) && held is not null) loaded = held;
+                else fedByNoLiteral = slot;
             }
 
-            if (operand.Literal is { } loaded)
+            if (operand.Literal is { } literal)
             {
-                literals.Add(loaded);
+                literals.Add(literal);
                 nullBeforeLastLiteral = previousLoadedNull;
-                lastLiteral = loaded;
-                // A literal inside an interpolation is a part of the string being
-                // built, appended by the call that follows it, never a key on its own
-                if (interpolation is null)
-                {
-                    keyLiteral = loaded;
-                    candidateKeys.Add(loaded);
-                    template = null;
-                }
+                lastLiteral = literal;
+            }
+
+            // A literal inside an interpolation is a part of the string being built,
+            // appended by the call that follows it, never a key on its own
+            if (loaded is not null && interpolation is null && storedNext is null)
+            {
+                keyLiteral = loaded;
+                candidateKeys.Add(loaded);
+                if (template is not null) pendingTemplates.Add(template);
+                template = null;
             }
 
             if (operand.Constant is { } value) constant = value;
@@ -507,6 +518,8 @@ internal static class ChoiceEntryPoints
                     switch (called.Name)
                     {
                         case ".ctor":
+                            if (template is not null) pendingTemplates.Add(template);
+                            template = null;
                             interpolation = new StringBuilder();
                             break;
                         case nameof(DefaultInterpolatedStringHandler.AppendLiteral):
@@ -526,8 +539,6 @@ internal static class ChoiceEntryPoints
                     if (interpolation is not null || template is not null)
                     {
                         keyLiteral = null;
-                        candidateKeys.Clear();
-                        fedByNoLiteral = null;
                         previousLoadedNull = operand.LoadsNull;
                         continue;
                     }
@@ -535,17 +546,17 @@ internal static class ChoiceEntryPoints
 
                 if (called.IsConstructor && operand.IsConstruction && called.DeclaringType == constructed)
                 {
-                    var candidates = candidateKeys.Distinct(StringComparer.Ordinal).ToList();
-                    var bareKeyAmong = candidates.Any(key => BareKey.IsMatch(key));
-                    if (bareKeyAmong && candidates.Count > 1)
+                    var candidates = candidateKeys.Concat(pendingTemplates).Append(template).OfType<string>()
+                        .Distinct(StringComparer.Ordinal).ToList();
+                    if (candidates.Count > 1)
                     {
                         throw new InvalidOperationException(
-                            $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading " +
+                            $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading or building " +
                             $"{string.Join(", ", candidates.Select(key => $"'{key}'"))} with no call between, so which is " +
                             "its key cannot be read off the body.");
                     }
 
-                    if (bareKeyAmong && fedByNoLiteral is { } source)
+                    if (candidates.Count > 0 && fedByNoLiteral is { } source)
                     {
                         throw new InvalidOperationException(
                             $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after loading " +
@@ -561,6 +572,7 @@ internal static class ChoiceEntryPoints
                     template = null;
                     keyLiteral = null;
                     candidateKeys.Clear();
+                    pendingTemplates.Clear();
                     fedByNoLiteral = null;
                 }
                 else if (TouchesAString(called))
@@ -573,6 +585,7 @@ internal static class ChoiceEntryPoints
                     template = null;
                     keyLiteral = null;
                     candidateKeys.Clear();
+                    pendingTemplates.Clear();
                     fedByNoLiteral = null;
                 }
             }

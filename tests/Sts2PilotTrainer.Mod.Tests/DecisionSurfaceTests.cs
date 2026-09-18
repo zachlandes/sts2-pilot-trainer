@@ -375,6 +375,46 @@ public sealed class DecisionSurfaceTests
         Assert.Contains("'X.pages.Y.options.Z'", refusal.Message);
     }
 
+    /// <summary>
+    /// A whole key beside a string read from a field - <c>cond ? "X.pages.A.options.B" : storedKey</c>
+    /// - is refused naming the field the same way a bare one is, rather than the whole
+    /// key explaining the construction and the field-keyed option going unlisted.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByAWholeKeyOrAStringFromAFieldIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAWholeKeyOrAField)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAWholeKeyOrAField), refusal.Message);
+        Assert.Contains("'X.pages.A.options.B'", refusal.Message);
+        Assert.Contains("field storedKey", refusal.Message);
+    }
+
+    /// <summary>
+    /// A whole key beside an interpolation - <c>cond ? "X.pages.A.options.B" : $"X.pages.{page}.options.C"</c>
+    /// - is refused naming both, whichever arm the compiler laid down first, rather
+    /// than the whole key explaining the construction and the built option going
+    /// unlisted; two interpolations with no call between are refused the same way.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByAWholeKeyOrAnInterpolationIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAWholeKeyOrAnInterpolation)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAWholeKeyOrAnInterpolation), refusal.Message);
+        Assert.Contains("'X.pages.A.options.B'", refusal.Message);
+        Assert.Contains("'X.pages.{}.options.C'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByOneOfTwoInterpolations)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByOneOfTwoInterpolations), refusal.Message);
+        Assert.Contains("'X.pages.{}.options.B'", refusal.Message);
+        Assert.Contains("'X.pages.{}.options.C'", refusal.Message);
+    }
+
     private static MethodBase TestMethod(string name) =>
         typeof(DecisionSurfaceTests).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
 
@@ -402,6 +442,14 @@ public sealed class DecisionSurfaceTests
     }
 
     private static KeyedOption KeyedByABareLiteralOrAWholeKey(bool cond) => new(cond ? "PROCEED" : "X.pages.Y.options.Z");
+
+    private KeyedOption KeyedByAWholeKeyOrAField(bool cond) => new(cond ? "X.pages.A.options.B" : storedKey);
+
+    private static KeyedOption KeyedByAWholeKeyOrAnInterpolation(bool cond, int page) =>
+        new(cond ? "X.pages.A.options.B" : $"X.pages.{page}.options.C");
+
+    private static KeyedOption KeyedByOneOfTwoInterpolations(bool cond, int page) =>
+        new(cond ? $"X.pages.{page}.options.B" : $"X.pages.{page}.options.C");
 
     /// <summary>A game method by type and name, resolved at run time rather than by a
     /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where

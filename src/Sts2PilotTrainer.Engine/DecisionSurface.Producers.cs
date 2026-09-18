@@ -407,6 +407,32 @@ public static partial class DecisionSurface
             // or a bare literal, which is read off the construction itself
             foreach (var construction in ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)))
             {
+                // A key built by an interpolation is held to the derivation both ways:
+                // here, that the derivation lists a key of this shape; below, that
+                // every key it lists is of some construction's shape. Read before the
+                // literals explain the construction, because a template is the key
+                // whatever else the span loaded
+                if (construction.Template is { } template)
+                {
+                    templates.Add(template);
+                    if (runtimeBuilt?.Any(key => Fits(template, key)) != true)
+                    {
+                        throw new InvalidOperationException(
+                            $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} keyed by the " +
+                            $"interpolation '{template}', and DecisionSurface.RuntimeBuiltOptionKeys derives " +
+                            (runtimeBuilt is null ? "no keys for it" : "no key of that shape") +
+                            "; the derivation is missing or lists another build's keys.");
+                    }
+
+                    continue;
+                }
+
+                if (construction.KeyLiteral is { } bare && ChoiceEntryPoints.BareKey.IsMatch(bare))
+                {
+                    keys.Add(bare);
+                    continue;
+                }
+
                 var explained = construction.Literals.Any(literal =>
                     OptionKeyLiteral.IsMatch(literal) || initialKeys.Contains(literal, StringComparer.Ordinal));
                 if (explained) continue;
@@ -425,30 +451,6 @@ public static partial class DecisionSurface
                     // cannot read as a template, so the derivation is its word
                     titleKeyedMemberMet = true;
                     opaqueConstructions++;
-                    continue;
-                }
-
-                if (construction.KeyLiteral is { } bare && ChoiceEntryPoints.BareKey.IsMatch(bare))
-                {
-                    keys.Add(bare);
-                    continue;
-                }
-
-                // A key built by an interpolation is held to the derivation both ways:
-                // here, that the derivation lists a key of this shape; below, that
-                // every key it lists is of some construction's shape
-                if (construction.Template is { } template)
-                {
-                    templates.Add(template);
-                    if (runtimeBuilt?.Any(key => Fits(template, key)) != true)
-                    {
-                        throw new InvalidOperationException(
-                            $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} keyed by the " +
-                            $"interpolation '{template}', and DecisionSurface.RuntimeBuiltOptionKeys derives " +
-                            (runtimeBuilt is null ? "no keys for it" : "no key of that shape") +
-                            "; the derivation is missing or lists another build's keys.");
-                    }
-
                     continue;
                 }
 
