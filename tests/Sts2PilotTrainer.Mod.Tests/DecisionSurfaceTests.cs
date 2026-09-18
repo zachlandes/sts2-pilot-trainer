@@ -415,6 +415,40 @@ public sealed class DecisionSurfaceTests
         Assert.Contains("'X.pages.{}.options.C'", refusal.Message);
     }
 
+    /// <summary>
+    /// A string property in an interpolation's hole - <c>cond ? $"{Entry}.pages.X.options.A" : "PROCEED"</c>,
+    /// which the compiler lays down as a concatenation of the getter's result - is a
+    /// call that consumed its own parts and returned the key of that arm alone, so the
+    /// other arm's literal, or its own template, is still named in the refusal beside
+    /// what the call returned rather than wiped and the construction read as keyed by one.
+    /// Beside a number the hole goes through the handler, the Architect's shape, and the
+    /// getter inside it feeds AppendFormatted rather than wiping the other arm's literal.
+    /// </summary>
+    [GameFact]
+    public void AStringHoleInAnInterpolationLeavesTheOtherArmsCandidateInPlace()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringHoleInterpolationOrABareLiteral)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringHoleInterpolationOrABareLiteral), refusal.Message);
+        Assert.Contains("String.Concat returned", refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringHoleInterpolationOrAnother)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringHoleInterpolationOrAnother), refusal.Message);
+        Assert.Contains("String.Concat returned", refusal.Message);
+        Assert.Contains("'X.{}.B'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringAndNumberHoleInterpolationOrABareLiteral)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringAndNumberHoleInterpolationOrABareLiteral), refusal.Message);
+        Assert.Contains("'{}.pages.{}.options.A'", refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+    }
+
     private static MethodBase TestMethod(string name) =>
         typeof(DecisionSurfaceTests).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
 
@@ -450,6 +484,17 @@ public sealed class DecisionSurfaceTests
 
     private static KeyedOption KeyedByOneOfTwoInterpolations(bool cond, int page) =>
         new(cond ? $"X.pages.{page}.options.B" : $"X.pages.{page}.options.C");
+
+    private string Entry => storedKey;
+
+    private KeyedOption KeyedByAStringHoleInterpolationOrABareLiteral(bool cond) =>
+        new(cond ? $"{Entry}.pages.X.options.A" : "PROCEED");
+
+    private KeyedOption KeyedByAStringHoleInterpolationOrAnother(bool cond, int page) =>
+        new(cond ? $"{Entry}.C" : $"X.{page}.B");
+
+    private KeyedOption KeyedByAStringAndNumberHoleInterpolationOrABareLiteral(bool cond, int page) =>
+        new(cond ? $"{Entry}.pages.{page}.options.A" : "PROCEED");
 
     /// <summary>A game method by type and name, resolved at run time rather than by a
     /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where
