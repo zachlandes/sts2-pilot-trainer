@@ -994,10 +994,10 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// fault would be blamed on the recording at its next decision. The second ask
     /// is from <see cref="Approach"/>, before the replay samples the next option's
     /// before-reading, because the recorder reads that decision with the work
-    /// finished; no generated row holds that ordering, since every event a row
-    /// reaches on this build finishes its work inside the answering claim, and the
-    /// two whose work goes on past it - Potion Courier and Relic Trader - are dealt
-    /// only from the second act on.
+    /// finished; every event a row reaches on this build finishes its work inside
+    /// the answering claim, so <c>ReplayRefusalRegressionTests</c> holds that
+    /// ordering with a stand-in that carries the conveyor's work on past its
+    /// hand-over.
     /// </summary>
     internal void WaitForTheOptionsWork()
     {

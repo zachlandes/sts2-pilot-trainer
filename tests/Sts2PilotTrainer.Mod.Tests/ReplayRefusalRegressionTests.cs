@@ -290,6 +290,73 @@ public sealed class ReplayRefusalRegressionTests
         }
     }
 
+    /// <summary>Stands in for an option whose work goes on past the hand-over: the
+    /// conveyor's suspicious condiment offers a potion as a rewards set and returns
+    /// once it is answered, so this awaits that, lets the action queue go idle the
+    /// way Amalgamator's real-time delay does, and then tips the chef, which the
+    /// digest reads as gold.</summary>
+    [HarmonyPatch(typeof(MegaCrit.Sts2.Core.Models.Events.EndlessConveyor), "SuspiciousCondiment")]
+    private static class CondimentThatTipsTheChefAfterwards
+    {
+        internal const int Tip = 7;
+
+        [HarmonyPostfix]
+        private static void After(MegaCrit.Sts2.Core.Models.Events.EndlessConveyor __instance, ref Task __result) =>
+            __result = ThenTip(__instance, __result);
+
+        private static async Task ThenTip(MegaCrit.Sts2.Core.Models.Events.EndlessConveyor conveyor, Task offer)
+        {
+            await offer;
+            await Task.Delay(200);
+            conveyor.Owner!.Gold += Tip;
+        }
+    }
+
+    /// <summary>
+    /// An option's work that hands the run to the player and goes on once they have
+    /// answered finishes before the recorder reads the next option, and the replay
+    /// waits for it from <see cref="RunDriver.Approach"/>, before it samples that
+    /// decision's before-reading. Without that wait the replay samples the page as
+    /// the claim left it, the work then changes the state, and parity fails at the
+    /// option after the claim on <c>player.gold</c>: the recorder's before-reading
+    /// carries the tip and the replay's does not. No shipped event on a row's route
+    /// goes on past its hand-over on this build, so the condiment's work is carried
+    /// on by a stand-in for the recording and the replay alike.
+    /// </summary>
+    [GameFact]
+    public void TheOptionAfterAHandedOverClaimIsReadOnceTheWorkHasFinished()
+    {
+        var harmony = new Harmony($"condiment-tips-the-chef.{Guid.NewGuid():N}");
+        harmony.CreateClassProcessor(typeof(CondimentThatTipsTheChefAfterwards)).Patch();
+        try
+        {
+            using var harness = new RecordedActWalk();
+            var row = GeneratedCoverageTests.EventRowFor("ACT.UNDERDOCKS", "EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.SUSPICIOUS_CONDIMENT");
+            var recorded = harness.Walk(
+                GeneratedCoverageTests.PolicyFor(row), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.UNDERDOCKS"]);
+            Assert.True(recorded.AskMet, "the walk finished without taking the condiment");
+            RecordedActWalk.AssertWhole(recorded);
+
+            var condiment = recorded.Manifest.Actions.Single(action =>
+                action.Verb == ActionVerb.ChooseEventOption && action.Args.GetValueOrDefault("option_key") == row.Key);
+            var claim = recorded.Manifest.Actions.First(action => action.Seq > condiment.Seq);
+            Assert.Equal(ActionVerb.ClaimReward, claim.Verb);
+            var next = recorded.Manifest.Actions.First(action => action.Seq > claim.Seq);
+            Assert.Equal(ActionVerb.ChooseEventOption, next.Verb);
+            var goldBefore = recorded.Capture.Trace.Steps.Single(step => step.Seq == next.Seq).Before["player.gold"];
+            var goldAfterTheClaim = recorded.Capture.Trace.Steps.Single(step => step.Seq == claim.Seq).After["player.gold"];
+            Assert.Equal(
+                int.Parse(goldAfterTheClaim, CultureInfo.InvariantCulture) + CondimentThatTipsTheChefAfterwards.Tip,
+                int.Parse(goldBefore, CultureInfo.InvariantCulture));
+
+            RecordedActWalk.ReplayToParity(recorded);
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
     /// <summary>The game's own rule at an act's start, as <c>MapTravelRule</c> reads
     /// it: a run standing on no node of this map is offered the starting point and
     /// nothing else.</summary>
