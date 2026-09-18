@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
 using MegaCrit.Sts2.Core.Commands;
@@ -104,16 +105,31 @@ public static partial class DecisionSurface
     /// offers one option per character card pool, keyed by the pool's energy colour;
     /// Endless Conveyor keys each dish by the id its <c>Dish</c> record is constructed
     /// with; Colossal Flower numbers its extract and dig options by the digs so far,
-    /// on its first page and on each deeper one; Slippery Bridge numbers each hold-on
-    /// by the holds so far, on the page the last one opened, and reads <c>LOOP</c> past
-    /// the seventh; Tablet of Truth offers its decipher on a page per decipher so far;
-    /// Doll Room keys each doll by the title of the relic in it, the way the driver
-    /// keys an option with no relic set; Tinker Time keys each rider through a helper
-    /// whose literals are the keys; Relic Trader offers a bare <c>PROCEED</c> to a
-    /// player with nothing to trade; and the Architect offers a line per line of the
-    /// dialogue the win rolls and then a bare <c>PROCEED</c>. An event that builds a
-    /// key and is not here is refused by name, so a game update that adds one fails the
-    /// denominator rather than thinning it.
+    /// on its first page and on each deeper one, as many as the bound its own code
+    /// keeps; Slippery Bridge numbers each hold-on by the holds so far, on the page
+    /// the last one opened, and reads <c>LOOP</c> past the seventh; Tablet of Truth
+    /// offers its decipher on a page per decipher so far, short of the count that
+    /// finishes it; Doll Room keys each doll by the title of the relic in it, the way
+    /// the driver keys an option with no relic set; Tinker Time keys each rider through
+    /// a helper whose literals are the keys; and the Architect offers a line per line
+    /// of the dialogue the win rolls. The bare <c>PROCEED</c> the Relic Trader offers a
+    /// player with nothing to trade, and the Architect after its last line, is a
+    /// literal the construction loads and is read off it in <see cref="OptionKeysOf"/>
+    /// like any other literal key. An event that builds a key and is not here is
+    /// refused by name, so a game update that adds one fails the denominator rather
+    /// than thinning it.
+    ///
+    /// A derivation is held to the IL where the IL says what shape the key has: an
+    /// option keyed by an interpolation the body finishes right before constructing it
+    /// (<see cref="ChoiceEntryPoints.Construction.Template"/>) has to be matched by a
+    /// derived key, and where every built key of an event is such an interpolation,
+    /// every derived key has to match one, so a bound that moves or a page that is
+    /// renamed fails the walk rather than listing another build's keys - the flower,
+    /// the tablet and the Architect on this build. A key that comes out of a call the
+    /// walk cannot read as a template - a concatenation, a helper, a record field - is
+    /// the derivation's word, held only by the derivation reading the same thing the
+    /// event's code reads: the pools, the dish constructions, the suffix helper, the
+    /// doll table, the rider helper's literals, the dialogue set.
     ///
     /// Doll Room's keys are the one place the recorded key is a title rather than an
     /// id: the retail client writes the player's localized title where this process,
@@ -132,10 +148,69 @@ public static partial class DecisionSurface
         TabletOfTruth => TabletOfTruthKeys(model),
         DollRoom => DollRoomKeys(model),
         TinkerTime => LiteralsOf(model, "GetRiderLocKey"),
-        RelicTrader => ["PROCEED"],
         TheArchitect architect => ArchitectKeys(architect),
         _ => null,
     };
+
+    /// <summary>The templates of the options an event constructs keyed by an
+    /// interpolation, as <see cref="ChoiceEntryPoints.Construction.Template"/> reads
+    /// them, distinct and in order: what a runtime-built derivation is held to.</summary>
+    internal static IReadOnlyList<string> BuiltOptionKeyTemplates(string eventId)
+    {
+        EngineHost.Start();
+        var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId);
+        if (model is null || model is AncientEventModel) return [];
+        return OwnMembersOf(model.GetType())
+            .SelectMany(member => ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)))
+            .Select(construction => construction.Template)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>The bound an event's own code compares a counter with, by event id:
+    /// <see cref="CounterBound(EventModel, string, string)"/> for the test that holds
+    /// the reading to this build.</summary>
+    internal static int CounterBound(string eventId, string counter, string comparison)
+    {
+        EngineHost.Start();
+        var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId)
+            ?? throw new ArgumentException($"{eventId} is no event on this build.", nameof(eventId));
+        return CounterBound(model, counter, comparison);
+    }
+
+    /// <summary>Whether a key fits a template: its literal parts in place, and each
+    /// hole filled by the characters an interpolated number or entry can hold.</summary>
+    internal static bool Fits(string template, string key) =>
+        Regex.IsMatch(
+            key,
+            "^" + string.Join("[A-Za-z0-9_]+", template.Split("{}").Select(Regex.Escape)) + "$",
+            RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The constant an event's own code compares a counter with, read off the IL:
+    /// the one constant every comparison of the counter's getter with the given
+    /// opcode loads, over the event's own members. Refuses where the build makes no
+    /// such comparison, or more than one, because a bound read off nothing would be a
+    /// number written here.
+    /// </summary>
+    private static int CounterBound(EventModel model, string counter, string comparison)
+    {
+        var getter = model.GetType().GetProperty(counter, Every)?.GetGetMethod(nonPublic: true)
+            ?? throw new InvalidOperationException($"{model.Id} declares no {counter} on this build.");
+        var bounds = OwnMembersOf(model.GetType())
+            .SelectMany(member => ChoiceEntryPoints.ConstantsComparedWith(member, getter))
+            .Where(compared => compared.Comparison == comparison)
+            .Select(compared => compared.Constant)
+            .Distinct()
+            .ToList();
+        return bounds.Count == 1
+            ? bounds[0]
+            : throw new InvalidOperationException(
+                $"{model.Id} compares {counter} with {comparison} against " +
+                (bounds.Count == 0 ? "no constant" : string.Join(", ", bounds)) +
+                " on this build, so the bound its pages are numbered to cannot be read off the IL.");
+    }
 
     private static IReadOnlyList<string> DishKeysOf(EventModel conveyor)
     {
@@ -150,18 +225,26 @@ public static partial class DecisionSurface
     }
 
     /// <summary>The digs are counted from zero, the first page numbers its options by
-    /// the dig they would be, and each dig short of the second opens a page named for
-    /// it; the second dig's page carries literal keys the IL walk reads itself.</summary>
+    /// the dig they would be, and each dig short of the bound <c>ReachDeeper</c> keeps
+    /// - <c>NumberOfDigs &lt; 2</c> on this build, compiled to a <c>bge</c> past the
+    /// page - opens a page named for it with the same two options; the last dig's page
+    /// carries literal keys the IL walk reads itself.</summary>
     private static IReadOnlyList<string> ColossalFlowerKeys(EventModel flower)
     {
         var entry = flower.Id.Entry;
-        return
-        [
-            $"{entry}.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
-            $"{entry}.pages.INITIAL.options.REACH_DEEPER_1",
-            $"{entry}.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
-            $"{entry}.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
-        ];
+        var digs = CounterBound(flower, "NumberOfDigs", nameof(OpCodes.Bge));
+        return Enumerable.Range(0, digs)
+            .SelectMany(dig =>
+            {
+                var page = dig == 0 ? "INITIAL" : $"REACH_DEEPER_{dig.ToString(CultureInfo.InvariantCulture)}";
+                var next = (dig + 1).ToString(CultureInfo.InvariantCulture);
+                return new[]
+                {
+                    $"{entry}.pages.{page}.options.EXTRACT_CURRENT_PRIZE_{next}",
+                    $"{entry}.pages.{page}.options.REACH_DEEPER_{next}",
+                };
+            })
+            .ToList();
     }
 
     /// <summary>Each hold-on opens the page of the hold before it and offers the next,
@@ -185,10 +268,17 @@ public static partial class DecisionSurface
         return keys;
     }
 
-    /// <summary>Each decipher short of the fifth opens a page named for the deciphers
-    /// so far and offers the next; the fifth finishes the event.</summary>
-    private static IReadOnlyList<string> TabletOfTruthKeys(EventModel tablet) =>
-        Enumerable.Range(1, 4).Select(deciphers => $"{tablet.Id.Entry}.pages.DECIPHER_{deciphers}.options.DECIPHER").ToList();
+    /// <summary>Each decipher short of the count that finishes the event - the one
+    /// <c>Decipher</c> compares <c>DecipherCount</c> with, <c>== 5</c> on this build,
+    /// compiled to a <c>bne.un</c> past the finish - opens a page named for the
+    /// deciphers so far and offers the next.</summary>
+    private static IReadOnlyList<string> TabletOfTruthKeys(EventModel tablet)
+    {
+        var finishes = CounterBound(tablet, "DecipherCount", nameof(OpCodes.Bne_Un));
+        return Enumerable.Range(1, finishes - 1)
+            .Select(deciphers => $"{tablet.Id.Entry}.pages.DECIPHER_{deciphers.ToString(CultureInfo.InvariantCulture)}.options.DECIPHER")
+            .ToList();
+    }
 
     /// <summary>The dolls are the event's own static table of relics, and each doll's
     /// option is keyed by its relic's title with no relic set on the option.</summary>
@@ -246,14 +336,13 @@ public static partial class DecisionSurface
     }
 
     /// <summary>One option per line of the longest dialogue the Architect's own set
-    /// holds but the last, keyed by the line's index, then the PROCEED its last line
-    /// and an empty dialogue both offer.</summary>
+    /// holds but the last, keyed by the line's index; the PROCEED its last line and an
+    /// empty dialogue both offer is a literal the walk reads off the construction.</summary>
     private static IReadOnlyList<string> ArchitectKeys(TheArchitect architect)
     {
         var longest = architect.DialogueSet.GetAllDialogues().Max(dialogue => dialogue.Lines.Count);
         return Enumerable.Range(0, Math.Max(longest - 1, 0))
             .Select(line => $"{architect.Id.Entry}.dialogue.{line.ToString(CultureInfo.InvariantCulture)}")
-            .Append("PROCEED")
             .ToList();
     }
 
@@ -302,6 +391,8 @@ public static partial class DecisionSurface
         var runtimeBuilt = RuntimeBuiltOptionKeys(model);
         TitleKeyedConstructions.TryGetValue(model.GetType(), out var titleKeyed);
         var titleKeyedMemberMet = false;
+        var templates = new List<string>();
+        var opaqueConstructions = 0;
         foreach (var member in OwnMembersOf(model.GetType()))
         {
             keys.AddRange(ChoiceEntryPoints.StringLiterals(member).Where(literal => OptionKeyLiteral.IsMatch(literal)));
@@ -312,12 +403,41 @@ public static partial class DecisionSurface
             // Every option the member constructs is held to the literals read above:
             // among the strings loaded on the way to it is a whole key, or the name an
             // InitialOptionKey call completes; a construction with neither carries a
-            // key the event built at runtime, which only a derivation here can list
+            // key the event built at runtime, which only a derivation here can list,
+            // or a bare literal, which is read off the construction itself
             foreach (var construction in ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)))
             {
+                // A key built by an interpolation is held to the derivation both ways:
+                // here, that the derivation lists a key of this shape; below, that
+                // every key it lists is of some construction's shape. Read before the
+                // literals explain the construction, because a template is the key
+                // whatever else the span loaded
+                if (construction.Template is { } template)
+                {
+                    templates.Add(template);
+                    if (runtimeBuilt?.Any(key => Fits(template, key)) != true)
+                    {
+                        throw new InvalidOperationException(
+                            $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} keyed by the " +
+                            $"interpolation '{template}', and DecisionSurface.RuntimeBuiltOptionKeys derives " +
+                            (runtimeBuilt is null ? "no keys for it" : "no key of that shape") +
+                            "; the derivation is missing or lists another build's keys.");
+                    }
+
+                    continue;
+                }
+
+                if (construction.KeyLiteral is { } bare && ChoiceEntryPoints.BareKey.IsMatch(bare))
+                {
+                    keys.Add(bare);
+                    continue;
+                }
+
                 var explained = construction.Literals.Any(literal =>
                     OptionKeyLiteral.IsMatch(literal) || initialKeys.Contains(literal, StringComparer.Ordinal));
-                if (!explained && ReadsATitle(member))
+                if (explained) continue;
+
+                if (ReadsATitle(member))
                 {
                     if (titleKeyed.Member != member.Name)
                     {
@@ -327,17 +447,22 @@ public static partial class DecisionSurface
                             "member and its keys to DecisionSurface.TitleKeyedConstructions.");
                     }
 
+                    // Keyed by what the raw-text read returned: a shape the walk
+                    // cannot read as a template, so the derivation is its word
                     titleKeyedMemberMet = true;
+                    opaqueConstructions++;
                     continue;
                 }
 
-                if (!explained && runtimeBuilt is null)
+                if (runtimeBuilt is null)
                 {
                     throw new InvalidOperationException(
                         $"{model.Id} constructs an option in {member.DeclaringType!.Name}.{member.Name} with no whole " +
                         $"option key literal on the way to it ({(construction.Literals.Count == 0 ? "no string loaded" : string.Join(", ", construction.Literals.Select(literal => $"'{literal}'")))}), " +
                         "so the key is built at runtime; add its derivation to DecisionSurface.RuntimeBuiltOptionKeys.");
                 }
+
+                opaqueConstructions++;
             }
 
             foreach (var callee in ChoiceEntryPoints.Callees(member))
@@ -362,6 +487,22 @@ public static partial class DecisionSurface
             throw new InvalidOperationException(
                 $"DecisionSurface.TitleKeyedConstructions names {model.GetType().Name}.{titleKeyed.Member}, and no such " +
                 "member constructs an option keyed by a LocString's raw text on this build; the entry is stale.");
+        }
+
+        // Where the walk read the shape of every built key, the derivation is held to
+        // those shapes; a key of no construction's shape is one this build no longer
+        // offers, or one the derivation spelled another way
+        if (runtimeBuilt is not null && opaqueConstructions == 0)
+        {
+            var unfitted = runtimeBuilt.Where(key => !templates.Any(template => Fits(template, key))).ToList();
+            if (unfitted.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"DecisionSurface.RuntimeBuiltOptionKeys derives {string.Join(", ", unfitted.Select(key => $"'{key}'"))} for " +
+                    $"{model.Id}, and no option the event constructs on this build is keyed by an interpolation " +
+                    (templates.Count == 0 ? "at all" : $"of that shape ({string.Join(", ", templates.Select(template => $"'{template}'"))})") +
+                    "; the derivation lists another build's keys.");
+            }
         }
 
         return keys.Concat(runtimeBuilt ?? []).Distinct(StringComparer.Ordinal).ToList();

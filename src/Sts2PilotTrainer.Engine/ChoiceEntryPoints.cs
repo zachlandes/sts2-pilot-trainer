@@ -4,6 +4,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
@@ -420,8 +421,17 @@ internal static class ChoiceEntryPoints
     /// last integer constant loaded in the same span beside it, either null where the
     /// body loaded none in between, and whether the instruction before the last
     /// literal loaded null - the shape of <c>new EventOption(this, null, "KEY")</c>,
-    /// an option constructed with no work.</summary>
-    internal sealed record Construction(IReadOnlyList<string> Literals, string? Literal, int? Constant, bool NullBeforeLiteral = false);
+    /// an option constructed with no work. <paramref name="Template"/> is the string
+    /// the construction is keyed by where the body built it by interpolation just
+    /// before constructing - its literal parts with <c>{}</c> at each hole, the shape
+    /// of <c>new EventOption(this, Dig, $"FLOWER.pages.DIG_{digs}")</c> - and
+    /// <paramref name="KeyLiteral"/> the literal it is keyed by where that literal was
+    /// the last string the body produced before constructing, the shape of
+    /// <c>new EventOption(this, Done, "PROCEED")</c>; each null where a call came
+    /// between, because then the key is what the call returned.</summary>
+    internal sealed record Construction(
+        IReadOnlyList<string> Literals, string? Literal, int? Constant, bool NullBeforeLiteral = false,
+        string? Template = null, string? KeyLiteral = null);
 
     /// <summary>
     /// Every construction of <paramref name="constructed"/> in a body, each with the
@@ -431,7 +441,22 @@ internal static class ChoiceEntryPoints
     /// each construction, so a second one that loads neither reads as carrying neither
     /// rather than inheriting the first's. Which of the two a caller trusts is the
     /// caller's, because a body may load either for another reason on its way to the
-    /// construction.
+    /// construction. The key each is constructed with is read beside them where the
+    /// body's shape says what it is: an interpolation the body finishes right before
+    /// the construction is its <see cref="Construction.Template"/>, and a literal it
+    /// loads right before is its <see cref="Construction.KeyLiteral"/>; a call in
+    /// between - a helper, a concatenation, a raw text read - leaves both null, because
+    /// the key is then whatever that call returned. Refuses a construction more than
+    /// one string could be the key of: a literal produced beside another -
+    /// <c>done ? "PROCEED" : "DECLINE"</c> loads both with no call between - or
+    /// beside an interpolation, a string read from a field, an argument or a local no
+    /// literal was stored in, or what a call the other arm made returned, because
+    /// reading one as the key would list one option where the body offers two. A
+    /// call takes the strings its parameters ask for off what the body produced
+    /// last, so a literal a helper consumed is not a candidate beside what the helper
+    /// returned; a value stored into a slot the instruction after it is produced
+    /// feeds nothing until that slot is loaded, so a local a literal was put in is
+    /// that literal.
     /// </summary>
     internal static IReadOnlyList<Construction> ConstructionsIn(MethodBase method, Type constructed)
     {
@@ -440,28 +465,160 @@ internal static class ChoiceEntryPoints
         int? constant = null;
         var previousLoadedNull = false;
         var nullBeforeLastLiteral = false;
-        foreach (var operand in OperandsOf(method))
+        string? lastLiteral = null;
+        StringBuilder? interpolation = null;
+        // The strings that could be the key at the next construction, in the order the
+        // body produced them, each a literal, a finished interpolation's template, or
+        // what a call or a slot no literal was stored in gave back
+        var candidates = new List<(string Text, bool IsLiteral, bool IsTemplate)>();
+        var slotHolds = new Dictionary<string, (string Text, bool IsLiteral, bool IsTemplate)>(StringComparer.Ordinal);
+        var operands = OperandsOf(method);
+        for (var i = 0; i < operands.Count; i++)
         {
-            if (operand.Literal is { } loaded)
+            var operand = operands[i];
+            // A value stored the instruction after it is produced is in a slot, not on
+            // the stack, so it feeds nothing until the slot is loaded; the slot then
+            // holds the literal, or holds a string that is no literal
+            var storedNext = i + 1 < operands.Count ? operands[i + 1].StoresTo : null;
+            if (operand.StoresTo is { } stored)
             {
-                literals.Add(loaded);
+                var fed = i > 0 ? operands[i - 1] : null;
+                if (fed?.Literal is { } literalStored && interpolation is null)
+                {
+                    slotHolds[stored] = (literalStored, true, false);
+                }
+                else if (fed?.LoadsStringFrom is { } from && interpolation is null)
+                {
+                    if (slotHolds.TryGetValue(from, out var carried)) slotHolds[stored] = carried;
+                    else slotHolds.Remove(stored);
+                }
+                else if (fed?.Callee?.Name != nameof(DefaultInterpolatedStringHandler.ToStringAndClear))
+                {
+                    slotHolds.Remove(stored);
+                }
+            }
+
+            if (operand.Literal is { } literal)
+            {
+                literals.Add(literal);
                 nullBeforeLastLiteral = previousLoadedNull;
+                lastLiteral = literal;
+                // A literal inside an interpolation is a part of the string being
+                // built, appended by the call that follows it, never a key on its own
+                if (interpolation is null && storedNext is null) candidates.Add((literal, true, false));
+            }
+
+            if (operand.LoadsStringFrom is { } slot && interpolation is null && storedNext is null)
+            {
+                candidates.Add(slotHolds.TryGetValue(slot, out var held) ? held : ($"a string from {slot}", false, false));
             }
 
             if (operand.Constant is { } value) constant = value;
-            if (operand.Callee is { IsConstructor: true } callee && operand.IsConstruction &&
-                callee.DeclaringType == constructed)
+            if (operand.Callee is { } called)
             {
-                constructions.Add(new Construction(literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral));
-                literals = [];
-                constant = null;
-                nullBeforeLastLiteral = false;
+                if (called.DeclaringType == typeof(DefaultInterpolatedStringHandler))
+                {
+                    switch (called.Name)
+                    {
+                        case ".ctor":
+                            interpolation = new StringBuilder();
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.AppendLiteral):
+                            interpolation?.Append(lastLiteral);
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.AppendFormatted):
+                            interpolation?.Append("{}");
+                            break;
+                        case nameof(DefaultInterpolatedStringHandler.ToStringAndClear):
+                            if (interpolation is not null && storedNext is not null) slotHolds[storedNext] = (interpolation.ToString(), false, true);
+                            else if (interpolation is not null) candidates.Add((interpolation.ToString(), false, true));
+                            interpolation = null;
+                            break;
+                    }
+
+                    // The handler's own calls are how the string is built and produce
+                    // no other string; a call inside a hole feeds AppendFormatted and
+                    // never the construction, so it leaves the other arm's candidates
+                    // where they were
+                    previousLoadedNull = operand.LoadsNull;
+                    continue;
+                }
+
+                if (called.IsConstructor && operand.IsConstruction && called.DeclaringType == constructed)
+                {
+                    var distinct = candidates.DistinctBy(candidate => candidate.Text, StringComparer.Ordinal).ToList();
+                    if (distinct.Count > 1)
+                    {
+                        throw new InvalidOperationException(
+                            $"{method.DeclaringType?.Name}.{method.Name} constructs {constructed.Name} after producing " +
+                            $"{string.Join(", ", distinct.Select(candidate => candidate.IsLiteral || candidate.IsTemplate ? $"'{candidate.Text}'" : candidate.Text))} " +
+                            "with no call between, so which is its key cannot be read off the body.");
+                    }
+
+                    var key = distinct.SingleOrDefault();
+                    constructions.Add(new Construction(
+                        literals, literals.LastOrDefault(), constant, nullBeforeLastLiteral,
+                        key.IsTemplate ? key.Text : null, key.IsLiteral ? key.Text : null));
+                    literals = [];
+                    constant = null;
+                    nullBeforeLastLiteral = false;
+                    candidates.Clear();
+                }
+                else if (interpolation is null && TouchesAString(called))
+                {
+                    // A call takes the strings its parameters ask for off the top of
+                    // what the body produced, and one that returns a string produces
+                    // the key where nothing else does; one that does neither - the
+                    // empty hover-tip array a construction's params default loads -
+                    // leaves the candidates where they were. Unless what it returned is
+                    // stored the instruction after, which is the slot's to feed
+                    var taken = called.GetParameters().Count(parameter => parameter.ParameterType == typeof(string))
+                                + (called.DeclaringType == typeof(string) && !called.IsStatic ? 1 : 0);
+                    candidates.RemoveRange(Math.Max(0, candidates.Count - taken), Math.Min(taken, candidates.Count));
+                    if (called is MethodInfo { ReturnType: var returns } && returns == typeof(string) && storedNext is null)
+                    {
+                        candidates.Add(($"what {called.DeclaringType?.Name}.{called.Name} returned", false, false));
+                    }
+                }
             }
 
             previousLoadedNull = operand.LoadsNull;
         }
 
         return constructions;
+    }
+
+    /// <summary>A bare key: the <c>PROCEED</c> an event constructs an option with
+    /// directly, which is neither a whole key nor a name <c>InitialOptionKey</c>
+    /// completes. The one shape a construction is refused for carrying two of.</summary>
+    internal static readonly Regex BareKey = new(@"^[A-Z][A-Z0-9_]*$", RegexOptions.CultureInvariant);
+
+    private static bool TouchesAString(MethodBase called) =>
+        called is MethodInfo { ReturnType: var returns } && returns == typeof(string) ||
+        called.GetParameters().Any(parameter => parameter.ParameterType == typeof(string));
+
+    /// <summary>
+    /// Every integer constant a body compares what <paramref name="read"/> returns
+    /// with, each with the comparison's opcode: the operands in order, the call, then
+    /// the constant, then the comparison - <c>NumberOfDigs &lt; 2</c> compiled to the
+    /// getter, <c>ldc.i4.2</c> and the <c>bge</c> that jumps past the block. How a
+    /// bound an event's own code keeps in a constant is read off the build rather
+    /// than written down, so a build that moves it moves the reading.
+    /// </summary>
+    internal static IReadOnlyList<(int Constant, string Comparison)> ConstantsComparedWith(MethodBase method, MethodBase read)
+    {
+        var operands = OperandsOf(method);
+        var comparisons = new List<(int, string)>();
+        for (var i = 0; i + 2 < operands.Count; i++)
+        {
+            if (operands[i].Callee == read && operands[i + 1].Constant is { } constant &&
+                operands[i + 2].Comparison is { } comparison)
+            {
+                comparisons.Add((constant, comparison));
+            }
+        }
+
+        return comparisons;
     }
 
     private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
@@ -478,12 +635,11 @@ internal static class ChoiceEntryPoints
 
     /// <summary>One operand a body's instruction carries: a method token resolved, a
     /// string token resolved, an integer constant loaded, whether the instruction
-    /// constructs, and the comparison an instruction makes where it is one of the
-    /// three that leave a boolean - <c>cgt</c>, <c>clt</c>, <c>ceq</c> - by opcode
-    /// name.</summary>
+    /// constructs, and the comparison an instruction makes where it is one of
+    /// <see cref="ComparisonOpCodes"/>, by the name of its long signed form.</summary>
     private sealed record Operand(
         MethodBase? Callee, string? Literal, bool IsConstruction, int? Constant = null, string? Comparison = null,
-        bool LoadsNull = false);
+        bool LoadsNull = false, string? LoadsStringFrom = null, string? StoresTo = null);
 
     /// <summary>
     /// Whether a body reads the run's players and compares their count as greater
@@ -506,6 +662,38 @@ internal static class ChoiceEntryPoints
 
         return false;
     }
+
+    /// <summary>The instructions that compare two values, by the name of the long
+    /// signed form: the three that leave a boolean, and the conditional branches,
+    /// which are how a compiled <c>if</c> compares - <c>x &lt; 2</c> is <c>ldc.i4.2</c>
+    /// and a <c>bge</c> past the block, never a <c>clt</c>. The short and unsigned
+    /// forms of a branch are the same comparison.</summary>
+    private static readonly Dictionary<short, string> ComparisonOpCodes = new()
+    {
+        [OpCodes.Cgt.Value] = nameof(OpCodes.Cgt),
+        [OpCodes.Clt.Value] = nameof(OpCodes.Clt),
+        [OpCodes.Ceq.Value] = nameof(OpCodes.Ceq),
+        [OpCodes.Beq.Value] = nameof(OpCodes.Beq),
+        [OpCodes.Beq_S.Value] = nameof(OpCodes.Beq),
+        [OpCodes.Bge.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_S.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_Un.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bge_Un_S.Value] = nameof(OpCodes.Bge),
+        [OpCodes.Bgt.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_S.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_Un.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Bgt_Un_S.Value] = nameof(OpCodes.Bgt),
+        [OpCodes.Ble.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_S.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_Un.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Ble_Un_S.Value] = nameof(OpCodes.Ble),
+        [OpCodes.Blt.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_S.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_Un.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Blt_Un_S.Value] = nameof(OpCodes.Blt),
+        [OpCodes.Bne_Un.Value] = nameof(OpCodes.Bne_Un),
+        [OpCodes.Bne_Un_S.Value] = nameof(OpCodes.Bne_Un),
+    };
 
     // The short forms of ldc.i4 carry their value in the opcode rather than as an operand
     private static readonly Dictionary<short, int> InlineIntegerOpCodes = new()
@@ -745,6 +933,7 @@ internal static class ChoiceEntryPoints
         var module = method.Module;
         var typeArguments = method.DeclaringType?.IsGenericType == true ? method.DeclaringType.GetGenericArguments() : null;
         var methodArguments = method.IsGenericMethod ? method.GetGenericArguments() : null;
+        var slots = new Slots(method, module, typeArguments, methodArguments);
         var at = 0;
         while (at < il.Length)
         {
@@ -791,18 +980,110 @@ internal static class ChoiceEntryPoints
             {
                 operands.Add(new Operand(null, null, false, inline));
             }
-            else if (op == OpCodes.Cgt || op == OpCodes.Clt || op == OpCodes.Ceq)
+            else if (ComparisonOpCodes.TryGetValue(op.Value, out var comparison))
             {
-                operands.Add(new Operand(null, null, false, Comparison: op == OpCodes.Cgt ? nameof(OpCodes.Cgt) : op == OpCodes.Clt ? nameof(OpCodes.Clt) : nameof(OpCodes.Ceq)));
+                operands.Add(new Operand(null, null, false, Comparison: comparison));
             }
             else if (op == OpCodes.Ldnull)
             {
                 operands.Add(new Operand(null, null, false, LoadsNull: true));
+            }
+            else if (slots.Load(op, il, at) is { } load)
+            {
+                operands.Add(new Operand(null, null, false, LoadsStringFrom: load));
+            }
+            else if (slots.Store(op, il, at) is { } store)
+            {
+                operands.Add(new Operand(null, null, false, StoresTo: store));
             }
 
             at += operandSize;
         }
 
         return readable;
+    }
+
+    /// <summary>The places a body keeps a value between instructions - its locals,
+    /// its arguments and the fields it reads - named so a key loaded from one can be
+    /// attributed to the literal stored there, or refused as fed by something that is
+    /// not a literal. A field, a local or a signature the stubs cannot resolve is a
+    /// Godot member's and no key, and leaves the body as readable as it was.</summary>
+    private sealed class Slots(MethodBase method, Module module, Type[]? typeArguments, Type[]? methodArguments)
+    {
+        private readonly Lazy<IList<LocalVariableInfo>> locals = new(() =>
+            Resolved(() => method.GetMethodBody()?.LocalVariables) ?? []);
+
+        private readonly Lazy<ParameterInfo[]> parameters = new(() => Resolved(method.GetParameters) ?? []);
+
+        private static T? Resolved<T>(Func<T?> read) where T : class
+        {
+            try
+            {
+                return read();
+            }
+#pragma warning disable CA1031
+            catch (Exception)
+            {
+                return null;
+            }
+#pragma warning restore CA1031
+        }
+
+        public string? Load(OpCode op, byte[] il, int at)
+        {
+            if (op == OpCodes.Ldloc_0) return Local(0);
+            if (op == OpCodes.Ldloc_1) return Local(1);
+            if (op == OpCodes.Ldloc_2) return Local(2);
+            if (op == OpCodes.Ldloc_3) return Local(3);
+            if (op == OpCodes.Ldloc_S) return Local(il[at]);
+            if (op == OpCodes.Ldloc) return Local(BitConverter.ToUInt16(il, at));
+            if (op == OpCodes.Ldarg_0) return Argument(0);
+            if (op == OpCodes.Ldarg_1) return Argument(1);
+            if (op == OpCodes.Ldarg_2) return Argument(2);
+            if (op == OpCodes.Ldarg_3) return Argument(3);
+            if (op == OpCodes.Ldarg_S) return Argument(il[at]);
+            if (op == OpCodes.Ldarg) return Argument(BitConverter.ToUInt16(il, at));
+            if (op == OpCodes.Ldfld || op == OpCodes.Ldsfld) return Field(BitConverter.ToInt32(il, at), typed: true);
+            return null;
+        }
+
+        public string? Store(OpCode op, byte[] il, int at)
+        {
+            if (op == OpCodes.Stloc_0) return $"local {0}";
+            if (op == OpCodes.Stloc_1) return $"local {1}";
+            if (op == OpCodes.Stloc_2) return $"local {2}";
+            if (op == OpCodes.Stloc_3) return $"local {3}";
+            if (op == OpCodes.Stloc_S) return $"local {il[at]}";
+            if (op == OpCodes.Stloc) return $"local {BitConverter.ToUInt16(il, at)}";
+            if (op == OpCodes.Stfld || op == OpCodes.Stsfld) return Field(BitConverter.ToInt32(il, at), typed: false);
+            return null;
+        }
+
+        private string? Local(int index)
+        {
+            var known = locals.Value;
+            return index < known.Count && Resolved(() => known[index].LocalType) == typeof(string) ? $"local {index}" : null;
+        }
+
+        private string? Argument(int index)
+        {
+            if (!method.IsStatic)
+            {
+                if (index == 0) return null;
+                index--;
+            }
+
+            var known = parameters.Value;
+            return index < known.Length && Resolved(() => known[index].ParameterType) == typeof(string)
+                ? $"argument {known[index].Name}"
+                : null;
+        }
+
+        private string? Field(int token, bool typed)
+        {
+            var field = Resolved(() => module.ResolveField(token, typeArguments, methodArguments));
+            if (field is null) return null;
+            return !typed || Resolved(() => field.FieldType) == typeof(string) ? $"field {field.Name}" : null;
+        }
     }
 }

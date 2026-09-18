@@ -451,6 +451,59 @@ public sealed class DecisionFactsTests
         Assert.True(withoutTheMap.Holds);
     }
 
+    /// <summary>An excusal is held to the producers the map lists for its point: a
+    /// seam's own producers, or for any other point those of every seam answered at
+    /// it. One naming a producer the map does not list there is named with what the
+    /// map lists instead and fails the bar, because its class may still be admitted
+    /// while the sentence about who produces the point has gone false; one naming a
+    /// listed producer, or none, stands. Two excusals are equal by the producers they
+    /// name as well as by class and reason.</summary>
+    [Fact]
+    public void AnExcusalNamingAProducerTheMapDoesNotListIsNamedAndFailsTheBar()
+    {
+        var goldSeam = new ProducerSeam("reward-kind:gold", "AbstractModel.TryModifyRewards", ["RELIC.AMETHYST_AUBERGINE"], [Gold]);
+        var relicSeam = new ProducerSeam("reward-kind:relic", "AbstractModel.BeforeDeath", ["POWER.SWIPE_POWER"], [Relic]);
+        var excusals = new Dictionary<DecisionPoint, Excusal>
+        {
+            [Gold] = new(ExcusalClass.NotOnTheRoute, "names the producer the map lists", ["RELIC.AMETHYST_AUBERGINE"]),
+            [Relic] = new(ExcusalClass.NotOnTheRoute, "names another build's producer", ["RELIC.ANCHOR", "POWER.SWIPE_POWER"]),
+            [relicSeam.Point] = new(ExcusalClass.Generated, "names a producer of another seam", ["RELIC.AMETHYST_AUBERGINE"]),
+            [Potion] = new(ExcusalClass.NotOnTheRoute, "names a producer where the map lists none", ["POTION.FIRE"]),
+            [goldSeam.Point] = new(ExcusalClass.NotOnTheRoute, "names none"),
+        };
+
+        var report = DecisionCoverage.Over([Gold, Relic, Potion, goldSeam.Point, relicSeam.Point], excusals, [], [goldSeam, relicSeam]);
+
+        Assert.False(report.Holds);
+        Assert.Equal(5, report.Excused);
+        Assert.Equal(
+            [
+                "reward-kind  potion  excused naming POTION.FIRE, and the map lists no producer here",
+                "reward-kind  relic  excused naming RELIC.ANCHOR, and the map lists POWER.SWIPE_POWER",
+                "seam  reward-kind:relic @ AbstractModel.BeforeDeath  excused naming RELIC.AMETHYST_AUBERGINE, and the map lists POWER.SWIPE_POWER",
+            ],
+            report.MisnamedProducers.Select(producer => producer.Describe()));
+        Assert.Contains("misnamed producers: 3", report.Totals());
+        Assert.Equal(
+            "excused [not-on-the-route; names RELIC.ANCHOR, POWER.SWIPE_POWER]: names another build's producer",
+            report.Rows[1].Excuse!.Describe());
+        Assert.Equal("excused [not-on-the-route]: names none", report.Rows[3].Excuse!.Describe());
+        Assert.Equal(["RELIC.AMETHYST_AUBERGINE"], DecisionCoverage.ProducersListedAt(Gold, [goldSeam, relicSeam]));
+        Assert.Equal(["POWER.SWIPE_POWER"], DecisionCoverage.ProducersListedAt(relicSeam.Point, [goldSeam, relicSeam]));
+        Assert.Empty(DecisionCoverage.ProducersListedAt(Potion, [goldSeam, relicSeam]));
+
+        var withoutTheMap = DecisionCoverage.Over([Gold, Relic, Potion, goldSeam.Point, relicSeam.Point], excusals, []);
+        Assert.True(withoutTheMap.Holds);
+
+        Assert.Equal(
+            new Excusal(ExcusalClass.NotOnTheRoute, "same", ["RELIC.ANCHOR"]),
+            new Excusal(ExcusalClass.NotOnTheRoute, "same", ["RELIC.ANCHOR"]));
+        Assert.NotEqual(
+            new Excusal(ExcusalClass.NotOnTheRoute, "same", ["RELIC.ANCHOR"]),
+            new Excusal(ExcusalClass.NotOnTheRoute, "same"));
+        Assert.Equal(new Excusal(ExcusalClass.NotOnTheRoute, "same"), new Excusal(ExcusalClass.NotOnTheRoute, "same", []));
+    }
+
     [Fact]
     public void EveryExcusalClassHasANameAndIsDerivedOrUndeclared()
     {

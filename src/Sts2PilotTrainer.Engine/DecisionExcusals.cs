@@ -39,11 +39,13 @@ public static class DecisionExcusals
 {
     /// <summary>A point whose producer the generated walk's route does not pass, each
     /// with what the producer is, so the retail soak knows what it is looking for and a
-    /// second fixture seed would know what to hunt.</summary>
-    private static Excusal NotOnTheRoute(string producer) => new(
+    /// second fixture seed would know what to hunt; where the sentence names the
+    /// producer, its id is carried beside it and <c>coverage</c> holds it to the map.</summary>
+    private static Excusal NotOnTheRoute(string producer, params string[] producerIds) => new(
         ExcusalClass.NotOnTheRoute,
         $"no committed recording reaches it and the generated walk's route does not pass its producer - {producer}; " +
-        "retired by a recording that does, from the retail soak (excused 2026-09-16)");
+        "retired by a recording that does, from the retail soak (excused 2026-09-16)",
+        producerIds);
 
     /// <summary>Why nothing past a run's first act is reached by a generated walk on
     /// this build: the journey's mechanical line does not survive a first act on a
@@ -122,7 +124,8 @@ public static class DecisionExcusals
             $"no committed recording reaches it; added by {addedBy}, an ancient's relic the act-first ancient row " +
             "obtains at the act's first room, and the journey's mechanical line does not survive from that ancient to " +
             "a rest site at starter strength (none of 400 hunted seeds on v0.111.0); retired by a recording from the " +
-            "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)");
+            "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)",
+            [relicId]);
     }
 
     /// <summary>A point a <c>GeneratedCoverageTests</c> ancient row reaches on a run
@@ -157,18 +160,26 @@ public static class DecisionExcusals
         "act's first question mark on a seed hunted so it opens this event, the page answered by key, recorded through " +
         "the real recorder and replayed to parity on every merge; the recording is generated rather than committed");
 
+    /// <summary>The two producers of the special card on this build, by id: the
+    /// thief's power, which gives the stolen card back on the thief's death, and the
+    /// Lantern Key event, whose fight puts the key on the loot screen.</summary>
+    private const string ThiefsPower = "POWER.SWIPE_POWER";
+    private const string LanternKeyEvent = "EVENT.THE_LANTERN_KEY";
+
     /// <summary>A point the special card's producers reach: the thief row, a run of
     /// the Hive alone whose first fight is the Thieving Hopper's, killed holding the
     /// card it stole, and the Lantern Key row, whose fight puts the key on the loot
     /// screen; both claimed off the screen through the real recorder and replayed to
-    /// parity on every merge.</summary>
-    private static readonly Excusal GeneratedByTheSpecialCardRows = new(
+    /// parity on every merge. Named with the producers the point is excused for, so
+    /// the sentence about the thief and the key is held to the map.</summary>
+    private static Excusal GeneratedByTheSpecialCardRows(params string[] producers) => new(
         ExcusalClass.Generated,
         "reached by two GeneratedCoverageTests rows on a run of the Hive alone - a generated-only acts list no " +
         "client run has, admissible as the won-run proof's one-act run is and never listed or shared - the thief " +
         "killed holding the card it stole, and the Lantern Key's fight, each special card claimed off the loot " +
         "screen, recorded through the real recorder and replayed to parity on every merge; the recording is " +
-        "generated rather than committed");
+        "generated rather than committed",
+        producers);
 
     /// <summary>The events the committed corpus reaches, whose rows retire their
     /// options and nothing else; <c>GeneratedCoverageTests</c> holds its rows to that.</summary>
@@ -997,12 +1008,11 @@ public static class DecisionExcusals
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = NotOnTheRoute(
             "put on the loot screen by Forbidden Grimoire's power, an ancient card of the Necrobinder's pool that only " +
             "Dusty Tome deals, on a Necrobinder run, and every generated walk is Ironclad's; a character row of the fifth " +
-            $"stage, and {DarvOffTheRoute}");
-        excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = GeneratedByTheSpecialCardRows;
-        foreach (var timing in new[] { "AbstractModel.BeforeDeath", "EventModel.GenerateInitialOptions" })
-        {
-            excusals[DecisionPoint.Seam("reward-kind:special_card", timing)] = GeneratedByTheSpecialCardRows;
-        }
+            $"stage, and {DarvOffTheRoute}",
+            "POWER.FORBIDDEN_GRIMOIRE_POWER");
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = GeneratedByTheSpecialCardRows(ThiefsPower, LanternKeyEvent);
+        excusals[DecisionPoint.Seam("reward-kind:special_card", "AbstractModel.BeforeDeath")] = GeneratedByTheSpecialCardRows(ThiefsPower);
+        excusals[DecisionPoint.Seam("reward-kind:special_card", "EventModel.GenerateInitialOptions")] = GeneratedByTheSpecialCardRows(LanternKeyEvent);
 
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
 
@@ -1043,7 +1053,8 @@ public static class DecisionExcusals
         }
 
         excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(
-            "added by a Byrdonis Egg in the deck, which the Byrdonis Nest event deals");
+            "added by a Byrdonis Egg in the deck, which the Byrdonis Nest event deals",
+            "CARD.BYRDONIS_EGG");
 
         // RestSiteOption.Generate adds the mend only to a run with more than one
         // player, and the recorder records singleplayer runs only

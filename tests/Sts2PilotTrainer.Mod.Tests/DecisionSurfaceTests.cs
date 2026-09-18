@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 
@@ -191,6 +193,329 @@ public sealed class DecisionSurfaceTests
     }
 
     /// <summary>
+    /// The three derivations that used to write this build's numbers down are read
+    /// off the IL: the flower's dig bound is the constant <c>ReachDeeper</c> compares
+    /// <c>NumberOfDigs</c> with and branches past the page on, the tablet's finish is
+    /// the one <c>Decipher</c> compares <c>DecipherCount</c> with and branches past
+    /// the finish on, and the trader's <c>PROCEED</c> is the literal its construction
+    /// loads, which needs no derivation at all. Every option those events and the
+    /// Architect build by interpolation is read as a template, and every key their
+    /// derivations list fits one, which is what the walk refuses on when a build
+    /// moves a bound or renames a page.
+    /// </summary>
+    [GameFact]
+    public void TheBuiltOptionKeysAreReadAsTemplatesAndTheirBoundsOffTheIl()
+    {
+        Assert.Equal(2, DecisionSurface.CounterBound("EVENT.COLOSSAL_FLOWER", "NumberOfDigs", "Bge"));
+        Assert.Equal(5, DecisionSurface.CounterBound("EVENT.TABLET_OF_TRUTH", "DecipherCount", "Bne_Un"));
+        var noSuchShape = Assert.Throws<InvalidOperationException>(
+            () => DecisionSurface.CounterBound("EVENT.COLOSSAL_FLOWER", "NumberOfDigs", "Beq"));
+        Assert.Contains("compares NumberOfDigs with Beq against no constant", noSuchShape.Message, StringComparison.Ordinal);
+
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.REACH_DEEPER_{}",
+            ],
+            DecisionSurface.BuiltOptionKeyTemplates("EVENT.COLOSSAL_FLOWER"));
+        Assert.Equal(
+            ["TABLET_OF_TRUTH.pages.DECIPHER_{}.options.DECIPHER"],
+            DecisionSurface.BuiltOptionKeyTemplates("EVENT.TABLET_OF_TRUTH"));
+        Assert.Equal(["{}.dialogue.{}"], DecisionSurface.BuiltOptionKeyTemplates("EVENT.THE_ARCHITECT"));
+        Assert.Empty(DecisionSurface.BuiltOptionKeyTemplates("EVENT.RELIC_TRADER"));
+        Assert.Empty(DecisionSurface.BuiltOptionKeyTemplates("EVENT.PAEL"));
+
+        var options = DecisionSurface.EventOptionKeys();
+        foreach (var eventId in new[] { "EVENT.COLOSSAL_FLOWER", "EVENT.TABLET_OF_TRUTH", "EVENT.THE_ARCHITECT" })
+        {
+            var keys = options.Where(option => option.EventId == eventId).Select(option => option.Key).ToList();
+            Assert.All(
+                DecisionSurface.BuiltOptionKeyTemplates(eventId),
+                template => Assert.Contains(keys, key => DecisionSurface.Fits(template, key)));
+        }
+
+        Assert.True(DecisionSurface.Fits("{}.dialogue.{}", "THE_ARCHITECT.dialogue.0"));
+        Assert.False(DecisionSurface.Fits("{}.dialogue.{}", "THE_ARCHITECT.dialogue.0.x"));
+        Assert.False(DecisionSurface.Fits("TABLET_OF_TRUTH.pages.DECIPHER_{}.options.DECIPHER", "TABLET_OF_TRUTH.pages.DECIPHER.options.GIVE_UP"));
+
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_1",
+                "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_1",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.EXTRACT_CURRENT_PRIZE_2",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_1.options.REACH_DEEPER_2",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE",
+            ],
+            options.Where(option => option.EventId == "EVENT.COLOSSAL_FLOWER").Select(option => option.Key));
+        Assert.Equal(
+            [
+                "TABLET_OF_TRUTH.pages.DECIPHER.options.GIVE_UP",
+                "TABLET_OF_TRUTH.pages.DECIPHER_1.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_2.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_3.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.DECIPHER_4.options.DECIPHER",
+                "TABLET_OF_TRUTH.pages.INITIAL.options.DECIPHER_1",
+                "TABLET_OF_TRUTH.pages.INITIAL.options.SMASH",
+            ],
+            options.Where(option => option.EventId == "EVENT.TABLET_OF_TRUTH").Select(option => option.Key));
+        Assert.Equal(
+            [
+                "PROCEED",
+                "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
+                "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
+                "RELIC_TRADER.pages.INITIAL.options.TOP",
+            ],
+            options.Where(option => option.EventId == "EVENT.RELIC_TRADER").Select(option => option.Key));
+    }
+
+    /// <summary>
+    /// The reading behind that, on the game's own bodies: a construction keyed by a
+    /// literal carries it as its key literal, with a params default or a hover-tip
+    /// call between the two leaving it in place; one keyed by an interpolation the
+    /// body finishes right before it carries the template; and a counter compared
+    /// with a constant is read as the constant and the branch that compares it, so
+    /// the reader itself is held to this build's shapes rather than to a fixture.
+    /// </summary>
+    [GameFact]
+    public void AConstructionsKeyAndACountersBoundAreReadOffTheGamesOwnBodies()
+    {
+        var trader = ChoiceEntryPoints.ConstructionsIn(GameMethod("RelicTrader", "GenerateInitialOptions"), EventOptionType());
+        Assert.Equal(4, trader.Count);
+        Assert.Equal("RELIC_TRADER.pages.INITIAL.options.TOP", trader[0].KeyLiteral);
+        Assert.Equal("PROCEED", trader[3].KeyLiteral);
+        Assert.All(trader, construction => Assert.Null(construction.Template));
+
+        var flower = ChoiceEntryPoints.ConstructionsIn(GameMethod("ColossalFlower", "GenerateInitialOptions"), EventOptionType());
+        Assert.Equal(
+            ["COLOSSAL_FLOWER.pages.INITIAL.options.EXTRACT_CURRENT_PRIZE_{}", "COLOSSAL_FLOWER.pages.INITIAL.options.REACH_DEEPER_{}"],
+            flower.Select(construction => construction.Template));
+        Assert.All(flower, construction => Assert.Null(construction.KeyLiteral));
+
+        var reachDeeper = StateMachineOf(GameMethod("ColossalFlower", "ReachDeeper"));
+        var deeper = ChoiceEntryPoints.ConstructionsIn(reachDeeper, EventOptionType());
+        Assert.Equal(
+            [
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.EXTRACT_CURRENT_PRIZE_{}",
+                "COLOSSAL_FLOWER.pages.REACH_DEEPER_{}.options.REACH_DEEPER_{}",
+                null,
+                null,
+            ],
+            deeper.Select(construction => construction.Template));
+        Assert.Equal(
+            [null, null, "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.EXTRACT_INSTEAD", "COLOSSAL_FLOWER.pages.REACH_DEEPER_2.options.POLLINOUS_CORE"],
+            deeper.Select(construction => construction.KeyLiteral));
+        Assert.Equal(
+            [(2, "Bge")],
+            ChoiceEntryPoints.ConstantsComparedWith(reachDeeper, GameMethod("ColossalFlower", "get_NumberOfDigs")));
+        Assert.Equal(
+            [(5, "Bne_Un")],
+            ChoiceEntryPoints.ConstantsComparedWith(
+                StateMachineOf(GameMethod("TabletOfTruth", "Decipher")), GameMethod("TabletOfTruth", "get_DecipherCount")));
+    }
+
+    /// <summary>
+    /// A construction two bare key literals reach with no call between - the ternary
+    /// <c>done ? "PROCEED" : "DECLINE"</c>, which no event on this build writes - is
+    /// refused naming both, rather than read as keyed by the last one loaded and
+    /// listed as one option where the body offers two.
+    /// </summary>
+    [GameFact]
+    public void AConstructionTwoBareKeysCouldBeTheKeyOfIsRefusedByName()
+    {
+        var ternary = typeof(DecisionSurfaceTests).GetMethod(nameof(KeyedByATernary), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => ChoiceEntryPoints.ConstructionsIn(ternary, typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByATernary), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("'DECLINE'", refusal.Message);
+        Assert.Equal(
+            "PROCEED",
+            Assert.Single(ChoiceEntryPoints.ConstructionsIn(
+                typeof(DecisionSurfaceTests).GetMethod(nameof(KeyedByOneLiteral), BindingFlags.NonPublic | BindingFlags.Static)!,
+                typeof(KeyedOption))).KeyLiteral);
+    }
+
+    /// <summary>
+    /// A construction keyed by a bare literal or a string read from a field -
+    /// <c>flag ? "PROCEED" : storedKey</c> - is refused naming the field, rather than
+    /// read as keyed by the literal with the field-keyed option dropped; one keyed by
+    /// a local the literal was stored in is still that literal.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByALiteralOrAStringFromAFieldIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByALiteralOrAField)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByALiteralOrAField), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("field storedKey", refusal.Message);
+        Assert.Equal(
+            "PROCEED",
+            Assert.Single(ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByALocalTheLiteralWasStoredIn)), typeof(KeyedOption))).KeyLiteral);
+    }
+
+    /// <summary>
+    /// A bare literal beside a whole key - <c>cond ? "PROCEED" : "X.pages.Y.options.Z"</c>
+    /// - is refused naming both, rather than the whole key explaining the construction
+    /// and the bare one going unlisted.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByABareLiteralOrAWholeKeyIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByABareLiteralOrAWholeKey)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByABareLiteralOrAWholeKey), refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+        Assert.Contains("'X.pages.Y.options.Z'", refusal.Message);
+    }
+
+    /// <summary>
+    /// A whole key beside a string read from a field - <c>cond ? "X.pages.A.options.B" : storedKey</c>
+    /// - is refused naming the field the same way a bare one is, rather than the whole
+    /// key explaining the construction and the field-keyed option going unlisted.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByAWholeKeyOrAStringFromAFieldIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAWholeKeyOrAField)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAWholeKeyOrAField), refusal.Message);
+        Assert.Contains("'X.pages.A.options.B'", refusal.Message);
+        Assert.Contains("field storedKey", refusal.Message);
+    }
+
+    /// <summary>
+    /// A whole key beside an interpolation - <c>cond ? "X.pages.A.options.B" : $"X.pages.{page}.options.C"</c>
+    /// - is refused naming both, whichever arm the compiler laid down first, rather
+    /// than the whole key explaining the construction and the built option going
+    /// unlisted; two interpolations with no call between are refused the same way.
+    /// </summary>
+    [GameFact]
+    public void AConstructionKeyedByAWholeKeyOrAnInterpolationIsRefusedByName()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAWholeKeyOrAnInterpolation)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAWholeKeyOrAnInterpolation), refusal.Message);
+        Assert.Contains("'X.pages.A.options.B'", refusal.Message);
+        Assert.Contains("'X.pages.{}.options.C'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByOneOfTwoInterpolations)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByOneOfTwoInterpolations), refusal.Message);
+        Assert.Contains("'X.pages.{}.options.B'", refusal.Message);
+        Assert.Contains("'X.pages.{}.options.C'", refusal.Message);
+    }
+
+    /// <summary>
+    /// A string property in an interpolation's hole - <c>cond ? $"{Entry}.pages.X.options.A" : "PROCEED"</c>,
+    /// which the compiler lays down as a concatenation of the getter's result - is a
+    /// call that consumed its own parts and returned the key of that arm alone, so the
+    /// other arm's literal, or its own template, is still named in the refusal beside
+    /// what the call returned rather than wiped and the construction read as keyed by one.
+    /// Beside a number the hole goes through the handler, the Architect's shape, and the
+    /// getter inside it feeds AppendFormatted rather than wiping the other arm's literal.
+    /// </summary>
+    [GameFact]
+    public void AStringHoleInAnInterpolationLeavesTheOtherArmsCandidateInPlace()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringHoleInterpolationOrABareLiteral)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringHoleInterpolationOrABareLiteral), refusal.Message);
+        Assert.Contains("String.Concat returned", refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringHoleInterpolationOrAnother)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringHoleInterpolationOrAnother), refusal.Message);
+        Assert.Contains("String.Concat returned", refusal.Message);
+        Assert.Contains("'X.{}.B'", refusal.Message);
+
+        refusal = Assert.Throws<InvalidOperationException>(() =>
+            ChoiceEntryPoints.ConstructionsIn(TestMethod(nameof(KeyedByAStringAndNumberHoleInterpolationOrABareLiteral)), typeof(KeyedOption)));
+
+        Assert.Contains(nameof(KeyedByAStringAndNumberHoleInterpolationOrABareLiteral), refusal.Message);
+        Assert.Contains("'{}.pages.{}.options.A'", refusal.Message);
+        Assert.Contains("'PROCEED'", refusal.Message);
+    }
+
+    private static MethodBase TestMethod(string name) =>
+        typeof(DecisionSurfaceTests).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)!;
+
+    private sealed class KeyedOption(string key)
+    {
+        public string Key { get; } = key;
+    }
+
+    private readonly string storedKey = "STORED";
+
+    private static KeyedOption KeyedByATernary(bool done) => new(done ? "PROCEED" : "DECLINE");
+
+    private static KeyedOption KeyedByOneLiteral() => new("PROCEED");
+
+    private KeyedOption KeyedByALiteralOrAField(bool flag)
+    {
+        var key = flag ? "PROCEED" : storedKey;
+        return new KeyedOption(key);
+    }
+
+    private static KeyedOption KeyedByALocalTheLiteralWasStoredIn()
+    {
+        var key = "PROCEED";
+        return new KeyedOption(key);
+    }
+
+    private static KeyedOption KeyedByABareLiteralOrAWholeKey(bool cond) => new(cond ? "PROCEED" : "X.pages.Y.options.Z");
+
+    private KeyedOption KeyedByAWholeKeyOrAField(bool cond) => new(cond ? "X.pages.A.options.B" : storedKey);
+
+    private static KeyedOption KeyedByAWholeKeyOrAnInterpolation(bool cond, int page) =>
+        new(cond ? "X.pages.A.options.B" : $"X.pages.{page}.options.C");
+
+    private static KeyedOption KeyedByOneOfTwoInterpolations(bool cond, int page) =>
+        new(cond ? $"X.pages.{page}.options.B" : $"X.pages.{page}.options.C");
+
+    private string Entry => storedKey;
+
+    private KeyedOption KeyedByAStringHoleInterpolationOrABareLiteral(bool cond) =>
+        new(cond ? $"{Entry}.pages.X.options.A" : "PROCEED");
+
+    private KeyedOption KeyedByAStringHoleInterpolationOrAnother(bool cond, int page) =>
+        new(cond ? $"{Entry}.C" : $"X.{page}.B");
+
+    private KeyedOption KeyedByAStringAndNumberHoleInterpolationOrABareLiteral(bool cond, int page) =>
+        new(cond ? $"{Entry}.pages.{page}.options.A" : "PROCEED");
+
+    /// <summary>A game method by type and name, resolved at run time rather than by a
+    /// <c>typeof</c> the JIT would resolve before the engine's resolver knows where
+    /// the game is.</summary>
+    private static MethodBase GameMethod(string eventType, string name)
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        var type = ChoiceEntryPoints.Game.GetType($"MegaCrit.Sts2.Core.Models.Events.{eventType}", throwOnError: true)!;
+        return type.GetMethod(name, every) ?? throw new InvalidOperationException($"{eventType} declares no {name} on this build.");
+    }
+
+    private static Type EventOptionType() => ChoiceEntryPoints.Game.GetType("MegaCrit.Sts2.Core.Events.EventOption", throwOnError: true)!;
+
+    /// <summary>The <c>MoveNext</c> an async method's body is compiled into.</summary>
+    private static MethodBase StateMachineOf(MethodBase method) =>
+        method.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType
+            .GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException($"{method.Name} is not async on this build.");
+
+    /// <summary>
     /// The producer map is the scout's walk on this build: 269 edges from the models
     /// the database registers to 78 seams at their timing classes, the transitive
     /// edges among them, and the six declared seams no content reaches. Pinned by the
@@ -360,6 +685,43 @@ public sealed class DecisionSurfaceTests
         Assert.All(
             DecisionExcusals.All,
             excusal => Assert.Contains(excusal.Value.Class, admissible[excusal.Key]));
+    }
+
+    /// <summary>Every producer an excusal names is one the map lists for its point,
+    /// which is what lets <c>coverage</c> hold a sentence about who produces a point
+    /// to the build rather than to the person who wrote it; the three the audit found
+    /// naming their producer in prose alone name it by id now, beside the rest
+    /// options the ancient rows fall short of.</summary>
+    [GameFact]
+    public void EveryProducerAnExcusalNamesIsOneTheMapListsForItsPoint()
+    {
+        var map = DecisionSurface.ProducerMap();
+        var named = DecisionExcusals.All.Where(excusal => excusal.Value.NamedProducers.Count > 0).ToList();
+
+        Assert.All(
+            named,
+            excusal => Assert.All(
+                excusal.Value.NamedProducers,
+                producer => Assert.Contains(producer, DecisionCoverage.ProducersListedAt(excusal.Key, map))));
+        Assert.Equal(
+            ["CARD.BYRDONIS_EGG"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "HATCH")].NamedProducers);
+        Assert.Equal(
+            ["POWER.FORBIDDEN_GRIMOIRE_POWER"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")].NamedProducers);
+        Assert.Equal(
+            ["POWER.SWIPE_POWER", "EVENT.THE_LANTERN_KEY"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RewardKind, "special_card")].NamedProducers);
+        Assert.Equal(
+            ["POWER.SWIPE_POWER"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:special_card", "AbstractModel.BeforeDeath")].NamedProducers);
+        Assert.Equal(
+            ["EVENT.THE_LANTERN_KEY"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:special_card", "EventModel.GenerateInitialOptions")].NamedProducers);
+        Assert.Equal(
+            ["RELIC.PAELS_GROWTH"],
+            DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "CLONE")].NamedProducers);
+        Assert.Equal(11, named.Count);
     }
 
     /// <summary>The committed producer map is what the walk produces on this build,
