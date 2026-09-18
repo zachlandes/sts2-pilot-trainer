@@ -51,13 +51,15 @@ public static class DecisionExcusals
     /// whole-act fixture's.</summary>
     private const string BeyondTheFirstAct =
         "reached only past a run's first act, which the journey's mechanical line survives on none of 300 seeds " +
-        "hunted on v0.111.0 with every room type on the route and none of 200 on the cheapest; a survival seed of " +
-        "the fifth stage's kind, or the retail soak, is what reaches it";
+        "hunted on v0.111.0 with every room type on the route and none of 200 on the cheapest; the one seed it is " +
+        "known to survive on, the whole-act fixture's 67L571H38L, opens its second act on Orobas, which the ancient " +
+        "rows already retire, so it serves no row here; owed to the fifth stage's survival work - a play strategy or " +
+        "a hunted survival seed - or to the retail soak";
 
     private const string DarvOffTheRoute =
         "Darv is dealt to one act after the first as the run is generated (RunManager.GenerateRooms) and rolled as " +
-        "that act's opening ancient, so a row for it is a walk through the first act to the second act's opening, " +
-        "and " + BeyondTheFirstAct;
+        "that act's opening ancient, so a row for it needs a seed whose first act the line survives and whose second " +
+        "act rolls Darv, which nothing has yet; " + BeyondTheFirstAct;
 
     /// <summary>The events no generated walk reaches, each with what stands in the way;
     /// every one the game allows only from the second act on or only in a state the
@@ -80,8 +82,8 @@ public static class DecisionExcusals
         ["EVENT.WAR_HISTORIAN_REPY"] =
             "no act's roll allows it (WarHistorianRepy.IsAllowed is false); it is reached only through the Lantern Key card's own " +
             "hook (LanternKey.ModifyNextEvent), at a second question mark of a run that kept the key from the first, which the " +
-            "Lantern Key row's walk ends at; retired by a walk that goes on to a second question mark, or the retail soak " +
-            "(excused 2026-09-18)",
+            "Lantern Key row's walk ends at; owed to the fifth stage's survival work - a walk that goes on to a second " +
+            "question mark on a seed the line survives to it - or to the retail soak (excused 2026-09-18)",
         ["EVENT.WELCOME_TO_WONGOS"] = "allowed in the second act only, with 100 gold in hand (WelcomeToWongos.IsAllowed), so " + BeyondTheFirstAct,
     };
 

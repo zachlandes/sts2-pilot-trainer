@@ -1,4 +1,5 @@
 using System.Globalization;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Rooms;
 using Sts2PilotTrainer.Mod;
@@ -196,9 +197,26 @@ public sealed class ReplayRefusalRegressionTests
     public void TheFirstDecisionAfterAFightInsideAnEventReadsInTheResumedEvent()
     {
         using var harness = new RecordedActWalk();
-        var row = GeneratedCoverageTests.EventRowFor("ACT.GLORY", "EVENT.BATTLEWORN_DUMMY", "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_1");
+        var recorded = WalkPastTheDummysFight(harness);
+        Assert.True(recorded.AskMet, "the walk finished without choosing the dummy's first setting");
+        RecordedActWalk.AssertWhole(recorded);
 
-        var recorded = harness.Walk(
+        // The dummy's fight offers no loot, so the move is the first decision after
+        // the fight's own last action
+        var leaving = recorded.Manifest.Actions.Last();
+        Assert.Equal(ActionVerb.MapMove, leaving.Verb);
+        Assert.True(leaving.Seq > TheDummysFirstSetting(recorded.Manifest).Seq, "the move that leaves the event was not recorded after the dummy's setting");
+        Assert.Contains(recorded.Manifest.Actions[^2].Verb, new[] { ActionVerb.PlayCard, ActionVerb.EndTurn });
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The Battleworn Dummy row's walk, carried to the move that leaves the
+    /// event, as the test above records it.</summary>
+    private static RecordedActWalk.Recorded WalkPastTheDummysFight(RecordedActWalk harness)
+    {
+        var row = GeneratedCoverageTests.EventRowFor("ACT.GLORY", "EVENT.BATTLEWORN_DUMMY", DummysFirstSetting);
+        return harness.Walk(
             GeneratedCoverageTests.PolicyFor(row), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.GLORY"],
             then: (session, driver, settle) =>
             {
@@ -220,15 +238,56 @@ public sealed class ReplayRefusalRegressionTests
                 });
                 settle();
             });
-        Assert.True(recorded.AskMet, "the walk finished without choosing the dummy's first setting");
+    }
+
+    private const string DummysFirstSetting = "BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_1";
+
+    private static ActionRecord TheDummysFirstSetting(ReplayManifest manifest) =>
+        manifest.Actions.Single(action =>
+            action.Verb == ActionVerb.ChooseEventOption && action.Args.GetValueOrDefault("option_key") == DummysFirstSetting);
+
+    /// <summary>Stands in for a retail proceed that leaves the run where it was, so
+    /// the driver's resume refuses on its own guard.</summary>
+    [HarmonyPatch(typeof(MegaCrit.Sts2.Core.Runs.RunManager), nameof(MegaCrit.Sts2.Core.Runs.RunManager.ProceedFromTerminalRewardsScreen))]
+    private static class ProceedThatGoesNowhere
+    {
+        [HarmonyPrefix]
+        private static bool Before(ref Task __result)
+        {
+            __result = Task.CompletedTask;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The resume of an event a fight was fought inside runs from <see cref="RunDriver.Approach"/>,
+    /// and a refusal raised there is the host's refusal of the decision it approaches:
+    /// reported as a Rejected verdict naming the action, exactly as one raised by
+    /// <see cref="RunDriver.Apply"/> is, rather than an exception out of the replay
+    /// loop that takes a whole corpus command down with one recording.
+    /// </summary>
+    [GameFact]
+    public void ARefusalOnTheWayToADecisionIsReportedAgainstThatDecision()
+    {
+        using var harness = new RecordedActWalk();
+        var recorded = WalkPastTheDummysFight(harness);
         RecordedActWalk.AssertWhole(recorded);
-
-        var lastLoot = recorded.Manifest.Actions.Last(action => action.Verb is ActionVerb.ClaimReward or ActionVerb.TakeCard or ActionVerb.SkipRewards);
         var leaving = recorded.Manifest.Actions.Last();
-        Assert.Equal(ActionVerb.MapMove, leaving.Verb);
-        Assert.True(leaving.Seq > lastLoot.Seq, "the move that leaves the event was not recorded after the fight's loot");
 
-        RecordedActWalk.ReplayToParity(recorded);
+        var harmony = new Harmony($"proceed-goes-nowhere.{Guid.NewGuid():N}");
+        harmony.CreateClassProcessor(typeof(ProceedThatGoesNowhere)).Patch();
+        try
+        {
+            var replay = RecordedActWalk.FreshReplay(recorded.Manifest);
+            Assert.Equal(VerificationStatus.Rejected, replay.Report.Status);
+            var refusal = Assert.Single(replay.Report.Diagnostics, line => line.StartsWith($"action {leaving.Seq} ({leaving.Verb}):", StringComparison.Ordinal));
+            Assert.Contains("did not return the run to the event", refusal, StringComparison.Ordinal);
+            Assert.Equal(leaving.Seq, replay.Report.Trace!.Steps.Last().Seq);
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
     }
 
     /// <summary>The game's own rule at an act's start, as <c>MapTravelRule</c> reads

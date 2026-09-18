@@ -307,13 +307,16 @@ public static class Arbiter
 
             // Read where the decision was made, past whatever the client does on the
             // way to it that is not a decision - the chest a treasure room opens on a
-            // click, before anything about it is decided.
-            driver.Approach(action);
-            var beforeState = CanonicalStateProjection.Project(session.RunState);
-            var before = Sample(beforeState);
-            var beforeDigest = beforeState.Digest();
+            // click, the event a fight was fought inside resumed - and refuse there
+            // the way an action is refused, since the approach is the host's work too
+            IReadOnlyDictionary<string, string>? before = null;
+            string? beforeDigest = null;
             try
             {
+                driver.Approach(action);
+                var beforeState = CanonicalStateProjection.Project(session.RunState);
+                before = Sample(beforeState);
+                beforeDigest = beforeState.Digest();
                 driver.Apply(action, Upcoming(ordered, index, stopAfterSeq));
             }
             catch (EngineException ex)
@@ -330,9 +333,9 @@ public static class Arbiter
                     Seq = action.Seq,
                     Verb = action.Verb.ToString(),
                     Args = action.Args,
-                    Before = before,
+                    Before = before ?? Sample(refusedState),
                     After = Sample(refusedState),
-                    BeforeDigest = beforeDigest,
+                    BeforeDigest = beforeDigest ?? refusedState.Digest(),
                     AfterDigest = refusedState.Digest(),
                 });
                 return new ArbiterOutcome(
