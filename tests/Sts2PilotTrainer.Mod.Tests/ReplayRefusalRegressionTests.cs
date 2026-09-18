@@ -23,11 +23,14 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// unreachable from a node the run was not standing on. The fifth was found in
 /// review of those rows: the replay's before-reading of the first decision after a
 /// fight fought inside an event was taken in the finished combat room, one resume
-/// short of where the recorder reads it. Each row is a recording that the driver
+/// short of where the recorder reads it. The sixth was found the same way: the
+/// before-reading of the option after a handed-over claim was taken before the
+/// option's work had finished, which no shipped event on a row's route makes
+/// visible and a stand-in does. Each row is a recording that the driver
 /// before its change refused - as <c>Map node ... is not reachable</c>, as <c>2 of
 /// them are on offer</c>, as <c>buys from a merchant, but this floor is a Monster
 /// room</c>, as <c>The run has no current map node</c>, as <c>combat.outcome: none
-/// -> victory</c> at parity - and that now replays
+/// -> victory</c> and <c>player.gold: 10 -> 3</c> at parity - and that now replays
 /// decision for decision through the same oracle <c>parity</c> uses, on a seed chosen
 /// because its opening event, its relic bag or its survival puts the producer on the
 /// walk's route. The rows live apart from <c>GeneratedCoverageTests</c> because they
@@ -307,7 +310,10 @@ public sealed class ReplayRefusalRegressionTests
         private static async Task ThenTip(MegaCrit.Sts2.Core.Models.Events.EndlessConveyor conveyor, Task offer)
         {
             await offer;
-            await Task.Delay(200);
+            // A second, because the continuation posts inline from a timer thread
+            // and the pending queue is not thread-safe: the claim's readings on both
+            // sides have to be taken before this fires
+            await Task.Delay(1000);
             conveyor.Owner!.Gold += Tip;
         }
     }
