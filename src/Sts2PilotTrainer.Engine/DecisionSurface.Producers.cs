@@ -723,6 +723,24 @@ public static partial class DecisionSurface
             .ToList();
     }
 
+    /// <summary>
+    /// The ancients an act rolls one of at its start, by act, in index order: the act's
+    /// own list and not the shared ancients every act's question mark can roll, since a
+    /// run whose acts list opens on that act alone opens on one of these. Which is what
+    /// the act-first coverage rows walk from.
+    /// </summary>
+    public static IReadOnlyList<(string ActId, string AncientId)> ActAncients()
+    {
+        EngineHost.Start();
+        return ModelDb.Acts
+            .OrderBy(act => act.Index)
+            .ThenBy(act => act.Id.ToString(), StringComparer.Ordinal)
+            .SelectMany(act => act.AllAncients
+                .Select(ancient => (ActId: act.Id.ToString(), AncientId: ancient.Id.ToString()))
+                .OrderBy(pair => pair.AncientId, StringComparer.Ordinal))
+            .ToList();
+    }
+
     /// <summary>The acts that reach an event, by id, in index order: every act for a
     /// shared event or ancient, none for an event no act lists.</summary>
     public static IReadOnlyList<string> ActsReaching(string eventId)

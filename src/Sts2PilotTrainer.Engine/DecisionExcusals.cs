@@ -18,11 +18,13 @@ namespace Sts2PilotTrainer.Engine;
 ///
 /// The release bar (<c>docs/release-bar.md</c>) does not accept "no recording reaches
 /// it" for a point a player can reach on this build. The generated walks retire that
-/// sentence for every point the fixture seed's route can be pointed at, and for every
+/// sentence for every point the fixture seed's route can be pointed at, for every
 /// seam a relic Neow deals or the run's own bag deals produces, each on a seed hunted
-/// so the run deals that relic (<c>GeneratedCoverageTests</c>); what is left is
-/// excused by what its producer is and why no walk yet reaches it, dated so its age is
-/// visible, for the act-first walks, the event hunts and the retail soak.
+/// so the run deals that relic, and for every ancient act 2 and act 3 open on, every
+/// option of each and every seam the relics they deal produce, each on a run of that
+/// act alone (<c>GeneratedCoverageTests</c>); what is left is excused by what its
+/// producer is and why no walk yet reaches it, dated so its age is visible, for the
+/// event hunts and the retail soak.
 ///
 /// Every excusal carries an <see cref="ExcusalClass"/> beside its reason, and the
 /// coverage map says which classes it admits for each point
@@ -41,18 +43,39 @@ public static class DecisionExcusals
         $"no committed recording reaches it and the generated walk's route does not pass its producer - {producer}; " +
         "retired by a recording that does, from the retail soak (excused 2026-09-16)");
 
-    private const string AncientDealt =
-        "which an act's ancient deals at the start of act 2 or 3, so a row needs a run whose first act is that " +
-        "act, walked from its ancient; a relic granted outside a recorded decision is state no replay of the " +
-        "recording reproduces";
-
     private const string EventOffTheRoute =
         "an event is reached only where the map rolls it, the route refuses question marks, and a row per " +
         "event would need a seed hunted per event";
 
-    private const string AncientOffTheRoute =
-        "an act's ancient is rolled by the run's RNG from the act's own at the act's start, so a row per " +
-        "ancient would need a seed hunted per ancient";
+    private const string DarvOffTheRoute =
+        "Darv is the ancient every act's question mark can roll and no act opens on, so a row for it is a " +
+        "question-mark hunt like an event's rather than an act-first walk";
+
+    /// <summary>A rest option an act's ancient's relic adds, and the seam it is
+    /// produced at: the ancient row obtains the relic at the act's first room, and a
+    /// rest site is fights away that the journey's mechanical line does not survive
+    /// at starter strength - none of 400 seeds hunted per relic on v0.111.0 reached
+    /// one - so the row retires the relic's option and its other seams and falls
+    /// short of this; <c>GeneratedCoverageTests</c> holds the excusal to that sentence.</summary>
+    private static Excusal BeyondTheLinesSurvival(string addedBy) => new(
+        ExcusalClass.NotOnTheRoute,
+        $"no committed recording reaches it; added by {addedBy}, an ancient's relic the act-first ancient row " +
+        "obtains at the act's first room, and the journey's mechanical line does not survive from that ancient to " +
+        "a rest site at starter strength (none of 400 hunted seeds on v0.111.0); retired by a recording from the " +
+        "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)");
+
+    /// <summary>A point a <c>GeneratedCoverageTests</c> ancient row reaches on a run
+    /// whose acts list is act 2 or act 3 alone: a generated-only list no client run
+    /// has, which the engine builds the way it builds the won-run proof's one-act run
+    /// and which opens on the act's ancient. Admissible as coverage evidence on the
+    /// footing of that proof, never listed or shared, and said to be here so the
+    /// evidence is read for what it is.</summary>
+    private static readonly Excusal GeneratedByAnActFirstRow = new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests ancient row on a run of act 2 or act 3 alone - a generated-only acts " +
+        "list no client run has, admissible as the won-run proof's one-act run is and never listed or shared - " +
+        "recorded through the real recorder and replayed to parity on every merge; the recording is generated " +
+        "rather than committed");
 
     /// <summary>An option of an event the committed corpus reaches, in a recording
     /// written before the recorder named options.</summary>
@@ -168,8 +191,8 @@ public static class DecisionExcusals
         "RELIC.SMALL_CAPSULE",
     ];
 
-    /// <summary>The options of every event and ancient the route does not pass, by id
-    /// under the event, excused for the event's own reason.</summary>
+    /// <summary>The options of every event the route does not pass, by id under the
+    /// event, excused for the event's own reason.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsOffTheRoute = new Dictionary<string, string[]>
     {
         ["EVENT.ABYSSAL_BATHS"] =
@@ -526,6 +549,9 @@ public static class DecisionExcusals
         ],
     };
 
+    /// <summary>The options of the one ancient no act opens on, by id: Darv is rolled
+    /// where a question mark rolls it, in every act, so its options wait on the event
+    /// hunt with the events.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfAncientsOffTheRoute = new Dictionary<string, string[]>
     {
         ["EVENT.DARV"] =
@@ -543,6 +569,15 @@ public static class DecisionExcusals
             "RELIC.SOZU",
             "RELIC.VELVET_CHOKER",
         ],
+    };
+
+    /// <summary>The options of the ancients act 2 and act 3 open on, by id under the
+    /// ancient - every one a relic - each taken by a <c>GeneratedCoverageTests</c>
+    /// ancient row on a run of that act alone, on a seed hunted so the ancient is rolled
+    /// and offers it. By id, so an option a game update adds is uncovered until a row
+    /// takes it; the rows hold this list to the game's own option pools.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsTakenByAncientRows = new Dictionary<string, string[]>
+    {
         ["EVENT.NONUPEIPE"] =
         [
             "RELIC.BEAUTIFUL_BRACELET",
@@ -643,26 +678,17 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ AbstractModel.AfterRoomEntered",
         "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ EventModel.GenerateInitialOptions",
         "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.CalculateVars",
         "card-prompt:CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation) @ EventModel.GenerateInitialOptions",
         "card-prompt:CardSelectCmd.FromDeckForUpgrade(player, prefs) @ EventModel.GenerateInitialOptions",
         "card-prompt:CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder) @ EventModel.GenerateInitialOptions",
-        "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart",
         "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay",
-        "card-prompt:CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs) @ AbstractModel.AfterPlayerTurnStart",
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ ModifierModel.GenerateNeowOption",
-        "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ RelicModel.AfterObtained",
-        "card-reward-alternative @ AbstractModel.TryModifyCardRewardAlternatives",
-        "event-option @ AncientEventModel.AllPossibleOptions",
-        "rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions",
-        "rest-option:COOK @ AbstractModel.TryModifyRestSiteOptions",
         "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions",
-        "rest-option:KINDLE @ AbstractModel.TryModifyRestSiteOptions",
         "reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards",
         "reward-kind:card @ CardModel.OnPlay",
         "reward-kind:card @ ModifierModel.GenerateNeowOption",
@@ -715,6 +741,35 @@ public static class DecisionExcusals
         "reward-kind:relic @ AbstractModel.TryModifyRewards",
         "reward-kind:relic @ RelicModel.AfterObtained",
         "rewards:OfferCustom @ RelicModel.AfterObtained",
+    ];
+
+    /// <summary>
+    /// The seams a relic an act's ancient deals produces, and the ancients' own option
+    /// seam - by id, for the reason above - each reached by a <c>GeneratedCoverageTests</c>
+    /// ancient row on a run of that act alone: Lord's Parasol's removal as the merchant
+    /// is entered, Toasty Mittens' exhaust and Choices Paradox's grid at the turn's
+    /// start, Sea Glass's grid on being obtained, and Pael's Wing's sacrifice on the
+    /// card reward. The rest options three of those relics add are the seams the rows
+    /// fall short of, below.
+    /// </summary>
+    private static readonly string[] SeamsReachedByAncientRows =
+    [
+        "card-prompt:CardSelectCmd.FromDeckForRemoval(player, prefs, filter) @ AbstractModel.AfterRoomEntered",
+        "card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ AbstractModel.AfterPlayerTurnStart",
+        "card-prompt:CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs) @ AbstractModel.AfterPlayerTurnStart",
+        "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ RelicModel.AfterObtained",
+        "card-reward-alternative @ AbstractModel.TryModifyCardRewardAlternatives",
+        "event-option @ AncientEventModel.AllPossibleOptions",
+    ];
+
+    /// <summary>The rest options an act's ancient's relic adds, by option and relic:
+    /// the one seam class the ancient rows fall short of, for the reason
+    /// <see cref="BeyondTheLinesSurvival"/> gives.</summary>
+    private static readonly (string Option, string AddedBy)[] RestOptionsBeyondTheLinesSurvival =
+    [
+        ("CLONE", "Pael's Growth"),
+        ("COOK", "Meat Cleaver"),
+        ("KINDLE", "Pumpkin Candle"),
     ];
 
     /// <summary>The seams answered only on the screens the headless host stands in for
@@ -777,13 +832,16 @@ public static class DecisionExcusals
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "relic")] = Generated;
 
         // A card removal is put on the loot screen by Forbidden Grimoire's power, an
-        // ancient card; a special card by a thief that dies holding a stolen card or by
-        // the Lantern Key event. The route's one thief fight ends without a theft
+        // ancient card only Dusty Tome deals, which is Darv's; a special card by a thief
+        // that dies holding a stolen card or by the Lantern Key event. The route's one
+        // thief fight ends without a theft, and Darv and the Lantern Key are both a
+        // question mark's, so both wait on the event hunt
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = NotOnTheRoute(
-            "put on the loot screen by Forbidden Grimoire's power, an ancient card the route never holds");
+            "put on the loot screen by Forbidden Grimoire's power, an ancient card only Dusty Tome deals, and " +
+            $"{DarvOffTheRoute}");
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = NotOnTheRoute(
             "put on the loot screen by a thief that dies holding a stolen card or by the Lantern Key event; the " +
-            "route's one thief fight ends without a theft");
+            "route's one thief fight ends without a theft, and the Lantern Key is a question mark's in the Hive");
 
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
 
@@ -798,12 +856,13 @@ public static class DecisionExcusals
         // a relic or a quest card adds: Girya lifts, Pael's Growth clones, Pumpkin
         // Candle kindles, Shovel digs, Meat Cleaver cooks, Byrdonis Egg hatches. Girya
         // and Shovel are the bag's and a walk on a seed whose bag front holds one
-        // reaches its option; the other four are an ancient's or an event's, which
-        // no walk from act 1's first room reaches, and a relic granted outside a
-        // recorded decision is state a replay of the recording never reproduces, so
-        // none can be given to the walk's player
-        excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "SACRIFICE")] = NotOnTheRoute(
-            $"added by Pael's Wing, {AncientDealt}");
+        // reaches its option; Pael's Wing is an ancient's and a walk on a run of that
+        // ancient's act alone reaches its sacrifice at the first fight's loot, where
+        // the three rest options an ancient's relic adds are a rest site away that
+        // the line does not survive to; a relic granted outside a recorded decision
+        // is state a replay of the recording never reproduces, so none is given to
+        // the walk's player any other way
+        excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "SACRIFICE")] = GeneratedByAnActFirstRow;
 
         foreach (var kind in new[] { "colorless_card", "relic", "potion" })
         {
@@ -815,12 +874,11 @@ public static class DecisionExcusals
             excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = Generated;
         }
 
-        foreach (var (option, addedBy) in new[]
-                 {
-                     ("CLONE", "Pael's Growth"), ("COOK", "Meat Cleaver"), ("KINDLE", "Pumpkin Candle"),
-                 })
+        foreach (var (option, addedBy) in RestOptionsBeyondTheLinesSurvival)
         {
-            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = NotOnTheRoute($"added by {addedBy}, {AncientDealt}");
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = BeyondTheLinesSurvival(addedBy);
+            excusals[new DecisionPoint(DecisionKinds.Seam, $"rest-option:{option} @ AbstractModel.TryModifyRestSiteOptions")] =
+                BeyondTheLinesSurvival(addedBy);
         }
 
         excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(
@@ -917,22 +975,15 @@ public static class DecisionExcusals
         }
 
         // An act's ancient is one of the act's own, rolled by the run's RNG at the act's
-        // start, and Darv is shared by every act; the fixture seed's route meets one per
-        // act and a row per ancient would need a seed hunted per ancient. Neow is not
-        // here because the walk leaves it out: its decision is ChooseNeowBlessing
-        foreach (var ancientId in new[]
-                 {
-                     "EVENT.DARV",
-                     "EVENT.NONUPEIPE",
-                     "EVENT.OROBAS",
-                     "EVENT.PAEL",
-                     "EVENT.TANX",
-                     "EVENT.TEZCATARA",
-                     "EVENT.VAKUU",
-                 })
+        // start, and a run of that act alone opens on it: the ancient rows walk from
+        // there. Darv is shared by every act and opened on by none. Neow is not here
+        // because the walk leaves it out: its decision is ChooseNeowBlessing
+        foreach (var ancientId in OptionsTakenByAncientRows.Keys)
         {
-            excusals[new DecisionPoint(DecisionKinds.Event, ancientId)] = NotOnTheRoute(AncientOffTheRoute);
+            excusals[new DecisionPoint(DecisionKinds.Event, ancientId)] = GeneratedByAnActFirstRow;
         }
+
+        excusals[new DecisionPoint(DecisionKinds.Event, "EVENT.DARV")] = NotOnTheRoute(DarvOffTheRoute);
 
 
         // An option is a point of its own from format v6, when the recorder began
@@ -992,7 +1043,15 @@ public static class DecisionExcusals
             foreach (var key in keys)
             {
                 excusals[DecisionPoint.EventOption(eventId, key)] = NotOnTheRoute(
-                    $"an option of {eventId}, and {AncientOffTheRoute}");
+                    $"an option of {eventId}, and {DarvOffTheRoute}");
+            }
+        }
+
+        foreach (var (ancientId, keys) in OptionsTakenByAncientRows)
+        {
+            foreach (var key in keys)
+            {
+                excusals[DecisionPoint.EventOption(ancientId, key)] = GeneratedByAnActFirstRow;
             }
         }
 
@@ -1012,6 +1071,11 @@ public static class DecisionExcusals
         foreach (var seam in SeamsReachedByGeneratedWalks)
         {
             excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = Generated;
+        }
+
+        foreach (var seam in SeamsReachedByAncientRows)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = GeneratedByAnActFirstRow;
         }
 
         return excusals;

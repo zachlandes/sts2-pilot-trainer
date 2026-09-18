@@ -748,6 +748,12 @@ The general check is now a test rather than a note:
 declares, finds every subclass that re-declares the patched name in a new slot, and fails
 naming it.
 
+**A purchase the engine makes for itself is not a decision.**
+Lord's Parasol buys the whole shop as the merchant is entered, through the same `OnTryPurchaseWrapper` with `ignoreCost` set, which no button press sets, from inside the map move's own work.
+Recorded as purchases, they stood in the journal before the move that opened the shop, because the move is written once the engine has settled at the other end, and a replay refused the first of them in the room the move left.
+`ShopPurchased.Before` reads the flag and records nothing for such a call, on the base member and on the removal entry's shadow alike; the replay's own move reproduces the purchases, since the engine and not the player makes them, and the removal prompt the relic opens is a card selection queued behind the move as a hand-draw prompt's is.
+The Stage 3 ancient row for Lord's Parasol found it, and `ReplayRefusalRegressionTests` holds the walk into the shop to a recording with no purchase in it and to parity.
+
 **A fourth, and this one was caused by fixing the other three.**
 The skip above is announced from `BeforeLeavingRoom`, which the engine runs as *part of*
 the map move, and the sampling fix above makes the settle wait for the next fight to be
