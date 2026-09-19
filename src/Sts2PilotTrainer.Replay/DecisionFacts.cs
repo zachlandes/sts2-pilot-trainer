@@ -237,7 +237,7 @@ public static class DecisionFacts
 /// Why a point the build offers is allowed to stay unreached by the committed
 /// corpus, as a class the map can be held to.
 ///
-/// The first eight are derived: the coverage map says, from the game assembly and the
+/// The first nine are derived: the coverage map says, from the game assembly and the
 /// host's own tables, whether each is admissible for a point, and an excusal claiming
 /// one the map does not admit fails the bar. The last two are held by something
 /// else - a merge-gate row, or nothing yet - and are admissible only where no derived
