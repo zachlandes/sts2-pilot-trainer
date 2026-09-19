@@ -657,11 +657,15 @@ public sealed class DecisionSurfaceTests
         Assert.Equal("CHARACTER.IRONCLAD", withheld["COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"]);
 
         // Every excusal in the class names the character the IL withholds the option
-        // from, so the sentence cannot drift from the guard it cites
+        // from, so the sentence cannot drift from the guard it cites; on this build
+        // none is in it, because a second-act row of the Defect's reaches the one
+        // option withheld from the Ironclad, and the class is admitted all the same
         var withheldExcusals = DecisionExcusals.All
             .Where(pair => pair.Value.Class == ExcusalClass.OfferedOnlyToAnotherCharacter)
             .ToList();
-        Assert.NotEmpty(withheldExcusals);
+        Assert.Equal(
+            ExcusalClass.Generated,
+            DecisionExcusals.All[DecisionPoint.EventOption("EVENT.COLORFUL_PHILOSOPHERS", "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD")].Class);
         Assert.All(withheldExcusals, pair =>
         {
             var space = pair.Key.Identity.IndexOf(' ', StringComparison.Ordinal);
@@ -700,6 +704,18 @@ public sealed class DecisionSurfaceTests
             [ExcusalClass.ScreenWithoutHeadlessHost],
             Derived(DecisionKinds.Seam, "screen:NCrystalSphereScreen.ShowScreen @ EventModel.GenerateInitialOptions"));
         Assert.Equal([ExcusalClass.ReachedByTheWin], Derived(DecisionKinds.Seam, "event-option @ EventModel.OnRoomEnter"));
+
+        // An event that constructs no option is projected from no decision, nor is a
+        // seam only such an event produces: the Fake Merchant and its shelf, and
+        // nothing else on this build
+        Assert.Equal(["EVENT.FAKE_MERCHANT"], DecisionSurface.OptionlessEvents());
+        Assert.Equal([ExcusalClass.NotProjectable], Derived(DecisionKinds.Event, "EVENT.FAKE_MERCHANT"));
+        Assert.Equal([ExcusalClass.NotProjectable], Derived(DecisionKinds.Seam, "shop-kind:relic @ EventModel.BeforeEventStarted"));
+        Assert.Empty(Derived(DecisionKinds.Seam, "reward-kind:potion @ EventModel.Resume"));
+        Assert.Equal([ExcusalClass.NotProjectable], Derived(DecisionKinds.Seam, "reward-kind:relic @ ?"));
+        Assert.Equal(
+            3,
+            DecisionSurface.All().Count(point => DecisionSurface.DerivedExcusals(point).Contains(ExcusalClass.NotProjectable)));
         Assert.Empty(Derived(DecisionKinds.Seam, "event-option @ EventModel.GenerateInitialOptions"));
         Assert.Empty(Derived(DecisionKinds.Seam, "rewards:OfferCustom @ RelicModel.AfterObtained"));
         Assert.All(DecisionSurface.All(), point => Assert.DoesNotContain(ExcusalClass.RetailOnlyTiming, DecisionSurface.DerivedExcusals(point)));
@@ -746,6 +762,15 @@ public sealed class DecisionSurfaceTests
             ["CARD.BYRDONIS_EGG"],
             DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "HATCH")].NamedProducers);
         Assert.Equal(
+            ["CARD.BYRDONIS_EGG"],
+            DecisionExcusals.All[DecisionPoint.Seam("rest-option:HATCH", "AbstractModel.TryModifyRestSiteOptions")].NamedProducers);
+        Assert.Equal(
+            ["POWER.FORBIDDEN_GRIMOIRE_POWER"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:card_removal", "AbstractModel.AfterCombatEnd")].NamedProducers);
+        Assert.Equal(
+            ["EVENT.FAKE_MERCHANT"],
+            DecisionExcusals.All[DecisionPoint.Seam("shop-kind:relic", "EventModel.BeforeEventStarted")].NamedProducers);
+        Assert.Equal(
             ["POWER.FORBIDDEN_GRIMOIRE_POWER"],
             DecisionExcusals.All[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")].NamedProducers);
         Assert.Equal(
@@ -763,7 +788,7 @@ public sealed class DecisionSurfaceTests
         Assert.Equal(
             ["POWER.HEIST_POWER"],
             DecisionExcusals.All[DecisionPoint.Seam("reward-kind:gold", "AbstractModel.BeforeDeath")].NamedProducers);
-        Assert.Equal(12, named.Count);
+        Assert.Equal(16, named.Count);
     }
 
     /// <summary>The committed producer map is what the walk produces on this build,

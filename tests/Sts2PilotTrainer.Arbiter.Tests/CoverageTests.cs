@@ -32,10 +32,14 @@ public sealed class CoverageTests
             Assert.Contains("card-prompt  CardSelectCmd.FromHand(context, player, prefs, filter, source)  not projectable", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.ARCANE_SCROLL  excused [generated]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("event-option  EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD  excused [offered-only-to-another-character]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.BeforeDeath  excused [generated; names POWER.HEIST_POWER]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event  EVENT.DARV  excused [generated]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("event-option  EVENT.DARV RELIC.ASTROLABE  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.DARV RELIC.ASTROLABE  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("reward-kind  card_removal  excused [generated; names POWER.FORBIDDEN_GRIMOIRE_POWER]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event  EVENT.FAKE_MERCHANT  excused [not-projectable]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  shop-kind:relic @ EventModel.BeforeEventStarted  excused [not-projectable; names EVENT.FAKE_MERCHANT]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event  EVENT.WAR_HISTORIAN_REPY  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);

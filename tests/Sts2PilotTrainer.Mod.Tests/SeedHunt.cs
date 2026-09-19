@@ -31,9 +31,15 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// relics from its option pools, and the same reading takes the ancient and its offer
 /// off the first room; a row after a relic an ancient deals hunts a seed of that act
 /// alone whose ancient offers it. Darv, dealt to one act after the first at the run's
-/// start (<c>RunManager.GenerateRooms</c>) and opened on by no act alone, is not read
-/// here: a row after it walks the first act through, and the reading of the second
-/// act's room set goes in with the survival seed such a row needs.
+/// start (<c>RunManager.GenerateRooms</c>) and opened on by no act alone, is read as
+/// the ancient the second act opens on (<see cref="Opening.NextActAncientId"/>), and
+/// no further: which relics it offers is rolled as its room is entered, from an RNG
+/// seeded by the run's seed and the event's id, so a row after one of its options
+/// walks the first act through and the walk is the criterion for the offer, refusing
+/// by name where the ancient offers other relics. The second act's first question
+/// mark is read the same way: its shuffled set is generated at the run's start, but
+/// which entry the mark takes depends on what the first act visited and what the run
+/// holds at the mark, so a second-act event row's seed was found by walking.
 ///
 /// The event a question mark opens is fixed at the run's start as well: the act's
 /// events are shuffled into its room set as the run is generated and dealt in that

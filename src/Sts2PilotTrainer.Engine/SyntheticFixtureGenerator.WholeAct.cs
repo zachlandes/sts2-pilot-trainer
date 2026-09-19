@@ -206,6 +206,16 @@ public static partial class SyntheticFixtureGenerator
         var actions = new List<ActionRecord>();
         var previous = (_afterEachDecision, _requiredTypes, _policy);
         _policy = policy ?? WalkPolicy.Default;
+        // A walk into the next act has to have one: on a run of one act the transition
+        // opens the victory room, and a Darv row satisfied there would be a row about
+        // a room Darv is never rolled for
+        if (_policy.AskInTheNextAct && session.RunState.Acts.Count < 2)
+        {
+            throw new EngineException(
+                $"The walk's ask is in the act after the first, and the run's acts list is {session.RunState.Acts[0].Id} " +
+                "alone: a run of one act opens the victory room past its boss, not a second act.");
+        }
+
         // The first act of a walk whose ask is in the next is the fixture's own route,
         // every room type on the way to the boss: a line that reaches a second act
         // needs the chest's relic and the merchant's cards the cheapest route has
@@ -279,6 +289,24 @@ public static partial class SyntheticFixtureGenerator
     /// option is taken and nothing is the ask yet.</param>
     private static bool OpenTheActAndMeetTheAsk(RunDriver driver, GameSession session, List<ActionRecord> actions, bool theAskIsHere)
     {
+        // The act a walk was carried into opens on whichever ancient the run rolled
+        // for it, which no reading of the seed's first room shows and the walk is the
+        // one thing that reaches: an ancient that does not offer the relic the walk
+        // is after is refused by name here, rather than answered by today's rule and
+        // reported as an ask met nowhere
+        if (theAskIsHere && _policy.AskInTheNextAct && _policy.AncientRelic is { } wanted)
+        {
+            var opening = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
+                ?? throw new EngineException("The act journey is not standing in the act's opening event.");
+            var offered = opening.CurrentOptions.Select(option => option.Relic?.Id.ToString()).OfType<string>().ToList();
+            if (!offered.Contains(wanted, StringComparer.Ordinal))
+            {
+                throw new EngineException(
+                    $"The second act opens on {opening.Id} offering {string.Join(", ", offered)}, not on an ancient " +
+                    $"offering {wanted}: the seed was hunted for a second act that deals it, and this one does not.");
+            }
+        }
+
         OpenTheRun(driver, session, actions, theAskIsHere ? _policy.AncientRelic : null);
         MeetTheAskIf(session, theAskIsHere && (_policy.ObtainingIsTheAsk || _policy.OpeningTheNextActIsTheAsk));
         TakeWhatWasOffered(driver, session, actions);
@@ -347,11 +375,13 @@ public static partial class SyntheticFixtureGenerator
         _policy.Relic is not { } relic ||
         session.RunState.Players[0].Relics.Any(held => held.Id.ToString() == relic);
 
-    /// <summary>Counts the ask met where the condition holds and the policy's relic,
-    /// if it names one, is held.</summary>
+    /// <summary>Counts the ask met where the condition holds, the policy's relic, if
+    /// it names one, is held, and the walk is in the act the ask is in: on the first
+    /// act of a walk whose ask is in the next, every decision is the fixture's own
+    /// and none of them is what the walk is for.</summary>
     private static void MeetTheAskIf(GameSession session, bool condition)
     {
-        if (condition && HoldsTheRelic(session)) _askMet = true;
+        if (condition && !_beforeTheAskedAct && HoldsTheRelic(session)) _askMet = true;
     }
 
     /// <summary>Answers a rewards set a decision's own work put on offer - a relic's
@@ -881,7 +911,7 @@ public static partial class SyntheticFixtureGenerator
     {
         var room = (MerchantRoom)session.RunState.CurrentRoom!;
 
-        while (BuyOneThing(driver, session, room, actions))
+        while (BuyOneThing(driver, session, room.GetLocalInventory(), actions))
         {
             checkpoints.Add(Capture(
                 $"shop-purchase-{actions[^1].Seq.ToString(CultureInfo.InvariantCulture)}", actions[^1].Seq,
@@ -889,11 +919,11 @@ public static partial class SyntheticFixtureGenerator
         }
     }
 
-    /// <summary>Buys the cheapest affordable thing on any shelf, or nothing.</summary>
+    /// <summary>Buys the cheapest affordable thing on any shelf of the inventory - the
+    /// merchant room's, or the Fake Merchant's own - or nothing.</summary>
     private static bool BuyOneThing(
-        RunDriver driver, GameSession session, MerchantRoom room, List<ActionRecord> actions)
+        RunDriver driver, GameSession session, MerchantInventory inventory, List<ActionRecord> actions)
     {
-        var inventory = room.GetLocalInventory();
         var player = session.RunState.Players[0];
         var gold = player.Gold;
 
@@ -1032,8 +1062,21 @@ public static partial class SyntheticFixtureGenerator
             }
 
             var local = RunManager.Instance.EventSynchronizer?.GetLocalEvent();
-            if (local is null || local.IsFinished) return;
             if (session.RunState.CurrentRoom is not EventRoom) return;
+            // The Fake Merchant offers no option and stands finished from its first
+            // page: it draws a shop of its own, and its decisions are the purchases
+            // made from it, which the driver replays through the same member as a
+            // merchant room's. The walk empties it the way it empties a shop, and a
+            // walk after this event is after a purchase
+            if (local is FakeMerchant fake)
+            {
+                var bought = false;
+                while (BuyOneThing(driver, session, fake.Inventory, actions)) bought = true;
+                MeetTheAskIf(session, bought && local.Id.ToString() == _policy.EventId && _policy.EventOptionKey is null);
+                return;
+            }
+
+            if (local is null || local.IsFinished) return;
             // An event whose option ended the run may still have set its next page:
             // the game is over and nothing on it is a decision
             if (RunEnding.Reading is not null) return;
