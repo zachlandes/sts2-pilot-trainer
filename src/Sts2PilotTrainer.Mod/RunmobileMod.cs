@@ -19,8 +19,8 @@ namespace Sts2PilotTrainer.Mod;
 /// installs the patches for its feature.
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
-/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are three
-/// modules: recorded fights, the recorder and the run library.
+/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are four
+/// modules: recorded fights, the recorder, the run library and the retail soak.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
@@ -63,10 +63,12 @@ public static class RunmobileMod
     /// <summary>
     /// Every feature this build carries, in the order they are installed.
     ///
-    /// Recorded fights, the recorder, and the run library.
+    /// Recorded fights, the recorder, the run library, and the retail soak - the last
+    /// an instrument rather than a feature, off unless an isolated profile's settings
+    /// carry its plan.
     /// </summary>
     internal static IReadOnlyList<IRunmobileModule> Modules { get; } =
-        [RecordedFightModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance];
+        [RecordedFightModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance, RetailSoakModule.Instance];
 
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);

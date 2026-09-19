@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The one way a retail Slay the Spire 2 client is started, watched and stopped here.
 #
-#   ./scripts/retail-client.sh launch [--owner <label>] [--client-id <n>]
+#   ./scripts/retail-client.sh launch [--owner <label>] [--client-id <n>] [--headless]
 #   ./scripts/retail-client.sh status
 #   ./scripts/retail-client.sh release [--wait <seconds>]
 #
@@ -44,7 +44,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: retail-client.sh launch [--owner <label>] [--client-id <n>] [--game <executable>]
+usage: retail-client.sh launch [--owner <label>] [--client-id <n>] [--headless] [--game <executable>]
        retail-client.sh status
        retail-client.sh release [--wait <seconds>]
 
@@ -52,7 +52,10 @@ launch   start the retail client with --force-steam=off from an empty working
          directory, refusing while any Slay the Spire 2 client exists, and write
          the ownership record. --client-id selects the isolated save tree
          user://default/<n>/ (default 1). The game gets exactly --force-steam=off
-         and --clientId=<n>, nothing else.
+         and --clientId=<n>, plus --headless where asked for, nothing else.
+         --headless is the engine's own flag: the client runs its whole scene tree
+         on the headless display server, with no window; the retail soak runs
+         under it and the record says so.
 status   print the ownership record and every client that exists. Exit 0 when
          none does, 1 when one does.
 release  send TERM to the client the record names and wait up to --wait seconds
@@ -75,11 +78,13 @@ esac
 game="${STS2_GAME_EXECUTABLE:-}"
 owner=""
 client_id="1"
+headless=0
 wait_seconds="60"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --owner) owner="$2"; shift 2 ;;
     --client-id) client_id="$2"; shift 2 ;;
+    --headless) headless=1; shift ;;
     --game) game="$2"; shift 2 ;;
     --wait) wait_seconds="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; usage; exit 2 ;;
@@ -340,6 +345,10 @@ if [[ -n "$(ls -A "$cwd")" ]]; then
 fi
 
 arguments=(--force-steam=off "--clientId=$client_id")
+# The engine flag, last, so the game's own two stay exactly where every proof
+# read them; the soak probe measured the client under it to record and replay
+# at parity with no window at all
+if [[ "$headless" == 1 ]]; then arguments+=(--headless); fi
 
 : > "$client_log"
 (

@@ -400,4 +400,120 @@ public sealed class RunmobileSettingsTests : IDisposable
 
         Assert.True(File.Exists(Path.Combine(_root, RunmobileSettings.FileName)));
     }
+
+    // ── The retail soak's plan ───────────────────────────────────────────────
+
+    /// <summary>Off wherever the member is absent, which is every player's file.</summary>
+    [Fact]
+    public void APlayerWhoHasNeverTouchedTheFileHasNoSoakPlan()
+    {
+        Assert.Null(RunmobileSettings.Read().RetailSoak);
+        RunmobileStore.Write(RunmobileSettings.FileName, $$"""{"schema":"{{RunmobileSettings.Schema}}"}""");
+        Assert.Null(RunmobileSettings.Read().RetailSoak);
+    }
+
+    [Fact]
+    public void AWrittenPlanIsReadWhole()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$$"""
+            {"schema":"{{{RunmobileSettings.Schema}}}","retail_soak":{"runs":3,"seeds":["ABC","DEF"],
+             "character":"CHARACTER.SILENT","ascension":2,"stop_after_minutes":90}}
+            """);
+
+        var plan = RunmobileSettings.Read().RetailSoak;
+
+        Assert.NotNull(plan);
+        Assert.Equal(3, plan.Runs);
+        Assert.Equal(["ABC", "DEF"], plan.Seeds);
+        Assert.Equal("CHARACTER.SILENT", plan.Character);
+        Assert.Equal(2, plan.Ascension);
+        Assert.Equal(90, plan.StopAfterMinutes);
+        Assert.Empty(plan.Problems());
+        Assert.Null(RetailSoak.RefusalFor(RunmobileSettings.Read()));
+    }
+
+    /// <summary>A plan that is not this shape refuses the whole file the way any
+    /// malformed member does: the recorder is off and the soak with it.</summary>
+    [Theory]
+    [InlineData("""{"runs":"three","character":"CHARACTER.IRONCLAD","stop_after_minutes":1}""")]
+    [InlineData("""{"runs":1,"stop_after_minutes":1}""")]
+    [InlineData("""{"runs":1,"seeds":[null],"character":"CHARACTER.IRONCLAD","stop_after_minutes":1}""")]
+    [InlineData(""" "a string" """)]
+    public void AMalformedPlanRefusesTheWholeFile(string plan)
+    {
+        RunmobileStore.Write(RunmobileSettings.FileName, $$$"""{"schema":"{{{RunmobileSettings.Schema}}}","retail_soak":{{{plan}}}}""");
+
+        var settings = RunmobileSettings.Read();
+
+        Assert.False(settings.Readable);
+        Assert.False(settings.RecordMyRuns);
+        Assert.Null(settings.RetailSoak);
+        Assert.Contains("could not be read", RetailSoak.RefusalFor(settings), StringComparison.Ordinal);
+    }
+
+    /// <summary>A well-formed plan no night could run is refused by name, never
+    /// clamped, and the rule is game-free.</summary>
+    [Theory]
+    [InlineData("""{"runs":0,"character":"CHARACTER.IRONCLAD","stop_after_minutes":1}""", "runs is 0")]
+    [InlineData("""{"runs":1,"character":"IRONCLAD","stop_after_minutes":1}""", "not a character id")]
+    [InlineData("""{"runs":1,"character":"CHARACTER.IRONCLAD","stop_after_minutes":0}""", "stop_after_minutes is 0")]
+    [InlineData("""{"runs":1,"character":"CHARACTER.IRONCLAD","ascension":-1,"stop_after_minutes":1}""", "ascension is -1")]
+    [InlineData("""{"runs":1,"seeds":[" "],"character":"CHARACTER.IRONCLAD","stop_after_minutes":1}""", "empty seed")]
+    public void APlanNoNightCouldRunIsRefusedByName(string plan, string problem)
+    {
+        RunmobileStore.Write(RunmobileSettings.FileName, $$$"""{"schema":"{{{RunmobileSettings.Schema}}}","retail_soak":{{{plan}}}}""");
+
+        var settings = RunmobileSettings.Read();
+
+        Assert.True(settings.Readable);
+        Assert.NotNull(settings.RetailSoak);
+        Assert.Contains(problem, RetailSoak.RefusalFor(settings), StringComparison.Ordinal);
+    }
+
+    /// <summary>A soak without the recorder measures nothing, so a plan beside
+    /// <c>record_my_runs: false</c> is refused rather than played unrecorded.</summary>
+    [Fact]
+    public void APlanWithRecordingOffIsRefused()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$$"""{"schema":"{{{RunmobileSettings.Schema}}}","record_my_runs":false,"retail_soak":{"runs":1,"character":"CHARACTER.IRONCLAD","stop_after_minutes":1}}""");
+
+        Assert.Contains("record_my_runs is off", RetailSoak.RefusalFor(RunmobileSettings.Read()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFileWithNoPlanIsNotANightToRun()
+    {
+        Assert.Contains("carries no retail_soak plan", RetailSoak.RefusalFor(RunmobileSettings.Read()), StringComparison.Ordinal);
+    }
+
+    /// <summary>No control writes a plan, and every write the controls make leaves one
+    /// that is there exactly as it was written.</summary>
+    [Fact]
+    public void AControlWriteNeverEnablesOrRewritesTheSoak()
+    {
+        RunmobileSettings.SetKeepRecentRuns(7);
+        RunmobileSettings.SetShowMainMenuRow(true);
+        RunmobileSettings.RequestPurge();
+        RunmobileSettings.ClearPurgeRequest();
+        Assert.Null(JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject()["retail_soak"]);
+        Assert.DoesNotContain("retail_soak", RunmobileStore.Read(RunmobileSettings.FileName), StringComparison.Ordinal);
+
+        const string plan = """{"runs":2,"seeds":["ABC"],"character":"CHARACTER.IRONCLAD","ascension":0,"stop_after_minutes":30}""";
+        RunmobileStore.Write(RunmobileSettings.FileName, $$$"""{"schema":"{{{RunmobileSettings.Schema}}}","retail_soak":{{{plan}}}}""");
+        var before = JsonNode.Parse(plan)!.ToJsonString();
+
+        RunmobileSettings.SetKeepRecentRuns(12);
+        RunmobileSettings.SetFetchRunIndex(false);
+        RunmobileSettings.SetShowMainMenuRow(false);
+        RunmobileSettings.RequestPurge();
+        RunmobileSettings.ClearPurgeRequest();
+
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.Equal(before, written["retail_soak"]!.ToJsonString());
+        Assert.Equal(12, (int)written["keep_recent_runs"]!);
+    }
 }

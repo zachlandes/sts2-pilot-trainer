@@ -25,7 +25,7 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class ParityTests
 {
-    private const string ShortRun = "native-9F8CY60C5BK7-20260906-005737";
+    internal const string ShortRun = "native-9F8CY60C5BK7-20260906-005737";
 
     [GameFact]
     public void TheCommittedCorpusIsHeldToParityAndEveryRecordingWithoutAJournalIsNamed()
@@ -472,7 +472,7 @@ public sealed class ParityTests
     /// both, because the committed file names the unstamped one and a recording an
     /// older recorder wrote is never replayed.
     /// </summary>
-    private static (string ManifestPath, string JournalPath) RecordingWithAJournal(string directory)
+    internal static (string ManifestPath, string JournalPath) RecordingWithAJournal(string directory)
     {
         var source = Path.Combine(Arbiter.RepoRoot, "manifests", $"{ShortRun}{RecordingLibrary.ManifestExtension}");
         var replayedPath = Path.Combine(directory, "replayed.json");
@@ -532,7 +532,7 @@ public sealed class ParityTests
 
     /// <summary>The same recording under another run id, manifest and journal both,
     /// so a scratch corpus can hold it twice without the child artifacts colliding.</summary>
-    private static string CopyUnder(string manifestPath, string journalPath, string directory, string runId)
+    internal static string CopyUnder(string manifestPath, string journalPath, string directory, string runId)
     {
         var manifestCopy = Path.Combine(directory, $"{runId}{RecordingLibrary.ManifestExtension}");
         var journalCopy = Path.Combine(directory, $"{runId}{RunJournal.FileExtension}");
@@ -542,7 +542,7 @@ public sealed class ParityTests
     }
 
     /// <summary>Edits one decision's line in place and returns its verb.</summary>
-    private static string Rewrite(string journalPath, int seq, Action<JsonObject> edit)
+    internal static string Rewrite(string journalPath, int seq, Action<JsonObject> edit)
     {
         var lines = File.ReadAllLines(journalPath).ToList();
         var index = lines.FindIndex(line =>

@@ -248,6 +248,10 @@ internal static class RecordedFightRun
     /// </summary>
     internal static bool IsWatching => Phase == JourneyPhase.Watching;
 
+    /// <summary>Whether no trainer run exists at all, which is what another driver of
+    /// this client - the retail soak - asks before it starts one of its own.</summary>
+    internal static bool Idle => Phase == JourneyPhase.None;
+
     /// <summary>
     /// Starts the recording's run and walks it to the fight.
     ///

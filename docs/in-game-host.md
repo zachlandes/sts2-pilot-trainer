@@ -779,6 +779,15 @@ The pump's own docstring had already named the failure - "a batch settled togeth
 give two decisions one state and put the second one's effects on the first" - and this
 arrived by a route the pump could not see.
 
+**A fifth, found by the retail soak probe, in the poll between two decisions.**
+The pump reads after a decision once the engine has been quiet for two of its polls, and the fight observer attaches once the decision that opened the fight is written.
+A decision made inside that window - fifty to two hundred milliseconds after the engine was ready for it - was misattributed or dropped, and the recording finished `integrity = complete` every time: three Strikes played fourteen milliseconds after a hand was dealt, one of them lost and the map move's after-reading short a card; a potion drunk on a first turn, executed at an executor nobody was subscribed to, the belt reading empty a decision later; a rest option pressed two hundred milliseconds after arrival, its upgraded card in the map move's after-reading and its screen answer refused at parity as one no screen asked for.
+For a person the window is a click within a poll of a screen becoming ready; for a driver it is every decision, which is why the probe's driver paced on the recorder and why the soak's does.
+The recorder's own rule is `RunRecorder.CloseStrandedDecisions`, the run-level counterpart of the fight sink's `CloseStrandedFightStep`: a decision's before-reading is taken in its prefix, and where a decision announced before it is still unread, that reading closes it - the earlier decision's work is done and the engine is quiet, so the instant is the state it left and the pump's debounce had simply not fired - or refuses both by name, because with the earlier decision's work still in flight neither reading names a state the run was settled in.
+A fight's first action is the same rule at `ActionQueueSynchronizer.RequestEnqueue`: `RunRecorder.WatchTheFightBefore` closes the fight-opening decision on the reading the action begins from, commits it there and then, and attaches the observer ahead of the executor; an action that would still run unwatched is refused rather than let by.
+`RunRecorder.Settled` is the one reading a driver paces on - every decision announced has been read after, and inside a fight the observer is watching - with a decision whose work handed the run to the player on a card screen or prompt counted as settled, since it settles on the answer.
+`RecorderPacingTests` stands each shape in headlessly, by making the next decision before the recorder's clock is pumped, and holds the recording to parity or to the refusal.
+
 ## One the arbiter learned and the host did not
 
 Different in kind from the traps above and worth its own heading, because nothing about
@@ -1245,6 +1254,33 @@ built by `NActHistoryEntry.Create`, one per floor, under `NRunHistory`'s
 floor identity a "play this fight" action would need - alongside its private
 `MapPointHistoryEntry`, which is where the room type and encounter live.
 
+## The retail soak, the one module with no surface
+
+`RetailSoakModule` is the fourth module and the only one that draws nothing: an instrument, not a feature.
+It plays standard singleplayer runs from inside the retail client with the recorder attached, so the recorder can be held to parity over a night of play on the client's own clock, which is where every timing defect the field has found has lived; [release-bar.md](release-bar.md), "The third number", owns the figure and `scripts/retail-soak.sh` runs a night.
+It is off in every player's client: the only thing that turns it on is a `retail_soak` object in the profile's `settings.json`, which no control writes, `RunmobileSettings.Set` preserves untouched, and only the soak script writes - whole, into a dedicated profile, refusing a settings file that is not already a soak's unless told to take it.
+The schema stays v1 because the member is optional; a file it cannot read whole refuses the soak with the recorder, and a well-formed plan no night could run - no runs, no deadline, an id that is not a character's, an ascension the profile has not unlocked - is refused by name in the log rather than clamped.
+It refuses to run with `record_my_runs` off, in a multiplayer session, with another Runmobile run live, and where the shell could not adopt the game.
+
+**The arming point is the main menu, not the singleplayer submenu.**
+The retention duty and the mode card hang on `NSingleplayerSubmenu._Ready`, and that submenu is created the first time somebody presses Singleplayer; in a headless client nobody presses anything.
+So the soak arms from an `NMainMenu._Ready` postfix, once per process, and its task then waits for the game's own startup phase to read `Done` and for a save profile to be chosen before it reads a setting, because the main menu is built one phase before either and the menu row's rule about not adopting there stands.
+Only with a plan in hand does it call `RunmobileMod.EnsureAdopted`, which is the same adoption and the same retention pass the submenu's press would have made.
+
+**What it presses is what a click presses.**
+The soak probe of 2026-09-19 measured the game's own autoplayer handlers constructed from the mod, with its non-interactive mode off, and settled the design: the map, rewards, card-reward, rest, shop, treasure, deck, bundle, relic, crystal-sphere and game-over handlers run cleanly, press the real buttons and record and replay at parity, and are reused unchanged; the combat handler applies 999 Plating and Regen and 200 Strength through `PowerCmd` and plays through `CardCmd.AutoPlay`, which spends no energy, constructs no `PlayCardAction` and wedges the fight capture, and the event handler kills an event's enemies through `CreatureCmd.Kill`, so both are replaced; and the autoplayer's `AutoSlayCardSelector` answers every prompt engine-side through `CardSelectCmd.UseSelector`, where a selector on the stack opens no prompt and the recorder writes nothing, so the hand prompt and the in-fight card grid are pressed the way a person presses them.
+The fight is `CardModel.TryManualPlay`'s request - `RequestEnqueue(new PlayCardAction)` - an `EndPlayerTurnAction` enqueued as the end-turn button enqueues it, and `PotionModel.EnqueueManualUse`, under `SurvivalPlayRule`, the survival scout's rule R3.
+`RetailSoakGuardTests` reads the soak's IL through the engine's one reader and refuses every call to `PowerCmd`, `CreatureCmd.Kill`, `CardSelectCmd.UseSelector`, `CardCmd.AutoPlay`, the seed override, an FTUE or epoch write or a preference setter, closures and state machines included, and reads the reused handlers one level deep to the same list; it also holds the module to adding no node and asking `MayDraw` for nothing.
+
+**The event loop is state-driven.**
+After every option press the overlays are drained and the next state is read off the scene and classified: another option to press, an ancient's dialogue to advance, a fight to hand to the fight loop, a screen to drain through its handler, or the event over with the map open; a state that is none of those within ten seconds is unknown.
+An unknown state - a room type, a screen that is not a card grid, a transition nothing here names - is logged with the floor, act, room and coordinate it was met on and the run is given up through the game's own pause menu, Give Up and its confirmation, so the recorder finishes the recording; nothing is guessed through.
+
+**Every decision is paced on the recorder** - `RunRecorder.Settled`, the reading the fifth recorder finding above is about - and the bounds are the game's own: each reused handler's `Timeout`, the game's combat and event handlers' bounds for the two the soak replaces (five and three minutes; the room default of two runs out on a boss fight at the player's speed), and `AutoSlayConfig.runTimeout` of twenty-five minutes per run, with the night's own deadline cancelling a run in flight.
+A bound that runs out gives the run up the same way an unknown state does.
+After the plan's count or the deadline the module writes `soak-done` under the store - the runs, their seeds and outcomes - and calls `NGame.Quit`, the menu's own quit, so the script's release finds a client already tearing down.
+A saved run left by a previous night's cut-off is continued through the menu's own Continue and given up once it stands in its room, so the recorder picks its journal back up and finishes it rather than leaving a journal with no manifest.
+
 ## Running it
 
 ```bash
@@ -1253,8 +1289,10 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/install-mod.sh                 # package, prepare, and install the mod
 ./scripts/install-mod.sh --uninstall     # remove it again
 ./scripts/retail-client.sh launch        # the retail client, --force-steam=off, one owner; never through Steam
+./scripts/retail-client.sh launch --headless   # the same, on the engine's headless display server: no window
 ./scripts/retail-client.sh status        # whose client is running, if any
 ./scripts/retail-client.sh release       # TERM the owned client and wait; never a forced kill
+./scripts/retail-soak.sh --runs 6 --stop-after-minutes 360 --client-id 2   # a night of the retail soak; docs/release-bar.md
 ./scripts/protected-files.sh snapshot before.ledger   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  before.ledger   # ... and say what a session changed
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
@@ -1294,6 +1332,7 @@ Nothing sends any other signal, and a client the record does not name is never s
 
 Once per save tree, the game itself needs two clicks that no script does for it: accepting the mods warning in the Mods screen, which is what lets any mod load in that tree, and disabling every mod the recording did not have, which is what keeps a session from re-saving other mods' defaults into the shared `mod_configs/` and what makes the teardown a matter of seconds.
 `--client-id` picks the tree - `default/1/` by default, the one every retail proof so far ran in - and a fresh id is a fresh tree with both clicks owed again.
+`--headless` appends the engine's own flag after the game's two: the soak probe measured the client under it to run its whole scene tree on the headless display server - main menu, run start, fights, every screen, give-up - recording and replaying at parity, at a twentieth of the CPU and with no window, so nothing needs focus, a display or a login session; the retail soak launches that way, and the record's `arguments` line says so.
 A double-click launcher on a machine is a `.command` file that calls the helper, so it inherits the refusal and the record instead of launching beside them; anything it wants set up first, a profile pointer say, it does before that call.
 
 `RetailClientLaunchTests` holds all of it without the game, against a stand-in executable that stops on `No appID found` without the flag and runs until TERM with it, a stand-in process table, and a stand-in `open` that records any attempt to hand the launch to Steam.

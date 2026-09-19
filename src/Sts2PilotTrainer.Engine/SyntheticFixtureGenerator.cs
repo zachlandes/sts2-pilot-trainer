@@ -1,7 +1,7 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.IO;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 

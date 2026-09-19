@@ -27,6 +27,7 @@ namespace Sts2PilotTrainer.Mod;
 /// The sharing-service endpoint is the explicit authority for outbound transfer and has no default.
 /// How many runs to keep is a standing policy, and it has a default rather than being unbounded because the recorder writes a real file per run and nothing else ever removed one.
 /// Asking for every run to be removed is a one-shot act: it is honoured once and then set to false, which is both how it stops repeating and how a player sees that it happened.
+/// The retail soak's plan is a seventh, of a kind none of the others are: an instrument's, written only by the soak script into an isolated profile, never by a control, and off wherever it is absent.
 ///
 /// Every write here edits the member it names and leaves the rest of the document as
 /// the player wrote it. That is not tidiness: the rest of the file is their own text,
@@ -111,6 +112,25 @@ internal sealed record RunmobileSettings
     /// </summary>
     [JsonPropertyName("purge_my_runs")]
     public bool PurgeMyRuns { get; init; }
+
+    /// <summary>
+    /// The nightly retail soak's plan, or null where there is none, which is the
+    /// default and the only state a player's file is ever in.
+    ///
+    /// The soak is a test instrument and not a feature: it drives standard singleplayer
+    /// runs from inside the retail client with the recorder attached, so the recorder
+    /// can be held to parity over a night's worth of real-time play. It is on only where
+    /// this member is an object, and nothing in the product writes one - no control
+    /// offers it, <see cref="Set"/> preserves it as it preserves every member it was not
+    /// asked about, and the soak script writes the whole file for an isolated profile.
+    /// The schema stays v1 because the member is optional: a build that does not know it
+    /// reads past it, and a build that does reads it only from a file it could read
+    /// whole. What the plan has to say to be run is <see cref="RetailSoakPlan.Problems"/>,
+    /// asked by the module that would run it; a file that could not be read at all is
+    /// refused here as every other member of it is, and the soak with it.
+    /// </summary>
+    [JsonPropertyName("retail_soak")]
+    public RetailSoakPlan? RetailSoak { get; init; }
 
     /// <summary>
     /// Whether the answers above are the player's own sentence or this build standing
@@ -328,5 +348,78 @@ internal sealed record RunmobileSettings
 
         settings[member] = value;
         RunmobileStore.Write(FileName, settings.ToJsonString(ManifestJson.Options) + "\n");
+    }
+}
+
+/// <summary>
+/// One night's plan for the retail soak, as the soak script writes it into the soak
+/// profile's <c>settings.json</c>.
+///
+/// Read only through <see cref="RunmobileSettings.Read"/>, so a plan that is not JSON
+/// of this shape refuses the whole file the way any malformed member does; what a
+/// well-formed plan still has to say is <see cref="Problems"/>, and the module that
+/// runs it refuses on any of them by name rather than clamping or guessing. The seed
+/// list may be empty, which asks for a fresh random seed per run the way the game's
+/// own lobby rolls one when the player writes none.
+/// </summary>
+internal sealed record RetailSoakPlan
+{
+    /// <summary>How many runs the night plays before it stops.</summary>
+    [JsonPropertyName("runs")]
+    public int Runs { get; init; }
+
+    /// <summary>The seeds the runs use in order, cycling; empty for a fresh seed each run.</summary>
+    [JsonPropertyName("seeds")]
+    public IReadOnlyList<string> Seeds { get; init; } = [];
+
+    /// <summary>The character every run is played as, by the game's own id
+    /// (<c>CHARACTER.IRONCLAD</c>).</summary>
+    [JsonPropertyName("character")]
+    public required string Character { get; init; }
+
+    /// <summary>The ascension level every run is started at.</summary>
+    [JsonPropertyName("ascension")]
+    public int Ascension { get; init; }
+
+    /// <summary>The night's deadline, after which no new run is started, in minutes
+    /// from the moment the soak armed.</summary>
+    [JsonPropertyName("stop_after_minutes")]
+    public int StopAfterMinutes { get; init; }
+
+    /// <summary>The prefix every character id carries, which is the one thing about a
+    /// character a game-free check can hold a plan to.</summary>
+    internal const string CharacterIdPrefix = "CHARACTER.";
+
+    /// <summary>
+    /// Everything this plan says that no night could run on, in words; empty for a
+    /// plan the module may start.
+    ///
+    /// Game-free, because the settings record is: whether the character exists on this
+    /// build and whether the profile has unlocked the ascension are the module's
+    /// questions, asked of the game once it has one.
+    /// </summary>
+    internal IReadOnlyList<string> Problems()
+    {
+        var problems = new List<string>();
+        if (Runs < 1) problems.Add($"runs is {Runs.ToString(CultureInfo.InvariantCulture)}, and a night plays at least one.");
+        if (Ascension < 0) problems.Add($"ascension is {Ascension.ToString(CultureInfo.InvariantCulture)}, which is not an ascension level.");
+        if (StopAfterMinutes < 1)
+        {
+            problems.Add(
+                $"stop_after_minutes is {StopAfterMinutes.ToString(CultureInfo.InvariantCulture)}, and a night " +
+                "has a deadline.");
+        }
+
+        if (string.IsNullOrWhiteSpace(Character) || !Character.StartsWith(CharacterIdPrefix, StringComparison.Ordinal))
+        {
+            problems.Add($"character '{Character}' is not a character id; one reads {CharacterIdPrefix}IRONCLAD.");
+        }
+
+        foreach (var seed in Seeds)
+        {
+            if (string.IsNullOrWhiteSpace(seed)) problems.Add("seeds holds an empty seed.");
+        }
+
+        return problems;
     }
 }

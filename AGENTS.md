@@ -12,6 +12,7 @@ not released yet. See [README.md](README.md).
 ./scripts/package-mod.sh    # build the platform package without game content
 ./scripts/install-mod.sh    # package and install the mod, preparing game inputs locally
 ./scripts/retail-client.sh launch|status|release   # the retail client: --force-steam=off, one owner record, TERM and wait; never through Steam
+./scripts/retail-soak.sh --runs 6 --stop-after-minutes 360 --client-id 2   # a night of the retail soak, headless, and the third release figure over what it recorded
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
@@ -238,12 +239,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 181
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 279 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 184
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 290 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 279.
+datum where it runs, so a run with the game reports more cases than 290.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -368,6 +369,7 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 **A retail client is started by `./scripts/retail-client.sh` and by nothing else, never through Steam.**
 Asking Steam to launch beside an existing client is refused with `Game already running`, and the executable opened by hand stops on `No appID found`; both recurred until the launch had one owner.
 The helper refuses while any Slay the Spire 2 client exists, launches the retail executable with MegaCrit's own `--force-steam=off` and an explicit `--clientId` from an empty working directory - the launch proved on v0.111.0 to initialise no Steamworks, touch no Steam save tree and disturb no Steam session elsewhere - and writes the one ownership record every worker on the machine reads.
+`--headless` appends the engine's own flag, measured to run the whole scene tree with no window at parity; the retail soak launches under it.
 `release` sends TERM to exactly that process and waits, because the client's teardown is anywhere from seconds to forty minutes; nothing here force-kills, and nothing signals a client the record does not name.
 `RetailClientLaunchTests` holds both failure paths against a stand-in executable without the game; [docs/in-game-host.md](docs/in-game-host.md), "Launching the retail client", owns the procedure and its evidence.
 
@@ -393,8 +395,10 @@ On this build that leaves the first fight reachable by walking, every later figh
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns the accepted parchment design it draws.
 
-**The mod a player installs is `Runmobile`, and recorded fights, recording and the run library are its modules.**
+**The mod a player installs is `Runmobile`, and recorded fights, recording and the run library are its modules; the retail soak is its one instrument.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
+`RetailSoakModule` draws nothing and is off unless an isolated profile's `settings.json` carries a `retail_soak` plan, which only `scripts/retail-soak.sh` writes: it arms at the main menu, adopts the game once it has a plan, starts standard runs through `NGame.StartNewSingleplayerRun` with the recorder attached, plays them through what a click issues - `TryManualPlay`, an enqueued `EndPlayerTurnAction`, `EnqueueManualUse`, under `SurvivalPlayRule` - and the game's own screen and room handlers, replaces the game's cheating combat and event handlers with its own state-driven loops, paces every decision on `RunRecorder.Settled`, gives a run up through the pause menu at any state it does not know, writes `soak-done` and calls the game's own quit; `RetailSoakGuardTests` refuses by IL every call to `PowerCmd`, `CreatureCmd.Kill`, `CardSelectCmd.UseSelector`, `CardCmd.AutoPlay`, the seed override, an FTUE, epoch or preference write.
+[docs/in-game-host.md](docs/in-game-host.md), "The retail soak", owns it and [docs/release-bar.md](docs/release-bar.md) owns its figure.
 Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MayDraw` then says no to every surface, including a surface a module draws from its own Harmony patches.
 A module asks that gate rather than reading the session for itself, because whether a surface may be put in front of a player is not a feature's decision, and a no draws nothing at all - not a greyed control, not a popup saying why, not an indicator saying a run is not being recorded.
 Whether a run may be *recorded* is the other question and has the other answer: `RunRecorder.Attach` reads `GameSessionWatch.Observed` and asks `RunSession.MayBeRecorded` directly, which is the reading the recorder paragraph below requires.
@@ -491,6 +495,7 @@ That record cannot see an act change, because a new or alternative act keeps eve
 `TheFixturesProgressionIsTheGamesDefaultOne` holds `RecordedActWalk.Acts` alone to the default act at each index; the record diff is what flags every other fixture.
 When that record diffs, the other fixture progression literals must be updated by hand as well - `SyntheticFixtureGenerator` and its `WholeAct` and `ScreenAtBoundary` partials, `RetailBranchProbe`, `HeadlessRuns`, `HeadlessGameplayCaptureTests`, `RecorderContinueTests`, `RecorderTimingTests`, `RecorderSeamDefaultTests`, `CardPromptCaptureTests` and `PlayerFightObserverTests` - because they do not yet share one owner and `StartRun` accepts any shipped act list.
 The step that ends a fight the run survives is read once the engine has settled, through the pump, because the game rolls the rewards after the killing action finishes and a reading taken before that names a state no replay holds; the retail client rolls them later still, on its own clock, so a resume matches that one entry through the next decision's `before_digest` and never through its own (`RunCapture.MatchesTheRestoredLootScreen`), and no other entry gets that latitude.
+A decision made before the recorder has read after the one before it is closed on the new decision's own before-reading where the earlier one's work is done and the engine quiet, and refused by name where it is not (`RunRecorder.CloseStrandedDecisions`, the run-level `CloseStrandedFightStep`); a fight's first action does the same at `RequestEnqueue` and attaches the observer ahead of the executor (`RunRecorder.WatchTheFightBefore`), because inside that poll-wide window a play, a potion and a rest option each went unrecorded or misattributed with `integrity = complete`; `RunRecorder.Settled` is the one reading a driver paces on and `RecorderPacingTests` holds all three shapes.
 Every other decision is read once the engine's own work for it is finished, with one exception four decisions' work opts into - the event option's, the purchase's, the rest option's and the reward claim's: a run handed to the player inside that work - a rewards set on offer, the Crystal Sphere's screen up - which `RunRecorder.HandedToThePlayerDuring` owns, asked of that decision and never of the run, because a relic bought at the shop, a heal under Tiny Mailbox or a relic claimed off Neow's Bones offers a set from inside its own task, which finishes only once the set is answered, and the driver replays each the same way through `RunDriver.SettleOrHandOver` rather than by awaiting a task the answering decisions cannot reach; an event option's work is a task the synchronizer keeps to itself, read on its way past through `EventOption.Chosen`, because a decision settled on the action queue alone was read during the hit animation Brain Leech's RIP awaits before it rolls its reward.
 A loot set the map move declines is read from the move's own before-reading on both sides, never at the funnel, because the move has advanced the act floor and the coordinate before it leaves the room and the driver declines the set before the move; `RecorderTimingTests` holds both readings to `TraceParity`, and [docs/in-game-host.md](docs/in-game-host.md) owns each mechanism.
 That rollback stays continuous, keeps the undone decisions as discarded evidence in the journal and manifest - `source.native.save_points` beside them, captured, present and empty where the game saved only at run start - and resumes the replayable history at the save's decision; the gate replays every branch from that decision and holds its state either end, exactly.
