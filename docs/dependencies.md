@@ -11,10 +11,10 @@ to be awkward. What a published mod asks a player to install is not.
 | **Bundled into a release** | Nothing yet. | Only small, permissively licensed, build-time files. A runtime mod DLL can never be bundled: it would collide with the player's own copy. |
 | **Optional integrations** | None wired. STS2MCP and RunReplays are the plausible candidates. | Detect at runtime, degrade silently, never declare in a manifest's `dependencies`. A hard dependency turns an integration into a requirement. |
 | **Developer / build-time** | .NET 9 SDK. Mono.Cecil, for the bootstrap's declared IL patches, of which this build has none. Microsoft.CodeAnalysis.CSharp, for reading the two declarations `docs/manifest-format.md` is generated from. xunit. | Lives in the build files. Never in a user-facing instruction. |
-| **Proof-only** | The vendored Godot stubs; the prepared, IL-patched copy of the game assembly; `yt-dlp` and `ffmpeg` for reading frames; the hand transcription. | Must not appear on any user path. Enforced by the project boundary: nothing a published mod would ship references `tools/`. |
+| **Proof-only** | The vendored Godot stubs; the prepared copy of the game assembly (byte for byte the installed one on this build, see [headless-fidelity.md](headless-fidelity.md)); `yt-dlp` and `ffmpeg` for reading frames; the hand transcription. | Must not appear on any user path. Enforced by the project boundary: nothing a published mod would ship references `tools/`. |
 
 The line that must not blur: this proof runs on a machine with mods installed, a
-patched copy of the game assembly, and a video pipeline. **None of that is a user
+prepared copy of the game assembly, and a video pipeline. **None of that is a user
 requirement**, and the way to keep it that way is a directory boundary plus a check
 on what a release archive actually contains — not an intention.
 

@@ -29,9 +29,9 @@ internal static class AssemblyResolution
     internal static void Install()
     {
         // Inside a running game this host is a guest, and the game assembly is
-        // already loaded. Probing a prepared copy there could bind a second,
-        // IL-patched sts2 into the process: it would look right down to its path and
-        // be entirely uninitialised, which is a crash rather than a wrong answer.
+        // already loaded. Probing a prepared copy there could bind a second sts2
+        // into the process: it would look right down to its path and be entirely
+        // uninitialised, which is a crash rather than a wrong answer.
         // The host that owns the process is the one that gets to resolve.
         if (AppDomain.CurrentDomain.GetAssemblies().Any(loaded => loaded.GetName().Name == "sts2")) return;
 
