@@ -14,7 +14,7 @@ public sealed record GameBuildRecord(
     string Commit,
     string Branch,
     string PristineAssemblySha256,
-    string IdDatabaseHash)
+    string MainAssemblyHash)
 {
     public static GameBuildRecord Read(string path)
     {
@@ -26,7 +26,7 @@ public sealed record GameBuildRecord(
         string Required(string key) => values.TryGetValue(key, out var value) && value.Length > 0
             ? value : throw new InvalidDataException($"Game build record {path} is missing '{key}'.");
         return new(Required("version"), Required("build_date_utc"), Required("commit"), Required("branch"),
-            Required("pristine_assembly_sha256"), Required("id_database_hash"));
+            Required("pristine_assembly_sha256"), Required("main_assembly_hash"));
     }
 
     public void Write(string path)
@@ -34,7 +34,7 @@ public sealed record GameBuildRecord(
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         File.WriteAllText(path,
             $"version={Version}\nbuild_date_utc={BuildDateUtc}\ncommit={Commit}\nbranch={Branch}\n" +
-            $"pristine_assembly_sha256={PristineAssemblySha256}\nid_database_hash={IdDatabaseHash}\n");
+            $"pristine_assembly_sha256={PristineAssemblySha256}\nmain_assembly_hash={MainAssemblyHash}\n");
     }
 
     public bool Matches(GameBuildRecord other) => this == other;
@@ -52,7 +52,7 @@ public sealed record GameBuildRecord(
         Compare("commit", Commit, other.Commit);
         Compare("branch", Branch, other.Branch);
         Compare("pristine_assembly_sha256", PristineAssemblySha256, other.PristineAssemblySha256);
-        Compare("id_database_hash", IdDatabaseHash, other.IdDatabaseHash);
+        Compare("main_assembly_hash", MainAssemblyHash, other.MainAssemblyHash);
         return differences;
     }
 }
