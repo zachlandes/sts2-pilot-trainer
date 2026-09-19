@@ -106,6 +106,11 @@ public static partial class SyntheticFixtureGenerator
     private static bool _travelledFreely;
     private static bool _askMet;
 
+    /// <summary>Whether the walk under way has chosen the event option its policy
+    /// names, so a page that offers it again is answered by today's rule, unless
+    /// the policy is after the run's end on it.</summary>
+    private static bool _choseTheAskedOption;
+
     private static ReplayManifest GenerateWholeAct()
     {
         var identity = RequireSupportedBuild();
@@ -199,8 +204,8 @@ public static partial class SyntheticFixtureGenerator
             (afterEachDecision, _policy.AskInTheNextAct ? RequiredTypes
                 : _policy.RouteThrough is { } through ? [.. through]
                 : visitEveryRoomType ? RequiredTypes : []);
-        (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _travelledFreely, _askMet) =
-            (false, false, false, false, false);
+        (_declinedACardReward, _drankOnTheMap, _discardedOnTheMap, _travelledFreely, _askMet, _choseTheAskedOption) =
+            (false, false, false, false, false, false);
         _beforeTheAskedAct = _policy.AskInTheNextAct;
         try
         {
@@ -783,7 +788,10 @@ public static partial class SyntheticFixtureGenerator
         var options = RunManager.Instance.RestSiteSynchronizer.GetLocalOptions().ToList();
         var wanted = Hurt(session) ? RestSiteHeal : RestSiteSmith;
         var index = _policy.RestOption is { } asked ? options.FindIndex(option => option.OptionId == asked) : -1;
-        MeetTheAskIf(session, index >= 0);
+        // A rest asked for after an event counts only once the event's option was
+        // chosen, because the site the route passes on the way there is not the one
+        // the walk is after
+        MeetTheAskIf(session, index >= 0 && (_policy.EventOptionKey is null || _choseTheAskedOption));
         if (index < 0) index = options.FindIndex(option => option.OptionId == wanted);
         if (index < 0) index = options.FindIndex(option => option.OptionId == RestSiteHeal);
 
@@ -998,6 +1006,9 @@ public static partial class SyntheticFixtureGenerator
             var local = RunManager.Instance.EventSynchronizer?.GetLocalEvent();
             if (local is null || local.IsFinished) return;
             if (session.RunState.CurrentRoom is not EventRoom) return;
+            // An event whose option ended the run may still have set its next page:
+            // the game is over and nothing on it is a decision
+            if (RunEnding.Reading is not null) return;
 
             if (++pages > EventPageLimit)
             {
@@ -1020,9 +1031,18 @@ public static partial class SyntheticFixtureGenerator
                 ("event_id", local.Id.ToString()),
                 ("option_index", index.ToString(CultureInfo.InvariantCulture)),
                 ("option_key", key));
-            // The option is the ask, unless the policy is after a reward the option's
-            // fight earns, which is claimed off that fight's loot screen
-            MeetTheAskIf(session, local.Id.ToString() == _policy.EventId && key == _policy.EventOptionKey && _policy.RewardKindToClaim is null);
+            // The option is the ask, unless the policy is after something past it - a
+            // reward the option's fight earns, claimed off that fight's loot screen, a
+            // rest taken after the event - or after the run's end on it, which the
+            // game announces from inside the option's own work
+            var chosenTheAskedOption = local.Id.ToString() == _policy.EventId && key == _policy.EventOptionKey;
+            if (chosenTheAskedOption) _choseTheAskedOption = true;
+            MeetTheAskIf(session, chosenTheAskedOption && !_policy.AsksPastTheEvent && !_policy.ChooseItUntilTheRunEnds);
+            if (chosenTheAskedOption && _policy.ChooseItUntilTheRunEnds && RunEnding.Reading is not null)
+            {
+                MeetTheAskIf(session, true);
+                return;
+            }
 
             // An option whose own work offers rewards - a courier's potions, a
             // trader's relic - is answered before the next page, the way a blessing's
@@ -1050,8 +1070,10 @@ public static partial class SyntheticFixtureGenerator
             // The option asked for is taken once, whatever it says it does to the
             // player - a row that asks for the Trial's double-down asks for the
             // abandon it opens - and never a second time where the page keeps
-            // offering it, as that page does
-            var asked = _askMet || _policy.EventOptionKey is null
+            // offering it, as that page does; a walk after the run's end takes it
+            // every time the page offers it, until the game ends the run on it
+            var takenAlready = _askMet || (_choseTheAskedOption && !_policy.ChooseItUntilTheRunEnds);
+            var asked = takenAlready || _policy.EventOptionKey is null
                 ? -1
                 : options.ToList().FindIndex(option => !option.IsLocked && RunDriver.OptionKey(option) == _policy.EventOptionKey);
             if (asked >= 0) return asked;

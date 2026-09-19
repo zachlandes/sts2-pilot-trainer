@@ -378,6 +378,61 @@ public static partial class DecisionSurface
         return locked.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
     }
 
+    /// <summary>
+    /// The options of an event that the run's own character is never offered, each
+    /// with the character it is withheld from: an event that offers one option per
+    /// character but the one played - Colorful Philosophers, which offers a card of
+    /// every other character's pool - constructs each under a guard comparing the
+    /// owner's <c>CharacterModel.CardPool</c> with the option's pool and skipping the
+    /// construction where they are equal. Read off the IL as the <c>beq</c> that
+    /// compares what the <c>CardPool</c> getter returned, in a member that constructs
+    /// an option and reads a pool's <c>EnergyColorName</c> for its key, the reading
+    /// behind <see cref="ExcusalClass.OfferedOnlyToAnotherCharacter"/>; the keys are
+    /// the ones <see cref="RuntimeBuiltOptionKeys"/> derives for the event, and the
+    /// character each is withheld from is the one whose pool's name ends it. Empty for
+    /// an event with no such guard, and for an ancient.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> OptionsWithheldFromTheCharacter(string eventId)
+    {
+        EngineHost.Start();
+        var model = EventModels().FirstOrDefault(candidate => candidate.Id.ToString() == eventId);
+        if (model is null || model is AncientEventModel) return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var cardPool = typeof(CharacterModel).GetProperty(nameof(CharacterModel.CardPool), Every)?.GetGetMethod()
+            ?? throw new InvalidOperationException("CharacterModel.CardPool is not declared on this build.");
+        var energyColorName = typeof(CardPoolModel).GetProperty(nameof(CardPoolModel.EnergyColorName), Every)?.GetGetMethod()
+            ?? throw new InvalidOperationException("CardPoolModel.EnergyColorName is not declared on this build.");
+
+        var guarded = OwnMembersOf(model.GetType()).Any(member =>
+            ChoiceEntryPoints.ConstructionsIn(member, typeof(EventOption)).Count > 0
+            && ChoiceEntryPoints.Callees(member).Contains(energyColorName)
+            && ChoiceEntryPoints.ComparisonsWith(member, cardPool).Contains(nameof(OpCodes.Beq), StringComparer.Ordinal));
+        if (!guarded) return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var keys = RuntimeBuiltOptionKeys(model)
+            ?? throw new InvalidOperationException(
+                $"{model.Id} guards an option by the owner's card pool, and DecisionSurface.RuntimeBuiltOptionKeys derives " +
+                "no keys for it; the derivation is missing.");
+        var withheld = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var character in ModelDb.AllCharacters)
+        {
+            var suffix = "." + character.CardPool.EnergyColorName.ToUpperInvariant();
+            foreach (var key in keys.Where(key => key.EndsWith(suffix, StringComparison.Ordinal)))
+            {
+                withheld[key] = character.Id.ToString();
+            }
+        }
+
+        if (withheld.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"{model.Id} guards an option by the owner's card pool, and none of the keys derived for it ends in a " +
+                "character's pool name; the guard or the derivation reads another build.");
+        }
+
+        return withheld;
+    }
+
     private static IReadOnlyList<string> OptionKeysOf(EventModel model)
     {
         if (model is AncientEventModel ancient)
@@ -1062,6 +1117,7 @@ public static partial class DecisionSurface
                 else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
                 if (TitleKeyedOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
                 if (NotChoosableOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotChoosable;
+                if (OptionsWithheldFromTheCharacter(eventId).ContainsKey(key)) yield return ExcusalClass.OfferedOnlyToAnotherCharacter;
 
                 // A blessing granting a relic the game allows only with another player
                 // is never offered to the run the recorder records

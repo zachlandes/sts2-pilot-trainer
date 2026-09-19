@@ -62,6 +62,15 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// event and option <c>DecisionExcusals</c> credits to this test has a row, and
 /// every row's points are credited.
 ///
+/// The blessing rows are the fifth table: one per relic Neow deals that produces no
+/// seam, each on a seed hunted so Neow offers it, the opening answered by the relic's
+/// id and nothing asked past it; with the producer rows they are every blessing the
+/// build offers a singleplayer run, and the table is held to that. Beside the tables
+/// stands the loss outside a fight, which holds on to the Slippery Bridge until the
+/// game ends the run on the option, so the recorder's end on a death the killing
+/// decision's own work announces is proved here the way the won run's is in
+/// <c>HeadlessGameplayCaptureTests</c>.
+///
 /// What no row here can reach is what <c>DecisionExcusals</c> leaves excused with a
 /// reason of its own: what the headless host has no screen for, the undo of an ended
 /// turn, and every point only the second act on deals - Darv's options, the events
@@ -217,6 +226,87 @@ public sealed class GeneratedCoverageTests
         }
 
         RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The blessing rows, by relic: every relic Neow deals that produces no
+    /// seam, each on the first candidate seed whose opening offers it and whose walk
+    /// took it (<c>SeedHunt.Find</c> over its own candidates on v0.111.0). Obtaining
+    /// the relic is the whole ask, so the recording is the blessing and the row
+    /// retires the option alone.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> BlessingRows = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["RELIC.ARCANE_SCROLL"] = "N2E2AGFGSN",
+        ["RELIC.BOOMING_CONCH"] = "RAGWB3H44W",
+        ["RELIC.CURSED_PEARL"] = "C1GAV23WHA",
+        ["RELIC.DOWSING_ROD"] = "8CKSJT78DB",
+        ["RELIC.FISHING_ROD"] = "S7LTRQKC10",
+        ["RELIC.GOLDEN_PEARL"] = "KNU8ZJM21D",
+        ["RELIC.LARGE_CAPSULE"] = "BEWP9FJU9V",
+        ["RELIC.LEAFY_POULTICE"] = "HQUHYBESLV",
+        ["RELIC.NEOWS_SACRIFICE"] = "X5KY7YB3AE",
+        ["RELIC.NEOWS_TALISMAN"] = "HCM40F3ZGY",
+        ["RELIC.NEOWS_TORMENT"] = "RAGWB3H44W",
+        ["RELIC.NUTRITIOUS_OYSTER"] = "BEWP9FJU9V",
+        ["RELIC.PHIAL_HOLSTER"] = "0WA4C6C2KF",
+        ["RELIC.SILKEN_TRESS"] = "0WA4C6C2KF",
+        ["RELIC.SILVER_CRUCIBLE"] = "RAGWB3H44W",
+        ["RELIC.STONE_HUMIDIFIER"] = "0WA4C6C2KF",
+    };
+
+    public static IEnumerable<object[]> BlessingRelics() => BlessingRows.Keys.Order(StringComparer.Ordinal).Select(relic => new object[] { relic });
+
+    /// <summary>
+    /// Each blessing row on its own hunted seed: Neow offers the relic, the walk takes
+    /// the blessing through the recorded decision naming it, the recording projects to
+    /// the option, and a fresh replay reproduces the journal decision for decision.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(BlessingRelics))]
+    public void ABlessingRowTakesTheBlessingAndReplaysToParity(string relic)
+    {
+        var seed = BlessingRows[relic];
+        Assert.True(
+            SeedHunt.ReadOpening(seed).Deals(relic, SeedHunt.Dealer.Neow),
+            $"seed {seed} no longer offers {relic} at Neow: the game's RNG has moved, so rerun SeedHunt.Find for this row");
+
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(new WalkPolicy { NeowRelic = relic }, seed, visitEveryRoomType: false);
+        Assert.True(
+            recorded.AskMet,
+            $"the walk finished without taking the {relic} blessing; actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+        Assert.Contains(recorded.Manifest.Actions, action => Deals(action, relic));
+        Assert.Contains(DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic), DecisionFacts.Of(recorded.Manifest));
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The blessing rows and the producer rows' Neow rows are together every
+    /// blessing the build offers, less the two with rows elsewhere: Winged Boots,
+    /// taken by <c>ReplayRefusalRegressionTests</c>' flight row, and Massive Scroll,
+    /// which Neow offers only to a run with another player in it. A blessing a game
+    /// update adds is a row somebody has to hunt a seed for, and a relic in both
+    /// tables is a walk for nothing.</summary>
+    [GameFact]
+    public void TheBlessingRowsAndTheProducerRowsAreEveryBlessingTheBuildOffers()
+    {
+        var offered = DecisionSurface.EventOptionKeys()
+            .Where(option => option.EventId == DecisionFacts.NeowEventId)
+            .Select(option => option.Key)
+            .ToList();
+        Assert.All(offered, key => Assert.StartsWith("RELIC.", key, StringComparison.Ordinal));
+
+        var producerRows = ProducerRows.Values.Where(row => row.Dealer == SeedHunt.Dealer.Neow).Select(row => row.Relic).ToList();
+        Assert.Empty(producerRows.Intersect(BlessingRows.Keys, StringComparer.Ordinal));
+        Assert.All(BlessingRows.Keys, relic => Assert.DoesNotContain(
+            DecisionSurface.ProducerMap(), seam => seam.Producers.Contains(relic, StringComparer.Ordinal)));
+
+        string[] elsewhere = ["RELIC.WINGED_BOOTS", "RELIC.MASSIVE_SCROLL"];
+        Assert.True(DecisionSurface.OfferedOnlyWithAnotherPlayer("RELIC.MASSIVE_SCROLL"));
+        Assert.Equal(
+            offered.Order(StringComparer.Ordinal),
+            BlessingRows.Keys.Concat(producerRows).Concat(elsewhere).Order(StringComparer.Ordinal));
     }
 
     /// <summary>
@@ -391,9 +481,12 @@ public sealed class GeneratedCoverageTests
     /// the option's fight ends on, which is then the ask rather than the option.</param>
     /// <param name="FightsFirst">How many fights the route passes before the question
     /// mark: an event allowed only with gold in hand is reached with the fights' gold.</param>
+    /// <param name="ThenRests">The rest option the row is after past the event, at
+    /// the first rest site after the mark, which is then the ask rather than the
+    /// option: how a relic an event deals is walked to what it adds at a rest.</param>
     internal sealed record EventRow(
         string Event, string Key, string Seed, string[]? Via = null, string[]? AlsoRetires = null,
-        string? ClaimsReward = null, int FightsFirst = 0);
+        string? ClaimsReward = null, int FightsFirst = 0, string? ThenRests = null);
 
     /// <summary>The acts lists the event rows run on: the default progression for act
     /// 1's events and the shared pool; its variant for the Underdocks' own; and the
@@ -499,7 +592,8 @@ public sealed class GeneratedCoverageTests
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.GRAB_SOMETHING_OFF_THE_BELT.options.LEAVE", "41E281DU7R", ["ENDLESS_CONVEYOR.pages.ALL.options.JELLY_LIVER"]),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.INITIAL.options.OBSERVE_CHEF", "41E281DU7R"),
             new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM", "Y468CL2JJF"),
-            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.NAB", "Y468CL2JJF"),
+            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.NAB", "Y468CL2JJF", AlsoRetires:
+                ["seam  reward-kind:relic @ EventModel.GenerateInitialOptions"], ClaimsReward: RewardKinds.Relic),
             new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.I_CAN_TAKE_THEM.options.FIGHT", "Y468CL2JJF", ["PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM"]),
             new("EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1", "6KGKGA4S8P", ["SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0"]),
             new("EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_1.options.HOLD_ON_2", "6KGKGA4S8P", ["SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0", "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1"]),
@@ -516,7 +610,10 @@ public sealed class GeneratedCoverageTests
             new("EVENT.SPIRALING_WHIRLPOOL", "SPIRALING_WHIRLPOOL.pages.INITIAL.options.OBSERVE", "RAGWB3H44W"),
             new("EVENT.SUNKEN_TREASURY", "SUNKEN_TREASURY.pages.INITIAL.options.FIRST_CHEST", "41MV0020T4"),
             new("EVENT.SUNKEN_TREASURY", "SUNKEN_TREASURY.pages.INITIAL.options.SECOND_CHEST", "41MV0020T4"),
-            new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.DIVE_IN", "0WA4C6C2KF"),
+            // The dive deals one of the heap's five relics by the event's own roll; this
+            // seed's is the Dream Catcher, whose card at the next heal is the seam
+            new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.DIVE_IN", "9HG1QQ41M8", AlsoRetires:
+                ["seam  reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards"], ThenRests: "HEAL"),
             new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.GRAB", "0WA4C6C2KF"),
             new("EVENT.WATERLOGGED_SCRIPTORIUM", "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.BLOODY_INK", "D72PWCFLVE"),
             new("EVENT.WATERLOGGED_SCRIPTORIUM", "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE", "D72PWCFLVE"),
@@ -625,6 +722,13 @@ public sealed class GeneratedCoverageTests
             $"the walk opened {row.Event} and finished without choosing {row.Key}; it chose " +
             string.Join(", ", recorded.Manifest.Actions.Where(action => action.Verb == ActionVerb.ChooseEventOption).Select(action => action.Args["option_key"])));
         RecordedActWalk.AssertWhole(recorded);
+        if (row.ThenRests is { } rest)
+        {
+            var chose = recorded.Manifest.Actions.ToList().FindIndex(action =>
+                action.Verb == ActionVerb.ChooseEventOption && action.Args["option_key"] == row.Key);
+            Assert.Contains(recorded.Manifest.Actions.Skip(chose + 1), action =>
+                action.Verb == ActionVerb.ChooseRestSiteOption && action.Args["option_id"] == rest);
+        }
 
         var points = DecisionFacts.Of(recorded.Manifest);
         var reached = DecisionCoverage.SeamsReachedBy(
@@ -664,7 +768,12 @@ public sealed class GeneratedCoverageTests
         EventOptionKey = row.Key,
         EventOptionsOnTheWay = row.Via,
         RewardKindToClaim = row.ClaimsReward,
-        RouteThrough = [.. Enumerable.Repeat(MapPointType.Monster, row.FightsFirst), MapPointType.Unknown],
+        RestOption = row.ThenRests,
+        RouteThrough =
+        [
+            .. Enumerable.Repeat(MapPointType.Monster, row.FightsFirst), MapPointType.Unknown,
+            .. row.ThenRests is null ? Array.Empty<MapPointType>() : [MapPointType.RestSite],
+        ],
     };
 
     /// <summary>The seed the thief row walks: a run of the Hive alone whose first
@@ -730,6 +839,51 @@ public sealed class GeneratedCoverageTests
         }
 
         RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The event row whose option the loss walk holds on to: the Slippery
+    /// Bridge's loop, which costs more health at each hold and never closes.</summary>
+    private static EventRow TheBridgesLoop =>
+        EventRowFor("ACT.UNDERDOCKS", "EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_LOOP.options.HOLD_ON_LOOP");
+
+    /// <summary>
+    /// A run lost outside a fight is finished on the decision that killed it: the
+    /// walk holds on to the Slippery Bridge past every warning until the hold's damage
+    /// kills the player, the game ends the run from inside that option's own work
+    /// (<c>CreatureCmd.Kill</c>, ended headlessly where the client ends it by
+    /// <c>RunDeath</c>), the recorder finishes at that <c>OnEnded</c> with the killing
+    /// option as the history's last decision and <c>lost</c> as the outcome, and a
+    /// fresh replay reproduces the journal decision for decision and ends where the
+    /// recording ends. The loss inside a fight is the give-up matrix's; this is the
+    /// other way a run ends on a decision.
+    /// </summary>
+    [GameFact]
+    public void ARunLostOutsideAFightIsFinishedOnTheKillingOptionAndReplaysToParity()
+    {
+        var row = TheBridgesLoop;
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(
+            PolicyFor(row) with { ChooseItUntilTheRunEnds = true }, row.Seed, visitEveryRoomType: false, EventRowActs["ACT.UNDERDOCKS"]);
+        Assert.True(
+            recorded.AskMet,
+            "the walk finished without the game ending the run on the bridge; actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+
+        var native = recorded.Manifest.Source.Native!;
+        Assert.Equal("lost", native.Outcome);
+        var last = recorded.Manifest.Actions[^1];
+        Assert.Equal(ActionVerb.ChooseEventOption, last.Verb);
+        Assert.Equal(row.Key, last.Args["option_key"]);
+
+        // The run's end is the history's end: the player dead and the game over at the
+        // killing option, read where the game announced it
+        var end = recorded.Manifest.Checkpoints.Single(checkpoint => checkpoint.AfterSeq == last.Seq);
+        Assert.Equal("0", end.Expect["player.hp"].Value);
+        Assert.Equal("true", end.Expect["run.is_game_over"].Value);
+
+        var replay = RecordedActWalk.ReplayToParity(recorded);
+        Assert.Equal("true", replay.FinalState!.Fields["run.is_game_over"]);
     }
 
     /// <summary>The ancient rows are exactly the options of the ancients act 2 and act
@@ -812,6 +966,7 @@ public sealed class GeneratedCoverageTests
             .Concat(ProducerRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(AncientRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(EventRows.Values.SelectMany(rows => rows).SelectMany(RetiredBy).Select(point => point.ToString()))
+            .Concat(BlessingRows.Keys.Select(relic => DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic).ToString()))
             .Concat(ThiefRetires)
             .ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All

@@ -90,18 +90,39 @@ public static class DecisionExcusals
     };
 
     /// <summary>The options of events a row reaches that no row takes, each with what
-    /// stands in the way, by id.</summary>
+    /// stands in the way, by id: a state the row's line never holds at the mark. The
+    /// acupuncture is the one that waits on survival - gold is what a longer line
+    /// earns - and the empty page is not: it waits on a deck no first act builds,
+    /// whatever the line survives.</summary>
     private static readonly IReadOnlyDictionary<string, string> OptionsOffTheRoute = new Dictionary<string, string>
     {
-        ["EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"] =
-            "offered to every character but the one played, and every generated walk is Ironclad's; a character row of the " +
-            "fifth stage takes it (excused 2026-09-18)",
         ["EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"] =
-            "offered unlocked only with 250 gold in hand (ZenWeaver.GenerateInitialOptions), which the first act's line does not " +
-            "hold by any question mark it reaches; retired by the retail soak (excused 2026-09-18)",
+            "offered unlocked only with 250 gold in hand (ZenWeaver.GenerateInitialOptions, the ArachnidAcupunctureCost " +
+            "dynamic var), and the Zen Weaver rows walk a run of the Hive alone from its 99 starting gold through two " +
+            "fights to the mark, which holds nowhere near it; the map cannot read the bound off the event's own " +
+            "construction, which loads it from a dynamic var and not a constant, so no class derives it; retired by " +
+            "the fifth stage's survival work - a line that reaches the Hive's mark with an act's gold behind it - or " +
+            "by the retail soak (excused 2026-09-18)",
         ["EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"] =
-            "offered only to a deck with no attack, skill or power the book can enchant (SelfHelpBook.GenerateInitialOptions), " +
-            "which no deck the journey builds is; retired by the retail soak (excused 2026-09-18)",
+            "constructed only where the deck holds no attack Sharp can enchant, no skill Nimble can and no power Swift " +
+            "can (SelfHelpBook.GenerateInitialOptions over PlayerHasCardsAvailable, each through " +
+            "EnchantmentModel.CanEnchant: a playable deck card carrying no enchantment); the Ironclad starter deck holds " +
+            "six attacks and four skills, every one enchantable, the book's other three options each enchant exactly one " +
+            "card of one type per visit (SelectAndEnchant's prefs select one; the 2 is the enchantment's amount), and an " +
+            "act's shuffled set deals the event once, so no first-act walk of any survival reaches a deck the page is " +
+            "constructed for, and no class derives an option a deck can reach; retired by the retail soak, or by a " +
+            "walk whose earlier acts enchant or remove every attack and skill first (excused 2026-09-18)",
+    };
+
+    /// <summary>The options an event withholds from the run's own character, each with
+    /// the character every generated walk plays: Colorful Philosophers offers a card of
+    /// every other character's pool and never the played one's
+    /// (<c>DecisionSurface.OptionsWithheldFromTheCharacter</c>), so the Ironclad's
+    /// option is reached only by a run of another character, which the fifth stage's
+    /// character rows are; the other four are event rows' already.</summary>
+    private static readonly IReadOnlyDictionary<string, string> OptionsWithheldFromTheWalksCharacter = new Dictionary<string, string>
+    {
+        ["EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"] = "CHARACTER.IRONCLAD",
     };
 
     /// <summary>A rest option an act's ancient's relic adds, and the seam it is
@@ -181,6 +202,17 @@ public static class DecisionExcusals
         "generated rather than committed",
         producers);
 
+    /// <summary>The one producer of gold at a death on this build, by id: the power a
+    /// Fat Gremlin spawns with holding the gold its merc stole
+    /// (<c>HeistPower.BeforeDeath</c>), which gives it back on the gremlin's death
+    /// if it is killed in the one turn before it flees. The merc is the Underdocks'
+    /// fourth fight at the earliest - three weak fights come before any normal one -
+    /// and the journey's mechanical line reached that fight and won it on none of 25
+    /// seeds hunted on v0.111.0 that deal the merc among the first four (ten died on
+    /// the way, fifteen had no route to four fights past a question mark), so the
+    /// seam waits on the fifth stage's survival work or the retail soak.</summary>
+    private const string HeistsPower = "POWER.HEIST_POWER";
+
     /// <summary>The events the committed corpus reaches, whose rows retire their
     /// options and nothing else; <c>GeneratedCoverageTests</c> holds its rows to that.</summary>
     internal static readonly IReadOnlySet<string> EventsTheCorpusReaches =
@@ -194,12 +226,17 @@ public static class DecisionExcusals
         "and its button refuses the press (NEventOptionButton.OnRelease), so no play chooses it " +
         "(DecisionSurface.NotChoosableOptions)");
 
-    /// <summary>An option of an event the committed corpus reaches, in a recording
-    /// written before the recorder named options.</summary>
-    private static readonly Excusal RecordedWithoutAKey = new(
-        ExcusalClass.NotOnTheRoute,
-        "the committed recordings that reach this event were written before the recorder wrote option_key, " +
-        "so which option they chose is not on the file; retired by a recording that carries one (excused 2026-09-17)");
+    /// <summary>A blessing a <c>GeneratedCoverageTests</c> blessing row takes: the
+    /// opening answered by the relic's id on a seed hunted so Neow offers it, on the
+    /// default progression, recorded through the real recorder and replayed to parity.
+    /// The committed recordings that reach Neow were written before the recorder wrote
+    /// <c>option_key</c>, so which blessing they chose is not on the file and every
+    /// blessing is a generated row's or excused for its own reason.</summary>
+    private static readonly Excusal GeneratedByABlessingRow = new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests blessing row - the opening answered by the relic's id, on a seed hunted so " +
+        "Neow offers it - recorded through the real recorder and replayed to parity on every merge; the recording is " +
+        "generated rather than committed, and the committed recordings that reach Neow predate option_key");
 
     /// <summary>A seam no committed recording reaches by co-occurrence.</summary>
     private static readonly Excusal SeamOffTheRoute = new(
@@ -244,36 +281,30 @@ public static class DecisionExcusals
         "walk reaches it, and no committed recording both met one of its producers and answered it " +
         "(scripts/producer-map.txt lists them); retired by a recording from the retail soak (excused 2026-09-17)");
 
-    /// <summary>
-    /// The options of Neow's blessing the committed corpus reaches, each recorded
-    /// before the recorder wrote <c>option_key</c>, so which option was chosen is not
-    /// on the file. By id, so an option a game update adds is uncovered until somebody
-    /// reads it; the blessings a generated walk takes are below, and the two events the
-    /// corpus reaches the same way - Brain Leech, the Scriptorium - have their options
-    /// taken by event rows now.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsRecordedWithoutAKey = new Dictionary<string, string[]>
-    {
-        ["EVENT.NEOW"] =
-        [
-            "RELIC.ARCANE_SCROLL",
-            "RELIC.BOOMING_CONCH",
-            "RELIC.CURSED_PEARL",
-            "RELIC.DOWSING_ROD",
-            "RELIC.FISHING_ROD",
-            "RELIC.GOLDEN_PEARL",
-            "RELIC.LARGE_CAPSULE",
-            "RELIC.LEAFY_POULTICE",
-            "RELIC.NEOWS_SACRIFICE",
-            "RELIC.NEOWS_TALISMAN",
-            "RELIC.NEOWS_TORMENT",
-            "RELIC.NUTRITIOUS_OYSTER",
-            "RELIC.PHIAL_HOLSTER",
-            "RELIC.SILKEN_TRESS",
-            "RELIC.SILVER_CRUCIBLE",
-            "RELIC.STONE_HUMIDIFIER",
-        ],
-    };
+    /// <summary>The blessings a <c>GeneratedCoverageTests</c> blessing row takes, by
+    /// the relic each grants: every relic Neow deals that produces no seam, so
+    /// obtaining it is the whole of what the row is after. By id, so a blessing a game
+    /// update adds is uncovered until somebody hunts a seed for it; the rows hold this
+    /// list and the producer rows' to every blessing the build offers.</summary>
+    private static readonly string[] BlessingsTakenByBlessingRows =
+    [
+        "RELIC.ARCANE_SCROLL",
+        "RELIC.BOOMING_CONCH",
+        "RELIC.CURSED_PEARL",
+        "RELIC.DOWSING_ROD",
+        "RELIC.FISHING_ROD",
+        "RELIC.GOLDEN_PEARL",
+        "RELIC.LARGE_CAPSULE",
+        "RELIC.LEAFY_POULTICE",
+        "RELIC.NEOWS_SACRIFICE",
+        "RELIC.NEOWS_TALISMAN",
+        "RELIC.NEOWS_TORMENT",
+        "RELIC.NUTRITIOUS_OYSTER",
+        "RELIC.PHIAL_HOLSTER",
+        "RELIC.SILKEN_TRESS",
+        "RELIC.SILVER_CRUCIBLE",
+        "RELIC.STONE_HUMIDIFIER",
+    ];
 
     /// <summary>The blessings a <c>GeneratedCoverageTests</c> producer row takes, by
     /// the relic each grants: every relic Neow deals that produces a seam, each on a
@@ -830,17 +861,14 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ ModifierModel.GenerateNeowOption",
         "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions",
-        "reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards",
         "reward-kind:card @ CardModel.OnPlay",
         "reward-kind:card @ ModifierModel.GenerateNeowOption",
         "reward-kind:card_removal @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.AfterCombatEnd",
-        "reward-kind:gold @ AbstractModel.BeforeDeath",
         "reward-kind:gold @ AbstractModel.TryModifyRewardsLate",
         "reward-kind:potion @ EventModel.Resume",
         "reward-kind:relic @ ?",
         "reward-kind:relic @ AbstractModel.TryModifyRewardsLate",
-        "reward-kind:relic @ EventModel.GenerateInitialOptions",
         "reward-kind:relic @ EventModel.Resume",
         "shop-kind:relic @ EventModel.BeforeEventStarted",
     ];
@@ -901,15 +929,17 @@ public static class DecisionExcusals
     /// The seams a <c>GeneratedCoverageTests</c> event row reaches - by id, for the
     /// reason above - on a first act: the prompts the events' own pages open (a
     /// removal, an upgrade, a transformation, an enchantment, the deck grid), the
-    /// potion and custom rewards their pages offer, and the prompts the cards and
-    /// potions met on the way to the mark open in its fights, reached by
-    /// co-occurrence like every seam.
+    /// potion and custom rewards their pages offer, the relic Punch Off's nab offers
+    /// and the card the Dream Catcher the Trash Heap dealt adds at the next heal, and
+    /// the prompts the cards and potions met on the way to the mark open in its
+    /// fights, reached by co-occurrence like every seam.
     /// </summary>
     private static readonly string[] SeamsReachedByEventRows =
     [
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ CardModel.OnPlay",
+        "reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ PotionModel.OnUse",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs) @ EventModel.GenerateInitialOptions",
         "card-prompt:CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs) @ EventModel.GenerateInitialOptions",
@@ -922,6 +952,7 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromHandForUpgrade(context, player, source) @ CardModel.OnPlay",
         "reward-kind:potion @ EventModel.CalculateVars",
         "reward-kind:potion @ EventModel.GenerateInitialOptions",
+        "reward-kind:relic @ EventModel.GenerateInitialOptions",
         "rewards:OfferCustom @ EventModel.CalculateVars",
     ];
 
@@ -1113,15 +1144,12 @@ public static class DecisionExcusals
 
 
         // An option is a point of its own from format v6, when the recorder began
-        // writing option_key; the committed recordings predate it, so every option of
-        // an event they reach is excused for that, and every option of an event they
-        // do not reach for the event's own reason
-        foreach (var (eventId, keys) in OptionsOfEventsRecordedWithoutAKey)
+        // writing option_key; the committed recordings predate it, so every blessing
+        // is a generated row's - a producer row's where the relic produces a seam, a
+        // blessing row's where it does not - or excused for its own reason below
+        foreach (var relic in BlessingsTakenByBlessingRows)
         {
-            foreach (var key in keys)
-            {
-                excusals[DecisionPoint.EventOption(eventId, key)] = RecordedWithoutAKey;
-            }
+            excusals[DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic)] = GeneratedByABlessingRow;
         }
 
         foreach (var relic in BlessingsTakenByGeneratedWalks)
@@ -1181,6 +1209,17 @@ public static class DecisionExcusals
             excusals[DecisionPoint.EventOption(identity[..space], identity[(space + 1)..])] = NotOnTheRoute(reason);
         }
 
+        foreach (var (identity, character) in OptionsWithheldFromTheWalksCharacter)
+        {
+            var space = identity.IndexOf(' ', StringComparison.Ordinal);
+            excusals[DecisionPoint.EventOption(identity[..space], identity[(space + 1)..])] = new(
+                ExcusalClass.OfferedOnlyToAnotherCharacter,
+                $"withheld from a run of {character} by the event's own guard on the owner's card pool " +
+                "(DecisionSurface.OptionsWithheldFromTheCharacter), and every generated walk is that character's; " +
+                "retired by a recording of another character - a character row of the fifth stage, or the retail " +
+                "soak (excused 2026-09-18)");
+        }
+
         // The three dolls are keyed by their relic's title with no relic set, so a
         // recording carries the player's localized title where this process and the
         // driver read the title's key (DecisionSurface.TitleKeyedConstructions)
@@ -1217,6 +1256,13 @@ public static class DecisionExcusals
         {
             excusals[new DecisionPoint(DecisionKinds.Seam, seam)] = SeamOffTheRoute;
         }
+
+        excusals[new DecisionPoint(DecisionKinds.Seam, "reward-kind:gold @ AbstractModel.BeforeDeath")] = NotOnTheRoute(
+            "the gold a Fat Gremlin gives back on its death (HeistPower.BeforeDeath), spawned holding what its Gremlin " +
+            "Merc stole when the merc dies, which the Underdocks deals as a normal fight past its three weak ones; the " +
+            "journey's mechanical line reached that fight and won it on none of 25 seeds hunted on v0.111.0 that deal " +
+            "the merc among the first four fights, so it waits on the fifth stage's survival work",
+            HeistsPower);
 
         foreach (var seam in SeamsOnScreensWithoutHeadlessHost)
         {

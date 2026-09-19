@@ -51,6 +51,7 @@ mechanism rather than an unsupported hook.
 | `SaveManager.SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `SaveManager.SaveRun` | The same refusal with one addition — see [the run save, collected rather than dropped](#the-run-save-collected-rather-than-dropped). |
 | `RunManager.OnEnded`, `RunManager.CleanUp` | Postfixes that read and change nothing — see [the run's end, read where the game ends it](#the-runs-end-read-where-the-game-ends-it). |
+| `CreatureCmd.Kill` (the collection form) | A postfix that ends the run on the player's death, `OnEnded(false)`, where the game announces it only under the retail flag beside the game-over screen — see the same section. |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 | `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards`, `ScrollBoxes.GenerateRandomBundles` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these four sites — see [four places the flag changes what the game generates](#four-places-the-flag-changes-what-the-game-generates). |
 | `CardSelectCmd.FromChooseABundleScreen`, `RelicSelectCmd.FromChooseARelicScreen`, `NCrystalSphereScreen.ShowScreen` | Prompts no seam answers, stood in for at the prompt itself — see [four screens the host has to stand in for](#four-screens-the-host-has-to-stand-in-for). Installed only where a driver is answering; with none, the game's own path runs. |
@@ -93,6 +94,15 @@ So `RunEnding` holds the projection a postfix on `OnEnded` takes, the first one 
 A postfix on `CleanUp` forgets it, so the next run replayed in the process starts with no ending.
 `RunDriver.Apply` refuses every action after it, because a history that goes on past the run's end is not this run's.
 Both members missing in a future build are startup failures, as every name here is.
+
+A lost run ends inside a decision too, and the game announces that end only under the retail flag.
+`CreatureCmd.Kill` is the one place it notices that every player is dead, in a fight or out of one: it processes the loss where a fight is live and then, under `TestMode.IsOff`, stops the music, calls `OnEnded(false)` and shows the game-over screen.
+Headlessly the whole block was skipped, the run's end with the presentation, so a run whose player died outside a fight - the Slippery Bridge held on to past its warnings - went on standing in its room with the engine never told it was over, and the recorder read the killing event option once its page had moved on where the retail client reads it at `OnEnded`, before the option's work goes on.
+`RunDeath` puts the engine half of that block back at the instant the block runs: a postfix on the collection form of `Kill`, which every kill funnels into, calls `OnEnded(false)` once the kill's own task has completed, under the block's own conditions.
+It is not one of the four restored retail branches below, because the branch cannot run whole - it dereferences the scene tree - and touches no random stream; nothing of the presentation is stood in for.
+The kill that follows a win reaches `OnEnded` a second time this way, as it does in the client, and `RunManager`'s own guard writes the history once.
+Which ending `RunEnding` reads follows the recorder's own rule: a win and a loss outside a fight are read at `OnEnded`, and a loss with a fight live is not, because the recorder waits for the engine to end the fight the run was lost in and reads that (`RunRecorder.End`), so the driver's settled sample after the fight's end is the reading a replay is held to.
+`GeneratedCoverageTests.ARunLostOutsideAFightIsFinishedOnTheKillingOptionAndReplaysToParity` holds the loss outside a fight from the recorder to a verified replay at parity, the way the won run is held in `HeadlessGameplayCaptureTests`.
 
 ### Four screens the host has to stand in for
 
