@@ -216,11 +216,13 @@ public sealed class DecisionFactsTests
     /// <summary>
     /// A recording an older recorder wrote holds nothing for parity and still credits
     /// coverage: its journal is what that recorder got wrong, its manifest replays on
-    /// this build all the same. Below is older; equal holds; a version the recording
-    /// does not carry, one that does not parse, and the unstamped default a recorder
-    /// built before the version was stamped named itself with are all older, never
-    /// holding. The recorder is asked last, so a broken or unmapped recording of an
-    /// older recorder is still the recorder's own refusal and credits nothing.
+    /// this build all the same. Below is older; equal holds; newer holds too, held to
+    /// this build's replay and failing loudly where the later recorder differs, because
+    /// only a strictly older recorder is stood apart; a version the recording does not
+    /// carry, one that does not parse, and the unstamped default a recorder built
+    /// before the version was stamped named itself with are all older, never holding.
+    /// The recorder is asked last, so a broken or unmapped recording of an older
+    /// recorder is still the recorder's own refusal and credits nothing.
     /// </summary>
     [Fact]
     public void ARecordingOfAnOlderRecorderHoldsNothingForParityAndStillCreditsCoverage()
@@ -266,9 +268,10 @@ public sealed class DecisionFactsTests
 
     /// <summary>
     /// A candidate declared as a prerelease, which the build permits, measures itself
-    /// over its own recordings: equal holds, its release is above it, the release
-    /// before it and an earlier candidate of the same release are below it, and a
-    /// recording of the release holds against the candidate of the next one.
+    /// over its own recordings: equal holds, its release and a later candidate of the
+    /// same release are above it and hold as any newer recorder does, and the release
+    /// before it and an earlier candidate of the same release are below it and stood
+    /// apart.
     /// </summary>
     [Fact]
     public void APrereleaseCandidateComparesAgainstItsOwnRecordingsAndBelowItsRelease()

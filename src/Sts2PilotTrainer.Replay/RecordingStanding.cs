@@ -37,8 +37,13 @@ namespace Sts2PilotTrainer.Replay;
 /// <see cref="CreditsCoverage">credits coverage</see>. A version the recording does not
 /// carry, one that does not parse, and the <c>1.0.0.0</c> a recorder built before the
 /// version was stamped named itself with are all an older recorder, never
-/// <see cref="RecordingStandingKind.Holds"/>: the release measurement is over the
-/// candidate's own recordings, and a recording that cannot say it is one is not.
+/// <see cref="RecordingStandingKind.Holds"/>: a recording that cannot say which
+/// recorder wrote it is not evidence the candidate's recorder is right. Only a
+/// strictly older recorder is stood apart. A recording a newer recorder wrote holds,
+/// and its journal is held to this build's replay like the candidate's own: what a
+/// later recorder fixed shows up as a divergence against this replay and fails the
+/// bar loudly, and a journal in a schema this build does not read is refused as
+/// unreadable, so nothing a newer recorder wrote passes on this build's account.
 /// Both versions are read as a <see cref="RecorderVersion"/>, so a candidate declared
 /// as a prerelease measures itself over its own recordings and below its release.
 /// </summary>
@@ -144,8 +149,8 @@ public enum RecordingStandingKind
     IntegrityNotComplete,
     ContinuityBroken,
 
-    /// <summary>Written by a recorder below the one this build carries, or by one that
-    /// named no version this build reads; its journal is not held to a replay, and its
-    /// manifest still credits coverage.</summary>
+    /// <summary>Written by a recorder strictly below the one this build carries, or by
+    /// one that named no version this build reads; its journal is not held to a replay,
+    /// and its manifest still credits coverage. A newer recorder's recording holds.</summary>
     OlderRecorder,
 }
