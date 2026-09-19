@@ -30,19 +30,24 @@
     <Version>$(RunmobileVersion)</Version>
   </PropertyGroup>
 
-  <!-- A regex that fails to match returns the whole file, so the extraction says so
-       rather than stamping a JSON document into every assembly as its version. This
-       catches a failed extraction and nothing else: what the version numbers are, and
-       whether one is a prerelease, is not a question the build gets to decide.
+  <!-- The field is held to the grammar RecorderVersion reads, major.minor.patch with
+       an optional -prerelease, because the release bar orders a recording's recorder
+       against this one through it: a declaration that grammar cannot read would build,
+       stamp every assembly, and then abort both corpus numbers at the first recording.
+       A prerelease is admitted on purpose and ordered below its release there; what
+       the numbers are is still not a question the build gets to decide.
 
-       A '+' is refused as well, and that one is about the round trip rather than the
-       extraction. Source-stamping tools append '+<commit>' to the informational
-       version and RunmobileVersion.Of has to strip it, so a declared 0.2.0+beta would
-       come back as 0.2.0 and sit beside a mod set saying 0.2.0+beta - the same two
-       strings disagreeing that this arrangement exists to remove. -->
+       Build metadata is outside the grammar, and that one is about the round trip
+       rather than the ordering. Source-stamping tools append '+<commit>' to the
+       informational version and RunmobileVersion.Of has to strip it, so a declared
+       0.2.0+beta would come back as 0.2.0 and sit beside a mod set saying 0.2.0+beta -
+       the same two strings disagreeing that this arrangement exists to remove.
+
+       A regex that fails to match returns the whole file, so a failed extraction is
+       refused by the same condition. -->
   <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild">
-    <Error Condition="'$(RunmobileVersion)' == '' or $([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '[\s{}+&quot;]'))"
-           Text="Could not read a usable version out of $(RunmobileManifestPath). Its &quot;version&quot; must be a version string with no build metadata: a '+' cannot survive the trip into an assembly stamp. Every assembly here takes its version from that one field." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'))"
+           Text="The &quot;version&quot; field of $(RunmobileManifestPath) is '$(RunmobileVersion)', which is not a version this build reads: it must be major.minor.patch, with no leading zeros, optionally followed by a -prerelease of dot-separated identifiers, and never build metadata after a '+'. Every assembly here takes its version from that one field, and the release bar orders recorders by it." />
   </Target>
 
 </Project>

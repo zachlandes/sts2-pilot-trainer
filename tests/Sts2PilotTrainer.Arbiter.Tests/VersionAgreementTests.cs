@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Sts2PilotTrainer.Replay;
 
@@ -46,6 +47,65 @@ public class VersionAgreementTests
     {
         // The string every native recording carries as source.native.recorder_version.
         Assert.Equal($"runmobile-recorder/{Declared}", RunmobileVersion.Recorder);
+    }
+
+    /// <summary>The declared field is one the release bar can order a recorder by:
+    /// <c>RecordingStanding</c> reads it through <see cref="RecorderVersion"/>, and a
+    /// declaration that could not be read there would abort both corpus numbers.</summary>
+    [Fact]
+    public void TheDeclaredVersionIsOneTheReleaseBarOrdersRecordersBy()
+    {
+        Assert.NotNull(RecorderVersion.TryParse(Declared));
+    }
+
+    /// <summary>
+    /// The build refuses at the declaration exactly what <see cref="RecorderVersion"/>
+    /// cannot read, naming the field, so a version the release bar cannot order is a
+    /// build error rather than an abort at the first recording of a corpus; a
+    /// prerelease is admitted, because the bar orders one below its release.
+    /// </summary>
+    [Theory]
+    [InlineData("0.2.0")]
+    [InlineData("0.3.0-rc1")]
+    [InlineData("0.3.0-rc.1.beta-2")]
+    [InlineData("0.3")]
+    [InlineData("0.3.0.1")]
+    [InlineData("1.0.0.0")]
+    [InlineData("03.0.0")]
+    [InlineData("0.3.0-01")]
+    [InlineData("0.3.0-")]
+    [InlineData("0.3.0+beta")]
+    [InlineData("fixture")]
+    public void TheBuildRefusesADeclarationTheReleaseBarCannotOrder(string declared)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            WorkingDirectory = Arbiter.RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var arg in new[]
+                 {
+                     "msbuild", Path.Combine(Arbiter.RepoRoot, "Directory.Build.props"),
+                     "-t:RequireAReadableRunmobileVersion", $"-p:RunmobileVersion={declared}", "-nologo", "-v:q",
+                 })
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+        using var process = Process.Start(startInfo)!;
+        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (RecorderVersion.TryParse(declared) is not null)
+        {
+            Assert.True(process.ExitCode == 0, output);
+            return;
+        }
+        Assert.NotEqual(0, process.ExitCode);
+        Assert.Contains($"The \"version\" field of", output, StringComparison.Ordinal);
+        Assert.Contains($"is '{declared}', which is not a version this build reads", output, StringComparison.Ordinal);
     }
 
     /// <summary>The one field a human edits, and what everything above must agree with.</summary>
