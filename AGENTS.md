@@ -25,6 +25,7 @@ not released yet. See [README.md](README.md).
                             # enter-fight | recorded-fight |
                             # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
+Read [docs/build-adoption.md](docs/build-adoption.md) before adopting a game build.
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ./scripts/format-reference.sh               # rewrite docs/manifest-format.md from the code (--check to compare)
 ./scripts/choice-entry-points.sh            # which game types reach each card or relic prompt, and which bodies that scan cannot read, are still what we recorded (--update to re-record both)

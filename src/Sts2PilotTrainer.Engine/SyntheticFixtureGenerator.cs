@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -116,10 +117,12 @@ public static partial class SyntheticFixtureGenerator
     private static GameIdentity RequireSupportedBuild()
     {
         var identity = GameIdentity.Read();
-        return identity.BuildVersion == "v0.111.0"
+        var adopted = GameBuildRecord.Read(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "game-build.txt"));
+        return identity.BuildVersion == adopted.Version && identity.BuildDateUtc == adopted.BuildDateUtc
             ? identity
             : throw new EngineException(
-                $"Synthetic fixture generation supports v0.111.0, not {identity.BuildVersion}.");
+                $"Synthetic fixture generation supports adopted build {adopted.Version} ({adopted.BuildDateUtc}), " +
+                $"not {identity.BuildVersion} ({identity.BuildDateUtc}).");
     }
 
     public static ReplayManifest Generate(CombatLine line)

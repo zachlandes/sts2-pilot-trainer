@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -69,6 +70,8 @@ public sealed record GameIdentity(
 
         VerifyPreparedOutputs(libDir, receipt);
         var build = receipt["build"]!.AsObject();
+        var recordPath = Path.Combine(libDir, "game-build.txt");
+        var adopted = GameBuildRecord.Read(recordPath);
 
         var contentHash = EngineHost.ContentHash();
         if (contentHash == "0")
@@ -85,10 +88,14 @@ public sealed record GameIdentity(
         }
         notes.Add($"engine registered {EngineHost.RegisteredModelCount()} models");
 
+        // The adopted record is checked against the receipt before this identity is used.
+        if (adopted.PristineAssemblySha256 != pristine || adopted.IdDatabaseHash != build["main_assembly_hash"]!.GetValue<long>().ToString())
+            throw new EngineException("Prepared game-build.txt does not match prepared-assembly.json; re-run ./scripts/bootstrap.sh.");
+
         return new GameIdentity(
-            BuildVersion: build["version"]!.GetValue<string>(),
-            BuildDateUtc: build["build_date_utc"]!.GetValue<string>(),
-            Commit: build["commit"]!.GetValue<string>(),
+            BuildVersion: adopted.Version,
+            BuildDateUtc: adopted.BuildDateUtc,
+            Commit: adopted.Commit,
             Branch: build["branch"]!.GetValue<string>(),
             ContentHash: contentHash,
             PristineAssemblySha256: pristine,

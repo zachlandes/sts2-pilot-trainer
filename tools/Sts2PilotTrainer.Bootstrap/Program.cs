@@ -102,6 +102,8 @@ internal static class Program
             Console.WriteLine($"install sha256 unchanged: {before[..16]}...");
 
             var outputHashes = HashPreparedOutputs(outDir, copied);
+            WriteBuildRecord(outDir, identity, before);
+            outputHashes = HashPreparedOutputs(outDir, copied);
             WriteReceipt(outDir, identity, before, copied, patches, outputHashes);
             Console.WriteLine($"prepared     : {copied.Count} assemblies, {patches.Count} IL patches -> {Relative(outDir)}");
 
@@ -192,7 +194,8 @@ internal static class Program
         // "release_info.json" is what this tool wrote before PreparedReleaseInfoName;
         // left behind, it is exactly the file that name exists to stop shipping.
         foreach (var name in RequiredAssemblies
-                     .Append(PreparedReleaseInfoName).Append(LegacyPreparedReleaseInfoName).Append(ReceiptName))
+                     .Append(PreparedReleaseInfoName).Append(LegacyPreparedReleaseInfoName)
+                     .Append(GameBuildName).Append(ReceiptName))
         {
             var path = Path.Combine(outDir, name);
             if (File.Exists(path)) File.Delete(path);
@@ -237,6 +240,11 @@ internal static class Program
         if (src is null) return;
         File.Copy(src, Path.Combine(outDir, PreparedReleaseInfoName), overwrite: true);
     }
+
+    private static void WriteBuildRecord(string outDir, InstalledIdentity identity, string pristineHash) =>
+        new GameBuildRecord(identity.Version, identity.BuildDateUtc, identity.Commit, pristineHash,
+            identity.MainAssemblyHash.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .Write(Path.Combine(outDir, GameBuildName));
 
     /// <summary>
     /// Every IL patch applied to the private copy, why it exists, and the promise
@@ -556,6 +564,7 @@ internal static class Program
     /// edited, so the extension is the only thing left to change.
     /// </summary>
     private const string PreparedReleaseInfoName = "release_info.json.copy";
+    private const string GameBuildName = "game-build.txt";
     private const string LegacyPreparedReleaseInfoName = "release_info.json";
 
     private static string NormalizePreparedOutputName(string name) =>
@@ -620,7 +629,7 @@ internal static class Program
 
     private static SortedDictionary<string, string> HashPreparedOutputs(string outDir, IEnumerable<string> copied)
     {
-        var names = copied.Append(PreparedReleaseInfoName)
+        var names = copied.Append(PreparedReleaseInfoName).Append(GameBuildName)
             .Where(name => File.Exists(Path.Combine(outDir, name)))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
