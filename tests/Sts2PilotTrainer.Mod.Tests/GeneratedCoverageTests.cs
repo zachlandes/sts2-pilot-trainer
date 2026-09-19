@@ -1327,6 +1327,44 @@ public sealed class GeneratedCoverageTests
         Assert.StartsWith("The walk's ask is in the act after the first, and the run's acts list is ACT.HIVE alone", refusal.Message);
     }
 
+    /// <summary>The seed on which the first act of a walk into the second, as the
+    /// Defect on the fixture's own route, opens a Room Full of Cheese - an event the
+    /// game shares between acts - found on v0.111.0 as the third of
+    /// <see cref="SeedHunt.Candidates"/> and the first whose first act met a shared
+    /// event.</summary>
+    private const string SharedEventInTheFirstActSeed = "RAGWB3H44W";
+
+    private const string RoomFullOfCheese = "EVENT.ROOM_FULL_OF_CHEESE";
+
+    /// <summary>
+    /// A walk whose ask is in the next act answers the asked event by the journey's
+    /// own rule where the first act rolls it: a shared event the first act deals as
+    /// well is the fixture's own decision there, and a walk that took the asked
+    /// option on it would arrive at the second act's mark with its ask already
+    /// consumed and answer the page the row is about by today's rule. Room Full of
+    /// Cheese offers GORGE and SEARCH and no proceed, so today's rule takes SEARCH
+    /// and a walk after GORGE that took it on the first act is one that read the
+    /// first act as the asked one.
+    /// </summary>
+    [GameFact]
+    public void AWalkIntoTheNextActLeavesTheAskedOptionAloneOnTheFirstAct()
+    {
+        const string asked = "ROOM_FULL_OF_CHEESE.pages.INITIAL.options.GORGE";
+        using var harness = new RecordedActWalk();
+        var (actions, stopped) = harness.WalkUntil(
+            new WalkPolicy { AskInTheNextAct = true, EventId = RoomFullOfCheese, EventOptionKey = asked },
+            captured => captured.Any(action => action.Verb == ActionVerb.ChooseEventOption && action.Args["event_id"] == RoomFullOfCheese),
+            SharedEventInTheFirstActSeed, RecordedActWalk.Acts, character: "CHARACTER.DEFECT");
+        Assert.True(
+            stopped,
+            $"seed {SharedEventInTheFirstActSeed} no longer opens {RoomFullOfCheese} on the first act's route: the game's RNG " +
+            "has moved, so rerun the hunt for this seed; it opened " +
+            string.Join(", ", actions.Where(action => action.Verb == ActionVerb.ChooseEventOption).Select(action => action.Args["event_id"])));
+        Assert.DoesNotContain(actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var answered = actions.First(action => action.Verb == ActionVerb.ChooseEventOption && action.Args["event_id"] == RoomFullOfCheese);
+        Assert.NotEqual(asked, answered.Args["option_key"]);
+    }
+
     /// <summary>A second act that opens on another ancient, or on Darv offering other
     /// relics, fails the row naming what it opened on: the seed's reading first, and
     /// the walk itself where the reading agrees and the offer does not.</summary>

@@ -1106,7 +1106,7 @@ public static partial class SyntheticFixtureGenerator
             // reward the option's fight earns, claimed off that fight's loot screen, a
             // rest taken after the event - or after the run's end on it, which the
             // game announces from inside the option's own work
-            var chosenTheAskedOption = local.Id.ToString() == _policy.EventId && key == _policy.EventOptionKey;
+            var chosenTheAskedOption = IsTheAskedEvent(local) && key == _policy.EventOptionKey;
             if (chosenTheAskedOption) _choseTheAskedOption = true;
             MeetTheAskIf(session, chosenTheAskedOption && !_policy.AsksPastTheEvent && !_policy.ChooseItUntilTheRunEnds);
             if (chosenTheAskedOption && _policy.ChooseItUntilTheRunEnds && RunEnding.Reading is not null)
@@ -1136,7 +1136,7 @@ public static partial class SyntheticFixtureGenerator
         int IndexOfKey(string? wanted) =>
             wanted is null ? -1 : options.ToList().FindIndex(option => Takeable(option) && RunDriver.OptionKey(option) == wanted);
 
-        if (local.Id.ToString() == _policy.EventId)
+        if (IsTheAskedEvent(local))
         {
             // The option asked for is taken once, whatever it says it does to the
             // player - a row that asks for the Trial's double-down asks for the
@@ -1170,6 +1170,14 @@ public static partial class SyntheticFixtureGenerator
         if (proceed >= 0) return proceed;
         return options.ToList().FindLastIndex(Takeable);
     }
+
+    /// <summary>Whether an event on the page under way is the one the policy names,
+    /// in the act the policy's ask is in: a shared event the first act of a walk into
+    /// the second rolls as well is answered there by today's rule, because the
+    /// option taken there is the fixture's own and would otherwise stand as the ask
+    /// taken before the act the row is about.</summary>
+    private static bool IsTheAskedEvent(EventModel local) =>
+        !_beforeTheAskedAct && local.Id.ToString() == _policy.EventId;
 
     /// <summary>The page an option key names, as an event's code writes one -
     /// <c>EVENT.pages.PAGE.options.OPTION</c> - or null for a key of another shape.</summary>
