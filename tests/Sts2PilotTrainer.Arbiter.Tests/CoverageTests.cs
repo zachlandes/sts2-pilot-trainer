@@ -57,6 +57,10 @@ public sealed class CoverageTests
             Assert.Equal(0, totals.GetProperty("inadmissible_excusals").GetInt32());
             Assert.Equal(0, totals.GetProperty("misnamed_producers").GetInt32());
             Assert.Equal(3, totals.GetProperty("recordings").GetInt32());
+            // Both natives were written by the unstamped recorder, and still credit:
+            // the manifest replays on this build whatever the journal got wrong
+            Assert.Equal(3, totals.GetProperty("credited_recordings").GetInt32());
+            Assert.Equal(0, totals.GetProperty("unverified_recordings").GetInt32());
             Assert.Equal(
                 totals.GetProperty("points").GetInt32(),
                 totals.GetProperty("covered").GetInt32() + totals.GetProperty("co_occurrence").GetInt32() +
@@ -215,6 +219,50 @@ public sealed class CoverageTests
             Assert.Equal(0, neow.GetProperty("recordings").GetInt32());
             Assert.Equal(1, neow.GetProperty("unverified_recordings").GetInt32());
             Assert.Equal("Uncovered", neow.GetProperty("state").GetString());
+        });
+    }
+
+    /// <summary>
+    /// A recording an older recorder wrote credits what it reached, exactly as the
+    /// same recording written by this build's recorder does, while <c>parity</c>
+    /// holds nothing on it: the manifest replays on this build and a replayed
+    /// history is a witness that every point on it is reachable; the journal is what
+    /// the older recorder got wrong, and the manifest carries none of it. The two
+    /// artifacts differ in nothing but the corpus they name.
+    /// </summary>
+    [GameFact]
+    public void ARecordingOfAnOlderRecorderCreditsWhatThisBuildsRecorderWould()
+    {
+        InScratch(directory =>
+        {
+            var source = JsonNode.Parse(File.ReadAllText(
+                Path.Combine(Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json")))!;
+            var outputs = new List<string>();
+            var artifacts = new List<string>();
+            foreach (var (corpusName, recorder) in new[] { ("corpus-a", "runmobile-recorder/0.0.1"), ("corpus-b", RunmobileVersion.Recorder) })
+            {
+                var corpus = Path.Combine(directory, corpusName);
+                Directory.CreateDirectory(corpus);
+                source["source"]!["native"]!["recorder_version"] = recorder;
+                File.WriteAllText(
+                    Path.Combine(corpus, "native-3LACFJ5NJ371-20260906-015901.replay.json"), source.ToJsonString());
+
+                var outDir = Path.Combine(directory, $"evidence-{corpusName}");
+                var result = Arbiter.Run("coverage", "--corpus", corpus, "--out", outDir);
+                Assert.Contains("recordings: 1", result.Output, StringComparison.Ordinal);
+                Assert.Contains("verb  ChooseNeowBlessing  1 recording(s)", result.Output, StringComparison.Ordinal);
+                Assert.DoesNotContain("not credited", result.Output, StringComparison.Ordinal);
+                Assert.DoesNotContain("credited to nothing", result.Output, StringComparison.Ordinal);
+                Assert.DoesNotContain("older recorder", result.Output, StringComparison.Ordinal);
+                outputs.Add(result.Output.Replace(corpusName, "<corpus>", StringComparison.Ordinal));
+                artifacts.Add(File.ReadAllText(Path.Combine(outDir, "coverage.json")).Replace(corpusName, "<corpus>", StringComparison.Ordinal));
+            }
+
+            Assert.Equal(outputs[1], outputs[0]);
+            Assert.Equal(artifacts[1], artifacts[0]);
+            var totals = JsonDocument.Parse(artifacts[0]).RootElement.GetProperty("totals");
+            Assert.Equal(1, totals.GetProperty("credited_recordings").GetInt32());
+            Assert.Equal(0, totals.GetProperty("unverified_recordings").GetInt32());
         });
     }
 

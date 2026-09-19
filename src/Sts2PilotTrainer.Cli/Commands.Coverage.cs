@@ -19,11 +19,13 @@ internal static partial class Commands
     /// has a recording or has a reason in <see cref="DecisionExcusals"/> a build can be
     /// held to.
     ///
-    /// A recording is credited only where <see cref="RecordingStanding"/> says it holds,
-    /// the reading <c>parity</c> makes of the same file against the build this process
-    /// would replay with; one it says holds nothing - a recording of another build
-    /// first among them, because a store spans builds once the game updates - is
-    /// tallied apart as reached and unverified, and a manifest this build cannot read is
+    /// A recording is credited only where <see cref="RecordingStanding"/> says it credits
+    /// coverage, the reading <c>parity</c> makes of the same file against the build and
+    /// the recorder this process carries; one it says credits nothing - a recording of
+    /// another build first among them, because a store spans builds once the game
+    /// updates - is tallied apart as reached and unverified, while one an older recorder
+    /// wrote still credits, because its manifest replays on this build and only its
+    /// journal is the older recorder's; and a manifest this build cannot read is
     /// named with the parser's words and the rest of the corpus is still counted. The
     /// build under test is read once, here, and written into the artifact's header, so
     /// the number says which build it is a number about.
@@ -54,7 +56,7 @@ internal static partial class Commands
             {
                 recordings.Add(new CoveredRecording(
                     manifest.RunId, DecisionFacts.Of(manifest),
-                    RecordingStanding.Of(manifest.Source.Native, manifest.Environment, build),
+                    RecordingStanding.Of(manifest.Source.Native, manifest.Environment, build, RunmobileVersion.Current),
                     DecisionFacts.ModelsMet(manifest)));
             }
             else

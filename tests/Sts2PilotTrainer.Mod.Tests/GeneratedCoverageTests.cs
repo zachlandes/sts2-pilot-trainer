@@ -204,7 +204,7 @@ public sealed class GeneratedCoverageTests
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
                     recorded.Manifest.RunId, points,
-                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();
@@ -358,7 +358,7 @@ public sealed class GeneratedCoverageTests
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
                     recorded.Manifest.RunId, points,
-                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();
@@ -630,7 +630,7 @@ public sealed class GeneratedCoverageTests
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
                     recorded.Manifest.RunId, points,
-                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();
@@ -720,7 +720,7 @@ public sealed class GeneratedCoverageTests
         var reached = DecisionCoverage.SeamsReachedBy(
                 new CoveredRecording(
                     recorded.Manifest.RunId, points,
-                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value),
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
                     DecisionFacts.ModelsMet(recorded.Manifest)),
                 DecisionSurface.ProducerMap())
             .ToHashSet();

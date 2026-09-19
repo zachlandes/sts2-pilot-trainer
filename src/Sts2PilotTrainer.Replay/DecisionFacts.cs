@@ -391,9 +391,10 @@ public sealed record ProducerSeam(
 /// projected. Pure, so it is held on inputs written by hand.
 ///
 /// A recording credits a point only where <see cref="RecordingStanding"/> says it
-/// holds. One made on another build, or one the recorder marked broken, unmapped or
-/// non-standard, is projected all the same and tallied apart, as reached and
-/// unverified: a point only such a recording reaches stays uncovered, or excused, and
+/// credits coverage - a recording that holds, or one an older recorder wrote, whose
+/// manifest replays on this build whatever its journal got wrong. One made on another
+/// build, or one the recorder marked broken, unmapped or non-standard, is projected
+/// all the same and tallied apart, as reached and unverified: a point only such a recording reaches stays uncovered, or excused, and
 /// the tally is printed beside it so the corpus is not read as shorter than it is. A
 /// manifest this build cannot read projects nothing and is listed by name for the
 /// same reason.
@@ -532,7 +533,7 @@ public static class DecisionCoverage
 public sealed record CoveredRecording(
     string RunId, IReadOnlySet<DecisionPoint> Points, RecordingStanding Standing, IReadOnlySet<string>? Models = null)
 {
-    public bool Credits => Standing.Holds;
+    public bool Credits => Standing.CreditsCoverage;
 
     public IReadOnlySet<string> ModelsMet => Models ?? new HashSet<string>();
 }
