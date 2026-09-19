@@ -148,7 +148,7 @@ reader confidence, not arithmetic over the footage, not a screenshot of a mod li
 Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
-**The recorder's release bar is two numbers `./scripts/arbiter` computes over a corpus, and `parity` is the first; [docs/release-bar.md](docs/release-bar.md) owns the procedure, the release statement and the measurements.**
+**The recorder's release bar is two numbers `./scripts/arbiter` computes over a corpus, and `parity` is the first; the third, at release only, is `parity` again over what a night of the retail soak recorded, and [docs/release-bar.md](docs/release-bar.md) owns the procedure, the release statement and the measurements.**
 Per recording and per decision: a fresh replay of the manifest has to reproduce the `.journal.jsonl` the recorder wrote beside it - the same decision at the same place, the sampled state it began from and settled into through `ReplayTrace.SameSample`, and the complete digest of each reading where both sides carry one - and the first decision where it does not is named with the field, or as hidden state where every sampled field agrees and only the digest differs.
 `TraceParity.Compare` in `Sts2PilotTrainer.Replay` is the one oracle: the CLI's `parity` holds a journal to `Arbiter.Run`'s trace through it and `HeadlessGameplayCaptureTests` holds the recorder's own headless capture to an in-process replay through the same call, so the two cannot drift.
 `ReplayStep` carries `before_digest` and `after_digest` for that comparison, `RunJournalEntry.AsStep` is the one conversion from a journal line to a step, and `RunJournal.Trace` is the continued history as the trace a replay is held to.
