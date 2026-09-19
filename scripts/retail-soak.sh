@@ -12,12 +12,14 @@
 # install the mod, write the soak profile's settings.json whole with the night's plan,
 # launch the retail client through ./scripts/retail-client.sh with --headless, wait
 # for the mod to write `soak-done` under the profile's store or for the night's
-# deadline, release through the same helper, copy the profile's recordings into dated
-# build evidence, run parity and coverage over that copy beside the committed
+# deadline, release through the same helper, copy the recordings the night made into
+# dated build evidence, run parity and coverage over that copy beside the committed
 # manifests, print the third release figure, and exit non-zero on a parity failure or
-# a run the mod could not finish cleanly. Nothing under the store is ever deleted by
-# this script; retention is the soak profile's own setting and it is written to keep
-# every run.
+# a run the mod could not finish cleanly. The night's recordings are the ones written
+# under the profile's recordings/ since this launch, so the figure is this night's and
+# not the profile's whole history; a profile that has run before keeps every earlier
+# night where it is. Nothing under the store is ever deleted by this script; retention
+# is the soak profile's own setting and it is written to keep every run.
 #
 # The soak profile is `user://default/<client id>/modded/profile<p>/`, the tree the
 # helper's --client-id selects and the profile that tree's own pointer names. It is a
@@ -52,9 +54,11 @@ usage: retail-soak.sh [--runs <n>] [--seeds <a,b,c>] [--character <CHARACTER.X>]
 
 Exit 0 when soak-done arrived, every run ended cleanly, and parity and coverage
 hold over the night's copy beside manifests/; 1 when parity or coverage does not
-hold; 3 when the night ended without soak-done or recorded nothing; 4 when a run
-ended in a state the mod refused - unknown-state, failed, timed-out or
-client-unusable - which is a finding to read in godot.log; 2 on a usage error.
+hold; 3 when the night measured nothing - the launch was refused, the night ended
+without soak-done, the mod refused the plan before starting a run, or it recorded
+nothing; 4 when a run ended in a state the mod refused - unknown-state, failed,
+timed-out or client-unusable - which is a finding to read in godot.log; 2 on a
+usage error.
 EOF
 }
 
@@ -196,8 +200,9 @@ EOF
 mv "$settings_tmp" "$settings"
 say "wrote $settings"
 
-# A soak-done from an earlier night is not tonight's: the wait is for one written
-# after the launch, and nothing here removes the old one
+# A soak-done or a recording from an earlier night is not tonight's: the wait is for
+# a soak-done written after the launch and the copy is of the recordings written
+# after it, and nothing here removes the old ones
 launch_marker="$out/launched-at"
 : > "$launch_marker"
 
@@ -247,11 +252,19 @@ fi
 cp "$soak_done" "$out/soak-done.json"
 say "soak-done: $(tr -d '\n' < "$soak_done" | tr -s ' ')"
 
-# The night's copy: the profile's recordings as they stand, copied and never moved
+# A night the mod refused before starting a run is written as zero runs with the
+# sentence, and measured nothing
+refusal="$(sed -n 's/.*"refusal"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$soak_done" | head -n 1)"
+if [[ -n "$refusal" ]]; then
+  say "the mod refused the night: $refusal; nothing is measured. Read $user_dir/logs/godot.log."
+  exit 3
+fi
+
+# The night's copy: the recordings written since the launch, copied and never moved
 copy="$out/recordings"
 mkdir -p "$copy"
 if [[ -d "$recordings" ]]; then
-  cp -p "$recordings"/*.replay.json "$recordings"/*.journal.jsonl "$copy/" 2>/dev/null || true
+  find "$recordings" -mindepth 1 -maxdepth 1 -type f \( -name '*.replay.json' -o -name '*.journal.jsonl' \) -newer "$launch_marker" -exec cp -p {} "$copy/" \;
 fi
 if ! ls "$copy"/*.replay.json > /dev/null 2>&1; then
   say "the night recorded nothing under $recordings; nothing is measured"

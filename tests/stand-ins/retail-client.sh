@@ -13,14 +13,21 @@
 #                                      seconds having written nothing: a night that
 #                                      ended without finishing
 #   with --headless and FAKE_SOAK_DONE  the retail soak's client: after
-#                                      FAKE_SOAK_DONE_AFTER seconds writes the file
-#                                      FAKE_SOAK_DONE names the way RetailSoak writes
-#                                      soak-done, with FAKE_SOAK_OUTCOME as the one
-#                                      run's outcome (default "ended"), and exits the
-#                                      way NGame.Quit does. Without --headless it
-#                                      never writes it: a soak script that dropped the
-#                                      flag would wait out its deadline, which is the
-#                                      point.
+#                                      FAKE_SOAK_DONE_AFTER seconds "records" the
+#                                      night - copies every file under
+#                                      FAKE_SOAK_RECORDS_FROM, where one is named,
+#                                      into recordings/ beside the done file, the way
+#                                      the recorder writes a run's files during the
+#                                      night - writes the file FAKE_SOAK_DONE names
+#                                      the way RetailSoak writes soak-done, with
+#                                      FAKE_SOAK_OUTCOME as the one run's outcome
+#                                      (default "ended"), and exits the way NGame.Quit
+#                                      does. With FAKE_SOAK_REFUSAL it records nothing
+#                                      and writes the zero-run soak-done a refused
+#                                      plan writes, with that sentence as its refusal.
+#                                      Without --headless it never writes it: a soak
+#                                      script that dropped the flag would wait out its
+#                                      deadline, which is the point.
 #
 # Every launch appends what it saw - cwd, its entries, args, SteamAppId - to
 # FAKE_GAME_LOG, and its pid to FAKE_GAME_PIDS while it counts as running.
@@ -53,9 +60,29 @@ if [[ "$headless" == 1 && -n "${FAKE_SOAK_EXIT_WITHOUT_DONE:-}" ]]; then
   echo "quit without writing soak-done" >> "$FAKE_GAME_LOG"
   exit 0
 fi
-if [[ "$headless" == 1 && -n "${FAKE_SOAK_DONE:-}" ]]; then
+if [[ "$headless" == 1 && -n "${FAKE_SOAK_DONE:-}" && -n "${FAKE_SOAK_REFUSAL:-}" ]]; then
   sleep "${FAKE_SOAK_DONE_AFTER:-2}"
   mkdir -p "$(dirname "$FAKE_SOAK_DONE")"
+  cat > "$FAKE_SOAK_DONE" <<DONE
+{
+  "schema": "sts2-pilot-trainer/retail-soak-done/v1",
+  "finished_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "runs_planned": 1,
+  "runs_started": 0,
+  "runs": [],
+  "refusal": "$FAKE_SOAK_REFUSAL",
+  "recorder_version": "stand-in"
+}
+DONE
+  echo "soak-done written as a refusal; quitting the way NGame.Quit does" >> "$FAKE_GAME_LOG"
+  exit 0
+fi
+if [[ "$headless" == 1 && -n "${FAKE_SOAK_DONE:-}" ]]; then
+  sleep "${FAKE_SOAK_DONE_AFTER:-2}"
+  mkdir -p "$(dirname "$FAKE_SOAK_DONE")/recordings"
+  if [[ -n "${FAKE_SOAK_RECORDS_FROM:-}" ]]; then
+    cp "$FAKE_SOAK_RECORDS_FROM"/* "$(dirname "$FAKE_SOAK_DONE")/recordings/"
+  fi
   cat > "$FAKE_SOAK_DONE" <<DONE
 {
   "schema": "sts2-pilot-trainer/retail-soak-done/v1",
@@ -65,6 +92,7 @@ if [[ "$headless" == 1 && -n "${FAKE_SOAK_DONE:-}" ]]; then
   "runs": [
     { "run": 1, "seed": "STANDIN", "outcome": "${FAKE_SOAK_OUTCOME:-ended}" }
   ],
+  "refusal": null,
   "recorder_version": "stand-in"
 }
 DONE

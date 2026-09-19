@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Godot;
 using HarmonyLib;
@@ -54,7 +55,8 @@ namespace Sts2PilotTrainer.Mod;
 /// selector answers every prompt engine-side through <c>CardSelectCmd.UseSelector</c>.
 /// The fight is played here through <c>CardModel.TryManualPlay</c>, an
 /// <c>EndPlayerTurnAction</c> enqueued and <c>PotionModel.EnqueueManualUse</c> - the
-/// members the engine table maps a click onto - under <see cref="SurvivalPlayRule"/>;
+/// members the engine table maps a click onto - under <see cref="SurvivalPlayRule"/>'s
+/// measured line, the one the whole-act walk plays;
 /// the event room presses the game's own option buttons and hands a fight inside an
 /// event to the same fight loop; and the hand prompt and the in-fight card grid are
 /// pressed the way a person presses them. Everything else is the game's own handler,
@@ -162,47 +164,12 @@ internal static class RetailSoak
             return;
         }
 
-        if (RefusalFor(settings) is { } refusal)
+        if (RefusalToRun(settings, plan, out var character) is { } refusal)
         {
             Say($"refusing to run: {refusal}");
-            return;
-        }
-
-        if (!RunSession.MaySpeakIn(GameSessionWatch.Observed))
-        {
-            Say("refusing to run: this client is in a multiplayer session");
-            return;
-        }
-
-        if (!RecordedFightRun.Idle || RunRecorder.Active is not null || ProfileWriteBarrier.IsActive)
-        {
-            Say("refusing to run: another Runmobile run is live in this client");
-            return;
-        }
-
-        if (!RunmobileMod.EnsureAdopted())
-        {
-            Say("refusing to run: the running game could not be adopted, so nothing it plays could be recorded");
-            return;
-        }
-
-        var character = ModelDb.AllCharacters.FirstOrDefault(
-            candidate => string.Equals(candidate.Id.ToString(), plan.Character, StringComparison.Ordinal));
-        if (character is null)
-        {
-            Say($"refusing to run: this build has no character '{plan.Character}'");
-            return;
-        }
-
-        var maxAscension = SaveManager.Instance.Progress.CharacterStats.TryGetValue(character.Id, out var stats)
-            ? stats.MaxAscension
-            : 0;
-        if (plan.Ascension > maxAscension)
-        {
-            Say(
-                $"refusing to run: the plan asks for ascension {plan.Ascension.ToString(CultureInfo.InvariantCulture)} " +
-                $"and this profile has unlocked {maxAscension.ToString(CultureInfo.InvariantCulture)} for {character.Id}; " +
-                "the game's own lobby would start a lower one, and the soak starts nothing it was not asked for");
+            WriteDone(plan, 0, [], refusal);
+            Say("the night is over; asking the game to quit");
+            NGame.Instance?.Quit();
             return;
         }
 
@@ -238,7 +205,7 @@ internal static class RetailSoak
         }
         finally
         {
-            WriteDone(plan, started, outcomes);
+            WriteDone(plan, started, outcomes, refusal: null);
             Say("the night is over; asking the game to quit");
             NGame.Instance?.Quit();
         }
@@ -246,6 +213,46 @@ internal static class RetailSoak
 
     /// <summary>One run of the night, as written to <see cref="DoneFileName"/>.</summary>
     private sealed record RunRecord(int run, string seed, string outcome);
+
+    /// <summary>
+    /// Why this client, with this plan in hand, starts no run - or null, with the
+    /// character the plan names, where the night may start. The settings half is
+    /// <see cref="RefusalFor"/>; the rest reads the client: a multiplayer session,
+    /// another Runmobile run live, a game the shell could not adopt, a character this
+    /// build has not got, an ascension the profile has not unlocked.
+    /// </summary>
+    private static string? RefusalToRun(RunmobileSettings settings, RetailSoakPlan plan, out CharacterModel character)
+    {
+        character = null!;
+        if (RefusalFor(settings) is { } refusal) return refusal;
+        if (!RunSession.MaySpeakIn(GameSessionWatch.Observed)) return "this client is in a multiplayer session";
+        if (!RecordedFightRun.Idle || RunRecorder.Active is not null || ProfileWriteBarrier.IsActive)
+        {
+            return "another Runmobile run is live in this client";
+        }
+
+        if (!RunmobileMod.EnsureAdopted())
+        {
+            return "the running game could not be adopted, so nothing it plays could be recorded";
+        }
+
+        var named = ModelDb.AllCharacters.FirstOrDefault(
+            candidate => string.Equals(candidate.Id.ToString(), plan.Character, StringComparison.Ordinal));
+        if (named is null) return $"this build has no character '{plan.Character}'";
+
+        var maxAscension = SaveManager.Instance.Progress.CharacterStats.TryGetValue(named.Id, out var stats)
+            ? stats.MaxAscension
+            : 0;
+        if (plan.Ascension > maxAscension)
+        {
+            return $"the plan asks for ascension {plan.Ascension.ToString(CultureInfo.InvariantCulture)} " +
+                   $"and this profile has unlocked {maxAscension.ToString(CultureInfo.InvariantCulture)} for {named.Id}; " +
+                   "the game's own lobby would start a lower one, and the soak starts nothing it was not asked for";
+        }
+
+        character = named;
+        return null;
+    }
 
     /// <summary>
     /// Why the settings a client read give it no night to run, or null where they
@@ -287,7 +294,11 @@ internal static class RetailSoak
         internal const string ClientUnusable = "client-unusable";
     }
 
-    private static void WriteDone(RetailSoakPlan plan, int started, IReadOnlyList<RunRecord> outcomes)
+    /// <summary>The night's summary: the plan's count, how many runs started and how
+    /// each ended, and <c>refusal</c> - null for a night that ran, the sentence for
+    /// one the client refused before starting a run, which the script reads as a
+    /// night that measured nothing.</summary>
+    private static void WriteDone(RetailSoakPlan plan, int started, IReadOnlyList<RunRecord> outcomes, string? refusal)
     {
         try
         {
@@ -298,8 +309,9 @@ internal static class RetailSoak
                 runs_planned = plan.Runs,
                 runs_started = started,
                 runs = outcomes,
+                refusal,
                 recorder_version = RunmobileVersion.Recorder,
-            }, new JsonSerializerOptions { WriteIndented = true });
+            }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
             RunmobileStore.Write(DoneFileName, text + "\n");
             Say($"wrote {DoneFileName}");
         }
@@ -670,14 +682,14 @@ internal static class RetailSoak
     /// async fight loop holds nothing of a sibling assembly's type across an await.</summary>
     private static bool NextPlay(Player me, out int index, out Creature? target)
     {
-        var play = SurvivalPlayRule.Next(me, Enemies());
+        var play = SurvivalPlayRule.Next(SurvivalRule.BlockWhenThreatened, me, Enemies());
         index = play?.HandIndex ?? -1;
         target = play?.Target;
         return play is not null;
     }
 
     private static IReadOnlyList<Creature> Enemies() =>
-        CombatManager.Instance.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is not null).ToList() ?? [];
+        CombatManager.Instance.DebugOnlyGetState()?.Enemies ?? [];
 
     /// <summary>The walk's potion rule: everything on an elite or boss, one when hurt.</summary>
     private static async Task DrinkPotionsAsync(Player me, RoomType roomType, CancellationToken ct)
@@ -690,7 +702,7 @@ internal static class RetailSoak
         {
             if (me.PlayerCombatState is not { Phase: PlayerTurnPhase.Play } || !CombatManager.Instance.IsInProgress) return;
             await WaitForTheRecorderAsync("a potion");
-            var target = SurvivalPlayRule.TargetFor(potion.TargetType, Enemies());
+            var target = SurvivalPlayRule.TargetFor(SurvivalRule.BlockWhenThreatened, potion.TargetType, Enemies());
             Say($"potion {potion.Id} at {target?.ModelId.ToString() ?? "nothing"}");
             potion.EnqueueManualUse(target);
             await WaitHelper.Until(

@@ -16,9 +16,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// The stand-in plays the soak's client: under <c>--headless</c> it writes
 /// <c>soak-done</c> the way <c>RetailSoak</c> writes it and quits the way
 /// <c>NGame.Quit</c> does; without the flag it never writes it, which is what makes
-/// the flag load-bearing here. The recordings the night "made" are a journalled
-/// recording the way <see cref="ParityTests"/> builds one, placed in the sandbox
-/// store ahead of the launch, because a stand-in plays no run.
+/// the flag load-bearing here. The recording the night "makes" is a journalled
+/// recording the way <see cref="ParityTests"/> builds one, staged where the stand-in
+/// copies it into the sandbox store during the night, because a stand-in plays no run
+/// and the script copies only what was written after its launch.
 /// </summary>
 public sealed class RetailSoakScriptTests : IDisposable
 {
@@ -34,6 +35,7 @@ public sealed class RetailSoakScriptTests : IDisposable
     private readonly string _gamePids;
     private readonly string _out;
     private readonly string _store;
+    private readonly string _night;
     private readonly Dictionary<string, string> _environment = new(StringComparer.Ordinal);
 
     public RetailSoakScriptTests()
@@ -44,6 +46,7 @@ public sealed class RetailSoakScriptTests : IDisposable
         _gameLog = Path.Combine(_sandbox, "game.log");
         _gamePids = Path.Combine(_sandbox, "game.pids");
         _out = Path.Combine(_sandbox, "evidence");
+        _night = Path.Combine(_sandbox, "night");
         var user = Path.Combine(_home, "Library", "Application Support", "SlayTheSpire2");
         _store = Path.Combine(user, "Runmobile", "default", "2", "modded", "profile1");
         if (OperatingSystem.IsWindows()) return;
@@ -62,8 +65,10 @@ public sealed class RetailSoakScriptTests : IDisposable
             "    if kill -0 \"$pid\" 2>/dev/null; then printf '%5s %5s %s\\n' \"$pid\" 1 \"$FAKE_GAME_EXECUTABLE\"; fi\n" +
             "  done < \"$FAKE_GAME_PIDS\"\n" +
             "fi\n");
+        Directory.CreateDirectory(_night);
         _environment["FAKE_SOAK_DONE"] = Path.Combine(_store, "soak-done");
         _environment["FAKE_SOAK_DONE_AFTER"] = "2";
+        _environment["FAKE_SOAK_RECORDS_FROM"] = _night;
     }
 
     public void Dispose()
@@ -90,7 +95,7 @@ public sealed class RetailSoakScriptTests : IDisposable
     public void ANightRunsTheWholeLifecycleAndPrintsTheFigure()
     {
         if (OperatingSystem.IsWindows()) return;
-        var (manifest, journal) = ARecordingInTheStore();
+        var (manifest, journal) = ARecordingTheNightMakes();
 
         var night = Run("--runs", "1", "--seeds", "ABC123, DEF456", "--stop-after-minutes", "1", "--ascension", "0");
 
@@ -129,8 +134,8 @@ public sealed class RetailSoakScriptTests : IDisposable
     public void AParityFailureExitsOne()
     {
         if (OperatingSystem.IsWindows()) return;
-        var (_, journal) = ARecordingInTheStore();
-        ParityTests.Rewrite(journal, seq: 5, entry => entry["before"]!["player.hp"] = "1");
+        var (_, journal) = ARecordingTheNightMakes();
+        ParityTests.Rewrite(Path.Combine(_night, Path.GetFileName(journal)), seq: 5, entry => entry["before"]!["player.hp"] = "1");
 
         var night = Run("--runs", "1", "--stop-after-minutes", "1");
 
@@ -145,7 +150,7 @@ public sealed class RetailSoakScriptTests : IDisposable
     public void ARunTheModCouldNotFinishExitsFour()
     {
         if (OperatingSystem.IsWindows()) return;
-        ARecordingInTheStore();
+        ARecordingTheNightMakes();
         _environment["FAKE_SOAK_OUTCOME"] = "unknown-state";
 
         var night = Run("--runs", "1", "--stop-after-minutes", "1");
@@ -171,6 +176,51 @@ public sealed class RetailSoakScriptTests : IDisposable
         Assert.Equal(3, night.ExitCode);
         Assert.Contains("the night ended without soak-done", night.Output, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(_out, "parity.json")));
+    }
+
+    /// <summary>The figure is this night's: a recording an earlier night left in the
+    /// same profile is neither copied nor measured, and stays where it is. Without
+    /// this, a profile that had run before a game update failed every later night on
+    /// the earlier build's recordings.</summary>
+    [GameFact]
+    public void AnEarlierNightsRecordingIsNotCopiedOrMeasured()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var (manifest, journal) = ARecordingTheNightMakes();
+        var earlier = AnEarlierNightsRecordingInTheStore();
+
+        var night = Run("--runs", "1", "--stop-after-minutes", "1");
+
+        Assert.Equal(0, night.ExitCode);
+        Assert.Contains("copied 1 recording(s)", night.Output, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(_out, "recordings", Path.GetFileName(manifest))));
+        Assert.True(File.Exists(Path.Combine(_out, "recordings", Path.GetFileName(journal))));
+        Assert.False(File.Exists(Path.Combine(_out, "recordings", Path.GetFileName(earlier.Manifest))), "an earlier night's recording was copied");
+        Assert.False(File.Exists(Path.Combine(_out, "recordings", Path.GetFileName(earlier.Journal))), "an earlier night's journal was copied");
+        Assert.True(File.Exists(earlier.Manifest) && File.Exists(earlier.Journal), "an earlier night's recording was removed from the store");
+        var parity = JsonDocument.Parse(File.ReadAllText(Path.Combine(_out, "parity.json"))).RootElement;
+        Assert.Equal(3, parity.GetProperty("summary").GetProperty("native_recordings").GetInt32());
+    }
+
+    /// <summary>A plan the mod refuses before starting a run - a character this build
+    /// has not got, an ascension the profile has not unlocked - is a zero-run
+    /// <c>soak-done</c> with the sentence, so the client quits and the morning reads
+    /// the refusal rather than waiting out the deadline and reading nothing.</summary>
+    [Fact]
+    public void ANightTheModRefusedExitsThreeWithTheSentence()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        _environment["FAKE_SOAK_REFUSAL"] = "this build has no character 'CHARACTER.NOBODY'";
+
+        var night = Run("--runs", "1", "--character", "CHARACTER.NOBODY", "--stop-after-minutes", "1");
+
+        Assert.Equal(3, night.ExitCode);
+        Assert.Contains("the mod refused the night: this build has no character 'CHARACTER.NOBODY'", night.Output, StringComparison.Ordinal);
+        var done = JsonDocument.Parse(File.ReadAllText(Path.Combine(_out, "soak-done.json"))).RootElement;
+        Assert.Equal(0, done.GetProperty("runs_started").GetInt32());
+        Assert.Empty(done.GetProperty("runs").EnumerateArray());
+        Assert.False(File.Exists(Path.Combine(_out, "parity.json")));
+        Assert.False(Directory.Exists(Path.Combine(_out, "recordings")));
     }
 
     /// <summary>A profile whose settings are somebody's - no plan in them - is not
@@ -219,16 +269,36 @@ public sealed class RetailSoakScriptTests : IDisposable
         Assert.False(File.Exists(_gameLog), "the client was launched anyway");
     }
 
-    /// <summary>A journalled recording under another run id, in the sandbox store's
-    /// recordings, as the night's own.</summary>
-    private (string Manifest, string Journal) ARecordingInTheStore()
+    /// <summary>A journalled recording under another run id, staged for the stand-in
+    /// to write into the sandbox store during the night, as the night's own; the paths
+    /// are where the store will hold it.</summary>
+    private (string Manifest, string Journal) ARecordingTheNightMakes()
     {
         var scratch = Path.Combine(_sandbox, "source");
         Directory.CreateDirectory(scratch);
         var (manifest, journal) = ParityTests.RecordingWithAJournal(scratch);
+        ParityTests.CopyUnder(manifest, journal, _night, SoakRun);
         var recordings = Path.Combine(_store, "recordings");
-        var journalCopy = ParityTests.CopyUnder(manifest, journal, recordings, SoakRun);
-        return (Path.Combine(recordings, $"{SoakRun}{RecordingLibrary.ManifestExtension}"), journalCopy);
+        return (
+            Path.Combine(recordings, $"{SoakRun}{RecordingLibrary.ManifestExtension}"),
+            Path.Combine(recordings, $"{SoakRun}{RunJournal.FileExtension}"));
+    }
+
+    /// <summary>The same recording under a third run id, already in the sandbox store
+    /// and dated a day before the night, as an earlier night's.</summary>
+    private (string Manifest, string Journal) AnEarlierNightsRecordingInTheStore()
+    {
+        const string earlierRun = "native-1A2B3C4D5E6F-20260918-010101";
+        var scratch = Path.Combine(_sandbox, "earlier");
+        Directory.CreateDirectory(scratch);
+        var (manifest, journal) = ParityTests.RecordingWithAJournal(scratch);
+        var recordings = Path.Combine(_store, "recordings");
+        var journalCopy = ParityTests.CopyUnder(manifest, journal, recordings, earlierRun);
+        var manifestCopy = Path.Combine(recordings, $"{earlierRun}{RecordingLibrary.ManifestExtension}");
+        var yesterday = DateTime.UtcNow.AddDays(-1);
+        File.SetLastWriteTimeUtc(manifestCopy, yesterday);
+        File.SetLastWriteTimeUtc(journalCopy, yesterday);
+        return (manifestCopy, journalCopy);
     }
 
     private static void WriteExecutable(string path, string content)
