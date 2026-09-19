@@ -261,6 +261,42 @@ public sealed class DecisionFactsTests
         // The build under test names its own recorder the way Runmobile.json spells it,
         // and a string that is not one is a defect in the caller rather than a standing
         Assert.Throws<ArgumentException>(() => RecordingStanding.Of(null, Environment, ThisBuild, "fixture"));
+        Assert.Throws<ArgumentException>(() => RecordingStanding.Of(null, Environment, ThisBuild, "1.0.0.0"));
+    }
+
+    /// <summary>
+    /// A candidate declared as a prerelease, which the build permits, measures itself
+    /// over its own recordings: equal holds, its release is above it, the release
+    /// before it and an earlier candidate of the same release are below it, and a
+    /// recording of the release holds against the candidate of the next one.
+    /// </summary>
+    [Fact]
+    public void APrereleaseCandidateComparesAgainstItsOwnRecordingsAndBelowItsRelease()
+    {
+        static RecordingStanding Against(string candidate, string wrote) =>
+            RecordingStanding.Of(
+                Fixtures.NativeSourceBlock() with { RecorderVersion = "runmobile-recorder/" + wrote },
+                Environment, ThisBuild, candidate);
+
+        Assert.True(Against("0.3.0-rc1", "0.3.0-rc1").Holds);
+        Assert.True(Against("0.3.0-rc1", "0.3.0-rc2").Holds);
+        Assert.True(Against("0.3.0-rc1", "0.3.0").Holds);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc2", "0.3.0-rc1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc1", "0.2.0").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0", "0.3.0-rc1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc.10", "0.3.0-rc.9").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc.1.1", "0.3.0-rc.1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-beta", "0.3.0-alpha").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc", "0.3.0-1").Kind);
+        Assert.Contains("this build's recorder is 'runmobile-recorder/0.3.0-rc1'", Against("0.3.0-rc1", "0.2.0").Detail, StringComparison.Ordinal);
+
+        Assert.Null(RecorderVersion.TryParse("0.3.0-"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-rc..1"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-rc 1"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0+build"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-01"));
+        Assert.Null(RecorderVersion.TryParse("03.0.0"));
+        Assert.Null(RecorderVersion.TryParse("0.3"));
     }
 
     /// <summary>A recording the recorder says holds nothing credits no point: what it

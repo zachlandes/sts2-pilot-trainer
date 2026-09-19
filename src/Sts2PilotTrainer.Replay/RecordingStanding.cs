@@ -39,6 +39,8 @@ namespace Sts2PilotTrainer.Replay;
 /// version was stamped named itself with are all an older recorder, never
 /// <see cref="RecordingStandingKind.Holds"/>: the release measurement is over the
 /// candidate's own recordings, and a recording that cannot say it is one is not.
+/// Both versions are read as a <see cref="RecorderVersion"/>, so a candidate declared
+/// as a prerelease measures itself over its own recordings and below its release.
 /// </summary>
 /// <param name="Build">The build rule's three fields, compared, whichever way they
 /// answered: what a report prints beside a recording of another build.</param>
@@ -57,14 +59,6 @@ public sealed record RecordingStanding(
     /// <summary>How a recorder names itself, ahead of the version the mod manifest spells.</summary>
     public const string RecorderPrefix = "runmobile-recorder/";
 
-    /// <summary>
-    /// What a recorder built before Runmobile's version was stamped into it named
-    /// itself with: .NET's default assembly version, four parts, which the mod
-    /// manifest never spells (<c>Directory.Build.props</c> owns why). It is above every
-    /// stamped version as a number and older than all of them as a recorder.
-    /// </summary>
-    public const string UnstampedRecorderVersion = "1.0.0.0";
-
     /// <param name="native">What the recorder said of the run; null for a reconstruction.</param>
     /// <param name="environment">The build the recording was made on, as it records it.</param>
     /// <param name="build">The build under test - the one this process would replay
@@ -75,13 +69,11 @@ public sealed record RecordingStanding(
     public static RecordingStanding Of(
         NativeSource? native, EnvironmentIdentity environment, LocalBuild build, string recorderVersion)
     {
-        if (!Version.TryParse(recorderVersion, out var current))
-        {
-            throw new ArgumentException(
+        var current = RecorderVersion.TryParse(recorderVersion)
+            ?? throw new ArgumentException(
                 $"'{recorderVersion}' is not a version the recorder could have been stamped with; the build " +
                 "under test names its own recorder the way Runmobile.json spells it.",
                 nameof(recorderVersion));
-        }
 
         var fields = EnvironmentPreflight.Build(environment, build);
         var mismatched = fields.Where(field => !field.Matches).ToList();
@@ -131,14 +123,13 @@ public sealed record RecordingStanding(
     }
 
     /// <summary>The version a recorder named itself with, or null where it named none
-    /// this build reads as one: no prefix, a string that is not a version, or the
-    /// unstamped default.</summary>
-    private static Version? RecorderVersionOf(string? recorderVersion)
+    /// this build reads as one: no prefix, or a string <see cref="RecorderVersion"/>
+    /// does not read - the four-part <c>1.0.0.0</c> a recorder built before the
+    /// version was stamped named itself with among them.</summary>
+    private static RecorderVersion? RecorderVersionOf(string? recorderVersion)
     {
         if (recorderVersion is null || !recorderVersion.StartsWith(RecorderPrefix, StringComparison.Ordinal)) return null;
-        var spelled = recorderVersion[RecorderPrefix.Length..];
-        if (string.Equals(spelled, UnstampedRecorderVersion, StringComparison.Ordinal)) return null;
-        return Version.TryParse(spelled, out var version) ? version : null;
+        return RecorderVersion.TryParse(recorderVersion[RecorderPrefix.Length..]);
     }
 }
 
