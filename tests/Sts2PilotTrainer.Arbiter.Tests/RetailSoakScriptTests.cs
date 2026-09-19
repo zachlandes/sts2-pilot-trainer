@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -124,7 +125,7 @@ public sealed class RetailSoakScriptTests : IDisposable
         Assert.Equal(1, parity.GetProperty("summary").GetProperty("at_parity").GetInt32());
         Assert.Equal(3, parity.GetProperty("summary").GetProperty("native_recordings").GetInt32());
         Assert.True(File.Exists(Path.Combine(_out, "coverage.json")));
-        Assert.Contains("the third figure: parity holds over the night's copy beside manifests/; coverage holds; 0 run(s) to read", night.Output, StringComparison.Ordinal);
+        Assert.Contains("the third figure: parity holds over all 1 night recording(s) beside manifests/; coverage holds; 0 run(s) to read", night.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("record state : live", Run("status").Output, StringComparison.Ordinal);
     }
 
@@ -140,8 +141,34 @@ public sealed class RetailSoakScriptTests : IDisposable
         var night = Run("--runs", "1", "--stop-after-minutes", "1");
 
         Assert.Equal(1, night.ExitCode);
-        Assert.Contains("parity does not hold", night.Output, StringComparison.Ordinal);
+        Assert.Contains("parity does not hold; 1 of 1 night recording(s) without parity evidence", night.Output, StringComparison.Ordinal);
         Assert.Contains("NOT AT PARITY", night.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>A recording of the night the recorder stopped watching holds nothing
+    /// for the parity command, which counts it in the denominator and still exits 0;
+    /// the night is held to every one of its recordings being PARITY by its own line
+    /// in the artifact, so such a recording is a run to read rather than a figure that
+    /// holds over none. What a recorder refusal on retail timing looks like in the
+    /// morning.</summary>
+    [GameFact]
+    public void ANightRecordingWithoutParityEvidenceExitsFourWithTheCount()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var (manifest, _) = ARecordingTheNightMakes();
+        var staged = Path.Combine(_night, Path.GetFileName(manifest));
+        var broken = JsonNode.Parse(File.ReadAllText(staged))!;
+        broken["source"]!["native"]!["continuity"] = NativeSource.BrokenContinuity;
+        File.WriteAllText(staged, broken.ToJsonString());
+
+        var night = Run("--runs", "1", "--stop-after-minutes", "1");
+
+        Assert.Equal(4, night.ExitCode);
+        Assert.Contains($"night recording {SoakRun} holds no parity evidence: continuity", night.Output, StringComparison.Ordinal);
+        Assert.Contains("parity unproven for 1 of 1 night recording(s)", night.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("parity holds", night.Output, StringComparison.Ordinal);
+        var parity = JsonDocument.Parse(File.ReadAllText(Path.Combine(_out, "parity.json"))).RootElement;
+        Assert.True(parity.GetProperty("at_parity").GetBoolean(), "the command's own verdict is what the night must not rest on");
     }
 
     /// <summary>A run the mod gave up in a state it did not know is named from

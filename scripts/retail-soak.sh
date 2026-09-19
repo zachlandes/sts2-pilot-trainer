@@ -54,13 +54,15 @@ usage: retail-soak.sh [--runs <n>] [--seeds <a,b,c>] [--character <CHARACTER.X>]
                       where it already holds a night's recordings
                       (default build/evidence/soak/<launch time, UTC>)
 
-Exit 0 when soak-done arrived, every run ended cleanly, and parity and coverage
-hold over the night's copy beside manifests/; 1 when parity or coverage does not
-hold; 3 when the night measured nothing - the launch was refused, the night ended
-without soak-done, the mod refused the plan before starting a run, or it recorded
-nothing; 4 when a run ended in a state the mod refused - unknown-state, failed,
-timed-out or client-unusable - which is a finding to read in godot.log; 2 on a
-usage error.
+Exit 0 when soak-done arrived, every run ended cleanly, every recording of the
+night is at parity, and parity and coverage hold over the night's copy beside
+manifests/; 1 when a compared recording diverged or was refused, or coverage does
+not hold; 3 when the night measured nothing - the launch was refused, the night
+ended without soak-done, the mod refused the plan before starting a run, or it
+recorded nothing; 4 when a run ended in a state the mod refused - unknown-state,
+failed, timed-out or client-unusable - or a recording of the night holds no
+parity evidence - a broken continuity, no journal, an older recorder - each a
+finding to read in godot.log and parity.txt; 2 on a usage error.
 EOF
 }
 
@@ -323,6 +325,33 @@ parity_status=$?
 set -e
 cat "$out/parity.txt" >> "$log"
 parity_figure "$out/parity.txt"
+
+# The command's own verdict cannot see a recording that holds nothing - a broken
+# continuity, a journal it does not read - and a night whose every recording the
+# recorder stopped watching would read as at parity over none. Every recording of
+# the night has to be PARITY in the artifact, by its own line; the rest are the
+# findings the soak exists to surface.
+night_total=0
+night_unproven=0
+while IFS=$'\t' read -r run_id status detail; do
+  night_total=$((night_total + 1))
+  if [[ "$status" != "parity" ]]; then
+    night_unproven=$((night_unproven + 1))
+    say "night recording $run_id holds no parity evidence: $status - $detail; read godot.log and parity.txt"
+  fi
+done < <(python3 - "$out/parity.json" "$copy" <<'PY'
+import json, os, sys
+artifact, copy = sys.argv[1], sys.argv[2]
+night = {name for name in os.listdir(copy) if name.endswith(".replay.json")}
+for entry in json.load(open(artifact))["recordings"]:
+    if os.path.basename(entry["manifest"]) in night:
+        print("\t".join([entry["run_id"], entry["status"], entry.get("detail", "").replace("\n", " ")]))
+PY
+)
+if [[ "$night_total" == 0 ]]; then
+  say "parity.json names none of the night's recordings; nothing is measured"
+  exit 3
+fi
 say "coverage:"
 set +e
 ./scripts/arbiter coverage --corpus "$copy" --corpus manifests --out "$out" > "$out/coverage.txt" 2>&1
@@ -332,7 +361,14 @@ cat "$out/coverage.txt" >> "$log"
 coverage_figure "$out/coverage.txt"
 
 echo
-say "the third figure: parity $([[ "$parity_status" == 0 ]] && echo holds || echo 'does not hold') over the night's copy beside manifests/; coverage $([[ "$coverage_status" == 0 ]] && echo holds || echo 'does not hold'); $findings run(s) to read; evidence in $out"
+if [[ "$parity_status" == 0 && "$night_unproven" == 0 ]]; then
+  parity_word="holds over all $night_total night recording(s)"
+elif [[ "$parity_status" != 0 ]]; then
+  parity_word="does not hold; $night_unproven of $night_total night recording(s) without parity evidence"
+else
+  parity_word="unproven for $night_unproven of $night_total night recording(s)"
+fi
+say "the third figure: parity $parity_word beside manifests/; coverage $([[ "$coverage_status" == 0 ]] && echo holds || echo 'does not hold'); $findings run(s) to read; evidence in $out"
 if [[ "$parity_status" != 0 || "$coverage_status" != 0 ]]; then verdict=1; fi
-if [[ "$verdict" == 0 && "$findings" -gt 0 ]]; then verdict=4; fi
+if [[ "$verdict" == 0 && $((findings + night_unproven)) -gt 0 ]]; then verdict=4; fi
 exit "$verdict"
