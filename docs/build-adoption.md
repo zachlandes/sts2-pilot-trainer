@@ -4,7 +4,7 @@ A game update is adopted deliberately, never by changing a literal during releas
 
 ## The adopted build
 
-`scripts/game-build.txt` is the one build this checkout supports: version, build date, commit, branch, the sha256 of the pristine `sts2.dll` and the id-database hash, every field read off the installation it was taken from by `./scripts/bootstrap.sh`, which writes the same record beside the prepared set as `build/lib/game-build.txt`.
+`scripts/game-build.txt` is the one build this checkout supports: version, build date, commit, branch, the sha256 of the pristine `sts2.dll` and, under the key `id_database_hash`, the `main_assembly_hash` the game's own `release_info.json` names (not the model-id-database content hash the manifests record), every field read off the installation it was taken from by `./scripts/bootstrap.sh`, which writes the same record beside the prepared set as `build/lib/game-build.txt`.
 `GameIdentity.Read` holds that prepared record to the bootstrap receipt field for field and refuses a prepared set that carries none, and `GameBuildTests` holds the prepared record to the committed one; `SyntheticFixtureGenerator` and `BaseLibParityProbe` refuse a build the record does not name.
 
 The record names one build, and this is deliberate: before release the project supports the current build of each Steam branch and nothing older, and support for several builds at once begins only after release.
