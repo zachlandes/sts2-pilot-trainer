@@ -298,6 +298,11 @@ internal static class HeadlessPatches
         // there, as the recorder does. See RunEnding.
         ObserveRunEnding(harmony, assembly, warnings);
 
+        // The run's end on the player's death, which the game announces only under
+        // the retail flag because it announces it beside the game-over screen. See
+        // RunDeath.
+        RunDeath.Install(harmony, warnings);
+
         // Screen fades between rooms and acts. Pure vfx, and they dereference a
         // scene tree that does not exist here.
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "FadeOut", warnings);
@@ -552,7 +557,7 @@ internal static class HeadlessPatches
     }
 
     /// <summary>Harmony postfix on <c>RunManager.OnEnded</c>.</summary>
-    private static void RunEnded() => RunEnding.Observe();
+    private static void RunEnded(bool isVictory) => RunEnding.Observe(isVictory);
 
     /// <summary>Harmony postfix on <c>RunManager.CleanUp</c>.</summary>
     private static void RunCleanedUp() => RunEnding.Forget();

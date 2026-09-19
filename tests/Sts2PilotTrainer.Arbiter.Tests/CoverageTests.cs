@@ -31,7 +31,9 @@ public sealed class CoverageTests
             Assert.Contains("card-reward-alternative  Skip  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("card-prompt  CardSelectCmd.FromHand(context, player, prefs, filter, source)  not projectable", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [generated]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("event-option  EVENT.NEOW RELIC.ARCANE_SCROLL  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.NEOW RELIC.ARCANE_SCROLL  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD  excused [offered-only-to-another-character]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:gold @ AbstractModel.BeforeDeath  excused [not-on-the-route; names POWER.HEIST_POWER]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);

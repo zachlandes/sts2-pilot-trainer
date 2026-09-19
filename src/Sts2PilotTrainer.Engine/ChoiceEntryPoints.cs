@@ -621,6 +621,37 @@ internal static class ChoiceEntryPoints
         return comparisons;
     }
 
+    /// <summary>
+    /// Every comparison a body makes with what <paramref name="read"/> returns, by the
+    /// comparison's opcode: the operands in order, the call, then whatever loads the
+    /// other side - a local, a field, a constant, never another call - then the
+    /// comparison. <c>character.CardPool != cardPool</c> compiled to the getter, the
+    /// closure field's load and the <c>beq</c> that jumps past the block. How a guard
+    /// an event's own code puts around an option is read off the build rather than
+    /// written down; a call between the read and the comparison ends the span, because
+    /// the comparison is then of what that call returned.
+    /// </summary>
+    internal static IReadOnlyList<string> ComparisonsWith(MethodBase method, MethodBase read)
+    {
+        var operands = OperandsOf(method);
+        var comparisons = new List<string>();
+        for (var i = 0; i < operands.Count; i++)
+        {
+            if (operands[i].Callee != read) continue;
+            for (var j = i + 1; j < operands.Count; j++)
+            {
+                if (operands[j].Callee is not null) break;
+                if (operands[j].Comparison is { } comparison)
+                {
+                    comparisons.Add(comparison);
+                    break;
+                }
+            }
+        }
+
+        return comparisons;
+    }
+
     private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
     {
         if (!TryReadOperands(method, out var operands))

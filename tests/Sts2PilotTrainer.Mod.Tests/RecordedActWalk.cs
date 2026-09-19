@@ -77,7 +77,8 @@ internal sealed class RecordedActWalk : IDisposable
 
     /// <summary>
     /// The first act alone on the journey's route, through the recorder, on a fresh
-    /// run of the seed: stopped where the policy says and finished as abandoned, the
+    /// run of the seed: stopped where the policy says and finished as abandoned - or as
+    /// lost, where the game ended the run on the way - the
     /// way the natural-run proof finishes one, because the journey's survival rules
     /// were tuned for its own choices and not the policy's.
     /// </summary>
@@ -106,10 +107,15 @@ internal sealed class RecordedActWalk : IDisposable
         // Abandoned after the act, the way the natural-run proof abandons: the
         // engine's own abandon path is a Godot wait this process cannot run, so its
         // flag is set the way Abandon sets it and the recording finished the way the
-        // OnEnded patch finishes it
+        // OnEnded patch finishes it. A run the game ended on the way - lost outside a
+        // fight - was finished by that patch at the game's own OnEnded and is left as
+        // it ended
         var capture = RunRecorder.Active!.Capture;
-        typeof(RunManager).GetProperty("IsAbandoned")!.SetValue(RunManager.Instance, true);
-        RunRecorder.RunEnded(isVictory: false);
+        if (RunEnding.Reading is null)
+        {
+            typeof(RunManager).GetProperty("IsAbandoned")!.SetValue(RunManager.Instance, true);
+            RunRecorder.RunEnded(isVictory: false);
+        }
 
         Assert.True(
             capture.State == RunCaptureState.Finished,

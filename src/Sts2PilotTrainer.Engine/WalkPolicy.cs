@@ -128,6 +128,13 @@ public sealed record WalkPolicy
     /// <see cref="EventOptionsOnTheWay"/>.</summary>
     public string? EventOptionKey { get; init; }
 
+    /// <summary>Choose the option <see cref="EventOptionKey"/> names on every page
+    /// that offers it, past the game's own warning that it will kill the player, until
+    /// the game ends the run: what a walk after the run's end outside a fight asks
+    /// for, on an event whose option costs health each time it is taken. The ask is
+    /// met when the run has ended on that option, and never by choosing it alone.</summary>
+    public bool ChooseItUntilTheRunEnds { get; init; }
+
     /// <summary>The options to take on the pages before the one the key is offered
     /// on, by key, where a page offers one of them: how a walk reaches a page behind
     /// another - Punch Off's fight behind its challenge, a trial's verdict behind its
@@ -166,6 +173,12 @@ public sealed record WalkPolicy
         DiscardAPotionOnTheMap || ClaimTheRelicReward || SkipTheChest || TakeTheChest || TravelFreely ||
         ClaimTwoOfAKind || FightWhileHoldingIt || ShopWhileHoldingIt || EventOptionKey is not null ||
         RewardKindToClaim is not null;
+
+    /// <summary>Whether the policy asks for a decision past the event option it names,
+    /// which is then the ask: the reward the option's fight earns, claimed off its
+    /// loot screen, or the rest option taken at a rest site after the event, which is
+    /// how a relic an event deals is walked to what it adds at the next rest.</summary>
+    public bool AsksPastTheEvent => RewardKindToClaim is not null || RestOption is not null;
 
     /// <summary>Whether obtaining the policy's relic is the ask: a relic named and
     /// nothing asked past it.</summary>

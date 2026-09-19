@@ -17,6 +17,16 @@ namespace Sts2PilotTrainer.Engine;
 /// same member, and <see cref="Arbiter"/> takes that reading as the after-state of the
 /// action the run ended on and as the run's final state. A hook that observes and
 /// changes nothing; <c>docs/headless-fidelity.md</c> owns it beside the others.
+///
+/// A run lost outside a fight ends the same way: the killing event option calls
+/// <c>OnEnded(false)</c> from inside its own work (<see cref="RunDeath"/> is what
+/// makes the headless engine call it where the client does), and the recorder finishes
+/// there, before the option's work has moved the event on, so the reading is taken
+/// there. A run lost inside a fight is the one ending not read here: the recorder
+/// waits for the engine to end the fight the run was lost in and reads that
+/// (<c>RunRecorder.End</c>), because <c>OnEnded</c> is called from inside the killing
+/// enemy turn with the fight still live, so the reading a replay is held to is the
+/// fight's own end and the driver's settled sample is it.
 /// </summary>
 public static class RunEnding
 {
@@ -25,10 +35,15 @@ public static class RunEnding
     /// that follows a win reaches <c>OnEnded</c> a second time with the player dead.</summary>
     internal static CanonicalState? Reading { get; private set; }
 
-    /// <summary>Called from the <c>RunManager.OnEnded</c> postfix.</summary>
-    internal static void Observe()
+    /// <summary>Called from the <c>RunManager.OnEnded</c> postfix, with the outcome
+    /// the game ended the run with.</summary>
+    internal static void Observe(bool isVictory)
     {
         if (Reading is not null) return;
+
+        // A loss with a fight live is read at the fight's end, as the recorder reads it
+        if (!isVictory && LiveRun.InCombat) return;
+
         var state = RunManager.Instance?.DebugOnlyGetState();
         if (state is null) return;
 

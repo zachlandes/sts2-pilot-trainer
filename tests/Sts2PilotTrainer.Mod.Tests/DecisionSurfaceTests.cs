@@ -600,8 +600,9 @@ public sealed class DecisionSurfaceTests
     /// from the after-action its construction passes and the dolls from the title
     /// their options are keyed by, a locked option from the null it is constructed
     /// with, the Architect and its options and the seams it alone produces from the
-    /// win, a seam from the screens its answers are all on - and derives none for a
-    /// point content produces. A placeholder is admissible only where nothing is
+    /// win, a seam from the screens its answers are all on, an option withheld from
+    /// the run's own character from the guard on the owner's card pool - and derives
+    /// none for a point content produces. A placeholder is admissible only where nothing is
     /// derived; a generated row is admissible everywhere; retail-only timing is
     /// derived for nothing on this build.
     /// </summary>
@@ -641,6 +642,31 @@ public sealed class DecisionSurfaceTests
         Assert.Equal([ExcusalClass.NotChoosable], Derived(DecisionKinds.EventOption, "EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.LOCKED"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.WATERLOGGED_SCRIPTORIUM WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"));
+        Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"));
+
+        // An option an event withholds from the run's own character is named so with
+        // the character, off the guard on the owner's card pool, and nothing else is:
+        // Colorful Philosophers' five, one per character
+        Assert.Equal(
+            [ExcusalClass.OfferedOnlyToAnotherCharacter],
+            Derived(DecisionKinds.EventOption, "EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"));
+        var withheld = DecisionSurface.OptionsWithheldFromTheCharacter("EVENT.COLORFUL_PHILOSOPHERS");
+        Assert.Equal(
+            ["CHARACTER.DEFECT", "CHARACTER.IRONCLAD", "CHARACTER.NECROBINDER", "CHARACTER.REGENT", "CHARACTER.SILENT"],
+            withheld.Values.Order(StringComparer.Ordinal));
+        Assert.Equal("CHARACTER.IRONCLAD", withheld["COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"]);
+        Assert.Equal(
+            withheld.Keys.Order(StringComparer.Ordinal),
+            DecisionSurface.EventOptionKeys()
+                .Where(option => option.EventId == "EVENT.COLORFUL_PHILOSOPHERS")
+                .Select(option => option.Key)
+                .Order(StringComparer.Ordinal));
+        Assert.Equal(
+            5,
+            DecisionSurface.EventOptionKeys()
+                .Count(option => DecisionSurface.OptionsWithheldFromTheCharacter(option.EventId).ContainsKey(option.Key)));
+        Assert.Empty(DecisionSurface.OptionsWithheldFromTheCharacter("EVENT.ZEN_WEAVER"));
+        Assert.Empty(DecisionSurface.OptionsWithheldFromTheCharacter("EVENT.PAEL"));
 
         // Every option the build offers locked is named so - twenty on this build,
         // every one the locked form of an option the player cannot afford - and
@@ -721,7 +747,10 @@ public sealed class DecisionSurfaceTests
         Assert.Equal(
             ["RELIC.PAELS_GROWTH"],
             DecisionExcusals.All[new DecisionPoint(DecisionKinds.RestOption, "CLONE")].NamedProducers);
-        Assert.Equal(11, named.Count);
+        Assert.Equal(
+            ["POWER.HEIST_POWER"],
+            DecisionExcusals.All[DecisionPoint.Seam("reward-kind:gold", "AbstractModel.BeforeDeath")].NamedProducers);
+        Assert.Equal(12, named.Count);
     }
 
     /// <summary>The committed producer map is what the walk produces on this build,

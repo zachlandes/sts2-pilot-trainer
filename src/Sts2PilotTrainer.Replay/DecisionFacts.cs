@@ -237,7 +237,7 @@ public static class DecisionFacts
 /// Why a point the build offers is allowed to stay unreached by the committed
 /// corpus, as a class the map can be held to.
 ///
-/// The first seven are derived: the coverage map says, from the game assembly and the
+/// The first eight are derived: the coverage map says, from the game assembly and the
 /// host's own tables, whether each is admissible for a point, and an excusal claiming
 /// one the map does not admit fails the bar. The last two are held by something
 /// else - a merge-gate row, or nothing yet - and are admissible only where no derived
@@ -284,6 +284,13 @@ public enum ExcusalClass
     /// no recording of any play can carry it.</summary>
     NotChoosable,
 
+    /// <summary>An event option the run's own character is never offered: constructed
+    /// under the event's own guard comparing the owner's card pool with the option's,
+    /// the way an event offers a card of every other character's pool, so a run of
+    /// that character can reach it only by being another character's run. A
+    /// recording of another character retires it.</summary>
+    OfferedOnlyToAnotherCharacter,
+
     /// <summary>Reached by a generated recording on every merge, through the real
     /// recorder and replayed to parity; the recording is generated rather than
     /// committed, which is why the point is excused rather than counted.</summary>
@@ -302,6 +309,7 @@ public static class ExcusalClasses
     [
         ExcusalClass.NoProducerOnThisBuild, ExcusalClass.MultiplayerOnly, ExcusalClass.ScreenWithoutHeadlessHost,
         ExcusalClass.RetailOnlyTiming, ExcusalClass.NotReplayable, ExcusalClass.ReachedByTheWin, ExcusalClass.NotChoosable,
+        ExcusalClass.OfferedOnlyToAnotherCharacter,
     ];
 
     /// <summary>The classes admissible where the map derives none: held by a row, or
@@ -320,6 +328,7 @@ public static class ExcusalClasses
         ExcusalClass.NotReplayable => "not-replayable",
         ExcusalClass.ReachedByTheWin => "reached-by-the-win",
         ExcusalClass.NotChoosable => "not-choosable",
+        ExcusalClass.OfferedOnlyToAnotherCharacter => "offered-only-to-another-character",
         ExcusalClass.Generated => "generated",
         ExcusalClass.NotOnTheRoute => "not-on-the-route",
         _ => throw new ArgumentOutOfRangeException(nameof(excusalClass), excusalClass, "unknown excusal class"),
