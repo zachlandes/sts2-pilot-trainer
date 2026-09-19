@@ -3,8 +3,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.IO;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 

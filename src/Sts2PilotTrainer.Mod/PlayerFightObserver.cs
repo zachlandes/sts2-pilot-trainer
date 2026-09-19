@@ -295,6 +295,11 @@ internal sealed class PlayerFightObserver : IDisposable
         action is PlayCardAction or UsePotionAction or DiscardPotionGameAction
             or EndPlayerTurnAction or UndoEndPlayerTurnAction;
 
+    /// <summary>The same five, for the recorder's request-time check that one of them
+    /// is about to run with no observer watching: one answer to "which actions are a
+    /// fight's", asked from the other end.</summary>
+    internal static bool IsAFightDecision(GameAction action) => IsADecision(action);
+
     /// <summary>
     /// What an action was described as, and - where one could not be resolved - the
     /// sentence naming the argument and the reason actually determined.

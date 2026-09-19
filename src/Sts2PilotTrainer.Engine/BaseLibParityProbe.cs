@@ -8,8 +8,8 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
-using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.IO;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 

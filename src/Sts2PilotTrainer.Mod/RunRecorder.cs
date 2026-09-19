@@ -159,6 +159,43 @@ internal sealed class RunRecorder : IDisposable
     /// <summary>What the capture holds, for a test and for a log line.</summary>
     internal RunCapture Capture => _capture;
 
+    /// <summary>
+    /// Whether the recorder is ready for the next decision: every decision announced
+    /// has been read after, and inside a fight the observer is watching.
+    ///
+    /// The one reading a driver paces on, exposed so that no driver reads the queue
+    /// and the observer reflectively. It is a courtesy the retail soak extends to the
+    /// recorder rather than a rule the recorder needs: a decision made before this is
+    /// true is closed or refused by <see cref="CloseStrandedDecisions"/> and
+    /// <see cref="WatchTheFightBefore"/> either way, and a driver that waits for it
+    /// never meets the refusal. A decision whose work has handed the run to the player
+    /// - a card screen, a bundle or relic screen, or a card prompt up - counts as
+    /// settled, because it is answered by the player's next action and settles once
+    /// that answer is given; a driver waiting for it to settle first would wait for
+    /// ever. With no recording live there is nothing to wait for.
+    /// </summary>
+    internal static bool Settled
+    {
+        get
+        {
+            var recorder = Active;
+            if (recorder is null || recorder._finished) return true;
+
+            bool settling;
+            lock (Gate) settling = recorder._pending.Any(decision => decision.ReadAfter is null);
+            if (settling && !AScreenIsWaitingOnThePlayer()) return false;
+
+            return !InAFight() || recorder._observer is not null;
+        }
+    }
+
+    /// <summary>Whether the run has been handed to the player inside a decision's own
+    /// work, on a surface the recorder holds open: the count the settle stands down
+    /// for, plus the card prompt, whose answer is held rather than announced.</summary>
+    private static bool AScreenIsWaitingOnThePlayer() =>
+        CardScreensUp.Count > 0 || BundleScreen.Open is not null || RelicScreen.Open is not null ||
+        CardPrompts.Open is not null;
+
     /// <summary>Where this recording's journal is being written.</summary>
     internal string JournalPath => _journalPath;
 
@@ -644,17 +681,27 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// Taken in the prefix of the member the decision goes through, before the engine
     /// has done anything about it: that is the instant a comparison at verification
-    /// asks about, and the only moment it can be read.
+    /// asks about, and the only moment it can be read. It is also the instant the
+    /// decisions announced before this one are closed on, or found to overlap it
+    /// (<see cref="CloseStrandedDecisions"/>), and that is asked here rather than
+    /// where the decision is announced because a decision announced from a postfix
+    /// has its own work running by then; asked there, the engine reads busy with this
+    /// decision's work and the earlier one is refused for it.
     /// </summary>
-    private static TakenReading? ReadBefore(string verb)
+    /// <param name="closesTheDecisionsBefore">Whether this reading closes the
+    /// decisions still settling ahead of it. Every decision a person makes does; the
+    /// one that does not is read from inside another decision's work and is
+    /// announced with its own after-reading beside the decision it happened inside.</param>
+    private static TakenReading? ReadBefore(string verb, bool closesTheDecisionsBefore = true)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return null;
 
+        TakenReading before;
         try
         {
             var (sample, digest) = LiveRun.Read();
-            return new TakenReading(sample, digest, LiveRun.RunClockMs(), recorder.OpenTicket());
+            before = new TakenReading(sample, digest, LiveRun.RunClockMs(), recorder.OpenTicket());
         }
         catch (Exception ex)
         {
@@ -663,6 +710,14 @@ internal sealed class RunRecorder : IDisposable
                 $"{ex.GetType().Name}: {ex.Message}");
             return null;
         }
+
+        if (closesTheDecisionsBefore && !recorder.CloseStrandedDecisions(before, verb))
+        {
+            recorder.PlaceTheSavesAskedDuringTheDecision(before.Ticket);
+            return null;
+        }
+
+        return before;
     }
 
     /// <summary>
@@ -1020,6 +1075,12 @@ internal sealed class RunRecorder : IDisposable
     /// The count, the stop, the poll and the budget arrive as arguments for the same
     /// reason <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule
     /// about those things, and handed them it can be exercised on a machine with no game.
+    ///
+    /// <paramref name="closedByTheNext"/> is the pump's own: the decision being waited
+    /// for may have been read after by the decision that followed it, at the instant
+    /// that one was announced with the engine already quiet (<see cref="CloseStrandedDecisions"/>),
+    /// and a wait that went on polling for a state already taken would read the state
+    /// the next decision left instead.
     /// </summary>
     /// <returns>Null once the engine has settled, or the sentence saying why the wait
     /// ended without it.</returns>
@@ -1031,7 +1092,8 @@ internal sealed class RunRecorder : IDisposable
         Func<Task> newBudget,
         Func<Task> nextPoll,
         Func<string, string> unsettled,
-        Func<bool>? handedToThePlayer = null)
+        Func<bool>? handedToThePlayer = null,
+        Func<bool>? closedByTheNext = null)
     {
         Task? budget = null;
         var idleTicks = 0;
@@ -1040,6 +1102,7 @@ internal sealed class RunRecorder : IDisposable
         while (true)
         {
             if (stopped() is { } why) return why;
+            if (closedByTheNext?.Invoke() == true) return null;
 
             if (open() > 0)
             {
@@ -1058,6 +1121,7 @@ internal sealed class RunRecorder : IDisposable
             if (budget.IsCompleted) return unsettled(Spent(waitedForAScreen));
 
             await nextPoll();
+            if (closedByTheNext?.Invoke() == true) return null;
 
             // A screen that went up during the poll scores no idle tick; the top of the
             // loop then throws the budget away. Nor does an engine that has not yet said
@@ -1172,6 +1236,13 @@ internal sealed class RunRecorder : IDisposable
     /// One at a time and in order, because each decision's reading is of the state
     /// <em>it</em> left: a batch settled together would give two decisions one state
     /// and put the second one's effects on the first.
+    ///
+    /// The head of the queue can be taken from under this loop: a decision announced
+    /// while the head was still settling, with the engine already quiet, closes the
+    /// head with its own before-reading and may commit it there and then
+    /// (<see cref="CloseStrandedDecisions"/>). So the settle stands down the moment
+    /// the head has been read after, and the head is dequeued only where it is still
+    /// this loop's to dequeue.
     /// </summary>
     private async Task Pump()
     {
@@ -1201,92 +1272,197 @@ internal sealed class RunRecorder : IDisposable
                 next = _pending.Peek();
             }
 
-            var taken = false;
+            string? unsettled;
             try
             {
                 // A decision that arrived with its state already read does not settle:
                 // it finished inside another decision's work, and the engine will not
                 // go quiet until that one has finished too.
-                var unsettled = next.Reading is not null
+                unsettled = next.ReadAfter is not null
                     ? null
                     : await Settle(
                         next.EngineWork,
                         next.SettlesOnceHandedToThePlayer ? next.Before.Ticket : null,
                         () => _disposed || _finished
                             ? "The recording ended before this decision could be read."
-                            : RunWentAway());
-                lock (Gate)
-                {
-                    // A wait that ended because there is no recording left has nothing
-                    // to refuse: the run is over, and Finish has already said how many
-                    // decisions it never read.
-                    if (_disposed || _finished)
-                    {
-                        _pumping = false;
-                        return;
-                    }
-
-                    _pending.Dequeue();
-                    taken = true;
-                }
-
-                if (unsettled is not null)
-                {
-                    Refuse($"A {next.Verb} could not be read: {unsettled}");
-                    continue;
-                }
-
-                // A decision the recorder saw and could not name, reached in its turn.
-                if (next.Unmapped is { } met)
-                {
-                    StopAt(met, next.Before);
-                    continue;
-                }
-
-                if (NothingHappened(next) && !AnsweredPastTheCards(next))
-                {
-                    // The player opened a screen and backed out of it, or the engine
-                    // turned the decision down. Recording it would put an action in the
-                    // history that a replay would make differently, and the two
-                    // together are what say it: the engine said no, and the run's
-                    // complete state - draw order and every random stream included - is
-                    // where it was before. A card reward answered past its cards with
-                    // the alternative that leaves it on the screen reads the same way -
-                    // the reward was not taken and nothing changed - and is a decision
-                    // all the same, the loot screen's Skip, which the replay makes with
-                    // its own verb; dropped here, its held answer went to the next
-                    // click on the same reward and broke the recording.
-                    Log.Info(
-                        $"[{RunmobileMod.ModId}] a {next.Verb} was not taken and the run is unchanged, so it " +
-                        "is not recorded", 2);
-                    continue;
-                }
-
-                Commit(next.Verb, next.Args, next.Before, next.Reading);
+                            : RunWentAway(),
+                        () => next.ReadAfter is not null);
             }
             catch (Exception ex)
             {
-                // Only this decision is dropped. Taking another off the queue here
-                // would lose one nobody has looked at yet, which is how a history ends
-                // up missing a decision it never even refused.
-                if (!taken)
+                lock (Gate)
                 {
-                    lock (Gate)
-                    {
-                        if (_pending.Count > 0) _pending.Dequeue();
-                    }
+                    if (_pending.Count > 0 && ReferenceEquals(_pending.Peek(), next)) _pending.Dequeue();
                 }
 
                 Refuse($"A {next.Verb} could not be recorded: {ex.GetType().Name}: {ex.Message}");
-            }
-            finally
-            {
-                // Whatever became of the decision, a save the game asked for while
-                // it was in flight holds the state the history now ends in: after
-                // the decision where it was written, and after the one before it
-                // where the engine turned it down and left the run as it was.
                 PlaceTheSavesAskedDuringTheDecision(next.Before.Ticket);
+                continue;
             }
+
+            lock (Gate)
+            {
+                // A wait that ended because there is no recording left has nothing
+                // to refuse: the run is over, and Finish has already said how many
+                // decisions it never read.
+                if (_disposed || _finished)
+                {
+                    _pumping = false;
+                    return;
+                }
+
+                // Taken by the decision after it while this loop was waiting
+                if (_pending.Count == 0 || !ReferenceEquals(_pending.Peek(), next)) continue;
+
+                _pending.Dequeue();
+            }
+
+            Take(next, unsettled);
+        }
+    }
+
+    /// <summary>
+    /// Records one decision taken off the queue, with the verdict of its settle.
+    ///
+    /// The pump's body for a decision it has dequeued, and the same body a synchronous
+    /// drain of already-read decisions runs (<see cref="TakeEveryDecisionReadAfter"/>),
+    /// so a decision is recorded the same way whichever took it off the queue.
+    /// </summary>
+    /// <param name="unsettled">Why the engine never settled for it, or null where it
+    /// did or where the decision brought its reading with it.</param>
+    private void Take(PendingDecision next, string? unsettled)
+    {
+        try
+        {
+            if (unsettled is not null)
+            {
+                Refuse($"A {next.Verb} could not be read: {unsettled}");
+                return;
+            }
+
+            // A decision the recorder saw and could not name, reached in its turn.
+            if (next.Unmapped is { } met)
+            {
+                StopAt(met, next.Before);
+                return;
+            }
+
+            if (NothingHappened(next) && !AnsweredPastTheCards(next))
+            {
+                // The player opened a screen and backed out of it, or the engine
+                // turned the decision down. Recording it would put an action in the
+                // history that a replay would make differently, and the two
+                // together are what say it: the engine said no, and the run's
+                // complete state - draw order and every random stream included - is
+                // where it was before. A card reward answered past its cards with
+                // the alternative that leaves it on the screen reads the same way -
+                // the reward was not taken and nothing changed - and is a decision
+                // all the same, the loot screen's Skip, which the replay makes with
+                // its own verb; dropped here, its held answer went to the next
+                // click on the same reward and broke the recording.
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] a {next.Verb} was not taken and the run is unchanged, so it " +
+                    "is not recorded", 2);
+                return;
+            }
+
+            Commit(next.Verb, next.Args, next.Before, next.ReadAfter);
+        }
+        catch (Exception ex)
+        {
+            Refuse($"A {next.Verb} could not be recorded: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            // Whatever became of the decision, a save the game asked for while
+            // it was in flight holds the state the history now ends in: after
+            // the decision where it was written, and after the one before it
+            // where the engine turned it down and left the run as it was.
+            PlaceTheSavesAskedDuringTheDecision(next.Before.Ticket);
+        }
+    }
+
+    /// <summary>
+    /// Reads after every decision still settling, at the instant a new one is read,
+    /// and says whether the new one may be acted on.
+    ///
+    /// The run-level counterpart of <see cref="CloseStrandedFightStep"/>, and the same
+    /// rule: a decision announced while the one before it is still settling has its
+    /// before-reading taken at an instant the pump has not read yet. Where the earlier
+    /// decision's work is done and the engine is quiet, that instant <em>is</em> the
+    /// state the earlier decision left - the pump's debounce had simply not fired - so
+    /// the earlier decision is closed with this reading and nothing is lost. Where the
+    /// earlier decision's work is still in flight, the two overlap: the earlier one's
+    /// after-reading, taken later by the pump, would carry this decision's effects, and
+    /// this one's before-reading is of a run partway through a decision. The recording
+    /// says so instead, and the new decision is not recorded, because a run recorded
+    /// that way replays into a different run.
+    ///
+    /// Before this rule the window was silent. A driver that issued the next decision
+    /// as soon as the engine allowed it wrote the second decision's effects into the
+    /// first's after-reading three times in one retail session, and the recording
+    /// finished <c>integrity = complete</c> every time; for a person the window is a
+    /// click within a poll of a screen becoming ready. A decision that brought its
+    /// reading with it - one finished inside another's work - is not settling and is
+    /// left alone.
+    /// </summary>
+    /// <param name="before">The new decision's before-reading, taken in its prefix.</param>
+    /// <param name="verb">What the new decision is, for the refusal.</param>
+    /// <returns>Whether the new decision may be recorded.</returns>
+    private bool CloseStrandedDecisions(TakenReading before, string verb)
+    {
+        List<PendingDecision> settling;
+        lock (Gate)
+        {
+            settling = _pending.Where(decision => decision.ReadAfter is null).ToList();
+        }
+
+        if (settling.Count == 0) return true;
+
+        var quiet = EngineIsQuiet();
+        var stillWorking = settling.FirstOrDefault(decision =>
+            !quiet ||
+            !WorkIsDone(
+                decision.EngineWork,
+                decision.SettlesOnceHandedToThePlayer ? () => HandedToThePlayerDuring(decision.Before.Ticket) : null));
+        if (stillWorking is not null)
+        {
+            var reason =
+                $"A {verb} was made while the {stillWorking.Verb} before it was still being carried out by the " +
+                "engine, so the recording cannot say what state either of them left.";
+            Refuse(reason);
+            return false;
+        }
+
+        var reading = new TakenReading(before.Sample, before.Digest, before.RunClockMs);
+        foreach (var decision in settling) decision.ClosedByTheNext = reading;
+        return true;
+    }
+
+    /// <summary>
+    /// Records, now and in order, every decision at the head of the queue that has
+    /// already been read after, and stops at the first that has not.
+    ///
+    /// For the one caller that cannot wait on the pump's next poll: a fight's first
+    /// action is about to reach the executor, the decision that opened the fight has
+    /// just been closed with the reading that action begins from, and the observer
+    /// that will watch the action attaches only once that decision is committed. The
+    /// pump finds its head gone and carries on with whatever is left.
+    /// </summary>
+    private void TakeEveryDecisionReadAfter()
+    {
+        while (true)
+        {
+            PendingDecision next;
+            lock (Gate)
+            {
+                if (_pending.Count == 0 || _disposed || _finished || _capture.Stop is not null) return;
+                next = _pending.Peek();
+                if (next.ReadAfter is null) return;
+                _pending.Dequeue();
+            }
+
+            Take(next, null);
         }
     }
 
@@ -1303,7 +1479,8 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private bool NothingHappened(PendingDecision decision) =>
         decision.EngineWork is Task<bool> { IsCompletedSuccessfully: true, Result: false } &&
-        string.Equals(_capture.LastDigest, LiveRun.Project().Digest(), StringComparison.Ordinal);
+        string.Equals(
+            _capture.LastDigest, decision.ReadAfter?.Digest ?? LiveRun.Project().Digest(), StringComparison.Ordinal);
 
     /// <summary>Whether a card-reward decision holds an answer the screen gave past
     /// its cards: an alternative, which is a decision whether or not it completed
@@ -1334,7 +1511,8 @@ internal sealed class RunRecorder : IDisposable
     /// while there still is. <see cref="WaitForTheEngine"/> says why it is a sentence.</param>
     /// <returns>Null once the engine has settled, or the sentence saying what it was
     /// still waiting for.</returns>
-    private static Task<string?> Settle(Task? engineWork, long? handedOverTicket, Func<string?> stopped) =>
+    private static Task<string?> Settle(
+        Task? engineWork, long? handedOverTicket, Func<string?> stopped, Func<bool>? closedByTheNext = null) =>
         WaitForTheEngine(
             () => CardScreensUp.Count + (BundleScreen.Open is null ? 0 : 1) + (RelicScreen.Open is null ? 0 : 1),
             stopped,
@@ -1356,7 +1534,8 @@ internal sealed class RunRecorder : IDisposable
             Clock.Poll,
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
                      "decision left.",
-            handedOverTicket is { } ticket ? () => HandedToThePlayerDuring(ticket) : null);
+            handedOverTicket is { } ticket ? () => HandedToThePlayerDuring(ticket) : null,
+            closedByTheNext);
 
     /// <summary>
     /// Whether the engine has nothing in flight right now: the executor idle, the
@@ -1587,6 +1766,50 @@ internal sealed class RunRecorder : IDisposable
         {
             _observer.Dispose();
             _observer = null;
+        }
+    }
+
+    /// <summary>
+    /// A fight action is about to be enqueued and the observer that records it may not
+    /// be watching yet: attaches it at the fight's start rather than a poll later.
+    ///
+    /// The observer attaches when the decision that opened the fight is committed, and
+    /// that decision settles on a poll: the fight is ready for the player, the pump
+    /// sees it quiet twice, and only then is the map move written and the observer
+    /// started. An action requested inside that window reached an executor nobody was
+    /// subscribed to and went unrecorded, with the recording still reporting
+    /// <c>integrity = complete</c> - a potion drunk on the first turn of a fight, in
+    /// one retail session, and the three Strikes of another. So the fight's first
+    /// action is where the fight-opening decision is closed instead: the state this
+    /// action begins from is the state that decision left, the decision is committed
+    /// here and now, and the observer is attached before the action reaches the
+    /// executor. Where that decision's work is still in flight, or where nothing is
+    /// pending and still nothing is watching, the action would go unrecorded, and the
+    /// recording says so rather than carrying on complete.
+    ///
+    /// Asked of every claimed action and acting only on the five a fight is made of,
+    /// inside a fight, with no observer; a potion used outside a fight is a decision of
+    /// its own patch and never reaches this.
+    /// </summary>
+    private void WatchTheFightBefore(GameAction action)
+    {
+        if (_finished || _capture.Stop is not null) return;
+        if (_observer is not null || !PlayerFightObserver.IsAFightDecision(action) || !InAFight()) return;
+
+        // Read the way any decision is read, which closes the fight-opening decision
+        // on this instant or refuses; the ticket is this reading's own and is placed
+        // at once, since the observer takes the action's own reading at the executor
+        var now = ReadBefore(action.GetType().Name);
+        if (now is null) return;
+
+        TakeEveryDecisionReadAfter();
+        PlaceTheSavesAskedDuringTheDecision(now.Ticket);
+
+        if (_observer is null && _capture.Stop is null)
+        {
+            Refuse(
+                $"A {action.GetType().Name} was requested inside a fight before the recorder was watching it, so " +
+                "what it did would go unrecorded.");
         }
     }
 
@@ -2279,7 +2502,7 @@ internal sealed class RunRecorder : IDisposable
                 }
                 else
                 {
-                    Commit(step.Verb, step.Args, step.Before);
+                    Commit(step.Verb, step.Args, step.Before, step.ReadAfter);
                 }
             }
             catch (Exception ex)
@@ -2433,6 +2656,9 @@ internal sealed class RunRecorder : IDisposable
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
+        // The stop's reading is the state the recording ends in, and it was taken now,
+        // so the decisions still settling ahead of it are closed on it the way any
+        // decision closes them
         if (ReadBefore(met.Name) is not { } before) return;
 
         lock (Gate)
@@ -2519,7 +2745,21 @@ internal sealed class RunRecorder : IDisposable
     private sealed record PendingDecision(
         string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
         TakenReading Before, TakenReading? Reading = null, UnmappedFacts? Unmapped = null,
-        bool FightEnd = false, bool SettlesOnceHandedToThePlayer = false);
+        bool FightEnd = false, bool SettlesOnceHandedToThePlayer = false)
+    {
+        /// <summary>
+        /// The reading the decision after this one began from, where that decision was
+        /// announced with the engine already quiet and this one's work done: the state
+        /// this decision left, read at the instant it was left rather than after the
+        /// pump's next poll. Set by <see cref="CloseStrandedDecisions"/> and by nothing
+        /// else; the pump reads it in place of a settle.
+        /// </summary>
+        public TakenReading? ClosedByTheNext { get; set; }
+
+        /// <summary>The state this decision left, where it has been read: brought with
+        /// the decision, or taken by the one after it.</summary>
+        public TakenReading? ReadAfter => Reading ?? ClosedByTheNext;
+    }
 
     /// <summary>
     /// A decision the recorder saw and could not name, as the game named it.
@@ -3295,7 +3535,9 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            _before = ReadBefore(nameof(ActionVerb.SkipRewards));
+            // Read from inside the funnel, which is inside whatever reached it, and
+            // announced with its own after-reading: it closes nothing ahead of it
+            _before = ReadBefore(nameof(ActionVerb.SkipRewards), closesTheDecisionsBefore: false);
         }
 
         [HarmonyPostfix]
@@ -3773,6 +4015,8 @@ internal sealed class RunRecorder : IDisposable
                 switch (NetActionClaims.For(action.GetType())?.Disposition)
                 {
                     case NetActionClaims.Disposition.Claimed:
+                        recorder.WatchTheFightBefore(action);
+                        return;
                     case NetActionClaims.Disposition.EngineDriven:
                         return;
                     case NetActionClaims.Disposition.NonStandard:

@@ -34,6 +34,10 @@ public sealed class RetailClientLaunchTests : IDisposable
     private readonly string _rows;
     private readonly List<Process> _bystanders = new();
 
+    /// <summary>How long the stand-in takes to finish after TERM, which the retail
+    /// client takes anywhere from seconds to minutes over.</summary>
+    private int _secondsToExitAfterTerm;
+
     public RetailClientLaunchTests()
     {
         _home = Path.Combine(_sandbox, "home");
@@ -47,7 +51,7 @@ public sealed class RetailClientLaunchTests : IDisposable
         Directory.CreateDirectory(_home);
         Directory.CreateDirectory(_tools);
         if (OperatingSystem.IsWindows()) return;
-        WriteStandInClient(_game, secondsToExitAfterTerm: 0);
+        WriteStandInClient(_game);
         WriteStandInProcessTable();
         WriteStandInOpen();
     }
@@ -120,6 +124,24 @@ public sealed class RetailClientLaunchTests : IDisposable
         Assert.False(Directory.Exists(seen["cwd"]));
         Assert.Contains("exited on TERM", File.ReadAllText(_gameLog), StringComparison.Ordinal);
         Assert.Equal(0, Run("status").ExitCode);
+    }
+
+    /// <summary>
+    /// The engine's own flag, appended after the game's two and recorded: what the
+    /// retail soak launches under, measured to run the whole scene tree with no
+    /// window.
+    /// </summary>
+    [Fact]
+    public void HeadlessIsAppendedLastAndRecorded()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var launched = Run("launch", "--game", _game, "--headless", "--client-id", "2");
+
+        Assert.Equal(0, launched.ExitCode);
+        Assert.Equal($"{SteamlessFlag} --clientId=2 --headless", StandInSaw()["args"]);
+        Assert.Equal($"{SteamlessFlag} --clientId=2 --headless", RecordValue(RecordPath(launched), "arguments"));
+        Assert.Equal(0, Run("release", "--wait", "10").ExitCode);
     }
 
     [Fact]
@@ -311,7 +333,7 @@ public sealed class RetailClientLaunchTests : IDisposable
     public void ReleaseWaitsForASlowTeardownAndNeverForceKills()
     {
         if (OperatingSystem.IsWindows()) return;
-        WriteStandInClient(_game, secondsToExitAfterTerm: 3);
+        _secondsToExitAfterTerm = 3;
         var launched = Run("launch", "--game", _game);
         Assert.Equal(0, launched.ExitCode);
         var record = RecordPath(launched);
@@ -393,7 +415,7 @@ public sealed class RetailClientLaunchTests : IDisposable
     {
         if (OperatingSystem.IsWindows()) return;
         var renamed = Path.Combine(_sandbox, "copy", "sts2-bin");
-        WriteStandInClient(renamed, secondsToExitAfterTerm: 0);
+        WriteStandInClient(renamed);
         // The table shows the physical path, which is what the helper records too.
         var environment = new Dictionary<string, string> { ["FAKE_GAME_EXECUTABLE"] = PhysicalPath(renamed) };
         var launched = RunWith(environment, "launch", "--game", renamed);
@@ -503,35 +525,13 @@ public sealed class RetailClientLaunchTests : IDisposable
     private void WriteRows(params string[] rows) =>
         File.WriteAllText(_rows, string.Join("\n", rows.Select(row => "  " + row)) + "\n");
 
-    /// <summary>
-    /// The retail executable at the two points that matter: launched without
-    /// --force-steam=off it prints Steamworks' error and stops, exactly as the
-    /// client does on the popup; with it, it reports the skip the real log carries,
-    /// counts itself as a running client and runs until TERM, taking the given time
-    /// to finish - the retail client's teardown is anywhere from seconds to minutes.
-    /// </summary>
-    private void WriteStandInClient(string path, int secondsToExitAfterTerm)
-    {
-        var onTerm = secondsToExitAfterTerm > 0 ? $"sleep {secondsToExitAfterTerm}; " : string.Empty;
-        WriteExecutable(path,
-            "#!/usr/bin/env bash\n" +
-            "{\n" +
-            "  printf 'cwd\\t%s\\n' \"$PWD\"\n" +
-            "  printf 'entries\\t%s\\n' \"$(ls -A | tr '\\n' ' ')\"\n" +
-            "  printf 'args\\t%s\\n' \"$*\"\n" +
-            "  printf 'SteamAppId\\t%s\\n' \"${SteamAppId-unset}\"\n" +
-            "} >> \"$FAKE_GAME_LOG\"\n" +
-            "case \" $* \" in\n" +
-            "  *' --force-steam=off '*) ;;\n" +
-            "  *) echo '[ERROR] Steamworks initialization failed! Result: k_ESteamAPIInitResult_FailedGeneric, message: " +
-            "No appID found.  Either launch the game from Steam, or put the file steam_appid.txt containing the correct " +
-            "appID in your game folder.'; exit 1 ;;\n" +
-            "esac\n" +
-            "echo '[INFO] Steam initialization skipped (editor mode). Use --force-steam to enable.'\n" +
-            "echo \"$$\" >> \"$FAKE_GAME_PIDS\"\n" +
-            $"trap '{onTerm}echo \"exited on TERM\" >> \"$FAKE_GAME_LOG\"; exit 0' TERM\n" +
-            "while :; do sleep 1; done\n");
-    }
+    /// <summary>The one stand-in for the retail executable, shared with the soak
+    /// script's tests and with <c>demo/RETAIL-SOAK.md</c>: it stops on Steamworks'
+    /// error without --force-steam=off, runs until TERM with it, and under --headless
+    /// plays the soak's client. Its own header says the rest.</summary>
+    internal static string StandInSource => Path.Combine(Arbiter.RepoRoot, "tests", "stand-ins", "retail-client.sh");
+
+    private static void WriteStandInClient(string path) => WriteExecutable(path, File.ReadAllText(StandInSource));
 
     /// <summary>
     /// Stands in for `ps -Ao pid=,ppid=,comm=`: the rows the test wrote, then one row
@@ -592,6 +592,7 @@ public sealed class RetailClientLaunchTests : IDisposable
         startInfo.Environment["FAKE_GAME_EXECUTABLE"] = _game;
         startInfo.Environment["FAKE_OPEN_LOG"] = _openLog;
         startInfo.Environment["FAKE_PS_ROWS"] = _rows;
+        startInfo.Environment["FAKE_GAME_TERM_SECONDS"] = _secondsToExitAfterTerm.ToString();
         startInfo.Environment.Remove("SteamAppId");
         startInfo.Environment.Remove("SteamGameId");
         startInfo.Environment["PATH"] =

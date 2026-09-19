@@ -11,13 +11,16 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class RunmobileModuleTests
 {
     [Fact]
-    public void TheShellCarriesItsThreeFeatures()
+    public void TheShellCarriesItsThreeFeaturesAndItsOneInstrument()
     {
         Assert.Equal(
-            [RecordedFightModule.Instance, RecorderModule.Instance, (IRunmobileModule)RunLibraryModule.Instance],
+            [
+                RecordedFightModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance,
+                (IRunmobileModule)RetailSoakModule.Instance,
+            ],
             RunmobileMod.Modules);
         Assert.Equal(
-            ["Recorded fights", "Recorder", "Run library"],
+            ["Recorded fights", "Recorder", "Run library", "Retail soak"],
             RunmobileMod.Modules.Select(module => module.Name));
     }
 
@@ -42,6 +45,8 @@ public sealed class RunmobileModuleTests
                 (Type: type, Owner: RecorderModule.Instance.Name)))
             .Concat(RunLibraryModule.PatchClasses.Select(type =>
                 (Type: type, Owner: RunLibraryModule.Instance.Name)))
+            .Concat(RetailSoakModule.PatchClasses.Select(type =>
+                (Type: type, Owner: RetailSoakModule.Instance.Name)))
             .GroupBy(entry => entry.Type)
             .ToDictionary(group => group.Key, group => group.Select(entry => entry.Owner).ToList());
 
@@ -62,6 +67,9 @@ public sealed class RunmobileModuleTests
         Assert.All(
             RunLibraryModule.PatchClasses,
             type => Assert.Equal("Run library", Assert.Single(ownership[type])));
+        Assert.All(
+            RetailSoakModule.PatchClasses,
+            type => Assert.Equal("Retail soak", Assert.Single(ownership[type])));
     }
 
     [GameFact]

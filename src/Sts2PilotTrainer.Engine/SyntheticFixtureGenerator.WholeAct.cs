@@ -2,13 +2,13 @@ using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
-using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
@@ -620,9 +620,7 @@ public static partial class SyntheticFixtureGenerator
         var encounter = Field(session, "combat.encounter");
         try
         {
-            PlayToTheEndOfTheFight(
-                driver, session, actions, SurvivingIndex,
-                _policy.Rule == SurvivalRule.BlockWhenThreatened ? LowestHealthEnemy : null);
+            PlayToTheEndOfTheFight(driver, session, actions, SurvivingIndex, TargetIndex);
         }
         catch (FightLostException lost)
         {
@@ -1173,10 +1171,8 @@ public static partial class SyntheticFixtureGenerator
 
     /// <summary>
     /// The hand position an act journey plays next, by the policy's
-    /// <see cref="SurvivalRule"/>: while the enemies' displayed attack damage exceeds
-    /// the block the player holds, the first playable card the game says gains block;
-    /// otherwise the first playable attack, and otherwise the first playable card at
-    /// all. The earlier rule skips the block.
+    /// <see cref="SurvivalRule"/>, read off <see cref="SurvivalPlayRule"/> - the one
+    /// owner of the rule, which the retail soak plays through the same call.
     ///
     /// A different mechanical rule from the first-fight journey's, and it is here for
     /// one reason: hand order alone loses the act. Measured on the fixture seed,
@@ -1188,63 +1184,20 @@ public static partial class SyntheticFixtureGenerator
     /// the act's boss on roughly twice as many as attack-first did, and it is what
     /// lets a walk of any character reach a second act at all.
     ///
-    /// It reads the hand the engine dealt, the intent number the game draws over each
-    /// enemy and the player's own block, and nothing else. It is still a rule rather
-    /// than a judgement, and it must not be read as one: it is not how to play, it is
-    /// the cheapest rule that finishes an act.
+    /// It is still a rule rather than a judgement, and it must not be read as one: it
+    /// is not how to play, it is the cheapest rule that finishes an act.
     /// </summary>
-    private static int SurvivingIndex(GameSession session)
-    {
-        var player = session.RunState.Players[0];
-        var hand = player.PlayerCombatState?.Hand.Cards;
-        if (hand is null) return -1;
+    private static int SurvivingIndex(GameSession session) =>
+        SurvivalPlayRule.Next(_policy.Rule, session.RunState.Players[0], Enemies())?.HandIndex ?? -1;
 
-        var playable = Enumerable.Range(0, hand.Count)
-            .Where(index => hand[index].CanPlay(out _, out _))
-            .ToList();
-        if (playable.Count == 0) return -1;
+    /// <summary>The living enemy an act journey aims a card at where more than one is
+    /// alive, by position among the living, which is the position the driver resolves;
+    /// the same rule's target as <see cref="SurvivingIndex"/> plays at.</summary>
+    private static int TargetIndex(GameSession session) =>
+        SurvivalPlayRule.TargetIndex(_policy.Rule, SurvivalPlayRule.Living(Enemies()));
 
-        if (_policy.Rule == SurvivalRule.BlockWhenThreatened && IncomingDamage(session) > player.Creature.Block)
-        {
-            var block = playable.FirstOrDefault(index => hand[index].GainsBlock, -1);
-            if (block >= 0) return block;
-        }
-
-        var attack = playable.FirstOrDefault(index => hand[index].Type == CardType.Attack, -1);
-        return attack >= 0 ? attack : playable[0];
-    }
-
-    /// <summary>The enemies' displayed attack damage this turn: the intent number the
-    /// game draws over each living enemy, summed, read through the same member the
-    /// projection reads it through.</summary>
-    private static int IncomingDamage(GameSession session)
-    {
-        var me = session.RunState.Players[0].Creature;
-        var state = CombatManager.Instance?.DebugOnlyGetState();
-        if (state is null) return 0;
-        return state.Enemies
-            .Where(enemy => enemy is { IsAlive: true })
-            .Sum(enemy => (enemy.Monster?.NextMove?.Intents ?? [])
-                .OfType<AttackIntent>()
-                .Sum(intent => intent.GetTotalDamage([me], enemy)));
-    }
-
-    /// <summary>The enemy an act journey aims a card at where more than one is alive:
-    /// the living one with the least health, by its position among the living in the
-    /// order the engine keeps them, which is the position the driver resolves;
-    /// earliest on ties. A rule over the roster and not a choice about which to hit.</summary>
-    private static int LowestHealthEnemy(GameSession session)
-    {
-        var alive = CombatManager.Instance?.DebugOnlyGetState()?.Enemies
-            .Where(enemy => enemy is { IsAlive: true })
-            .ToList() ?? [];
-        if (alive.Count == 0) return 0;
-        return alive
-            .Select((enemy, index) => (enemy.CurrentHp, index))
-            .OrderBy(pair => pair.CurrentHp)
-            .ThenBy(pair => pair.index)
-            .First().index;
-    }
+    private static IReadOnlyList<Creature> Enemies() =>
+        CombatManager.Instance?.DebugOnlyGetState()?.Enemies ?? [];
 
     /// <summary>The offered card an act journey takes under the measured rule: a card
     /// the game says gains block or an attack before anything else, the cheaper first

@@ -1,7 +1,7 @@
 # The recorder's release bar
 
-The recorder ships when two numbers say it may, computed by `./scripts/arbiter` over every recording on hand.
-Neither is a feeling about how much has been tested; each has a denominator somebody else produced - the recordings themselves, and the game assembly - and a build is held to both on every merge and again at release.
+The recorder ships when three numbers say it may: two computed by `./scripts/arbiter` over every recording on hand, and the same first number computed again over what a night of the retail client recorded on its own.
+None is a feeling about how much has been tested; each has a denominator somebody else produced - the recordings themselves, the game assembly, and the retail client's own clock - and a build is held to the first two on every merge and to all three at release.
 
 ## The two numbers
 
@@ -41,6 +41,31 @@ The artifacts under `--out` - `parity.json` and `coverage.json` - are the releas
   A point reached by a recording of the store corpus is printed as `excused and reached by this corpus`; that is progress and not a failure, and it is the list of excusals a committed recording would retire.
 
 What no recording can reach is the same on every build: a card prompt and a net action are not projectable from this format and are counted neither way; `AGENTS.md` names why.
+
+## The third number: the retail soak
+
+**Parity again, over recordings the retail client made of runs it played itself, headless, overnight.**
+The first number is computed over recordings a person played or a headless walk generated, and neither runs on the retail client's own clock: every recorder defect the field has found so far was a reading taken at the wrong instant relative to work that spans real time there - a reward rolled after a hit animation, a loot set declined from inside a map move, a relic's purchases on scene-tree timers - and the two measured fixes of 2026-09-17 came from two hand-played store runs.
+The soak is the instrument that finds that class on purpose: `RetailSoakModule` plays standard singleplayer runs from inside the retail client under `--headless`, through the actions a click issues and the game's own screen handlers, with the recorder attached exactly as it attaches to a person's run, and `scripts/retail-soak.sh` runs a night of it and computes parity over what it recorded.
+`AGENTS.md` and [in-game-host.md](in-game-host.md), "The retail soak", own the module; this section owns the figure.
+
+```bash
+./scripts/retail-soak.sh --runs 6 --character CHARACTER.IRONCLAD --stop-after-minutes 360 --client-id 2
+# in the morning:
+cat build/evidence/soak/<launch>/parity.txt
+cat build/evidence/soak/<launch>/coverage.txt
+cat build/evidence/soak/<launch>/soak-done.json
+```
+
+One night writes `build/evidence/soak/<launch>/`, named for the moment it launched (UTC) so two nights never share one: `retail-soak.log`, the client's `soak-done.json`, the night's copy of the recordings written under the profile's `recordings/` since that night's launch, and the two artifacts `parity.json` and `coverage.json` computed over that copy beside `manifests/`, with the printed verdicts in `parity.txt` and `coverage.txt`.
+The copy is the night's and not the profile's history: an earlier night's recording in the same profile is neither copied nor measured, and stays where it is, so a profile that ran before a game update is not failed every later night on the earlier build's recordings.
+The script exits 0 only when `soak-done` arrived, every run ended on its own or at the deadline, every recording of the night is `PARITY` by its own line in `parity.json`, and coverage holds; 1 when a recording that replayed diverged from its journal - the night's or a committed one - or coverage does not hold; 3 when the night measured nothing - the launch was refused, the night ended without `soak-done`, the mod refused the plan before starting a run and said so in a zero-run `soak-done`, or it recorded nothing; 4 when a run ended in a state the mod refused - unknown, failed, a bound run out, a client it could not leave - or a recording of the night is short of parity without having diverged - refused at replay, an integrity other than complete, a broken continuity, which is what every recorder refusal leaves, another build, no journal, an older recorder - each a finding in `godot.log` and `parity.txt` rather than in the figure.
+The verdict is read off each recording's own line in the artifact and never off the command's exit code, which holds over a broken recording it could not compare and fails on a refused or incomplete one the same as on a divergence; the script prints the count of night recordings not at parity, and never prints `parity holds` while one of them is short of it.
+Every `REFUSED` or `DIVERGED` line in `parity.txt` names the first decision and field, and each distinct one is a fix of the same shape as the two above, held by `RecorderTimingTests` against `TraceParity.Compare`.
+
+The figure the release note carries is the night's parity line as printed, beside the coverage totals over the night's copy and the excusals it reached; the release statement is that every recording of the night is at parity.
+The first night has not run: this section records the command and where its evidence lands, and the first figure is written here the morning after the first night, whatever it is.
+What the night measures is scene-tree logic, recording integrity and replay parity, under the game's own timers and with no window; whether anything drawn is right is not in the claim, and the release candidate's visible playthrough by a person covers that.
 
 ## The first measurement, 2026-09-17
 
