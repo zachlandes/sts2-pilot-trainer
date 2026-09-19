@@ -10,8 +10,7 @@ public sealed class GameBuildTests
         var expected = GameBuildRecord.Read(Path.Combine(Arbiter.RepoRoot, "scripts", "game-build.txt"));
         var actual = GameBuildRecord.Read(Path.Combine(Arbiter.RepoRoot, "build", "lib", "game-build.txt"));
         Assert.True(expected.Matches(actual),
-            $"prepared library game-build.txt does not match scripts/game-build.txt: " +
-            $"expected {expected.Version}/{expected.Commit}/{expected.PristineAssemblySha256}, " +
-            $"actual {actual.Version}/{actual.Commit}/{actual.PristineAssemblySha256}");
+            "prepared library game-build.txt does not match scripts/game-build.txt: " +
+            string.Join("; ", expected.DifferencesFrom(actual)));
     }
 }

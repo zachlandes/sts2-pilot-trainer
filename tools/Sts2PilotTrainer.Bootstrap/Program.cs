@@ -242,7 +242,7 @@ internal static class Program
     }
 
     private static void WriteBuildRecord(string outDir, InstalledIdentity identity, string pristineHash) =>
-        new GameBuildRecord(identity.Version, identity.BuildDateUtc, identity.Commit, pristineHash,
+        new GameBuildRecord(identity.Version, identity.BuildDateUtc, identity.Commit, identity.Branch, pristineHash,
             identity.MainAssemblyHash.ToString(System.Globalization.CultureInfo.InvariantCulture))
             .Write(Path.Combine(outDir, GameBuildName));
 

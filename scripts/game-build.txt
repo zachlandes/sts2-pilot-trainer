@@ -1,5 +1,6 @@
 version=v0.111.0
 build_date_utc=2026.08.14
 commit=41cef1ea
+branch=v0.111.0
 pristine_assembly_sha256=9cb4f1ad8c9f284aa8fec3122ffd6d780bbf543d875c817abdd12ff63fbf12b4
 id_database_hash=1172974615
