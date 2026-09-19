@@ -147,9 +147,17 @@ public sealed class DecisionFactsTests
     private static readonly RecordingStanding Unmapped =
         Standing(Fixtures.NativeSourceBlock(integrity: NativeSource.UnmappedIntegrity));
     private static readonly RecordingStanding OtherBuild =
-        RecordingStanding.Of(Fixtures.NativeSourceBlock(), Environment, ThisBuild with { BuildVersion = "v0.112.0" });
+        RecordingStanding.Of(Fixtures.NativeSourceBlock(), Environment, ThisBuild with { BuildVersion = "v0.112.0" }, ThisRecorder);
 
-    private static RecordingStanding Standing(NativeSource? native) => RecordingStanding.Of(native, Environment, ThisBuild);
+    /// <summary>The recorder the fixtures name themselves with, as the recorder under
+    /// test: the standing of every recording below is asked against it.</summary>
+    private const string ThisRecorder = "0.1.0";
+
+    private static RecordingStanding Standing(NativeSource? native) =>
+        RecordingStanding.Of(native, Environment, ThisBuild, ThisRecorder);
+
+    private static RecordingStanding WrittenBy(string? recorderVersion) =>
+        Standing(Fixtures.NativeSourceBlock() with { RecorderVersion = recorderVersion! });
 
     /// <summary>The standing is the reading parity makes of the same file: a video
     /// reconstruction and a rewound recording hold, the two the recorder refused do
@@ -194,15 +202,104 @@ public sealed class DecisionFactsTests
         // own account: a broken recording of another build is another build's
         var twoFields = RecordingStanding.Of(
             Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity), Environment,
-            ThisBuild with { BuildVersion = "v0.112.0", ContentHash = "999999999" });
+            ThisBuild with { BuildVersion = "v0.112.0", ContentHash = "999999999" }, ThisRecorder);
         Assert.Equal(RecordingStandingKind.AnotherBuild, twoFields.Kind);
         Assert.Equal(
             ["build_version: manifest says 'v0.111.0', this machine has 'v0.112.0'. ", "content_hash: manifest says '1568834832', this machine has '999999999'. "],
             twoFields.Detail.Split('\n').Select(line => line[..(line.IndexOf(". ", StringComparison.Ordinal) + 2)]));
         Assert.Equal(
             RecordingStandingKind.AnotherBuild,
-            RecordingStanding.Of(null, Environment, ThisBuild with { BuildDateUtc = "2026.08.15" }).Kind);
+            RecordingStanding.Of(null, Environment, ThisBuild with { BuildDateUtc = "2026.08.15" }, ThisRecorder).Kind);
         Assert.False(new CoveredRecording("other", new HashSet<DecisionPoint> { Gold }, OtherBuild).Credits);
+    }
+
+    /// <summary>
+    /// A recording an older recorder wrote holds nothing for parity and still credits
+    /// coverage: its journal is what that recorder got wrong, its manifest replays on
+    /// this build all the same. Below is older; equal holds; newer holds too, held to
+    /// this build's replay and failing loudly where the later recorder differs, because
+    /// only a strictly older recorder is stood apart; a version the recording does not
+    /// carry, one that does not parse, and the unstamped default a recorder built
+    /// before the version was stamped named itself with are all older, never holding.
+    /// The recorder is asked last, so a broken or unmapped recording of an older
+    /// recorder is still the recorder's own refusal and credits nothing.
+    /// </summary>
+    [Fact]
+    public void ARecordingOfAnOlderRecorderHoldsNothingForParityAndStillCreditsCoverage()
+    {
+        var older = WrittenBy("runmobile-recorder/0.0.9");
+        Assert.Equal(RecordingStandingKind.OlderRecorder, older.Kind);
+        Assert.False(older.Holds);
+        Assert.True(older.CreditsCoverage);
+        Assert.Equal(
+            "journal written by recorder 'runmobile-recorder/0.0.9'; this build's recorder is " +
+            "'runmobile-recorder/0.1.0', and what changed between them is why the journal is not held to a " +
+            "replay. The manifest still replays on this build, so what it reached is credited to coverage",
+            older.Detail);
+        Assert.True(new CoveredRecording("older", new HashSet<DecisionPoint> { Gold }, older).Credits);
+
+        Assert.True(WrittenBy("runmobile-recorder/0.1.0").Holds);
+        Assert.True(WrittenBy("runmobile-recorder/0.1.1").Holds);
+        Assert.True(Standing(Fixtures.NativeSourceBlock()).CreditsCoverage);
+
+        foreach (var unreadable in new[] { "runmobile-recorder/1.0.0.0", "runmobile-recorder/fixture", "0.1.0", "", null })
+        {
+            var standing = WrittenBy(unreadable);
+            Assert.Equal(RecordingStandingKind.OlderRecorder, standing.Kind);
+            Assert.True(standing.CreditsCoverage);
+        }
+
+        Assert.Equal(
+            RecordingStandingKind.ContinuityBroken,
+            Standing(Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity) with { RecorderVersion = "runmobile-recorder/0.0.9" }).Kind);
+        Assert.Equal(
+            RecordingStandingKind.IntegrityNotComplete,
+            Standing(Fixtures.NativeSourceBlock(integrity: NativeSource.UnmappedIntegrity) with { RecorderVersion = "runmobile-recorder/0.0.9" }).Kind);
+        Assert.False(Broken.CreditsCoverage);
+        Assert.False(Unmapped.CreditsCoverage);
+        Assert.False(OtherBuild.CreditsCoverage);
+        Assert.True(Standing(null).CreditsCoverage);
+
+        // The build under test names its own recorder the way Runmobile.json spells it,
+        // and a string that is not one is a defect in the caller rather than a standing
+        Assert.Throws<ArgumentException>(() => RecordingStanding.Of(null, Environment, ThisBuild, "fixture"));
+        Assert.Throws<ArgumentException>(() => RecordingStanding.Of(null, Environment, ThisBuild, "1.0.0.0"));
+    }
+
+    /// <summary>
+    /// A candidate declared as a prerelease, which the build permits, measures itself
+    /// over its own recordings: equal holds, its release and a later candidate of the
+    /// same release are above it and hold as any newer recorder does, and the release
+    /// before it and an earlier candidate of the same release are below it and stood
+    /// apart.
+    /// </summary>
+    [Fact]
+    public void APrereleaseCandidateComparesAgainstItsOwnRecordingsAndBelowItsRelease()
+    {
+        static RecordingStanding Against(string candidate, string wrote) =>
+            RecordingStanding.Of(
+                Fixtures.NativeSourceBlock() with { RecorderVersion = "runmobile-recorder/" + wrote },
+                Environment, ThisBuild, candidate);
+
+        Assert.True(Against("0.3.0-rc1", "0.3.0-rc1").Holds);
+        Assert.True(Against("0.3.0-rc1", "0.3.0-rc2").Holds);
+        Assert.True(Against("0.3.0-rc1", "0.3.0").Holds);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc2", "0.3.0-rc1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc1", "0.2.0").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0", "0.3.0-rc1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc.10", "0.3.0-rc.9").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc.1.1", "0.3.0-rc.1").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-beta", "0.3.0-alpha").Kind);
+        Assert.Equal(RecordingStandingKind.OlderRecorder, Against("0.3.0-rc", "0.3.0-1").Kind);
+        Assert.Contains("this build's recorder is 'runmobile-recorder/0.3.0-rc1'", Against("0.3.0-rc1", "0.2.0").Detail, StringComparison.Ordinal);
+
+        Assert.Null(RecorderVersion.TryParse("0.3.0-"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-rc..1"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-rc 1"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0+build"));
+        Assert.Null(RecorderVersion.TryParse("0.3.0-01"));
+        Assert.Null(RecorderVersion.TryParse("03.0.0"));
+        Assert.Null(RecorderVersion.TryParse("0.3"));
     }
 
     /// <summary>A recording the recorder says holds nothing credits no point: what it

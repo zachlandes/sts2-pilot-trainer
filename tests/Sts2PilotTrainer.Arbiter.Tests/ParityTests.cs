@@ -12,9 +12,9 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// every committed recording with a journal to a fresh replay and names the ones that
 /// have none, so the figure it prints is the committed corpus's real parity and never
 /// a whole-looking fraction over the recordings that happened to carry a journal.
-/// Today that figure is 0 of 2 - both committed native recordings were made before
-/// their journals were kept in a schema this build reads - and the fact holds the
-/// command to saying so.
+/// Today that figure is 0 of 2 - both committed native recordings were written by a
+/// recorder built before its version was stamped, and before their journals were kept
+/// in a schema this build reads - and the fact holds the command to saying so.
 ///
 /// The rest hold the command to the oracle on a journal built from a real replay's
 /// own trace: at parity as written, and refused in the right words when one before
@@ -35,10 +35,16 @@ public sealed class ParityTests
             var result = Arbiter.Run("parity", "--corpus", "manifests", "--out", outDir);
 
             Assert.True(result.Verified, result.All);
-            Assert.Contains("no journal  native-3LACFJ5NJ371-20260906-015901", result.Output, StringComparison.Ordinal);
-            Assert.Contains("no journal  native-9F8CY60C5BK7-20260906-005737", result.Output, StringComparison.Ordinal);
+            // Both natives were written by the unstamped recorder, which is the standing
+            // the recording has whether or not a journal is beside it
+            Assert.Contains("older recorder native-3LACFJ5NJ371-20260906-015901", result.Output, StringComparison.Ordinal);
+            Assert.Contains("older recorder native-9F8CY60C5BK7-20260906-005737", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                $"journal written by recorder 'runmobile-recorder/1.0.0.0'; this build's recorder is '{RunmobileVersion.Recorder}'",
+                result.Output, StringComparison.Ordinal);
             Assert.Contains("not native  navegreed-OJ-6QXhNgdg", result.Output, StringComparison.Ordinal);
             Assert.Contains("parity: 0 of 2 native recording(s)", result.Output, StringComparison.Ordinal);
+            Assert.Contains("2 written by an older recorder", result.Output, StringComparison.Ordinal);
             Assert.Contains("AT PARITY", result.Output, StringComparison.Ordinal);
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
@@ -48,10 +54,11 @@ public sealed class ParityTests
             Assert.Equal(2, summary.GetProperty("native_recordings").GetInt32());
             Assert.Equal(0, summary.GetProperty("another_build").GetInt32());
             Assert.Equal(0, summary.GetProperty("at_parity").GetInt32());
-            Assert.Equal(2, summary.GetProperty("without_journal").GetInt32());
+            Assert.Equal(0, summary.GetProperty("without_journal").GetInt32());
+            Assert.Equal(2, summary.GetProperty("older_recorder").GetInt32());
             Assert.Equal(1, summary.GetProperty("not_native").GetInt32());
             Assert.Equal(
-                ["no-journal", "no-journal", "not-native"],
+                ["older-recorder", "older-recorder", "not-native"],
                 artifact.GetProperty("recordings").EnumerateArray()
                     .Select(recording => recording.GetProperty("status").GetString()));
         });
@@ -193,7 +200,7 @@ public sealed class ParityTests
             Assert.Contains(
                 "parity: 1 of 3 native recording(s) (2 compared, 0 of another build, 0 without a journal, " +
                 "0 with a journal it cannot read, 0 with an integrity other than complete, 1 with a broken continuity, " +
-                "0 refused; 0 not native)",
+                "0 written by an older recorder, 0 refused; 0 not native)",
                 result.Output, StringComparison.Ordinal);
             Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
 
@@ -264,7 +271,7 @@ public sealed class ParityTests
             Assert.Contains(
                 "parity: 1 of 2 native recording(s) (1 compared, 1 of another build, 0 without a journal, " +
                 "0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, " +
-                "0 refused; 0 not native)",
+                "0 written by an older recorder, 0 refused; 0 not native)",
                 result.Output, StringComparison.Ordinal);
             Assert.Contains("NOT AT PARITY", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("REFUSED", result.Output, StringComparison.Ordinal);
@@ -280,6 +287,65 @@ public sealed class ParityTests
                 .Single(recording => recording.GetProperty("run_id").GetString() == otherBuildRun);
             Assert.Equal("another-build", entry.GetProperty("status").GetString());
             Assert.StartsWith("build_version: manifest says 'v0.112.0'", entry.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>
+    /// A recording an older recorder wrote is classified before anything is replayed,
+    /// the way a journal in an older schema is: counted in the denominator, named with
+    /// both recorder versions, never replayed, and never folded into the pass count
+    /// either way - the figure does not move and the bar still holds, because the
+    /// journal is what that recorder got wrong and the number is about this one. A
+    /// recording that names no version this build reads is the same standing. The
+    /// same reading <c>coverage</c> makes of the file, through
+    /// <see cref="RecordingStanding"/>, where it still credits.
+    /// </summary>
+    [GameFact]
+    public void ARecordingOfAnOlderRecorderIsNamedBeforeAnythingIsReplayedAndHoldsNothing()
+    {
+        InScratch(directory =>
+        {
+            var corpus = Path.Combine(directory, "corpus");
+            Directory.CreateDirectory(corpus);
+            var (manifestPath, journalPath) = RecordingWithAJournal(corpus);
+            const string olderRun = "native-9F8CY60C5BK7-20260906-005738";
+            const string unversionedRun = "native-9F8CY60C5BK7-20260906-005739";
+            CopyUnder(manifestPath, journalPath, corpus, olderRun);
+            CopyUnder(manifestPath, journalPath, corpus, unversionedRun);
+            Relabel(corpus, olderRun, native => native["recorder_version"] = "runmobile-recorder/0.0.1");
+            Relabel(corpus, unversionedRun, native => native["recorder_version"] = "runmobile-recorder/fixture");
+
+            var outDir = Path.Combine(directory, "evidence");
+            var result = Arbiter.Run("parity", "--corpus", corpus, "--out", outDir);
+
+            Assert.True(result.Verified, result.All);
+            Assert.Contains($"PARITY      {ShortRun}  51 in the journal, 51 replayed", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"older recorder {olderRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains($"older recorder {unversionedRun}", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                $"journal written by recorder 'runmobile-recorder/0.0.1'; this build's recorder is '{RunmobileVersion.Recorder}', " +
+                "and what changed between them is why the journal is not held to a replay",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains("journal written by recorder 'runmobile-recorder/fixture'", result.Output, StringComparison.Ordinal);
+            Assert.Contains(
+                "parity: 1 of 3 native recording(s) (1 compared, 0 of another build, 0 without a journal, " +
+                "0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, " +
+                "2 written by an older recorder, 0 refused; 0 not native)",
+                result.Output, StringComparison.Ordinal);
+            Assert.Contains("AT PARITY", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("REFUSED", result.Output, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(Path.Combine(outDir, "parity", olderRun)));
+            Assert.False(Directory.Exists(Path.Combine(outDir, "parity", unversionedRun)));
+
+            var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
+            Assert.True(artifact.GetProperty("at_parity").GetBoolean());
+            var summary = artifact.GetProperty("summary");
+            Assert.Equal(1, summary.GetProperty("at_parity").GetInt32());
+            Assert.Equal(2, summary.GetProperty("older_recorder").GetInt32());
+            var entry = artifact.GetProperty("recordings").EnumerateArray()
+                .Single(recording => recording.GetProperty("run_id").GetString() == olderRun);
+            Assert.Equal("older-recorder", entry.GetProperty("status").GetString());
+            Assert.False(entry.TryGetProperty("decisions", out _));
         });
     }
 
@@ -402,7 +468,9 @@ public sealed class ParityTests
     /// The committed short recording and a journal its own fresh replay would have
     /// written: the replay's trace, every reading and both digests, recorded through
     /// <see cref="RunCapture"/> so the file is what the recorder writes and not a
-    /// hand-shaped one.
+    /// hand-shaped one. Relabelled to this build's own recorder, manifest and journal
+    /// both, because the committed file names the unstamped one and a recording an
+    /// older recorder wrote is never replayed.
     /// </summary>
     private static (string ManifestPath, string JournalPath) RecordingWithAJournal(string directory)
     {
@@ -417,7 +485,7 @@ public sealed class ParityTests
         var capture = RunCapture.Begin(new RunRecordingStart
         {
             RunId = manifest.RunId,
-            RecorderVersion = manifest.Source.Native!.RecorderVersion,
+            RecorderVersion = RunmobileVersion.Recorder,
             Identity = new RunIdentityReading
             {
                 BuildVersion = environment.BuildVersion.Value,
@@ -444,9 +512,21 @@ public sealed class ParityTests
 
         var manifestPath = Path.Combine(directory, $"{ShortRun}{RecordingLibrary.ManifestExtension}");
         var journalPath = Path.Combine(directory, $"{ShortRun}{RunJournal.FileExtension}");
-        File.Copy(source, manifestPath);
+        File.WriteAllText(
+            manifestPath,
+            File.ReadAllText(source).Replace(
+                $"\"{manifest.Source.Native!.RecorderVersion}\"", $"\"{RunmobileVersion.Recorder}\"", StringComparison.Ordinal));
         File.WriteAllText(journalPath, capture.Journal.Render());
         return (manifestPath, journalPath);
+    }
+
+    /// <summary>Edits one scratch manifest's native block in place.</summary>
+    private static void Relabel(string corpus, string runId, Action<JsonNode> edit)
+    {
+        var path = Path.Combine(corpus, $"{runId}{RecordingLibrary.ManifestExtension}");
+        var manifest = JsonNode.Parse(File.ReadAllText(path))!;
+        edit(manifest["source"]!["native"]!);
+        File.WriteAllText(path, manifest.ToJsonString());
     }
 
 

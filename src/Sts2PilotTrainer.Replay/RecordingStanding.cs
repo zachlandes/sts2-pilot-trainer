@@ -24,20 +24,62 @@ namespace Sts2PilotTrainer.Replay;
 /// integrity other than complete, or a continuity the recorder marked broken. A rewound
 /// recording is whole and holds; a video reconstruction states neither field and holds
 /// on the gate's own verdict, once its build is this one.
+///
+/// Last, the recorder that wrote it, and this is the one question the two numbers
+/// answer differently. A journal is what a recorder wrote down as the state each
+/// decision began from and settled into, and a recorder defect is a defect in that
+/// file: a recording whose <c>source.native.recorder_version</c> is below the recorder
+/// this build carries is <see cref="RecordingStandingKind.OlderRecorder"/>, and
+/// <c>parity</c> holds nothing on it - its journal is what the older recorder got
+/// wrong, and holding the release candidate to it would count the older recorder's
+/// findings against the candidate. Its manifest still replays on this build, and a
+/// replayed history is a witness that every point on it is reachable, so it still
+/// <see cref="CreditsCoverage">credits coverage</see>. A version the recording does not
+/// carry, one that does not parse, and the <c>1.0.0.0</c> a recorder built before the
+/// version was stamped named itself with are all an older recorder, never
+/// <see cref="RecordingStandingKind.Holds"/>: a recording that cannot say which
+/// recorder wrote it is not evidence the candidate's recorder is right. Only a
+/// strictly older recorder is stood apart. A recording a newer recorder wrote holds,
+/// and its journal is held to this build's replay like the candidate's own: what a
+/// later recorder fixed shows up as a divergence against this replay and fails the
+/// bar loudly, and a journal in a schema this build does not read is refused as
+/// unreadable, so nothing a newer recorder wrote passes on this build's account.
+/// Both versions are read as a <see cref="RecorderVersion"/>, so a candidate declared
+/// as a prerelease measures itself over its own recordings and below its release.
 /// </summary>
 /// <param name="Build">The build rule's three fields, compared, whichever way they
 /// answered: what a report prints beside a recording of another build.</param>
 public sealed record RecordingStanding(
     RecordingStandingKind Kind, string Detail, IReadOnlyList<PreflightField> Build)
 {
+    /// <summary>Nothing stands against the recording: <c>parity</c> holds its journal
+    /// to a replay and <c>coverage</c> credits what it reached.</summary>
     public bool Holds => Kind == RecordingStandingKind.Holds;
+
+    /// <summary>Whether <c>coverage</c> credits what the recording reached: a
+    /// recording that holds, and one an older recorder wrote, whose manifest replays
+    /// on this build whatever its journal got wrong.</summary>
+    public bool CreditsCoverage => Kind is RecordingStandingKind.Holds or RecordingStandingKind.OlderRecorder;
+
+    /// <summary>How a recorder names itself, ahead of the version the mod manifest spells.</summary>
+    public const string RecorderPrefix = "runmobile-recorder/";
 
     /// <param name="native">What the recorder said of the run; null for a reconstruction.</param>
     /// <param name="environment">The build the recording was made on, as it records it.</param>
     /// <param name="build">The build under test - the one this process would replay
     /// with, read by the command and never by this project, which stays game-free.</param>
-    public static RecordingStanding Of(NativeSource? native, EnvironmentIdentity environment, LocalBuild build)
+    /// <param name="recorderVersion">The version of the recorder this build carries, as
+    /// the mod manifest spells it (<c>0.2.0</c>): what <c>RunmobileVersion.Current</c>
+    /// reports, passed in by the command the way the build is.</param>
+    public static RecordingStanding Of(
+        NativeSource? native, EnvironmentIdentity environment, LocalBuild build, string recorderVersion)
     {
+        var current = RecorderVersion.TryParse(recorderVersion)
+            ?? throw new ArgumentException(
+                $"'{recorderVersion}' is not a version the recorder could have been stamped with; the build " +
+                "under test names its own recorder the way Runmobile.json spells it.",
+                nameof(recorderVersion));
+
         var fields = EnvironmentPreflight.Build(environment, build);
         var mismatched = fields.Where(field => !field.Matches).ToList();
         if (mismatched.Count > 0)
@@ -71,7 +113,28 @@ public sealed record RecordingStanding(
                 fields);
         }
 
+        if (RecorderVersionOf(native.RecorderVersion) is not { } wrote || wrote < current)
+        {
+            return new RecordingStanding(
+                RecordingStandingKind.OlderRecorder,
+                $"journal written by recorder '{native.RecorderVersion}'; this build's recorder is " +
+                $"'{RecorderPrefix}{recorderVersion}', and what changed between them is why the journal is not " +
+                "held to a replay. The manifest still replays on this build, so what it reached is credited to " +
+                "coverage",
+                fields);
+        }
+
         return new RecordingStanding(RecordingStandingKind.Holds, "", fields);
+    }
+
+    /// <summary>The version a recorder named itself with, or null where it named none
+    /// this build reads as one: no prefix, or a string <see cref="RecorderVersion"/>
+    /// does not read - the four-part <c>1.0.0.0</c> a recorder built before the
+    /// version was stamped named itself with among them.</summary>
+    private static RecorderVersion? RecorderVersionOf(string? recorderVersion)
+    {
+        if (recorderVersion is null || !recorderVersion.StartsWith(RecorderPrefix, StringComparison.Ordinal)) return null;
+        return RecorderVersion.TryParse(recorderVersion[RecorderPrefix.Length..]);
     }
 }
 
@@ -85,4 +148,9 @@ public enum RecordingStandingKind
 
     IntegrityNotComplete,
     ContinuityBroken,
+
+    /// <summary>Written by a recorder strictly below the one this build carries, or by
+    /// one that named no version this build reads; its journal is not held to a replay,
+    /// and its manifest still credits coverage. A newer recorder's recording holds.</summary>
+    OlderRecorder,
 }
