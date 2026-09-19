@@ -655,6 +655,19 @@ public sealed class DecisionSurfaceTests
             ["CHARACTER.DEFECT", "CHARACTER.IRONCLAD", "CHARACTER.NECROBINDER", "CHARACTER.REGENT", "CHARACTER.SILENT"],
             withheld.Values.Order(StringComparer.Ordinal));
         Assert.Equal("CHARACTER.IRONCLAD", withheld["COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"]);
+
+        // Every excusal in the class names the character the IL withholds the option
+        // from, so the sentence cannot drift from the guard it cites
+        var withheldExcusals = DecisionExcusals.All
+            .Where(pair => pair.Value.Class == ExcusalClass.OfferedOnlyToAnotherCharacter)
+            .ToList();
+        Assert.NotEmpty(withheldExcusals);
+        Assert.All(withheldExcusals, pair =>
+        {
+            var space = pair.Key.Identity.IndexOf(' ', StringComparison.Ordinal);
+            var character = DecisionSurface.OptionsWithheldFromTheCharacter(pair.Key.Identity[..space])[pair.Key.Identity[(space + 1)..]];
+            Assert.Contains($"withheld from a run of {character} ", pair.Value.Reason, StringComparison.Ordinal);
+        });
         Assert.Equal(
             withheld.Keys.Order(StringComparer.Ordinal),
             DecisionSurface.EventOptionKeys()

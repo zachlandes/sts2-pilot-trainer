@@ -90,18 +90,28 @@ public static class DecisionExcusals
     };
 
     /// <summary>The options of events a row reaches that no row takes, each with what
-    /// stands in the way, by id: a state the row's line never holds at the mark.</summary>
+    /// stands in the way, by id: a state the row's line never holds at the mark. The
+    /// acupuncture is the one that waits on survival - gold is what a longer line
+    /// earns - and the empty page is not: it waits on a deck no first act builds,
+    /// whatever the line survives.</summary>
     private static readonly IReadOnlyDictionary<string, string> OptionsOffTheRoute = new Dictionary<string, string>
     {
         ["EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"] =
             "offered unlocked only with 250 gold in hand (ZenWeaver.GenerateInitialOptions, the ArachnidAcupunctureCost " +
             "dynamic var), and the Zen Weaver rows walk a run of the Hive alone from its 99 starting gold through two " +
-            "fights to the mark, which holds nowhere near it; retired by the retail soak, or by a line that reaches the " +
-            "Hive's mark with an act's gold behind it (excused 2026-09-18)",
+            "fights to the mark, which holds nowhere near it; the map cannot read the bound off the event's own " +
+            "construction, which loads it from a dynamic var and not a constant, so no class derives it; retired by " +
+            "the fifth stage's survival work - a line that reaches the Hive's mark with an act's gold behind it - or " +
+            "by the retail soak (excused 2026-09-18)",
         ["EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"] =
-            "offered only to a deck with no attack, skill or power the book can enchant (SelfHelpBook.GenerateInitialOptions), " +
-            "which no deck the journey builds is - a starter deck holds enchantable cards of every type and one visit " +
-            "enchants two; retired by the retail soak (excused 2026-09-18)",
+            "constructed only where the deck holds no attack Sharp can enchant, no skill Nimble can and no power Swift " +
+            "can (SelfHelpBook.GenerateInitialOptions over PlayerHasCardsAvailable, each through " +
+            "EnchantmentModel.CanEnchant: a playable deck card carrying no enchantment); the Ironclad starter deck holds " +
+            "six attacks and four skills, every one enchantable, the book's other three options each enchant exactly one " +
+            "card of one type per visit (SelectAndEnchant's prefs select one; the 2 is the enchantment's amount), and an " +
+            "act's shuffled set deals the event once, so no first-act walk of any survival reaches a deck the page is " +
+            "constructed for, and no class derives an option a deck can reach; retired by the retail soak, or by a " +
+            "walk whose earlier acts enchant or remove every attack and skill first (excused 2026-09-18)",
     };
 
     /// <summary>The options an event withholds from the run's own character, each with
@@ -194,7 +204,7 @@ public static class DecisionExcusals
 
     /// <summary>The one producer of gold at a death on this build, by id: the power a
     /// Fat Gremlin spawns with holding the gold its merc stole
-    /// (<c>SurprisePower.AfterDeath</c>), which gives it back on the gremlin's death
+    /// (<c>HeistPower.BeforeDeath</c>), which gives it back on the gremlin's death
     /// if it is killed in the one turn before it flees. The merc is the Underdocks'
     /// fourth fight at the earliest - three weak fights come before any normal one -
     /// and the journey's mechanical line reached that fight and won it on none of 25

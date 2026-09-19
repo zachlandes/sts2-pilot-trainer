@@ -79,7 +79,8 @@ The release critical path's fourth slice took what was left `not-on-the-route` i
   It found an engine finding rather than a recorder one: the game announces a death only under the retail flag, beside the game-over screen, so headlessly no run had ever ended on a death, in a fight or out of one; `RunDeath` puts the engine half of that block back at the same instant, and `RunEnding` reads the ending the recorder reads (`docs/headless-fidelity.md`, "The run's end").
 - **The three options off the route for their own reasons.**
   Colorful Philosophers' Ironclad is withheld from an Ironclad run by the event's own guard on the owner's card pool, read off the IL (`DecisionSurface.OptionsWithheldFromTheCharacter`) as the new class `offered-only-to-another-character`, admissible only where the IL says so; a character row of the fifth slice retires it.
-  Zen Weaver's acupuncture wants 250 gold on a run of the Hive alone that opens with 99 and reaches the mark past two fights, and Self-Help Book's empty page wants a deck with nothing to enchant; both keep an excusal in their own words for the retail soak.
+  Zen Weaver's acupuncture wants 250 gold on a run of the Hive alone that opens with 99 and reaches the mark past two fights, and the map cannot derive the bound, which the event loads from a dynamic var rather than a constant; it is the one of the three that waits on the fifth slice's survival work.
+  Self-Help Book's empty page is constructed only for a deck with no attack, skill or power the book can enchant, and no first act of any survival builds one: the starter deck's ten cards are all enchantable, each visit enchants exactly one card, and an act deals the event once; its excusal records that invariant and waits on the retail soak or a walk of more than one act.
 
 ## The event rows, 2026-09-18
 
