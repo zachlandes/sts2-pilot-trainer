@@ -45,7 +45,7 @@ internal static partial class Commands
     /// schema is - counted in the denominator and held to nothing, never folded into
     /// the pass count either way - because its journal is what that recorder got wrong
     /// and the figure is about the recorder this build carries; the recorder's own
-    /// version is read once, beside the build, and written into the header with it.
+    /// version is read once, beside the build.
     /// </summary>
     internal static int Parity(string[] args)
     {
@@ -80,7 +80,7 @@ internal static partial class Commands
             JsonSerializer.Serialize(
                 new
                 {
-                    schema = "sts2-pilot-trainer/parity/v3",
+                    schema = "sts2-pilot-trainer/parity/v2",
                     arbiter_version = Arbiter.Version,
                     standard =
                         "Every recording with a journal this build reads replays through the real engine to " +
@@ -95,7 +95,6 @@ internal static partial class Commands
                         build_date_utc = build.BuildDateUtc,
                         content_hash = build.ContentHash,
                     },
-                    recorder_version = RecordingStanding.RecorderPrefix + recorder,
                     corpus = corpora.Count > 0 ? corpora.Select(Paths.Display).ToList() : null,
                     at_parity = summary.Holds,
                     summary,

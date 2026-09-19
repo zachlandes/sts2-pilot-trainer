@@ -50,7 +50,6 @@ public sealed class ParityTests
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
             Assert.True(artifact.GetProperty("at_parity").GetBoolean());
             Assert.Equal("v0.111.0", artifact.GetProperty("build").GetProperty("build_version").GetString());
-            Assert.Equal(RunmobileVersion.Recorder, artifact.GetProperty("recorder_version").GetString());
             var summary = artifact.GetProperty("summary");
             Assert.Equal(2, summary.GetProperty("native_recordings").GetInt32());
             Assert.Equal(0, summary.GetProperty("another_build").GetInt32());
@@ -340,7 +339,6 @@ public sealed class ParityTests
 
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "parity.json"))).RootElement;
             Assert.True(artifact.GetProperty("at_parity").GetBoolean());
-            Assert.Equal(RunmobileVersion.Recorder, artifact.GetProperty("recorder_version").GetString());
             var summary = artifact.GetProperty("summary");
             Assert.Equal(1, summary.GetProperty("at_parity").GetInt32());
             Assert.Equal(2, summary.GetProperty("older_recorder").GetInt32());
