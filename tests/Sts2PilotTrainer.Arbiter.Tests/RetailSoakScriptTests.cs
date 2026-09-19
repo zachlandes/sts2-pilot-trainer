@@ -48,7 +48,10 @@ public sealed class RetailSoakScriptTests : IDisposable
         _gamePids = Path.Combine(_sandbox, "game.pids");
         _out = Path.Combine(_sandbox, "evidence");
         _night = Path.Combine(_sandbox, "night");
-        var user = Path.Combine(_home, "Library", "Application Support", "SlayTheSpire2");
+        // Where the script resolves user:// per platform, with XDG_DATA_HOME blanked below
+        var user = OperatingSystem.IsMacOS()
+            ? Path.Combine(_home, "Library", "Application Support", "SlayTheSpire2")
+            : Path.Combine(_home, ".local", "share", "SlayTheSpire2");
         _store = Path.Combine(user, "Runmobile", "default", "2", "modded", "profile1");
         if (OperatingSystem.IsWindows()) return;
 
@@ -389,6 +392,7 @@ public sealed class RetailSoakScriptTests : IDisposable
 
         startInfo.Environment["HOME"] = _home;
         startInfo.Environment["XDG_STATE_HOME"] = string.Empty;
+        startInfo.Environment["XDG_DATA_HOME"] = string.Empty;
         startInfo.Environment["STS2_GAME_EXECUTABLE"] = string.Empty;
         startInfo.Environment["FAKE_GAME_LOG"] = _gameLog;
         startInfo.Environment["FAKE_GAME_PIDS"] = _gamePids;
