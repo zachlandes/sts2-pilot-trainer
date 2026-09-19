@@ -25,6 +25,7 @@ not released yet. See [README.md](README.md).
                             # enter-fight | recorded-fight |
                             # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
+Read [docs/build-adoption.md](docs/build-adoption.md) before adopting a game build.
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ./scripts/format-reference.sh               # rewrite docs/manifest-format.md from the code (--check to compare)
 ./scripts/choice-entry-points.sh            # which game types reach each card or relic prompt, and which bodies that scan cannot read, are still what we recorded (--update to re-record both)
@@ -226,12 +227,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 180
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 278 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 181
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 279 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 278.
+datum where it runs, so a run with the game reports more cases than 279.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift

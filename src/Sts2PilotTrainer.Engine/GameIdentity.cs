@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -69,6 +71,7 @@ public sealed record GameIdentity(
 
         VerifyPreparedOutputs(libDir, receipt);
         var build = receipt["build"]!.AsObject();
+        var adopted = ReadBuildRecord(libDir);
 
         var contentHash = EngineHost.ContentHash();
         if (contentHash == "0")
@@ -85,14 +88,53 @@ public sealed record GameIdentity(
         }
         notes.Add($"engine registered {EngineHost.RegisteredModelCount()} models");
 
+        // The adopted record is checked against the receipt, field for field, before this
+        // identity is used; one describing another build is the drift the record exists to name.
+        var receipted = new GameBuildRecord(
+            build["version"]!.GetValue<string>(),
+            build["build_date_utc"]!.GetValue<string>(),
+            build["commit"]!.GetValue<string>(),
+            build["branch"]!.GetValue<string>(),
+            pristine,
+            build["main_assembly_hash"]!.GetValue<long>().ToString(CultureInfo.InvariantCulture));
+        var differences = adopted.DifferencesFrom(receipted);
+        if (differences.Count > 0)
+        {
+            throw new EngineException(
+                "build/lib/game-build.txt does not describe the build prepared-assembly.json receipts " +
+                $"({string.Join("; ", differences)}). Re-run ./scripts/bootstrap.sh.");
+        }
+
         return new GameIdentity(
-            BuildVersion: build["version"]!.GetValue<string>(),
-            BuildDateUtc: build["build_date_utc"]!.GetValue<string>(),
-            Commit: build["commit"]!.GetValue<string>(),
-            Branch: build["branch"]!.GetValue<string>(),
+            BuildVersion: adopted.Version,
+            BuildDateUtc: adopted.BuildDateUtc,
+            Commit: adopted.Commit,
+            Branch: adopted.Branch,
             ContentHash: contentHash,
             PristineAssemblySha256: pristine,
             Notes: notes);
+    }
+
+    /// <summary>
+    /// The adopted build record the bootstrap wrote beside the prepared set. A set
+    /// without one - or with one this build cannot read - predates deliberate build
+    /// adoption, so it is unattributed in the same way as a missing receipt and gets
+    /// the same instruction; an archive made before the record existed is not proof
+    /// of it and is re-made rather than tolerated.
+    /// </summary>
+    private static GameBuildRecord ReadBuildRecord(string libDir)
+    {
+        try
+        {
+            return GameBuildRecord.Read(Path.Combine(libDir, "game-build.txt"));
+        }
+        catch (Exception e) when (e is FileNotFoundException or InvalidDataException)
+        {
+            throw new EngineException(
+                "build/lib has no readable game-build.txt, so the prepared set names no adopted build " +
+                $"({e.Message}). A prepared set or archive made before the record existed does not prove " +
+                "one - refusing to treat it as a known build. Re-run ./scripts/bootstrap.sh.");
+        }
     }
 
     /// <summary>

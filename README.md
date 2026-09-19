@@ -132,6 +132,7 @@ Runmobile lets you play from the fight they played.
 ## Works on
 
 - Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
+  The one adopted build is `scripts/game-build.txt`, and a game update is adopted by the procedure in [docs/build-adoption.md](docs/build-adoption.md), never by editing a literal.
 - No dependencies. The mod's only resource pack is the wagon icon shared by its mod-list and Compendium entries; it declares `affects_gameplay: false` and needs no BaseLib.
 - Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
 - Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting, undeclared or unidentified mod loaded is recorded, and refused when you later play from it.
@@ -226,6 +227,7 @@ after, and fails if anything moved. No game content is in this repository.
 All bootstrap, evidence, state, and snapshot-cache output paths must resolve inside the current worktree, including through symbolic links.
 Pass `--archive <dir>` to the bootstrap to retain the complete receipted prepared set under `<dir>/<build-version>` before an installed-game update replaces it.
 Re-archiving the same prepared set is safe; a conflicting or unreceipted directory for that version is refused rather than overwritten.
+The prepared set carries `game-build.txt`, the build record the arbiter holds to the committed `scripts/game-build.txt`; an archive made before that record existed is refused as conflicting and is moved aside by hand, as [docs/build-adoption.md](docs/build-adoption.md) says.
 
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything

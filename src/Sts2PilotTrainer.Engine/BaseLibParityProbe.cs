@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -60,9 +61,10 @@ public static class BaseLibParityProbe
             ?? throw new EngineException("PowerCmd.Apply has no IL body.");
 
         var identity = GameIdentity.Read();
-        if (identity.BuildVersion != "v0.111.0")
+        var adopted = GameBuildRecord.Read(Path.Combine(Directory.GetCurrentDirectory(), "scripts", "game-build.txt"));
+        if (identity.BuildVersion != adopted.Version)
         {
-            throw new EngineException($"BaseLib parity probe supports v0.111.0, not {identity.BuildVersion}.");
+            throw new EngineException($"BaseLib parity probe supports adopted build {adopted.Version}, not {identity.BuildVersion}.");
         }
 
         var fixture = SyntheticReplayFixture.Create();
