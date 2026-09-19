@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.AutoSlay.Handlers.Rooms;
 using MegaCrit.Sts2.Core.AutoSlay.Handlers.Screens;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -158,20 +159,22 @@ internal static class RetailSoak
         if (!ready) return;
 
         var settings = RunmobileSettings.Read();
-        if (settings.RetailSoak is not { } plan)
+        if (settings.RetailSoak is null && !IsASoakClientWithoutAPlan(settings))
         {
             // Every player's client reaches this line, and the soak is nobody's feature
             return;
         }
 
-        if (RefusalToRun(settings, plan, out var character) is { } refusal)
+        if (RefusalToRun(settings, out var character) is { } refusal)
         {
             Say($"refusing to run: {refusal}");
-            WriteDone(plan, 0, [], refusal);
+            WriteDone(settings.RetailSoak, 0, [], refusal);
             Say("the night is over; asking the game to quit");
             NGame.Instance?.Quit();
             return;
         }
+
+        var plan = settings.RetailSoak!;
 
         var deadline = DateTimeOffset.UtcNow.AddMinutes(plan.StopAfterMinutes);
         using var night = new CancellationTokenSource(TimeSpan.FromMinutes(plan.StopAfterMinutes));
@@ -215,16 +218,30 @@ internal static class RetailSoak
     private sealed record RunRecord(int run, string seed, string outcome);
 
     /// <summary>
-    /// Why this client, with this plan in hand, starts no run - or null, with the
+    /// Whether a client that read no plan is the soak's own, with a file it could not
+    /// read: the settings file is unreadable and the client is headless. A player's
+    /// client is never headless - a windowless game is not playable - and the soak
+    /// script launches under nothing else, so this is the one case in which a client
+    /// without a plan writes a refusal to the store and quits rather than leaving the
+    /// player's menu alone; a readable file with no plan is every player's.
+    /// </summary>
+    private static bool IsASoakClientWithoutAPlan(RunmobileSettings settings) =>
+        !settings.Readable && string.Equals(DisplayServer.GetName(), HeadlessDisplayServer, StringComparison.Ordinal);
+
+    private const string HeadlessDisplayServer = "headless";
+
+    /// <summary>
+    /// Why this client, with these settings in hand, starts no run - or null, with the
     /// character the plan names, where the night may start. The settings half is
     /// <see cref="RefusalFor"/>; the rest reads the client: a multiplayer session,
     /// another Runmobile run live, a game the shell could not adopt, a character this
     /// build has not got, an ascension the profile has not unlocked.
     /// </summary>
-    private static string? RefusalToRun(RunmobileSettings settings, RetailSoakPlan plan, out CharacterModel character)
+    private static string? RefusalToRun(RunmobileSettings settings, out CharacterModel character)
     {
         character = null!;
         if (RefusalFor(settings) is { } refusal) return refusal;
+        var plan = settings.RetailSoak!;
         if (!RunSession.MaySpeakIn(GameSessionWatch.Observed)) return "this client is in a multiplayer session";
         if (!RecordedFightRun.Idle || RunRecorder.Active is not null || ProfileWriteBarrier.IsActive)
         {
@@ -294,11 +311,11 @@ internal static class RetailSoak
         internal const string ClientUnusable = "client-unusable";
     }
 
-    /// <summary>The night's summary: the plan's count, how many runs started and how
-    /// each ended, and <c>refusal</c> - null for a night that ran, the sentence for
-    /// one the client refused before starting a run, which the script reads as a
-    /// night that measured nothing.</summary>
-    private static void WriteDone(RetailSoakPlan plan, int started, IReadOnlyList<RunRecord> outcomes, string? refusal)
+    /// <summary>The night's summary: the plan's count - null where no plan could be
+    /// read - how many runs started and how each ended, and <c>refusal</c> - null for
+    /// a night that ran, the sentence for one the client refused before starting a run,
+    /// which the script reads as a night that measured nothing.</summary>
+    private static void WriteDone(RetailSoakPlan? plan, int started, IReadOnlyList<RunRecord> outcomes, string? refusal)
     {
         try
         {
@@ -306,7 +323,7 @@ internal static class RetailSoak
             {
                 schema = DoneSchema,
                 finished_at_utc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
-                runs_planned = plan.Runs,
+                runs_planned = plan?.Runs,
                 runs_started = started,
                 runs = outcomes,
                 refusal,
@@ -637,14 +654,16 @@ internal static class RetailSoak
                 if (!NextPlay(me, out var index, out var target)) break;
                 var card = state.Hand.Cards[index];
                 plays++;
+                var history = CombatManager.Instance.History;
+                var playsStartedBefore = history.CardPlaysStarted.Count();
                 var ok = card.TryManualPlay(target);
                 Say($"play {card.Id} (hand index {index.ToString(CultureInfo.InvariantCulture)}) at {target?.ModelId.ToString() ?? "nothing"} -> {ok}");
                 if (!ok) break;
 
                 await WaitHelper.Until(
-                    () => !state.Hand.Cards.Contains(card) || HandPromptOpen() || !CombatManager.Instance.IsInProgress ||
+                    () => PlayStarted(history, playsStartedBefore, card) || HandPromptOpen() || !CombatManager.Instance.IsInProgress ||
                           NOverlayStack.Instance is { ScreenCount: > 0 },
-                    ct, TimeSpan.FromSeconds(15), "the played card never left the hand");
+                    ct, TimeSpan.FromSeconds(15), "the engine's combat history never held the play");
                 if (NOverlayStack.Instance is { ScreenCount: > 0 })
                 {
                     Say("the play opened a screen; draining it");
@@ -674,6 +693,14 @@ internal static class RetailSoak
             $"{turns.ToString(CultureInfo.InvariantCulture)} turn(s); in progress={CombatManager.Instance.IsInProgress} " +
             $"hp={me.Creature.CurrentHp.ToString(CultureInfo.InvariantCulture)} recorder={RecorderState()}");
     }
+
+    /// <summary>Whether the engine began this card's play: a <c>CardPlayStartedEntry</c>
+    /// for it past the ones the history held before the request, which the engine
+    /// writes as the play begins and never for a play it declined. Read off the
+    /// history and never off where the card ended up, because Particle Wall and a
+    /// 0-cost attack under Feral go back to the hand after a play executed in full.</summary>
+    private static bool PlayStarted(CombatHistory history, int playsStartedBefore, CardModel card) =>
+        history.CardPlaysStarted.Skip(playsStartedBefore).Any(entry => ReferenceEquals(entry.CardPlay.Card, card));
 
     private static bool IsPlayableTurnAfter(Player player, int lastPlayed) =>
         player.PlayerCombatState is { Phase: PlayerTurnPhase.Play } state && state.TurnNumber > lastPlayed;

@@ -52,12 +52,12 @@ The soak is the instrument that finds that class on purpose: `RetailSoakModule` 
 ```bash
 ./scripts/retail-soak.sh --runs 6 --character CHARACTER.IRONCLAD --stop-after-minutes 360 --client-id 2
 # in the morning:
-cat build/evidence/soak/<date>/parity.txt
-cat build/evidence/soak/<date>/coverage.txt
-cat build/evidence/soak/<date>/soak-done.json
+cat build/evidence/soak/<launch>/parity.txt
+cat build/evidence/soak/<launch>/coverage.txt
+cat build/evidence/soak/<launch>/soak-done.json
 ```
 
-One night writes `build/evidence/soak/<date>/`: `retail-soak.log`, the client's `soak-done.json`, the night's copy of the recordings written under the profile's `recordings/` since that night's launch, and the two artifacts `parity.json` and `coverage.json` computed over that copy beside `manifests/`, with the printed verdicts in `parity.txt` and `coverage.txt`.
+One night writes `build/evidence/soak/<launch>/`, named for the moment it launched (UTC) so two nights never share one: `retail-soak.log`, the client's `soak-done.json`, the night's copy of the recordings written under the profile's `recordings/` since that night's launch, and the two artifacts `parity.json` and `coverage.json` computed over that copy beside `manifests/`, with the printed verdicts in `parity.txt` and `coverage.txt`.
 The copy is the night's and not the profile's history: an earlier night's recording in the same profile is neither copied nor measured, and stays where it is, so a profile that ran before a game update is not failed every later night on the earlier build's recordings.
 The script exits 0 only when `soak-done` arrived, every run ended on its own or at the deadline, and both verdicts hold; 1 when parity or coverage does not hold; 3 when the night measured nothing - the launch was refused, the night ended without `soak-done`, the mod refused the plan before starting a run and said so in a zero-run `soak-done`, or it recorded nothing; 4 when a run ended in a state the mod refused - unknown, failed, a bound run out, a client it could not leave - which is a finding in `godot.log` rather than in the figure.
 Every `REFUSED` or `DIVERGED` line in `parity.txt` names the first decision and field, and each distinct one is a fix of the same shape as the two above, held by `RecorderTimingTests` against `TraceParity.Compare`.

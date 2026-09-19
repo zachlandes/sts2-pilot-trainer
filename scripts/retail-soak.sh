@@ -50,7 +50,9 @@ usage: retail-soak.sh [--runs <n>] [--seeds <a,b,c>] [--character <CHARACTER.X>]
 --adopt-profile       replace a settings.json that is not already a soak's
 --game                the retail executable; default: the Steam installation
 --skip-install        do not run ./scripts/install-mod.sh first (the stand-in lifecycle)
---out                 where the night's evidence goes (default build/evidence/soak/<date>)
+--out                 where the night's evidence goes; one directory per night, refused
+                      where it already holds a night's recordings
+                      (default build/evidence/soak/<launch time, UTC>)
 
 Exit 0 when soak-done arrived, every run ended cleanly, and parity and coverage
 hold over the night's copy beside manifests/; 1 when parity or coverage does not
@@ -108,6 +110,19 @@ if [[ "$character" != CHARACTER.* ]]; then
   echo "--character takes the game's own id, which reads CHARACTER.IRONCLAD, not '$character'." >&2
   exit 2
 fi
+# A seed is written into the plan's JSON as it stands, so it is held to the game's
+# own seed alphabet here rather than quoted; the mod canonicalizes case and O/I
+seed_list=()
+if [[ -n "$seeds" ]]; then
+  IFS=',' read -r -a seed_list <<< "$seeds"
+  for i in "${!seed_list[@]}"; do
+    seed_list[i]="$(printf '%s' "${seed_list[i]}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    if ! [[ "${seed_list[i]}" =~ ^[A-Za-z0-9]+$ ]]; then
+      echo "--seeds takes the game's own seeds, letters and digits, not '${seed_list[i]}'." >&2
+      exit 2
+    fi
+  done
+fi
 
 # Where the game keeps user:// on this platform, and the soak profile under it. The
 # tree's own pointer names the profile the game will play as, which is the one the
@@ -136,7 +151,13 @@ settings="$store/settings.json"
 recordings="$store/recordings"
 done_file="$store/soak-done"
 
-if [[ -z "$out" ]]; then out="build/evidence/soak/$(date -u +%Y-%m-%d)"; fi
+# One evidence directory per night: the figure is computed over what this directory
+# holds, so a directory that already holds a night's copy would fold that night in
+if [[ -z "$out" ]]; then out="build/evidence/soak/$(date -u +%Y-%m-%dT%H%M%SZ)"; fi
+if ls "$out"/recordings/*.replay.json > /dev/null 2>&1; then
+  echo "The evidence directory $out already holds a night's recordings; a night gets a directory of its own." >&2
+  exit 2
+fi
 mkdir -p "$out"
 log="$out/retail-soak.log"
 say() { printf '%s %s\n' "$(date -u +%H:%M:%SZ)" "$*" | tee -a "$log"; }
@@ -161,7 +182,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-say "retail soak: $runs run(s) of $character at ascension $ascension, seeds [${seeds:-fresh each}], deadline ${stop_after_minutes}m"
+seeds_shown="${seed_list[*]-}"
+say "retail soak: $runs run(s) of $character at ascension $ascension, seeds [${seeds_shown:-fresh each}], deadline ${stop_after_minutes}m"
 say "store        : $store"
 say "evidence     : $out"
 
@@ -174,8 +196,8 @@ fi
 # policy and it keeps every run of the night: the file cannot say "keep all", so it
 # says a number no night reaches.
 seeds_json="[]"
-if [[ -n "$seeds" ]]; then
-  seeds_json="[$(printf '%s' "$seeds" | awk -F, '{ for (i = 1; i <= NF; i++) { gsub(/^[ \t]+|[ \t]+$/, "", $i); printf "%s\"%s\"", (i > 1 ? ", " : ""), $i } }')]"
+if [[ "${#seed_list[@]}" -gt 0 ]]; then
+  seeds_json="[$(printf '"%s", ' "${seed_list[@]}" | sed 's/, $//')]"
 fi
 mkdir -p "$store"
 settings_tmp="$settings.$$.tmp"

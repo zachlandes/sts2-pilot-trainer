@@ -1,7 +1,7 @@
 # A night of the retail soak, without the game
 
-*2026-09-19T20:10:36Z by Showboat 0.6.1*
-<!-- showboat-id: b596e0f2-0151-48c6-97f3-f2c1c41a0d3a -->
+*2026-09-19T20:26:05Z by Showboat 0.6.1*
+<!-- showboat-id: e3a9fa8c-0052-4bad-bcac-e04288351af0 -->
 
 This document runs `scripts/retail-soak.sh` - the nightly retail soak - through its whole lifecycle against the stand-in retail executable the launch tests use, and records what it printed. Every code block below was executed from the repository root on a built tree (`./scripts/build.sh`); the output under it is that run's output. `showboat --workdir .. verify RETAIL-SOAK.md` re-runs the lot, and its diff is the pids, the times and the sandbox's random suffix, and the home directory and the worktree, which are written here as `~` and `<worktree>` - nothing else should.
 
@@ -51,24 +51,24 @@ tools/ps
 ```
 
 ```output
-20:10:37Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [67L571H38L], deadline 1m
-20:10:37Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
-20:10:37Z evidence     : build/soak-demo/night-1
-20:10:37Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
-20:10:37Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
-client       : pid 29610
+20:26:05Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [67L571H38L], deadline 1m
+20:26:05Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
+20:26:05Z evidence     : build/soak-demo/night-1
+20:26:05Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
+20:26:05Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+client       : pid 48478
 executable   : <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=2 --headless
 save tree    : user://default/2
-working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.G7Gyfz
+working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.OQtcdV
 log          : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
 record       : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : retail-soak 2026-09-19
 release with : ./scripts/retail-client.sh release
-20:10:48Z soak-done arrived after 10s
-20:10:48Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:10:39Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "ended" } ], "refusal": null, "recorder_version": "stand-in"}
-20:10:48Z copied 1 recording(s) to build/soak-demo/night-1/recordings
-20:10:48Z parity:
+20:26:16Z soak-done arrived after 10s
+20:26:16Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:26:07Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "ended" } ], "refusal": null, "recorder_version": "stand-in"}
+20:26:16Z copied 1 recording(s) to build/soak-demo/night-1/recordings
+20:26:16Z parity:
   PARITY      native-67L571H38L-20260919-091953  30 in the journal, 30 replayed
   older recorder native-3LACFJ5NJ371-20260906-015901
               journal written by recorder 'runmobile-recorder/1.0.0.0'; this build's recorder is 'runmobile-recorder/0.2.0', and what changed between them is why the journal is not held to a replay. The manifest still replays on this build, so what it reached is credited to coverage
@@ -79,13 +79,13 @@ release with : ./scripts/retail-client.sh release
 parity: 1 of 3 native recording(s) (1 compared, 0 of another build, 0 without a journal, 0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, 2 written by an older recorder, 0 refused; 1 not native)
 AT PARITY - every recording with a journal replays decision for decision, and none is incomplete
 parity artifact: build/soak-demo/night-1/parity.json
-20:10:50Z coverage:
+20:26:20Z coverage:
 points: 522  covered: 21  co-occurrence: 8  excused: 465  uncovered: 0  not projectable: 28  recordings: 4
 excused and reached by this corpus: 4
 COVERED - every point this build offers is reached by a recording, excused in writing, or one this format cannot count
 coverage artifact: build/soak-demo/night-1/coverage.json
 
-20:10:59Z the third figure: parity holds over the night's copy beside manifests/; coverage holds; 0 run(s) to read; evidence in build/soak-demo/night-1
+20:26:38Z the third figure: parity holds over the night's copy beside manifests/; coverage holds; 0 run(s) to read; evidence in build/soak-demo/night-1
 exit 0
 ```
 
@@ -96,7 +96,7 @@ cat build/soak-demo/game.log
 ```
 
 ```output
-cwd	<worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.G7Gyfz
+cwd	<worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.OQtcdV
 entries	
 args	--force-steam=off --clientId=2 --headless
 SteamAppId	unset
@@ -129,7 +129,7 @@ cat "build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/de
 ---
 {
   "schema": "sts2-pilot-trainer/retail-soak-done/v1",
-  "finished_at_utc": "2026-09-19T20:10:39Z",
+  "finished_at_utc": "2026-09-19T20:26:07Z",
   "runs_planned": 1,
   "runs_started": 1,
   "runs": [
@@ -175,24 +175,24 @@ EOF
 ```
 
 ```output
-20:10:59Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
-20:10:59Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
-20:10:59Z evidence     : build/soak-demo/night-2
-20:10:59Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
-20:10:59Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
-client       : pid 52600
+20:26:39Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
+20:26:39Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
+20:26:39Z evidence     : build/soak-demo/night-2
+20:26:39Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
+20:26:39Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+client       : pid 69825
 executable   : <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=2 --headless
 save tree    : user://default/2
-working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.v1Dv0y
+working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.tgfOSK
 log          : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
 record       : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : retail-soak 2026-09-19
 release with : ./scripts/retail-client.sh release
-20:11:10Z soak-done arrived after 10s
-20:11:10Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:11:01Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "ended" } ], "refusal": null, "recorder_version": "stand-in"}
-20:11:10Z copied 1 recording(s) to build/soak-demo/night-2/recordings
-20:11:10Z parity:
+20:26:50Z soak-done arrived after 10s
+20:26:50Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:26:41Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "ended" } ], "refusal": null, "recorder_version": "stand-in"}
+20:26:50Z copied 1 recording(s) to build/soak-demo/night-2/recordings
+20:26:50Z parity:
   DIVERGED    native-67L571H38L-20260919-091953  30 in the journal, 30 replayed
               decision 5 (PlayCard) before: player.hp: 1 -> 80
   older recorder native-3LACFJ5NJ371-20260906-015901
@@ -204,13 +204,13 @@ release with : ./scripts/retail-client.sh release
 parity: 0 of 3 native recording(s) (1 compared, 0 of another build, 0 without a journal, 0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, 2 written by an older recorder, 0 refused; 1 not native)
 NOT AT PARITY - see the recording marked above; a recording of another build is unproven on this one
 parity artifact: build/soak-demo/night-2/parity.json
-20:11:12Z coverage:
+20:26:55Z coverage:
 points: 522  covered: 21  co-occurrence: 8  excused: 465  uncovered: 0  not projectable: 28  recordings: 4
 excused and reached by this corpus: 4
 COVERED - every point this build offers is reached by a recording, excused in writing, or one this format cannot count
 coverage artifact: build/soak-demo/night-2/coverage.json
 
-20:11:21Z the third figure: parity does not hold over the night's copy beside manifests/; coverage holds; 0 run(s) to read; evidence in build/soak-demo/night-2
+20:27:12Z the third figure: parity does not hold over the night's copy beside manifests/; coverage holds; 0 run(s) to read; evidence in build/soak-demo/night-2
 exit 1
 ```
 
@@ -223,25 +223,25 @@ The journal put back, and the stand-in told to end its one run in `unknown-state
 ```
 
 ```output
-20:11:21Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
-20:11:21Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
-20:11:21Z evidence     : build/soak-demo/night-3
-20:11:21Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
-20:11:21Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
-client       : pid 61794
+20:27:12Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
+20:27:12Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
+20:27:12Z evidence     : build/soak-demo/night-3
+20:27:12Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
+20:27:12Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+client       : pid 89508
 executable   : <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=2 --headless
 save tree    : user://default/2
-working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.QwNL06
+working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.hpzKpM
 log          : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
 record       : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : retail-soak 2026-09-19
 release with : ./scripts/retail-client.sh release
-20:11:31Z soak-done arrived after 10s
-20:11:31Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:11:23Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "unknown-state" } ], "refusal": null, "recorder_version": "stand-in"}
-20:11:31Z copied 1 recording(s) to build/soak-demo/night-3/recordings
-20:11:31Z a run ended 'unknown-state'; read godot.log
-20:11:31Z parity:
+20:27:23Z soak-done arrived after 10s
+20:27:23Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:27:15Z", "runs_planned": 1, "runs_started": 1, "runs": [ { "run": 1, "seed": "STANDIN", "outcome": "unknown-state" } ], "refusal": null, "recorder_version": "stand-in"}
+20:27:23Z copied 1 recording(s) to build/soak-demo/night-3/recordings
+20:27:23Z a run ended 'unknown-state'; read godot.log
+20:27:23Z parity:
   PARITY      native-67L571H38L-20260919-091953  30 in the journal, 30 replayed
   older recorder native-3LACFJ5NJ371-20260906-015901
               journal written by recorder 'runmobile-recorder/1.0.0.0'; this build's recorder is 'runmobile-recorder/0.2.0', and what changed between them is why the journal is not held to a replay. The manifest still replays on this build, so what it reached is credited to coverage
@@ -252,13 +252,13 @@ release with : ./scripts/retail-client.sh release
 parity: 1 of 3 native recording(s) (1 compared, 0 of another build, 0 without a journal, 0 with a journal it cannot read, 0 with an integrity other than complete, 0 with a broken continuity, 2 written by an older recorder, 0 refused; 1 not native)
 AT PARITY - every recording with a journal replays decision for decision, and none is incomplete
 parity artifact: build/soak-demo/night-3/parity.json
-20:11:34Z coverage:
+20:27:27Z coverage:
 points: 522  covered: 21  co-occurrence: 8  excused: 465  uncovered: 0  not projectable: 28  recordings: 4
 excused and reached by this corpus: 4
 COVERED - every point this build offers is reached by a recording, excused in writing, or one this format cannot count
 coverage artifact: build/soak-demo/night-3/coverage.json
 
-20:11:43Z the third figure: parity holds over the night's copy beside manifests/; coverage holds; 1 run(s) to read; evidence in build/soak-demo/night-3
+20:27:37Z the third figure: parity holds over the night's copy beside manifests/; coverage holds; 1 run(s) to read; evidence in build/soak-demo/night-3
 exit 4
 ```
 
@@ -271,22 +271,22 @@ A client that quit without finishing - the stand-in exits after two seconds havi
 ```
 
 ```output
-20:11:43Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
-20:11:43Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
-20:11:43Z evidence     : build/soak-demo/night-4
-20:11:43Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
-20:11:44Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
-client       : pid 86262
+20:27:37Z retail soak: 1 run(s) of CHARACTER.IRONCLAD at ascension 0, seeds [fresh each], deadline 1m
+20:27:37Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
+20:27:37Z evidence     : build/soak-demo/night-4
+20:27:37Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
+20:27:37Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+client       : pid 99778
 executable   : <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=2 --headless
 save tree    : user://default/2
-working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.5fJ9LR
+working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.layH9M
 log          : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
 record       : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : retail-soak 2026-09-19
 release with : ./scripts/retail-client.sh release
-20:11:56Z no soak-done after 10s; releasing the client
-20:11:56Z the night ended without soak-done; nothing is measured. Read <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/logs/godot.log.
+20:27:50Z no soak-done after 10s; releasing the client
+20:27:50Z the night ended without soak-done; nothing is measured. Read <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/logs/godot.log.
 exit 3
 ```
 
@@ -299,27 +299,27 @@ A plan the client refuses before starting a run - here a character this build ha
 ```
 
 ```output
-20:11:56Z retail soak: 1 run(s) of CHARACTER.NOBODY at ascension 0, seeds [fresh each], deadline 1m
-20:11:56Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
-20:11:56Z evidence     : build/soak-demo/night-5
-20:11:56Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
-20:11:56Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
-client       : pid 183
+20:27:50Z retail soak: 1 run(s) of CHARACTER.NOBODY at ascension 0, seeds [fresh each], deadline 1m
+20:27:50Z store        : <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1
+20:27:50Z evidence     : build/soak-demo/night-5
+20:27:50Z wrote <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/Runmobile/default/2/modded/profile1/settings.json
+20:27:50Z launching: ./scripts/retail-client.sh launch --owner retail-soak 2026-09-19 --client-id 2 --headless --game <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
+client       : pid 10745
 executable   : <worktree>/build/soak-demo/install/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2
 arguments    : --force-steam=off --clientId=2 --headless
 save tree    : user://default/2
-working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.2cGwRz
+working dir  : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/cwd.Isg2uq
 log          : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/client.log
 record       : <worktree>/build/soak-demo/home/Library/Application Support/sts2-pilot-trainer/retail-client/owner
 owner        : retail-soak 2026-09-19
 release with : ./scripts/retail-client.sh release
-20:12:07Z soak-done arrived after 10s
-20:12:07Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:11:59Z", "runs_planned": 1, "runs_started": 0, "runs": [], "refusal": "this build has no character 'CHARACTER.NOBODY'", "recorder_version": "stand-in"}
-20:12:07Z the mod refused the night: this build has no character 'CHARACTER.NOBODY'; nothing is measured. Read <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/logs/godot.log.
+20:28:01Z soak-done arrived after 10s
+20:28:01Z soak-done: { "schema": "sts2-pilot-trainer/retail-soak-done/v1", "finished_at_utc": "2026-09-19T20:27:52Z", "runs_planned": 1, "runs_started": 0, "runs": [], "refusal": "this build has no character 'CHARACTER.NOBODY'", "recorder_version": "stand-in"}
+20:28:01Z the mod refused the night: this build has no character 'CHARACTER.NOBODY'; nothing is measured. Read <worktree>/build/soak-demo/home/Library/Application Support/SlayTheSpire2/logs/godot.log.
 exit 3
 {
   "schema": "sts2-pilot-trainer/retail-soak-done/v1",
-  "finished_at_utc": "2026-09-19T20:11:59Z",
+  "finished_at_utc": "2026-09-19T20:27:52Z",
   "runs_planned": 1,
   "runs_started": 0,
   "runs": [],
@@ -352,7 +352,7 @@ exit 2
 The same script with no `--game` and no `--skip-install` finds the Steam installation, installs the mod, and launches the real client headless in the isolated tree `--client-id` names; the game's two one-time clicks are owed once per tree by a person, and `docs/in-game-host.md`, "The retail soak", owns the rest. The first night has not run: `docs/release-bar.md`, "The third number", records the command and where its evidence lands, and the first figure is written there the morning after.
 
 ```bash
-./scripts/retail-soak.sh --help 2>&1 | head -32
+./scripts/retail-soak.sh --help 2>&1 | head -34
 ```
 
 ```output
@@ -372,7 +372,9 @@ usage: retail-soak.sh [--runs <n>] [--seeds <a,b,c>] [--character <CHARACTER.X>]
 --adopt-profile       replace a settings.json that is not already a soak's
 --game                the retail executable; default: the Steam installation
 --skip-install        do not run ./scripts/install-mod.sh first (the stand-in lifecycle)
---out                 where the night's evidence goes (default build/evidence/soak/<date>)
+--out                 where the night's evidence goes; one directory per night, refused
+                      where it already holds a night's recordings
+                      (default build/evidence/soak/<launch time, UTC>)
 
 Exit 0 when soak-done arrived, every run ended cleanly, and parity and coverage
 hold over the night's copy beside manifests/; 1 when parity or coverage does not

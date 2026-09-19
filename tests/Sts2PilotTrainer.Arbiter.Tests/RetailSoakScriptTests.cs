@@ -253,11 +253,34 @@ public sealed class RetailSoakScriptTests : IDisposable
         Assert.False(File.Exists(_gameLog), "the client was launched anyway");
     }
 
+    /// <summary>An evidence directory is one night's: a second night pointed at a
+    /// directory that already holds a night's copy is refused before anything is
+    /// written or launched, because the figure is computed over what the directory
+    /// holds and a second copy into it would fold the first night in.</summary>
+    [GameFact]
+    public void ASecondNightIntoTheSameEvidenceDirectoryIsRefused()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        ARecordingTheNightMakes();
+        Assert.Equal(0, Run("--runs", "1", "--stop-after-minutes", "1").ExitCode);
+        var settingsWritten = File.GetLastWriteTimeUtc(Path.Combine(_store, "settings.json"));
+        var launches = File.ReadAllText(_gameLog);
+
+        var refused = Run("--runs", "1", "--stop-after-minutes", "1");
+
+        Assert.Equal(2, refused.ExitCode);
+        Assert.Contains("already holds a night's recordings", refused.Error, StringComparison.Ordinal);
+        Assert.Equal(settingsWritten, File.GetLastWriteTimeUtc(Path.Combine(_store, "settings.json")));
+        Assert.Equal(launches, File.ReadAllText(_gameLog));
+    }
+
     [Theory]
     [InlineData("--runs", "0")]
     [InlineData("--runs", "six")]
     [InlineData("--character", "IRONCLAD")]
     [InlineData("--stop-after-minutes", "0")]
+    [InlineData("--seeds", "ABC123,DE\"F")]
+    [InlineData("--seeds", "ABC123, DE F")]
     public void APlanThatCannotBeRunIsRefusedBeforeAnythingIsWritten(string flag, string value)
     {
         if (OperatingSystem.IsWindows()) return;
