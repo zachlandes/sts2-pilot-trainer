@@ -251,23 +251,30 @@ internal static class Program
     /// that it does not change which actions the engine takes. Each must apply at
     /// least once: a patch that silently stops matching is version drift, and the
     /// only safe response is a loud failure.
+    ///
+    /// Empty on this build. The one patch this list carried, from the first commit
+    /// to 2026-09-19, made <c>CombatManager.WaitUntilQueueIsEmptyOrWaitingOnNonPlayerDrivenAction</c>
+    /// return a completed task, on the reading that the headless host's inline drain
+    /// left nothing for the wait to wait on. It was the opposite: that wait is the
+    /// game's own guarantee that the turn loop continues only after the executor has
+    /// finished with, and popped, the action that ended the turn - it subscribes to
+    /// <c>AfterActionExecuted</c> while a player-driven action is running - and with
+    /// it patched out the end of a turn ran through to a fight's end inside the ended
+    /// turn's own finish, where <c>ActionQueueSet.CombatEnded</c> cancelled the still
+    /// unpopped action and the executor then failed to pop it. Every fight the enemy
+    /// turn's own work ended - the Defect's Lightning orb - hit it, and the recorder
+    /// refused the run. Left intact, the wait resumes headlessly exactly as it does in
+    /// the client; <c>DefectOrbFightEndTests</c> holds that. The machinery stays so a
+    /// patch a future build needs has a declared, receipted home.
     /// </summary>
-    private static readonly IlPatch[] DeclaredPatches =
-    [
-        new IlPatch(
-            Name: "combat-queue-wait-completes",
-            Type: "CombatManager",
-            Method: "WaitUntilQueueIsEmptyOrWaitingOnNonPlayerDrivenAction",
-            Rationale:
-                "The headless host drains the game action queue inline on a synchronous " +
-                "SynchronizationContext, so the queue is already empty by the time this " +
-                "wait is awaited. Left intact, the await never resumes - there is no " +
-                "frame loop to pump it. Returning a completed Task changes when the " +
-                "caller resumes, not which actions ran or which RNG streams advanced.")
-    ];
+    private static readonly IlPatch[] DeclaredPatches = [];
 
     private static List<AppliedPatch> PatchAssembly(string dllPath)
     {
+        // Nothing declared leaves the copy byte for byte the installed assembly, which
+        // the receipt then says by hashing it
+        if (DeclaredPatches.Length == 0) return [];
+
         var resolver = new DefaultAssemblyResolver();
         resolver.AddSearchDirectory(Path.GetDirectoryName(dllPath)!);
 

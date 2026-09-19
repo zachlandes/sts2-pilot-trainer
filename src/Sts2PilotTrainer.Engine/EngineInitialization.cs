@@ -594,4 +594,4 @@ internal static class HeadlessPatches
     private static bool SkipVoid() => false;
 }
 
-public sealed class EngineException(string message) : Exception(message);
+public class EngineException(string message) : Exception(message);

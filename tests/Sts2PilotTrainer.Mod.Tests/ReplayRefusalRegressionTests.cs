@@ -134,8 +134,14 @@ public sealed class ReplayRefusalRegressionTests
         using var harness = new RecordedActWalk();
 
         var recorded = harness.Walk(
-            new WalkPolicy { AncientRelic = "RELIC.LORDS_PARASOL", ShopWhileHoldingIt = true, RouteThrough = [MapPointType.Shop] },
-            LordsParasolSeed, visitEveryRoomType: false, acts: ["ACT.GLORY"]);
+            new WalkPolicy
+            {
+                AncientRelic = "RELIC.LORDS_PARASOL",
+                ShopWhileHoldingIt = true,
+                RouteThrough = [MapPointType.Shop],
+                Rule = GeneratedCoverageTests.RuleOn("ACT.GLORY"),
+            },
+            LordsParasolSeed, visitEveryRoomType: false, acts: GeneratedCoverageTests.EventRowActs["ACT.GLORY"]);
         Assert.True(recorded.AskMet, "the walk finished without entering a merchant holding Lord's Parasol");
         RecordedActWalk.AssertWhole(recorded);
 
@@ -220,7 +226,7 @@ public sealed class ReplayRefusalRegressionTests
     {
         var row = GeneratedCoverageTests.EventRowFor("ACT.GLORY", "EVENT.BATTLEWORN_DUMMY", DummysFirstSetting);
         return harness.Walk(
-            GeneratedCoverageTests.PolicyFor(row), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.GLORY"],
+            GeneratedCoverageTests.PolicyFor(row, "ACT.GLORY"), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.GLORY"],
             then: (session, driver, settle) =>
             {
                 Assert.IsType<EventRoom>(session.RunState.CurrentRoom);
@@ -339,7 +345,7 @@ public sealed class ReplayRefusalRegressionTests
             using var harness = new RecordedActWalk();
             var row = GeneratedCoverageTests.EventRowFor("ACT.UNDERDOCKS", "EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.SUSPICIOUS_CONDIMENT");
             var recorded = harness.Walk(
-                GeneratedCoverageTests.PolicyFor(row), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.UNDERDOCKS"]);
+                GeneratedCoverageTests.PolicyFor(row, "ACT.UNDERDOCKS"), row.Seed, visitEveryRoomType: false, GeneratedCoverageTests.EventRowActs["ACT.UNDERDOCKS"]);
             Assert.True(recorded.AskMet, "the walk finished without taking the condiment");
             RecordedActWalk.AssertWhole(recorded);
 

@@ -162,6 +162,10 @@ public sealed record WalkPolicy
     /// survival rules were not tuned to carry past that decision.</summary>
     public bool StopOnceMet { get; init; }
 
+    /// <summary>The mechanical line the walk plays its fights and takes its card
+    /// rewards by; the measured one where none is named. See <see cref="SurvivalRule"/>.</summary>
+    public SurvivalRule Rule { get; init; } = SurvivalRule.BlockWhenThreatened;
+
     /// <summary>The relic this policy names, or null: the one the bag deals where
     /// more than one is named, since a walk is after one relic.</summary>
     public string? Relic => BagRelic ?? NeowRelic ?? AncientRelic;
@@ -188,4 +192,32 @@ public sealed record WalkPolicy
     /// act and names nothing to obtain or choose there, so answering the room that
     /// act opens on is what it is after.</summary>
     public bool OpeningTheNextActIsTheAsk => AskInTheNextAct && Relic is null && EventId is null && !AsksPastTheRelic;
+}
+
+/// <summary>
+/// The mechanical line the whole-act journey plays by: a rule over the hand the engine
+/// dealt, the intent number the game draws over each enemy and the player's own state,
+/// and never a claim about how to play.
+/// </summary>
+public enum SurvivalRule
+{
+    /// <summary>The measured rule, the journey's own: while the enemies' displayed
+    /// attack damage exceeds the block held, the first playable card that gains
+    /// block; otherwise the first playable attack, aimed at the living enemy with the
+    /// least health; a card reward's card by block-or-attack first, then its canonical
+    /// cost, then the offer's order. Measured across every character and both act-one
+    /// routes on 300 hunted seeds each (docs/release-bar.md), it beats the act's boss
+    /// on roughly twice as many seeds as <see cref="AttackFirst"/> and is what lets a
+    /// walk of any character reach a second act.</summary>
+    BlockWhenThreatened,
+
+    /// <summary>The journey's rule before that measurement: the first playable
+    /// attack, otherwise the first playable card, aimed at the first living enemy, and
+    /// a card reward's first card. Kept for the rows on a run of the Hive or Glory
+    /// alone, whose fights are a later act's enemies against a starter deck and whose
+    /// seeds were hunted under it: measured on 2026-09-19, such a fight is lost under
+    /// <see cref="BlockWhenThreatened"/> on 63 of 64 hunted Glory seeds, because a
+    /// hand that blocks first never kills an act-three enemy, where attack-first won
+    /// it on one seed in four.</summary>
+    AttackFirst,
 }

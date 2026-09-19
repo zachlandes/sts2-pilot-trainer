@@ -24,6 +24,9 @@ internal sealed class RecordedActWalk : IDisposable
 
     internal static readonly string[] Acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
 
+    /// <summary>The character every row before the character rows plays.</summary>
+    internal const string Ironclad = "CHARACTER.IRONCLAD";
+
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"recorded-walk-{Guid.NewGuid():N}", "Runmobile", "steam", "test", "profile1");
 
@@ -88,13 +91,17 @@ internal sealed class RecordedActWalk : IDisposable
     /// <param name="then">Decisions a test makes through the driver after the walk has
     /// stopped and before the run is abandoned, each settled for the recorder the way
     /// the walk's own are: for a test after the decision past the walk's floor.</param>
+    /// <param name="character">The character the run is started as; the Ironclad,
+    /// which every row before the character rows plays, where none is named.</param>
+    /// <param name="ascension">The ascension the run is started at; 0 where none is
+    /// named.</param>
     internal Recorded Walk(
         WalkPolicy policy, string seed = FixtureSeed, bool visitEveryRoomType = true, IReadOnlyList<string>? acts = null,
-        Action<GameSession, RunDriver, Action>? then = null)
+        Action<GameSession, RunDriver, Action>? then = null, string character = Ironclad, int ascension = 0)
     {
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
-        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", acts ?? Acts);
+        session.StartRun(seed, character, ascension, "standard", acts ?? Acts);
         using var driver = new RunDriver(session);
         driver.ImproviseUnrecordedCardSelections();
         driver.EnterFirstRoom();

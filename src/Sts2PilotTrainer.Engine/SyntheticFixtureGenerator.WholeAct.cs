@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
+using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
@@ -25,11 +26,13 @@ namespace Sts2PilotTrainer.Engine;
 /// history with no video and no player behind it.
 ///
 /// Every choice it makes is a fixed rule over what the engine reports: the route is
-/// planned by cost before a step is taken, the fight plays its first playable attack,
-/// the loot is taken and whatever is left is declined, a rest site forges when the run
-/// is healthy and heals when it is not, and the shop is emptied cheapest first. Each
-/// of those rules is here because without it the journey does not finish an act, and
-/// not one of them is a claim about how to play. The fixture must not be read as one.
+/// planned by cost before a step is taken, the fight blocks while the enemies'
+/// displayed damage exceeds the block held and otherwise attacks the enemy with the
+/// least health, the loot is taken - the card by its own type flags and cost - and
+/// whatever is left is declined, a rest site forges when the run is healthy and heals
+/// when it is not, and the shop is emptied cheapest first. Each of those rules is
+/// here because without it the journey does not finish an act, and not one of them
+/// is a claim about how to play. The fixture must not be read as one.
 /// </summary>
 public static partial class SyntheticFixtureGenerator
 {
@@ -83,6 +86,11 @@ public static partial class SyntheticFixtureGenerator
     /// <summary>The choices the walk under way consults; the fixture's are the defaults.</summary>
     private static WalkPolicy _policy = WalkPolicy.Default;
 
+    /// <summary>The rules the two committed act fixtures were produced under and are
+    /// regenerated under: the journey's earlier fight rule, because each fixture's
+    /// digests are committed and a regeneration has to reproduce them.</summary>
+    private static readonly WalkPolicy CommittedFixtureRules = new() { Rule = SurvivalRule.AttackFirst };
+
     /// <summary>
     /// Whether the route under way passes its required types in the order the policy
     /// lists them and may end at the node that completes them, rather than passing
@@ -122,7 +130,10 @@ public static partial class SyntheticFixtureGenerator
         driver.EnterFirstRoom();
 
         var checkpoints = new List<Checkpoint>();
-        var actions = WalkTheAct(session, driver, checkpoints).Actions;
+        // The committed fixture was produced under the journey's earlier rule and its
+        // digests are committed, so the generator keeps that rule for it; the measured
+        // rule is the walks' and the rows'
+        var actions = WalkTheAct(session, driver, checkpoints, policy: CommittedFixtureRules).Actions;
 
         return new ReplayManifest
         {
@@ -601,7 +612,24 @@ public static partial class SyntheticFixtureGenerator
         // next fight and not this one
         var heldOnEntry = _policy.FightWhileHoldingIt && HoldsTheRelic(session);
         DrinkPotions(driver, session, actions, entered);
-        PlayToTheEndOfTheFight(driver, session, actions, SurvivingIndex);
+
+        // Where the walk stood is read before the fight, because the projection
+        // carries nothing of a fight once it is over: a walk that dies says the floor
+        // and the encounter, which is what a seed is hunted on
+        var floor = Field(session, "run.total_floor");
+        var encounter = Field(session, "combat.encounter");
+        try
+        {
+            PlayToTheEndOfTheFight(
+                driver, session, actions, SurvivingIndex,
+                _policy.Rule == SurvivalRule.BlockWhenThreatened ? LowestHealthEnemy : null);
+        }
+        catch (FightLostException lost)
+        {
+            throw new EngineException(
+                $"The act journey died on floor {floor} in {encounter}, a {name} fight, as " +
+                $"{session.RunState.Players[0].Character.Id}: {lost.Message}");
+        }
 
         checkpoints.Add(Capture(
             $"{name}-{actions[^1].Seq.ToString(CultureInfo.InvariantCulture)}-combat-end",
@@ -653,11 +681,11 @@ public static partial class SyntheticFixtureGenerator
     /// <summary>
     /// Takes what a won fight put on offer, and declines the rest explicitly.
     ///
-    /// The gold, the first card, and a potion when the belt has room. First rather than
-    /// best: which card is offered is the run's own business and taking it by position
-    /// is a rule rather than an opinion. The deck does have to grow - measured, a
-    /// journey that declined every card reward ran out of health on the fifth floor,
-    /// because eleven starter cards do not finish an act.
+    /// The gold, one card of each card reward, and a potion when the belt has room.
+    /// Which card is <see cref="CardRewardIndex"/>'s rule over the offered cards' own
+    /// type flags and cost, and not an opinion about them. The deck does have to grow -
+    /// measured, a journey that declined every card reward ran out of health on the
+    /// fifth floor, because eleven starter cards do not finish an act.
     ///
     /// Whatever is left is declined with a verb rather than walked away from, which is
     /// the rule the driver enforces on the way out of the room.
@@ -739,16 +767,18 @@ public static partial class SyntheticFixtureGenerator
             }
         }
 
-        // Every card reward the screen offers, first card of each, by position where
-        // the screen offers more than one - Kaleidoscope's, or a relic's second beside
-        // the fight's own - and by kind alone otherwise
-        while (driver.OfferedCardIds is [var firstCard, ..])
+        // Every card reward the screen offers, one card of each by the reward rule,
+        // by position where the screen offers more than one - Kaleidoscope's, or a
+        // relic's second beside the fight's own - and by kind alone otherwise
+        while (driver.OpenCardReward is { } cardReward && cardReward.Cards.Any())
         {
+            var offered = cardReward.Cards.ToList();
+            var pick = _policy.Rule == SurvivalRule.BlockWhenThreatened ? CardRewardIndex(offered) : 0;
             var cards = driver.UnclaimedRewardPositions(DecisionFacts.CardRewardKind);
             Apply(driver, actions, ActionVerb.TakeCard,
             [
-                ("card_id", firstCard),
-                ("option_index", "0"),
+                ("card_id", offered[pick].Id.ToString()),
+                ("option_index", pick.ToString(CultureInfo.InvariantCulture)),
                 .. cards.Count > 1
                     ? new[] { (RewardKinds.IndexArgument, cards[0].ToString(CultureInfo.InvariantCulture)) }
                     : [],
@@ -1142,31 +1172,92 @@ public static partial class SyntheticFixtureGenerator
     // ── The fight ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The hand position an act journey plays next: the first playable attack, and
-    /// otherwise the first playable card at all.
+    /// The hand position an act journey plays next, by the policy's
+    /// <see cref="SurvivalRule"/>: while the enemies' displayed attack damage exceeds
+    /// the block the player holds, the first playable card the game says gains block;
+    /// otherwise the first playable attack, and otherwise the first playable card at
+    /// all. The earlier rule skips the block.
     ///
     /// A different mechanical rule from the first-fight journey's, and it is here for
-    /// one reason: hand order alone loses the act. Measured on this seed, playing the
-    /// first playable card every turn takes the run to nothing before the eighth floor,
-    /// and a fixture that dies half way through an act produces none of the boundaries
-    /// this journey exists to produce.
+    /// one reason: hand order alone loses the act. Measured on the fixture seed,
+    /// playing the first playable card every turn takes the run to nothing before the
+    /// eighth floor, and a fixture that dies half way through an act produces none of
+    /// the boundaries this journey exists to produce. The block-first form replaced
+    /// attack-first after it was measured across every character and both act-one
+    /// routes (docs/release-bar.md): on 300 hunted seeds per configuration it beats
+    /// the act's boss on roughly twice as many as attack-first did, and it is what
+    /// lets a walk of any character reach a second act at all.
     ///
-    /// It is still a rule over the hand the engine dealt rather than a judgement, and
-    /// it must not be read as one: it is not how to play, it is the cheapest rule that
-    /// finishes an act.
+    /// It reads the hand the engine dealt, the intent number the game draws over each
+    /// enemy and the player's own block, and nothing else. It is still a rule rather
+    /// than a judgement, and it must not be read as one: it is not how to play, it is
+    /// the cheapest rule that finishes an act.
     /// </summary>
     private static int SurvivingIndex(GameSession session)
     {
-        var hand = session.RunState.Players[0].PlayerCombatState?.Hand.Cards;
+        var player = session.RunState.Players[0];
+        var hand = player.PlayerCombatState?.Hand.Cards;
         if (hand is null) return -1;
 
         var playable = Enumerable.Range(0, hand.Count)
             .Where(index => hand[index].CanPlay(out _, out _))
             .ToList();
+        if (playable.Count == 0) return -1;
+
+        if (_policy.Rule == SurvivalRule.BlockWhenThreatened && IncomingDamage(session) > player.Creature.Block)
+        {
+            var block = playable.FirstOrDefault(index => hand[index].GainsBlock, -1);
+            if (block >= 0) return block;
+        }
 
         var attack = playable.FirstOrDefault(index => hand[index].Type == CardType.Attack, -1);
-        return attack >= 0 ? attack : playable.Count > 0 ? playable[0] : -1;
+        return attack >= 0 ? attack : playable[0];
     }
+
+    /// <summary>The enemies' displayed attack damage this turn: the intent number the
+    /// game draws over each living enemy, summed, read through the same member the
+    /// projection reads it through.</summary>
+    private static int IncomingDamage(GameSession session)
+    {
+        var me = session.RunState.Players[0].Creature;
+        var state = CombatManager.Instance?.DebugOnlyGetState();
+        if (state is null) return 0;
+        return state.Enemies
+            .Where(enemy => enemy is { IsAlive: true })
+            .Sum(enemy => (enemy.Monster?.NextMove?.Intents ?? [])
+                .OfType<AttackIntent>()
+                .Sum(intent => intent.GetTotalDamage([me], enemy)));
+    }
+
+    /// <summary>The enemy an act journey aims a card at where more than one is alive:
+    /// the living one with the least health, by its position among the living in the
+    /// order the engine keeps them, which is the position the driver resolves;
+    /// earliest on ties. A rule over the roster and not a choice about which to hit.</summary>
+    private static int LowestHealthEnemy(GameSession session)
+    {
+        var alive = CombatManager.Instance?.DebugOnlyGetState()?.Enemies
+            .Where(enemy => enemy is { IsAlive: true })
+            .ToList() ?? [];
+        if (alive.Count == 0) return 0;
+        return alive
+            .Select((enemy, index) => (enemy.CurrentHp, index))
+            .OrderBy(pair => pair.CurrentHp)
+            .ThenBy(pair => pair.index)
+            .First().index;
+    }
+
+    /// <summary>The offered card an act journey takes under the measured rule: a card
+    /// the game says gains block or an attack before anything else, the cheaper first
+    /// by the card's canonical cost, and the offer's own order last. A rule over each
+    /// card's type flags and cost, the same for every character, and not an opinion
+    /// about the cards; measured, it is the single rule that moves survival most. The
+    /// earlier rule takes the first card offered.</summary>
+    private static int CardRewardIndex(IReadOnlyList<CardModel> offered) =>
+        Enumerable.Range(0, offered.Count)
+            .OrderBy(index => offered[index].GainsBlock || offered[index].Type == CardType.Attack ? 0 : 1)
+            .ThenBy(index => offered[index].EnergyCost.Canonical)
+            .ThenBy(index => index)
+            .First();
 
     private static string Field(GameSession session, string field) =>
         CanonicalStateProjection.Project(session.RunState).Fields[field];

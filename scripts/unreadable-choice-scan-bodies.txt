@@ -44,7 +44,6 @@ MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.OpenConsoleCmd 1
 MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.SentryConsoleCmd 1
 MegaCrit.Sts2.Core.DevConsole.DevConsole 2
 MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption 1
-MegaCrit.Sts2.Core.GameActions.GameAction 1
 MegaCrit.Sts2.Core.Helpers.GlyphConverter 3
 MegaCrit.Sts2.Core.Helpers.GodotTreeExtensions 3
 MegaCrit.Sts2.Core.Helpers.MathHelper 1
@@ -57,7 +56,6 @@ MegaCrit.Sts2.Core.Modding.ModManager 1
 MegaCrit.Sts2.Core.Modding.ModManagerFileIo 3
 MegaCrit.Sts2.Core.Models.Monsters.BowlbugEgg 1
 MegaCrit.Sts2.Core.Models.Monsters.Crusher 1
-MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener 1
 MegaCrit.Sts2.Core.Models.Monsters.Rocket 1
 MegaCrit.Sts2.Core.Models.Monsters.TestSubject 1
 MegaCrit.Sts2.Core.Models.Monsters.TorchHeadAmalgam 1
@@ -96,7 +94,7 @@ MegaCrit.Sts2.Core.Nodes.Combat.NCombatStartBanner 9
 MegaCrit.Sts2.Core.Nodes.Combat.NCombatUi 10
 MegaCrit.Sts2.Core.Nodes.Combat.NControllerCardPlay 13
 MegaCrit.Sts2.Core.Nodes.Combat.NCreature 11
-MegaCrit.Sts2.Core.Nodes.Combat.NCreatureStateDisplay 9
+MegaCrit.Sts2.Core.Nodes.Combat.NCreatureStateDisplay 8
 MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals 10
 MegaCrit.Sts2.Core.Nodes.Combat.NDiscardPileButton 5
 MegaCrit.Sts2.Core.Nodes.Combat.NDrawPileButton 5
@@ -142,7 +140,7 @@ MegaCrit.Sts2.Core.Nodes.CommonUi.NInputManager 16
 MegaCrit.Sts2.Core.Nodes.CommonUi.NLoadingOverlay 5
 MegaCrit.Sts2.Core.Nodes.CommonUi.NMessyCardPreviewContainer 8
 MegaCrit.Sts2.Core.Nodes.CommonUi.NMiscConfirmButton 8
-MegaCrit.Sts2.Core.Nodes.CommonUi.NModalContainer 10
+MegaCrit.Sts2.Core.Nodes.CommonUi.NModalContainer 9
 MegaCrit.Sts2.Core.Nodes.CommonUi.NMultiplayerVoteContainer 5
 MegaCrit.Sts2.Core.Nodes.CommonUi.NPopupYesNoButton 12
 MegaCrit.Sts2.Core.Nodes.CommonUi.NProceedButton 9
@@ -211,7 +209,7 @@ MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerCardIntent 8
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerNetworkProblemIndicator 8
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerExpandedState 11
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerIntentHandler 14
-MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerState 14
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerState 12
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerStateContainer 13
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerTimeoutOverlay 8
 MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerWarningPopup 9
@@ -394,11 +392,11 @@ MegaCrit.Sts2.Core.Nodes.Screens.NCardsViewScreen 10
 MegaCrit.Sts2.Core.Nodes.Screens.NChooseARelicSelection 9
 MegaCrit.Sts2.Core.Nodes.Screens.NDeckViewScreen 10
 MegaCrit.Sts2.Core.Nodes.Screens.NInspectCardScreen 12
-MegaCrit.Sts2.Core.Nodes.Screens.NRewardsScreen 14
+MegaCrit.Sts2.Core.Nodes.Screens.NRewardsScreen 13
 MegaCrit.Sts2.Core.Nodes.Screens.NRunSubmenuStack 8
 MegaCrit.Sts2.Core.Nodes.Screens.NShareButton 3
 MegaCrit.Sts2.Core.Nodes.Screens.NSimpleCardsViewScreen 8
-MegaCrit.Sts2.Core.Nodes.Screens.Overlays.NOverlayStack 13
+MegaCrit.Sts2.Core.Nodes.Screens.Overlays.NOverlayStack 12
 MegaCrit.Sts2.Core.Nodes.Screens.PauseMenu.NPauseMenu 9
 MegaCrit.Sts2.Core.Nodes.Screens.PauseMenu.NPauseMenuButton 8
 MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NLabPotionHolder 8
@@ -538,7 +536,7 @@ MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockScreen 8
 MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockTimelineScreen 4
 MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImage 11
 MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImageCollection 10
-MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection 12
+MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection 10
 MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicHolder 8
 MegaCrit.Sts2.Core.Nodes.SentryBootstrap 5
 MegaCrit.Sts2.Core.Nodes.TopBar.NRunTimer 8
@@ -588,7 +586,7 @@ MegaCrit.Sts2.Core.Nodes.Vfx.NBigSlashVfx 11
 MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx 6
 MegaCrit.Sts2.Core.Nodes.Vfx.NBlockSparkVfx 9
 MegaCrit.Sts2.Core.Nodes.Vfx.NBounceSparkVfx 8
-MegaCrit.Sts2.Core.Nodes.Vfx.NCardEnchantVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardEnchantVfx 9
 MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyPowerVfx 12
 MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyShuffleVfx 9
 MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyVfx 10
@@ -609,7 +607,7 @@ MegaCrit.Sts2.Core.Nodes.Vfx.NDesaturateTransitionVfx 9
 MegaCrit.Sts2.Core.Nodes.Vfx.NDevotedSculptorVfx 11
 MegaCrit.Sts2.Core.Nodes.Vfx.NDoomOverlayVfx 10
 MegaCrit.Sts2.Core.Nodes.Vfx.NDoomSubEmitterVfx 13
-MegaCrit.Sts2.Core.Nodes.Vfx.NDoomVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomVfx 11
 MegaCrit.Sts2.Core.Nodes.Vfx.NEntomancerVfx 9
 MegaCrit.Sts2.Core.Nodes.Vfx.NEpochHighlightVfx 6
 MegaCrit.Sts2.Core.Nodes.Vfx.NEpochOffscreenVfx 9

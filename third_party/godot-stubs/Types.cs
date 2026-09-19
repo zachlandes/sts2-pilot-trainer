@@ -83,6 +83,7 @@ public struct Callable
     public static Callable From(Action action) => new(action);
     public static Callable From<T>(Action<T> action) => new(action);
     public static Callable From<T1, T2>(Action<T1, T2> action) => new(action);
+    public static Callable From<TResult>(Func<TResult> func) => new(func);
 
     public void Call(params Variant[] args) =>
         _delegate?.DynamicInvoke(args.Select(argument => argument.Obj).ToArray());

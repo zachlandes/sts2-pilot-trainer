@@ -253,9 +253,12 @@ public static partial class SyntheticFixtureGenerator
     /// supplied by the journey rather than fixed here, because a journey that has to
     /// survive a whole act needs a different mechanical rule from one that plays a
     /// single fight and stops.</param>
+    /// <param name="targetIndex">Which living enemy, by position among the living, a
+    /// card that targets one is aimed at where more than one is alive; the first
+    /// where the journey supplies none, which the first-fight journey does not.</param>
     private static void PlayToTheEndOfTheFight(
         RunDriver driver, GameSession session, List<ActionRecord> actions,
-        Func<GameSession, int> playableIndex)
+        Func<GameSession, int> playableIndex, Func<GameSession, int>? targetIndex = null)
     {
         for (var turn = 0; turn < TurnLimit; turn++)
         {
@@ -275,7 +278,7 @@ public static partial class SyntheticFixtureGenerator
                 [
                     ("card_id", card.Id.ToString()),
                     ("hand_index", index.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                    .. ChosenTarget(session, index),
+                    .. ChosenTarget(session, index, targetIndex),
                 ]);
             }
 
@@ -285,7 +288,7 @@ public static partial class SyntheticFixtureGenerator
                 // finishes for a dead player
                 if (Outcome(session) != "victory")
                 {
-                    throw new EngineException(
+                    throw new FightLostException(
                         $"The generated fight ended in {Outcome(session)} after action " +
                         $"{actions[^1].Seq.ToString(System.Globalization.CultureInfo.InvariantCulture)}. This " +
                         "journey's rules did not survive it, so there is no history past here to emit.");
@@ -329,16 +332,20 @@ public static partial class SyntheticFixtureGenerator
     ///
     /// Only when the card targets an enemy and more than one is alive: with one alive
     /// the driver resolves it and an argument would be noise, and with none the play
-    /// is refused. The first living enemy, which is a rule over the order the engine
-    /// keeps them in rather than a choice about which to hit.
+    /// is refused. The first living enemy unless the journey supplies a rule, which is
+    /// a rule over the order the engine keeps them in rather than a choice about which
+    /// to hit.
     /// </summary>
-    private static (string Key, string Value)[] ChosenTarget(GameSession session, int handIndex)
+    private static (string Key, string Value)[] ChosenTarget(
+        GameSession session, int handIndex, Func<GameSession, int>? targetIndex = null)
     {
         var card = session.RunState.Players[0].PlayerCombatState?.Hand.Cards[handIndex];
         if (card?.TargetType != TargetType.AnyEnemy) return [];
 
         var alive = CombatManager.Instance.DebugOnlyGetState()?.Enemies.Count(enemy => enemy is { IsAlive: true }) ?? 0;
-        return alive > 1 ? [("target_index", "0")] : [];
+        return alive > 1
+            ? [("target_index", (targetIndex?.Invoke(session) ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))]
+            : [];
     }
 
     private static string Outcome(GameSession session) =>
@@ -447,3 +454,8 @@ public static partial class SyntheticFixtureGenerator
             int.Parse(value.AsSpan(separator + 1), System.Globalization.CultureInfo.InvariantCulture));
     }
 }
+
+/// <summary>A generated fight the journey's rules did not survive: the one refusal a
+/// walk is expected to meet on a seed nobody hunted for it, told apart so the act
+/// journey can say where.</summary>
+public sealed class FightLostException(string message) : EngineException(message);

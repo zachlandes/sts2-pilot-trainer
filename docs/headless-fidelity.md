@@ -15,28 +15,45 @@ caveats, on passes as well as failures.
   the Godot API surface the game links against. Vendored from `wuhao21/sts2-cli`
   (MIT), plus a small addition of our own. See its `CHANGES.md`.
 - `tools/Sts2PilotTrainer.Bootstrap` copies the player's own installed assemblies
-  into `build/lib` and applies one IL patch to the **copy**. The installation is
-  hashed before and after and the run fails if a byte moved.
+  into `build/lib`, byte for byte on this build, and receipts what it copied. The
+  installation is hashed before and after and the run fails if a byte moved.
 - `src/Sts2PilotTrainer.Engine` is the only project that knows anything about a
   specific game version. When the game ships a new build, it is the only one that
   should need to change.
 
 ## What is neutralised, and why
 
-### One IL patch, applied to the private copy
+### No IL patch on this build, and the one there was
 
-`CombatManager.WaitUntilQueueIsEmptyOrWaitingOnNonPlayerDrivenAction` returns a
-completed task.
+The bootstrap can declare IL patches to apply to the private copy, each with its
+rationale, each required to match at least one site so a patch that silently stops
+matching is a loud failure rather than version drift; the receipt names every one
+applied and the copy's hash beside the installation's.
+On this build it declares none, and the prepared `sts2.dll` hashes the same as the
+installed one.
 
-The host drains the game's action queue inline on a synchronous synchronization
-context, so the queue is already empty by the time this wait is awaited. Left
-intact, the await never resumes — there is no frame loop to pump it. The patch
-changes *when the caller resumes*, not which actions ran or which RNG streams
-advanced.
-
-The bootstrap tool **requires** this patch to match at least one site. A patch that
-silently stops matching is version drift, and the only safe response is a loud
-failure.
+From the first commit to 2026-09-19 it declared one: `CombatManager.WaitUntilQueueIsEmptyOrWaitingOnNonPlayerDrivenAction`
+returned a completed task, on the reading that the host's inline drain had already
+emptied the queue by the time the wait was awaited and that, left intact, the await
+would never resume.
+That reading was wrong, and the patch was the cause of a defect it was thought to prevent.
+The wait is the game's own ordering guarantee at the end of a turn: while a player-driven
+action is the executor's current one, it subscribes to `ActionExecutor.AfterActionExecuted`
+and resumes only once that action has finished *and been popped* from its queue.
+Patched out, the turn loop's continuation - which the ended turn's own completion
+triggers, inline in this host - ran through the end-turn phase, the enemy turn and,
+where the enemy turn's own work ended the fight, `EndCombatInternal` and
+`ActionQueueSet.CombatEnded`, all before the executor's `finally` had popped the
+`EndPlayerTurnAction`; `CombatEnded` cancelled that finished, unpopped action, the
+executor then failed to pop it (`Tried to pop action ... but we didn't find it in any queue`),
+and the recorder read the next decision as one begun before the ended turn was sampled.
+The Defect's Lightning orb kills from the end-of-turn passive, so fourteen of seventeen
+Defect walks were refused and no other character's was.
+Left intact, the wait resumes headlessly exactly as in the client, because the
+executor raises `AfterActionExecuted` from the same `finally`.
+`DefectOrbFightEndTests` holds a fight the orb ends at the end of the turn to a clean
+end with the game's combat-ended event raised and nothing logged as an error, and the
+whole recorder suite runs without the patch.
 
 ### Runtime patches, applied with Harmony
 
