@@ -260,6 +260,7 @@ Over a corpus - `manifests/`, or a copy of a player's own recordings - it prints
 `./scripts/arbiter coverage` is the second number: for every decision point this build can offer - every verb, reward kind, card-reward alternative, shop shelf, rest option, event, event option, seam at its timing class and prompt entry point, walked off the game assembly rather than written by anybody - how many recordings in the corpus exercise it, every uncovered point by name, and every excused one with its written reason and the class the map admits for it.
 A seam is reached by co-occurrence, never counted covered, because a recording does not say which producer opened the decision; [docs/release-bar.md](docs/release-bar.md) owns the seam-centric map and its classes.
 A recording `parity` holds nothing on - made on another build than the one under test, an integrity other than complete, a broken continuity - credits nothing here either: what it reached is tallied beside the point as unverified, and a manifest this build cannot read is named and the rest of the corpus still counted, so the two numbers read one corpus the same way.
+The one exception is a recording an older recorder wrote, which `parity` names and holds nothing on and `coverage` still credits, because the manifest replays on this build and only the journal is the older recorder's; [docs/release-bar.md](docs/release-bar.md) owns that rule.
 [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps for producing one and checking it.
 
 ```bash
