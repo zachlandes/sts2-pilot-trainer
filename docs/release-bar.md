@@ -113,6 +113,40 @@ The one seed the line is known to survive a first act on, the whole-act fixture'
 So Darv and its twelve options, the card-removal reward, the nine act-2-only events and War Historian Repy are owed, explicitly, to the fifth stage's survival work - a play strategy or a hunted survival seed - or to the retail soak; a walk into a second act is built and held (`WalkPolicy.AskInTheNextAct`), and waits on that seed.
 Everything here is a headless proof: the retail client's own press makes the event-fight transition, and the option-work wait is the driver's; neither changes what the recorder reads.
 
+## The character rows, 2026-09-19
+
+The fifth stage of the coverage design measured the journey's mechanical line per character, act-one route and ascension, pinned the seeds it survives on, and put a whole first act of every character on the merge gate (`GeneratedCoverageTests.CharacterRows`).
+
+**The rule.**
+The whole-act journey's fight rule was attack-first: the first playable attack, otherwise the first playable card, aimed at the first living enemy, and a card reward's first card.
+Measured over 300 hunted candidates per configuration on v0.111.0 - five characters on the default progression and on its Underdocks variant, every room type on the route, played to the act's boss and through the transition to the second act's opening ancient - it beat the boss on 13, 4, 60, 4 and 11 of 300 (Ironclad, Silent, Defect, Necrobinder, Regent) on the default progression and on 5, 5, 33, 1 and 11 on the Underdocks; the Ironclad at ascension 10 on none of 300.
+Of five candidate rules the best was the one the journey now plays (`SurvivalRule.BlockWhenThreatened`): while the enemies' displayed attack damage exceeds the block held, the first playable card the game says gains block, otherwise the first playable attack aimed at the living enemy with the least health; a card reward's card by block-or-attack first, then its canonical cost, then the offer's order; the rest and shop rules unchanged.
+It beat the boss on 25, 17, 154, 17 and 29 of 300 on the default progression and 18, 17, 102, 11 and 21 on the Underdocks, best of the five in every configuration but the Ironclad at ascension 10 (0 of 300; 4 of 2,300 on an extended hunt).
+It reads the hand the engine dealt, the intent number the game draws over each enemy, and the player's own block and health, and nothing else; it is still not a claim about how to play.
+The first-fight journey and its committed digests are untouched.
+
+**What the rule costs.**
+The rows on a run of the Hive or Glory alone - the ancient rows and the events those acts' question marks open - fight a later act's enemies with a starter deck, and their seeds were hunted under attack-first.
+Under the measured rule such a fight is lost on 63 of 64 hunted Glory seeds whose first mark opens Tinker Time, and on every one of 59 and 75 hunted for Choices Paradox and Lord's Parasol: a hand that blocks first never kills an act-three enemy.
+So the journey's rule is the policy's (`WalkPolicy.Rule`), the measured one where none is named, and the rows on an act alone name the earlier one (`SurvivalRule.AttackFirst`) and keep their seeds; a second rule is not a second walker, and every other row plays the measured one.
+Nine rows on a first act needed a seed hunted again under the measured rule - the won-run proof's, Punch Dagger's, Lava Rock's, Orrery's, the Trash Heap's dive, Punch Off's three and the conveyor's fried eel - and the hunts are recorded in the rows.
+
+**The rows.**
+One per character on each act-one route the measurement verified a seed for, and one for the Ironclad at ascension 10, eleven in all, each on the first candidate of `SeedHunt.Candidates` that survives under the measured rule (the ascension-10 seed is the first of four in 2,300); each checks at the run's start that its second act still opens on the ancient it names (`SeedHunt.Opening.NextActAncientId`, rolled as the run is generated), walks every room type of the first act, beats the boss, proceeds, moves to the second act's starting point, answers its opening ancient, and is recorded through the real recorder and replayed to parity.
+A walk that dies fails naming the floor, the encounter and the character.
+The rows retire what a character's own deck reaches that no Ironclad walk does: the discard prompt the Silent's cards open and the card reward one of them earns, the hand prompt a potion opens on the Defect's, the Necrobinder's and the Regent's runs, the gold a Fat Gremlin gives back on the Underdocks, and - because the Ironclad's default-progression seed opens its second act on Darv - Darv and the one option its page offers first, Calling Bell; the other eleven wait on the sixth stage's Darv rows.
+The act-2-only events, the card-removal reward and Colorful Philosophers' Ironclad keep their excusals, now worded as what lies past the second act's opening room rather than as a first act nothing survives.
+
+**What the number is evidence about.**
+`coverage` prints one line per axis - the characters, the acts lists and the ascensions the crediting recordings were played on, with how many each - and `coverage.json` carries the same under `axes`; over `manifests/` that reads three Ironclad runs - two natives at ascension 0 on the default progression and the video reconstruction at ascension 10 on the Underdocks - which `CoverageTests` holds, so the committed number cannot be read as evidence about a character no committed recording was played as.
+
+**Four defects the measurement found, fixed beside the rows.**
+The vendored Godot stubs had no `Mathf.Log`, so `PhantasmalGardener.EnlargeMove` threw inside the enemy turn, the game swallowed it and every headless Underdocks walk that reached the four-gardener elite stalled at its next end of turn; the member is added and `PhantasmalGardenerTests` ends a turn in that elite.
+They had no `Callable.From<TResult>(Func<TResult>)` either, which `GameAction.Cancel` defers through, so a fight the enemy turn's own work ended - the Defect's Lightning orb - threw out of `ActionQueueSet.CombatEnded` and the combat-ended event was never raised.
+Behind that stood the bootstrap's one IL patch, which returned the game's own end-of-turn wait at once and let the turn loop reach the fight's end before the executor had popped the ended turn; the patch is removed and the prepared assembly is now byte for byte the installed one ([headless-fidelity.md](headless-fidelity.md) has the mechanism, `DefectOrbFightEndTests` the fight).
+The recorder had refused fourteen of seventeen Defect walks on those two.
+And `RunDriver.PlayCard` read whether a play took effect off the hand, refusing Particle Wall and every 0-cost attack under Feral, which the engine plays in full and returns to the hand; it now reads the game's own combat history (`PlayReturnedToHandTests`).
+
 ## The ancient rows, 2026-09-17
 
 The third stage of the coverage design put a row on the merge gate for every option of every ancient act 2 and act 3 open on - Orobas, Pael and Tezcatara in the Hive, Nonupeipe, Tanx and Vakuu in Glory, ten relics each - on a run whose acts list is that act alone (`GeneratedCoverageTests.AncientRows`).

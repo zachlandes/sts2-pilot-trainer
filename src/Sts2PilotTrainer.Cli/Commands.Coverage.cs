@@ -57,7 +57,8 @@ internal static partial class Commands
                 recordings.Add(new CoveredRecording(
                     manifest.RunId, DecisionFacts.Of(manifest),
                     RecordingStanding.Of(manifest.Source.Native, manifest.Environment, build, RunmobileVersion.Current),
-                    DecisionFacts.ModelsMet(manifest)));
+                    DecisionFacts.ModelsMet(manifest),
+                    RecordingAxes.Of(manifest.Environment)));
             }
             else
             {
@@ -125,6 +126,12 @@ internal static partial class Commands
             foreach (var producer in report.MisnamedProducers) Console.WriteLine($"  {producer.Describe()}");
         }
 
+        // What the number is evidence about: the characters, routes and ascensions
+        // the crediting recordings were played on, one line per axis
+        Console.WriteLine();
+        Console.WriteLine("  represented by the crediting recordings:");
+        foreach (var axis in report.AxisLines) Console.WriteLine($"  {axis.Describe()}");
+
         Console.WriteLine();
         foreach (var line in report.Totals()) Console.WriteLine(line);
         Console.WriteLine(report.Holds
@@ -167,6 +174,9 @@ internal static partial class Commands
                     },
                     corpus = corpora.Select(Paths.Display).ToList(),
                     covered = report.Holds,
+                    axes = report.AxisLines.ToDictionary(
+                        axis => axis.Name,
+                        axis => axis.Values.Select(value => new { value = value.Value, recordings = value.Recordings }).ToList()),
                     totals = new
                     {
                         points = report.Points,

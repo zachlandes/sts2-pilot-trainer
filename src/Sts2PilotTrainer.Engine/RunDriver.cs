@@ -2015,16 +2015,29 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
         // this call, exactly as an event option's enchantment screen does.
         QueueFollowingCardSelections(action, upcoming);
 
+        // Whether the play took effect is read off the game's own combat history and
+        // never off where the card ended up: Particle Wall and a 0-cost attack under
+        // Feral go back to the hand after a play the engine executed in full, and a
+        // driver that read the hand refused both. The engine writes a
+        // CardPlayStartedEntry for this card as its own play begins (CardModel.OnPlayWrapper),
+        // and writes none for a play it declined - a card no longer in hand, a
+        // targeting card with nobody to aim at (PlayCardAction.ExecuteAction)
+        var history = CombatManager.Instance.History;
+        var playsStartedBefore = history.CardPlaysStarted.Count();
+
         RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(card, target));
         Pump.Drain();
 
-        // A card that is still sitting at the same index did not actually get played.
-        var handAfter = combat.Hand.Cards;
-        if (handAfter.Count > handIndex && ReferenceEquals(handAfter[handIndex], card))
+        // The engine clears the history as the fight ends (CombatManager.EndCombatInternal),
+        // so a play that ended the fight is established by the end it produced: nothing
+        // but this play ran between the enqueue and the drain
+        var started = history.CardPlaysStarted.Skip(playsStartedBefore)
+            .Any(entry => ReferenceEquals(entry.CardPlay.Card, card));
+        if (!started && CombatManager.Instance.IsInProgress)
         {
             throw new EngineException(
-                $"Action {action.Seq} enqueued {card.Id} but it is still in hand afterwards, so the play " +
-                "did not take effect.");
+                $"Action {action.Seq} enqueued {card.Id} and the engine's combat history holds no play of it " +
+                "afterwards, so the play did not take effect.");
         }
 
         OfferRoomEndRewardsIfCombatEnded();

@@ -71,16 +71,24 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// decision's own work announces is proved here the way the won run's is in
 /// <c>HeadlessGameplayCaptureTests</c>.
 ///
+/// The character rows are the sixth table: one whole first act per character on
+/// each act-one route a seed was verified for - the default progression and its
+/// Underdocks variant - and one for the Ironclad at ascension 10, each on a seed
+/// pinned by the survival measurement (<c>docs/release-bar.md</c>) with the ancient
+/// its second act opens on read at the run's start as the criterion beside the
+/// survival. Each walks every room type of the first act by the journey's rules,
+/// beats the boss, proceeds, moves to the second act's starting point and answers
+/// the ancient it opens on, through the real recorder, replayed to parity; a walk
+/// that dies fails naming the floor and the encounter. The rows are what
+/// <c>coverage</c>'s per-axis lines are evidence for, and they retire the points a
+/// character's own deck reaches and no Ironclad walk does.
+///
 /// What no row here can reach is what <c>DecisionExcusals</c> leaves excused with a
 /// reason of its own: what the headless host has no screen for, the undo of an ended
-/// turn, and every point only the second act on deals - Darv's options, the events
-/// the game allows from act 2 on, the card removal only a Necrobinder's Forbidden
-/// Grimoire puts on the loot screen - because no hunted seed of the walk's own line
-/// survives the first act, and the one that does opens its second act on Orobas; a
-/// row there takes a survival seed of the fifth stage, with the row field and the
-/// hunt reading it needs added beside it (the walk into a second act itself,
-/// <see cref="WalkPolicy.AskInTheNextAct"/>, is built and held by
-/// <c>ReplayRefusalRegressionTests</c>).
+/// turn, and every point only the second act on deals past its opening room - the
+/// events the game allows from act 2 on, the card removal only a Necrobinder's
+/// Forbidden Grimoire puts on the loot screen, and every option of Darv but the one
+/// the Ironclad's default-progression row takes at its second act's opening.
 /// </summary>
 public sealed class GeneratedCoverageTests
 {
@@ -91,6 +99,10 @@ public sealed class GeneratedCoverageTests
     /// <summary>The build every row's recording is made on and stood against, read
     /// once because reading it hashes the prepared assemblies.</summary>
     private static readonly Lazy<LocalBuild> ThisBuild = new(() => GameIdentity.Read().Build);
+
+    /// <summary>The Underdocks variant of the default progression: the alternative
+    /// first act, then the default second and third.</summary>
+    internal static readonly string[] UnderdocksActs = ["ACT.UNDERDOCKS", "ACT.HIVE", "ACT.GLORY"];
 
     public static IEnumerable<object[]> Rows() =>
     [
@@ -142,13 +154,16 @@ public sealed class GeneratedCoverageTests
     private const string TwoGolds = "two golds on one loot screen";
 
     /// <summary>The producer rows, by relic. The seeds were found by
-    /// <c>SeedHunt.Find</c> over its own candidates on v0.111.0.</summary>
+    /// <c>SeedHunt.Find</c> over its own candidates on v0.111.0; where the measured
+    /// rule of 2026-09-19 (<see cref="SurvivalRule.BlockWhenThreatened"/>) lost the
+    /// seed a row was first hunted on, the row's seed is the first later candidate
+    /// the rule survives on - Lava Rock's, Orrery's and Punch Dagger's.</summary>
     internal static readonly IReadOnlyDictionary<string, ProducerRow> ProducerRows = new[]
     {
         // Neow's offer: the relic's own work opens the seam inside the blessing
         new ProducerRow("RELIC.HEFTY_TABLET", SeedHunt.Dealer.Neow, "KNU8ZJM21D", ObtainIt, "verb  ConfirmCardScreen"),
         new ProducerRow("RELIC.KALEIDOSCOPE", SeedHunt.Dealer.Neow, "S7LTRQKC10", ObtainIt),
-        new ProducerRow("RELIC.LAVA_ROCK", SeedHunt.Dealer.Neow, "X5KY7YB3AE", ClaimTheRelicItOffers),
+        new ProducerRow("RELIC.LAVA_ROCK", SeedHunt.Dealer.Neow, "AEXYESNFWR", ClaimTheRelicItOffers),
         new ProducerRow("RELIC.LEAD_PAPERWEIGHT", SeedHunt.Dealer.Neow, "ZS724YW1MP", ObtainIt, "verb  ConfirmCardScreen"),
         new ProducerRow("RELIC.LOST_COFFER", SeedHunt.Dealer.Neow, "HQUHYBESLV", ObtainIt),
         new ProducerRow("RELIC.NEOWS_BONES", SeedHunt.Dealer.Neow, "N2E2AGFGSN", ClaimTheRelicItOffers),
@@ -163,8 +178,8 @@ public sealed class GeneratedCoverageTests
         new ProducerRow("RELIC.DOLLYS_MIRROR", SeedHunt.Dealer.Shop, "TM0VT1L0SB", ObtainIt),
         new ProducerRow("RELIC.GNARLED_HAMMER", SeedHunt.Dealer.Shop, "X2BN5AEZ5Q", ObtainIt, "verb  ConfirmCardScreen"),
         new ProducerRow("RELIC.KIFUDA", SeedHunt.Dealer.Shop, "V856E12HSB", ObtainIt, "verb  ConfirmCardScreen"),
-        new ProducerRow("RELIC.ORRERY", SeedHunt.Dealer.Shop, "E5KZPT0UDZ", ObtainIt),
-        new ProducerRow("RELIC.PUNCH_DAGGER", SeedHunt.Dealer.Shop, "RVXC56NHQN", ObtainIt),
+        new ProducerRow("RELIC.ORRERY", SeedHunt.Dealer.Shop, "1AAAUNRYRD", ObtainIt),
+        new ProducerRow("RELIC.PUNCH_DAGGER", SeedHunt.Dealer.Shop, "WSQEQFN6SY", ObtainIt),
         new ProducerRow("RELIC.ROYAL_STAMP", SeedHunt.Dealer.Shop, "BRZ9JQ10SW", ObtainIt),
         new ProducerRow("RELIC.TOOLBOX", SeedHunt.Dealer.Shop, "30VQ5QF1Y7", AFightHoldingIt, "verb  ConfirmCardScreen"),
         // The chest: the front of the relic's rarity bag, dealt where the chest rolls
@@ -494,8 +509,8 @@ public sealed class GeneratedCoverageTests
     /// admissible as the ancient rows' are and said to be so in the rows' excusals.</summary>
     internal static readonly IReadOnlyDictionary<string, string[]> EventRowActs = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-        ["ACT.OVERGROWTH"] = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"],
-        ["ACT.UNDERDOCKS"] = ["ACT.UNDERDOCKS", "ACT.HIVE", "ACT.GLORY"],
+        ["ACT.OVERGROWTH"] = RecordedActWalk.Acts,
+        ["ACT.UNDERDOCKS"] = UnderdocksActs,
         ["ACT.HIVE"] = ["ACT.HIVE"],
         ["ACT.GLORY"] = ["ACT.GLORY"],
     };
@@ -506,7 +521,10 @@ public sealed class GeneratedCoverageTests
     /// policy chose the key (<c>SeedHunt.Find</c> over
     /// <c>Opening.OpensAtTheFirstQuestionMark</c>, with the walk as the second
     /// criterion). A row whose seed stops opening its event is hunted again the same
-    /// way, from a scratch test.</summary>
+    /// way, from a scratch test, as the conveyor's fried eel, Punch Off's three and
+    /// the Trash Heap's dive were when the measured rule of 2026-09-19 lost their
+    /// first-act seeds; the rows on the Hive or Glory alone keep the earlier rule
+    /// and their seeds (<see cref="RuleOn"/>).</summary>
     internal static readonly IReadOnlyDictionary<string, IReadOnlyList<EventRow>> EventRows = new Dictionary<string, IReadOnlyList<EventRow>>(StringComparer.Ordinal)
     {
         ["ACT.OVERGROWTH"] =
@@ -581,7 +599,7 @@ public sealed class GeneratedCoverageTests
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.CAVIAR", "X2BN5AEZ5Q", AlsoRetires:
                 ["seam  reward-kind:potion @ EventModel.CalculateVars", "seam  rewards:OfferCustom @ EventModel.CalculateVars"]),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.CLAM_ROLL", "53U2DTB517"),
-            new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.FRIED_EEL", "K9V81PBRLS"),
+            new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.FRIED_EEL", "4W550UURZX"),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.GOLDEN_FYSH", "4Y25FLUW1X", ["ENDLESS_CONVEYOR.pages.ALL.options.SPICY_SNAPPY", "ENDLESS_CONVEYOR.pages.ALL.options.CLAM_ROLL"]),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.JELLY_LIVER", "41E281DU7R", AlsoRetires:
                 ["seam  card-prompt:CardSelectCmd.FromHand(context, player, prefs, filter, source) @ PotionModel.OnUse"]),
@@ -591,10 +609,10 @@ public sealed class GeneratedCoverageTests
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.ALL.options.SUSPICIOUS_CONDIMENT", "41E281DU7R", ["ENDLESS_CONVEYOR.pages.ALL.options.JELLY_LIVER", "ENDLESS_CONVEYOR.pages.ALL.options.FRIED_EEL"]),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.GRAB_SOMETHING_OFF_THE_BELT.options.LEAVE", "41E281DU7R", ["ENDLESS_CONVEYOR.pages.ALL.options.JELLY_LIVER"]),
             new("EVENT.ENDLESS_CONVEYOR", "ENDLESS_CONVEYOR.pages.INITIAL.options.OBSERVE_CHEF", "41E281DU7R"),
-            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM", "Y468CL2JJF"),
-            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.NAB", "Y468CL2JJF", AlsoRetires:
+            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM", "1AW5CXA0H7"),
+            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.INITIAL.options.NAB", "1AW5CXA0H7", AlsoRetires:
                 ["seam  reward-kind:relic @ EventModel.GenerateInitialOptions"], ClaimsReward: RewardKinds.Relic),
-            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.I_CAN_TAKE_THEM.options.FIGHT", "Y468CL2JJF", ["PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM"]),
+            new("EVENT.PUNCH_OFF", "PUNCH_OFF.pages.I_CAN_TAKE_THEM.options.FIGHT", "1AW5CXA0H7", ["PUNCH_OFF.pages.INITIAL.options.I_CAN_TAKE_THEM"]),
             new("EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1", "6KGKGA4S8P", ["SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0"]),
             new("EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_1.options.HOLD_ON_2", "6KGKGA4S8P", ["SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0", "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1"]),
             new("EVENT.SLIPPERY_BRIDGE", "SLIPPERY_BRIDGE.pages.HOLD_ON_2.options.HOLD_ON_3", "6KGKGA4S8P", ["SLIPPERY_BRIDGE.pages.INITIAL.options.HOLD_ON_0", "SLIPPERY_BRIDGE.pages.HOLD_ON_0.options.HOLD_ON_1", "SLIPPERY_BRIDGE.pages.HOLD_ON_1.options.HOLD_ON_2"]),
@@ -612,7 +630,7 @@ public sealed class GeneratedCoverageTests
             new("EVENT.SUNKEN_TREASURY", "SUNKEN_TREASURY.pages.INITIAL.options.SECOND_CHEST", "41MV0020T4"),
             // The dive deals one of the heap's five relics by the event's own roll; this
             // seed's is the Dream Catcher, whose card at the next heal is the seam
-            new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.DIVE_IN", "9HG1QQ41M8", AlsoRetires:
+            new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.DIVE_IN", "EYSBAFX354", AlsoRetires:
                 ["seam  reward-kind:card @ AbstractModel.TryModifyRestSiteHealRewards"], ThenRests: "HEAL"),
             new("EVENT.TRASH_HEAP", "TRASH_HEAP.pages.INITIAL.options.GRAB", "0WA4C6C2KF"),
             new("EVENT.WATERLOGGED_SCRIPTORIUM", "WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.BLOODY_INK", "D72PWCFLVE"),
@@ -708,7 +726,7 @@ public sealed class GeneratedCoverageTests
     {
         var row = EventRowFor(act, eventId, key);
         using var harness = new RecordedActWalk();
-        var recorded = harness.Walk(PolicyFor(row), row.Seed, visitEveryRoomType: false, EventRowActs[act]);
+        var recorded = harness.Walk(PolicyFor(row, act), row.Seed, visitEveryRoomType: false, EventRowActs[act]);
         var opened = recorded.Manifest.Actions
             .Where(action => action.Verb == ActionVerb.ChooseEventOption)
             .Select(action => action.Args["event_id"])
@@ -762,7 +780,12 @@ public sealed class GeneratedCoverageTests
         }
     }
 
-    internal static WalkPolicy PolicyFor(EventRow row) => new()
+    /// <summary>The policy an event row walks under on the acts list named: the
+    /// route to the mark and the option, played by the journey's own rule on a first
+    /// act and by the earlier one on a run of the Hive or Glory alone, where the
+    /// fights before the mark are a later act's enemies against a starter deck
+    /// (<see cref="SurvivalRule.AttackFirst"/>).</summary>
+    internal static WalkPolicy PolicyFor(EventRow row, string act) => new()
     {
         EventId = row.Event,
         EventOptionKey = row.Key,
@@ -774,7 +797,13 @@ public sealed class GeneratedCoverageTests
             .. Enumerable.Repeat(MapPointType.Monster, row.FightsFirst), MapPointType.Unknown,
             .. row.ThenRests is null ? Array.Empty<MapPointType>() : [MapPointType.RestSite],
         ],
+        Rule = RuleOn(act),
     };
+
+    /// <summary>The rule a row on this acts list plays by: the earlier one on an act
+    /// alone, the journey's own on a first act.</summary>
+    internal static SurvivalRule RuleOn(string act) =>
+        EventRowActs[act].Length == 1 ? SurvivalRule.AttackFirst : SurvivalRule.BlockWhenThreatened;
 
     /// <summary>The seed the thief row walks: a run of the Hive alone whose first
     /// fight is the Thieving Hopper's, found by <c>SeedHunt</c>'s candidates on
@@ -813,7 +842,7 @@ public sealed class GeneratedCoverageTests
 
         using var harness = new RecordedActWalk();
         var recorded = harness.Walk(
-            new WalkPolicy { RewardKindToClaim = RewardKinds.SpecialCard, RouteThrough = [MapPointType.Monster] },
+            new WalkPolicy { RewardKindToClaim = RewardKinds.SpecialCard, RouteThrough = [MapPointType.Monster], Rule = RuleOn("ACT.HIVE") },
             ThiefSeed, visitEveryRoomType: false, EventRowActs["ACT.HIVE"]);
         Assert.True(
             recorded.AskMet,
@@ -863,7 +892,7 @@ public sealed class GeneratedCoverageTests
         var row = TheBridgesLoop;
         using var harness = new RecordedActWalk();
         var recorded = harness.Walk(
-            PolicyFor(row) with { ChooseItUntilTheRunEnds = true }, row.Seed, visitEveryRoomType: false, EventRowActs["ACT.UNDERDOCKS"]);
+            PolicyFor(row, "ACT.UNDERDOCKS") with { ChooseItUntilTheRunEnds = true }, row.Seed, visitEveryRoomType: false, EventRowActs["ACT.UNDERDOCKS"]);
         Assert.True(
             recorded.AskMet,
             "the walk finished without the game ending the run on the bridge; actions: " +
@@ -884,6 +913,147 @@ public sealed class GeneratedCoverageTests
 
         var replay = RecordedActWalk.ReplayToParity(recorded);
         Assert.Equal("true", replay.FinalState!.Fields["run.is_game_over"]);
+    }
+
+    /// <summary>
+    /// One character row: the character, the acts list - the default progression or
+    /// its Underdocks variant - the ascension, the seed the survival measurement
+    /// pinned, the ancient the second act opens on, read at the run's start
+    /// (<see cref="SeedHunt.Opening.NextActAncientId"/>) as the criterion beside the
+    /// survival, and the points the row retires that no Ironclad walk reaches: the
+    /// seams a character's own cards and potions open, and the second act's opening
+    /// where it is Darv's. The seed is a constant with its criterion beside it, as
+    /// <see cref="SeedHunt"/> says; the row checks the criterion first, so a game
+    /// update that moves the RNG fails by name rather than as a walk that died.
+    /// </summary>
+    internal sealed record CharacterRow(
+        string Character, IReadOnlyList<string> Acts, string Seed, string ActTwoOpensOn, int Ascension = 0,
+        string[]? AlsoRetires = null)
+    {
+        internal string Variant => Acts[0];
+    }
+
+    /// <summary>The character rows: five characters on the two act-one routes, and the
+    /// Ironclad at ascension 10, each on the seed the survival measurement of 2026-09-19
+    /// pinned (the first surviving candidate of <c>SeedHunt.Candidates</c> per
+    /// character and route under the journey's rules, played through the recorder and
+    /// replayed to parity; the ascension-10 seed is the first of four in 2,300).</summary>
+    internal static readonly IReadOnlyList<CharacterRow> CharacterRows =
+    [
+        // The second act opens on Darv, and the walk takes the option its page offers
+        // first, so the row retires the ancient and that option; the rest are the
+        // sixth stage's
+        new("CHARACTER.IRONCLAD", RecordedActWalk.Acts, "KNU8ZJM21D", "EVENT.DARV", AlsoRetires:
+            ["event  EVENT.DARV", "event-option  EVENT.DARV RELIC.CALLING_BELL"]),
+        // The Underdocks deals the Gremlin Merc, whose Fat Gremlin gives back the
+        // stolen gold on its death
+        new("CHARACTER.IRONCLAD", UnderdocksActs, "KNU8ZJM21D", "EVENT.PAEL", AlsoRetires: [TheHeistsGold]),
+        new("CHARACTER.SILENT", RecordedActWalk.Acts, "47188SS8FQ", "EVENT.OROBAS", AlsoRetires: [TheSilentsDiscard]),
+        new("CHARACTER.SILENT", UnderdocksActs, "KNU8ZJM21D", "EVENT.PAEL", AlsoRetires:
+            [TheSilentsDiscard, "seam  reward-kind:card @ CardModel.OnPlay", TheHeistsGold]),
+        new("CHARACTER.DEFECT", RecordedActWalk.Acts, "C1GAV23WHA", "EVENT.PAEL", AlsoRetires: [APotionsDiscard]),
+        new("CHARACTER.DEFECT", UnderdocksActs, "X7KJSBLHQ6", "EVENT.OROBAS"),
+        new("CHARACTER.NECROBINDER", RecordedActWalk.Acts, "S7LTRQKC10", "EVENT.PAEL", AlsoRetires: [APotionsDiscard]),
+        new("CHARACTER.NECROBINDER", UnderdocksActs, "C1GAV23WHA", "EVENT.TEZCATARA"),
+        new("CHARACTER.REGENT", RecordedActWalk.Acts, "Y80L04N50D", "EVENT.OROBAS", AlsoRetires: [APotionsDiscard]),
+        new("CHARACTER.REGENT", UnderdocksActs, "X7KJSBLHQ6", "EVENT.OROBAS"),
+        new("CHARACTER.IRONCLAD", RecordedActWalk.Acts, "9P00EW4KB7", "EVENT.PAEL", Ascension: 10),
+    ];
+
+    /// <summary>The seams a character's own deck reaches that no Ironclad walk does:
+    /// the discard prompt the Silent's own cards open, the one a potion opens on the
+    /// other characters' runs, and the gold a Fat Gremlin gives back on its death.</summary>
+    private const string TheSilentsDiscard =
+        "seam  card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ CardModel.OnPlay";
+
+    private const string APotionsDiscard =
+        "seam  card-prompt:CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source) @ PotionModel.OnUse";
+
+    private const string TheHeistsGold = "seam  reward-kind:gold @ AbstractModel.BeforeDeath";
+
+    public static IEnumerable<object[]> CharacterRowKeys() =>
+        CharacterRows.Select(row => new object[] { row.Character, row.Variant, row.Ascension });
+
+    internal static CharacterRow CharacterRowFor(string character, string variant, int ascension) =>
+        CharacterRows.Single(row => row.Character == character && row.Variant == variant && row.Ascension == ascension);
+
+    /// <summary>
+    /// Each character row on its pinned seed: the second act's ancient is the one the
+    /// row names, the walk survives every room type of the first act and its boss and
+    /// answers that ancient's page, the recording is whole, it reaches the points the
+    /// row retires, and a fresh replay reproduces the journal decision for decision.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(CharacterRowKeys))]
+    public void ACharacterRowSurvivesTheFirstActOpensTheSecondAndReplaysToParity(string character, string variant, int ascension)
+    {
+        var row = CharacterRowFor(character, variant, ascension);
+        var opening = SeedHunt.ReadOpening(row.Seed, row.Acts, row.Character, row.Ascension);
+        Assert.True(
+            opening.NextActAncientId == row.ActTwoOpensOn,
+            $"seed {row.Seed} on {string.Join(", ", row.Acts)} no longer opens its second act on {row.ActTwoOpensOn} " +
+            $"(it opens on {opening.NextActAncientId ?? "no ancient"}): the game's RNG has moved, so rerun the hunt for this row");
+
+        using var harness = new RecordedActWalk();
+        // A walk that dies is the journey's own refusal, naming the floor and the encounter
+        var recorded = harness.Walk(
+            new WalkPolicy { AskInTheNextAct = true }, row.Seed, visitEveryRoomType: true, row.Acts,
+            character: row.Character, ascension: row.Ascension);
+        Assert.True(
+            recorded.AskMet,
+            $"the {row.Character} walk on {row.Seed} finished without answering the second act's ancient; actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+
+        Assert.Equal(row.Character, recorded.Manifest.Environment.Character.Value);
+        Assert.Equal(row.Ascension, recorded.Manifest.Environment.Ascension.Value);
+        Assert.Equal(row.Acts, recorded.Manifest.Environment.Acts.Value);
+        var proceed = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var ancient = recorded.Manifest.Actions.First(action => action.Seq > proceed.Seq && action.Verb == ActionVerb.ChooseEventOption);
+        Assert.Equal(row.ActTwoOpensOn, ancient.Args["event_id"]);
+
+        var points = DecisionFacts.Of(recorded.Manifest);
+        var reached = DecisionCoverage.SeamsReachedBy(
+                new CoveredRecording(
+                    recorded.Manifest.RunId, points,
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
+                    DecisionFacts.ModelsMet(recorded.Manifest)),
+                DecisionSurface.ProducerMap())
+            .ToHashSet();
+        foreach (var point in RetiredBy(row))
+        {
+            Assert.True(
+                points.Contains(point) || reached.Contains(point),
+                $"the {row.Character} {row.Variant} row's recording does not reach {point}; it reaches " +
+                string.Join(", ", points.Concat(reached).Select(reachedPoint => reachedPoint.ToString())));
+        }
+
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>A walk the journey's rules do not carry through fails naming where it
+    /// died - the floor, the encounter and the character - which is what a seed is
+    /// hunted on: a run of Glory alone at starter strength under the measured rule,
+    /// which loses its first fight on all but one hunted seed in sixty.</summary>
+    [GameFact]
+    public void AWalkThatDiesNamesTheFloorTheEncounterAndTheCharacter()
+    {
+        using var harness = new RecordedActWalk();
+        var death = Assert.Throws<EngineException>(() => harness.Walk(
+            new WalkPolicy { RouteThrough = [MapPointType.Monster], FightWhileHoldingIt = true, Rule = SurvivalRule.BlockWhenThreatened },
+            "VMQA9Q2W2V", visitEveryRoomType: false, EventRowActs["ACT.GLORY"]));
+        Assert.Matches(@"^The act journey died on floor \d+ in ENCOUNTER\.[A-Z_]+, a monster fight, as CHARACTER\.IRONCLAD: ", death.Message);
+    }
+
+    /// <summary>The points a character row retires: the second act's opening where
+    /// it is Darv's - the event and the option the walk takes - and the seams the row
+    /// names beside it.</summary>
+    private static IEnumerable<DecisionPoint> RetiredBy(CharacterRow row)
+    {
+        foreach (var point in row.AlsoRetires ?? [])
+        {
+            yield return Point(point);
+        }
     }
 
     /// <summary>The ancient rows are exactly the options of the ancients act 2 and act
@@ -967,6 +1137,7 @@ public sealed class GeneratedCoverageTests
             .Concat(AncientRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(EventRows.Values.SelectMany(rows => rows).SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(BlessingRows.Keys.Select(relic => DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic).ToString()))
+            .Concat(CharacterRows.SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(ThiefRetires)
             .ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All
@@ -1050,7 +1221,7 @@ public sealed class GeneratedCoverageTests
 
     internal static WalkPolicy PolicyFor(AncientRow row)
     {
-        var policy = new WalkPolicy { AncientRelic = row.Relic };
+        var policy = new WalkPolicy { AncientRelic = row.Relic, Rule = SurvivalRule.AttackFirst };
         return row.Ask switch
         {
             ObtainIt => policy,
@@ -1102,7 +1273,7 @@ public sealed class GeneratedCoverageTests
     private static IReadOnlyList<MapPointType>? Then(WalkPolicy policy, MapPointType type) =>
         policy.RouteThrough is { } through ? [.. through, type] : null;
 
-    private static WalkPolicy PolicyFor(string row) => row switch
+    internal static WalkPolicy PolicyFor(string row) => row switch
     {
         "decline the first card reward" => new WalkPolicy { CardRewardAlternative = "Skip" },
         "rest HEAL" => new WalkPolicy { RestOption = "HEAL" },

@@ -62,6 +62,11 @@ internal static class SeedHunt
     /// allows or forbids by then.</param>
     /// <param name="FirstEncounterId">The encounter the act's first monster room
     /// fights, the first of the act's shuffled set.</param>
+    /// <param name="NextActAncientId">The ancient the act after the first opens on,
+    /// rolled for every act as the run is generated (<c>RunManager.GenerateRooms</c>)
+    /// and so readable before a step is taken; null on a run of one act. Darv among
+    /// them: the criterion a character row's seed carries beside its survival, and
+    /// the one a Darv row hunts on.</param>
     internal sealed record Opening(
         string OpeningEventId,
         IReadOnlyList<string> OfferedRelics,
@@ -70,7 +75,8 @@ internal static class SeedHunt
         string FirstChestRarity,
         string FirstQuestionMarkRoom,
         string? FirstEventId,
-        string? FirstEncounterId)
+        string? FirstEncounterId,
+        string? NextActAncientId = null)
     {
         /// <summary>Whether the act's first question mark opens the event with this
         /// id: the mark rolls an event, and the event is the first the act deals.</summary>
@@ -122,14 +128,18 @@ internal static class SeedHunt
     }
 
     /// <summary>The opening of a run of this seed, read off a run started on the acts
-    /// list - the default progression where none is given - and stood in its first
-    /// room and cleaned up again.</summary>
-    internal static Opening ReadOpening(string seed, IReadOnlyList<string>? acts = null)
+    /// list - the default progression where none is given - as the character named
+    /// at the ascension named, the Ironclad at 0 where none is, and stood in its
+    /// first room and cleaned up again. The map, the events and every act's ancient
+    /// are the seed's and not the character's; the encounter and the bags are read
+    /// off the run as the row will start it.</summary>
+    internal static Opening ReadOpening(
+        string seed, IReadOnlyList<string>? acts = null, string character = RecordedActWalk.Ironclad, int ascension = 0)
     {
         EngineHost.Start();
         if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
         var session = new GameSession();
-        session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", acts ?? RecordedActWalk.Acts);
+        session.StartRun(seed, character, ascension, "standard", acts ?? RecordedActWalk.Acts);
         try
         {
             using var driver = new RunDriver(session);
@@ -168,7 +178,8 @@ internal static class SeedHunt
                 firstChestRarity,
                 firstQuestionMark,
                 firstEvent,
-                rooms.NormalEncounterIds.FirstOrDefault()?.ToString());
+                rooms.NormalEncounterIds.FirstOrDefault()?.ToString(),
+                session.RunState.Acts.Count > 1 ? session.RunState.Acts[1].Ancient?.Id.ToString() : null);
         }
         finally
         {

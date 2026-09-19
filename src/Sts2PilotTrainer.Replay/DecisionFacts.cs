@@ -516,7 +516,29 @@ public static class DecisionCoverage
             rows, outside, staleExcusals, excusedAndReached, inadmissible, misnamed,
             recordings.Where(recording => !recording.Credits).ToList(),
             unreadable ?? [],
-            recordings.Count + (unreadable?.Count ?? 0));
+            recordings.Count + (unreadable?.Count ?? 0),
+            AxesOf(recordings));
+    }
+
+    /// <summary>The characters, variants and ascensions the crediting recordings were
+    /// played on, one axis each, counted over the recordings that carry their axes;
+    /// a recording that credits nothing is left out, because the lines say what the
+    /// number is evidence about.</summary>
+    public static IReadOnlyList<CoverageAxis> AxesOf(IReadOnlyList<CoveredRecording> recordings)
+    {
+        var credited = recordings.Where(recording => recording.Credits && recording.Axes is not null).ToList();
+        CoverageAxis Axis(string name, Func<RecordingAxes, string> value) => new(
+            name,
+            credited
+                .GroupBy(recording => value(recording.Axes!), StringComparer.Ordinal)
+                .Select(group => (group.Key, group.Count()))
+                .ToList());
+        return
+        [
+            Axis("characters", axes => axes.Character),
+            Axis("variants", axes => axes.Variant),
+            Axis("ascensions", axes => axes.Ascension.ToString(CultureInfo.InvariantCulture)),
+        ];
     }
 
     /// <summary>The producers the map lists for a point: a seam's own, or for any
@@ -537,14 +559,45 @@ public static class DecisionCoverage
 }
 
 /// <summary>One recording's projection, named so a row can say who reached it, with
-/// the standing that says whether it credits what it reached and the models it met,
-/// for the seams it reached by co-occurrence.</summary>
+/// the standing that says whether it credits what it reached, the models it met, for
+/// the seams it reached by co-occurrence, and the axes its run was played on, for
+/// the report's per-axis lines.</summary>
 public sealed record CoveredRecording(
-    string RunId, IReadOnlySet<DecisionPoint> Points, RecordingStanding Standing, IReadOnlySet<string>? Models = null)
+    string RunId, IReadOnlySet<DecisionPoint> Points, RecordingStanding Standing, IReadOnlySet<string>? Models = null,
+    RecordingAxes? Axes = null)
 {
     public bool Credits => Standing.CreditsCoverage;
 
     public IReadOnlySet<string> ModelsMet => Models ?? new HashSet<string>();
+}
+
+/// <summary>
+/// The axes a recording's run was played on, read off its manifest's environment:
+/// the character, the acts list - the default progression, its Underdocks variant,
+/// or a generated-only list - and the ascension. A corpus of Ironclad ascension-0
+/// runs on the default progression is printed as exactly that, so a coverage number
+/// cannot read as evidence about a character, a route or an ascension no recording
+/// in it was played on.
+/// </summary>
+public sealed record RecordingAxes(string Character, IReadOnlyList<string> Acts, int Ascension)
+{
+    public static RecordingAxes Of(EnvironmentIdentity environment) =>
+        new(environment.Character.Value, environment.Acts.Value, environment.Ascension.Value);
+
+    /// <summary>The acts list as one identity, in the order the run plays it.</summary>
+    public string Variant => string.Join(",", Acts);
+}
+
+/// <summary>One axis of the corpus: its name, and how many crediting recordings were
+/// played on each value it takes, in the order first seen.</summary>
+public sealed record CoverageAxis(string Name, IReadOnlyList<(string Value, int Recordings)> Values)
+{
+    /// <summary>The axis as the report prints it, one line.</summary>
+    public string Describe() =>
+        Values.Count == 0
+            ? $"{Name}: none - no crediting recording"
+            : $"{Name}: " + string.Join("  ", Values.Select(value =>
+                $"{value.Value} ({value.Recordings.ToString(CultureInfo.InvariantCulture)} recording(s))"));
 }
 
 /// <summary>A manifest in the corpus this build could not read, with the parser's words.</summary>
@@ -608,6 +661,7 @@ public sealed record CoverageRow(
 /// <param name="Unverified">The recordings projected and credited nothing, each with the recorder's own reason.</param>
 /// <param name="Unreadable">The manifests this build could not read, each with the parser's words.</param>
 /// <param name="Recordings">How many recordings the corpus held, unverified and unreadable included.</param>
+/// <param name="Axes">The characters, variants and ascensions the crediting recordings span, one axis each.</param>
 public sealed record CoverageReport(
     IReadOnlyList<CoverageRow> Rows,
     IReadOnlyList<CoverageRow> OutsideTheDenominator,
@@ -617,8 +671,12 @@ public sealed record CoverageReport(
     IReadOnlyList<MisnamedProducer> MisnamedProducers,
     IReadOnlyList<CoveredRecording> Unverified,
     IReadOnlyList<UnreadableRecording> Unreadable,
-    int Recordings)
+    int Recordings,
+    IReadOnlyList<CoverageAxis>? Axes = null)
 {
+    /// <summary>The axes, one line each, as the report prints them before the totals.</summary>
+    public IReadOnlyList<CoverageAxis> AxisLines => Axes ?? [];
+
     public int Points => Rows.Count;
     public int Covered => Count(CoverageState.Covered);
     public int CoOccurrence => Count(CoverageState.CoOccurrence);

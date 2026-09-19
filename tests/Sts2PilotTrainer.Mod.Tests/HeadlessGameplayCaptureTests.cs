@@ -74,8 +74,11 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
     /// <summary>A seed whose first act, played alone, the whole-act journey's own rules
     /// win on the cheapest route to its boss. Found by searching seeds, because the
     /// fixture's seed was chosen for a three-act run and its act plays differently
-    /// alone; a claim about this journey's rules on this build and nothing else.</summary>
-    private const string WonRunSeed = "A249YBES73";
+    /// alone; a claim about this journey's rules on this build and nothing else. It
+    /// replaced A249YBES73 when the journey's rule became the measured one
+    /// (<see cref="SurvivalRule.BlockWhenThreatened"/>), which loses that seed's boss;
+    /// the 53rd of <c>SeedHunt.Candidates</c>, the first the new rule wins on.</summary>
+    private const string WonRunSeed = "BSDZJPMAF4";
     private static readonly string[] Acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
 
     /// <summary>Where the recordings these tests write are kept: a directory named by

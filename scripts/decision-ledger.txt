@@ -135,7 +135,7 @@ room             MerchantRoom  claimed MapMove, ShopPurchase
 room             RestSiteRoom  claimed MapMove, ChooseRestSiteOption
 room             TreasureRoom  claimed MapMove, TakeChestRelic, SkipChestRelic
 
-# unreadable bodies: 777 type(s) with a body the IL reader could not read whole and 154 the runtime could not load, each a place a send or sync could hide, held to scripts/unreadable-choice-scan-bodies.txt;
+# unreadable bodies: 775 type(s) with a body the IL reader could not read whole and 154 the runtime could not load, each a place a send or sync could hide, held to scripts/unreadable-choice-scan-bodies.txt;
 # of them, the sender or syncer types the walks reached (3), with how many bodies, each excused in writing
 MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption 1  excused the unread body is a Node-taking hover member; its one SyncLocalChoice is in OnSelect's state machine, which reads
 MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.PeerInputSynchronizer 1  excused the unread body is a Control-taking member; its one SendMessage is in SendSyncMessage, which reads

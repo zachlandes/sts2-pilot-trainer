@@ -63,23 +63,34 @@ public static partial class SyntheticFixtureGenerator
 
         Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
 
-        foreach (var next in PlanRoute(session))
+        // The rooms are handled by the whole-act journey's rules under the policy the
+        // committed fixtures are regenerated under, for the reason GenerateWholeAct gives
+        var previous = _policy;
+        _policy = CommittedFixtureRules;
+        try
         {
-            Apply(driver, actions, ActionVerb.MapMove,
-                ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
-                ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
-                ("column", next.coord.col.ToString(CultureInfo.InvariantCulture)));
+            foreach (var next in PlanRoute(session))
+            {
+                Apply(driver, actions, ActionVerb.MapMove,
+                    ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
+                    ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
+                    ("column", next.coord.col.ToString(CultureInfo.InvariantCulture)));
 
-            checkpoints.Add(Capture(
-                $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
-                "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
+                checkpoints.Add(Capture(
+                    $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
+                    "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
 
-            HandleRoom(driver, session, actions, checkpoints, next.PointType);
+                HandleRoom(driver, session, actions, checkpoints, next.PointType);
 
-            // The whole fight is kept: the comparison contract is defined over one that
-            // finished, and a history cut off inside the turn that opened the screen
-            // would prove the boundary and nothing either side of it.
-            if (ATurnBeganWithADecision(actions)) break;
+                // The whole fight is kept: the comparison contract is defined over one that
+                // finished, and a history cut off inside the turn that opened the screen
+                // would prove the boundary and nothing either side of it.
+                if (ATurnBeganWithADecision(actions)) break;
+            }
+        }
+        finally
+        {
+            _policy = previous;
         }
 
         if (!ATurnBeganWithADecision(actions))

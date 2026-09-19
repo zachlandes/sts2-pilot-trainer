@@ -33,7 +33,9 @@ public sealed class CoverageTests
             Assert.Contains("event-option  EVENT.NEOW RELIC.WINGED_BOOTS  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.ARCANE_SCROLL  excused [generated]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD  excused [offered-only-to-another-character]:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("seam  reward-kind:gold @ AbstractModel.BeforeDeath  excused [not-on-the-route; names POWER.HEIST_POWER]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("seam  reward-kind:gold @ AbstractModel.BeforeDeath  excused [generated; names POWER.HEIST_POWER]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event  EVENT.DARV  excused [generated]:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("event-option  EVENT.DARV RELIC.ASTROLABE  excused [not-on-the-route]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("event-option  EVENT.NEOW RELIC.MASSIVE_SCROLL  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  co-occurrence in 2 recording(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  reward-kind:gold @ AbstractModel.TryModifyRewards  excused [generated]:", result.Output, StringComparison.Ordinal);
@@ -43,6 +45,12 @@ public sealed class CoverageTests
             Assert.Contains("event-option  EVENT.ENDLESS_CONVEYOR ENDLESS_CONVEYOR.pages.ALL.options.LOCKED  excused [not-choosable]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("rest-option  MEND  excused [multiplayer-only]:", result.Output, StringComparison.Ordinal);
             Assert.Contains("uncovered: 0", result.Output, StringComparison.Ordinal);
+            // What the number is evidence about: three Ironclad runs, two natives at
+            // ascension 0 on the default progression and the video reconstruction at
+            // ascension 10 on the Underdocks, and no other character
+            Assert.Contains("  characters: CHARACTER.IRONCLAD (3 recording(s))", result.Output, StringComparison.Ordinal);
+            Assert.Contains("  variants: ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY (2 recording(s))  ACT.UNDERDOCKS,ACT.HIVE,ACT.GLORY (1 recording(s))", result.Output, StringComparison.Ordinal);
+            Assert.Contains("  ascensions: 0 (2 recording(s))  10 (1 recording(s))", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("inadmissible excusals", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("misnamed producers", result.Output, StringComparison.Ordinal);
             // The excusals describe the committed corpus, so none of them is reached by
@@ -52,6 +60,16 @@ public sealed class CoverageTests
             var artifact = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "coverage.json"))).RootElement;
             Assert.True(artifact.GetProperty("covered").GetBoolean());
             Assert.Equal("v0.111.0", artifact.GetProperty("build").GetProperty("build_version").GetString());
+            var axes = artifact.GetProperty("axes");
+            var characters = Assert.Single(axes.GetProperty("characters").EnumerateArray());
+            Assert.Equal("CHARACTER.IRONCLAD", characters.GetProperty("value").GetString());
+            Assert.Equal(3, characters.GetProperty("recordings").GetInt32());
+            Assert.Equal(
+                [("ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY", 2), ("ACT.UNDERDOCKS,ACT.HIVE,ACT.GLORY", 1)],
+                axes.GetProperty("variants").EnumerateArray().Select(value => (value.GetProperty("value").GetString(), value.GetProperty("recordings").GetInt32())));
+            Assert.Equal(
+                [("0", 2), ("10", 1)],
+                axes.GetProperty("ascensions").EnumerateArray().Select(value => (value.GetProperty("value").GetString(), value.GetProperty("recordings").GetInt32())));
             var totals = artifact.GetProperty("totals");
             Assert.Equal(522, totals.GetProperty("points").GetInt32());
             Assert.Equal(0, totals.GetProperty("uncovered").GetInt32());
@@ -98,6 +116,7 @@ public sealed class CoverageTests
             Assert.Contains("event  EVENT.WATERLOGGED_SCRIPTORIUM  uncovered", result.Output, StringComparison.Ordinal);
             Assert.Contains("seam  event-option @ EventModel.GenerateInitialOptions  uncovered", result.Output, StringComparison.Ordinal);
             Assert.Contains("recordings: 0", result.Output, StringComparison.Ordinal);
+            Assert.Contains("  characters: none - no crediting recording", result.Output, StringComparison.Ordinal);
         });
     }
 
