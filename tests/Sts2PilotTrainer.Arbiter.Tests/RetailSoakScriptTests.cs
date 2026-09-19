@@ -141,34 +141,40 @@ public sealed class RetailSoakScriptTests : IDisposable
         var night = Run("--runs", "1", "--stop-after-minutes", "1");
 
         Assert.Equal(1, night.ExitCode);
-        Assert.Contains("parity does not hold; 1 of 1 night recording(s) without parity evidence", night.Output, StringComparison.Ordinal);
+        Assert.Contains($"night recording {SoakRun} is not at parity: diverged", night.Output, StringComparison.Ordinal);
+        Assert.Contains("parity does not hold; 1 of 1 night recording(s) not at parity, 1 diverged", night.Output, StringComparison.Ordinal);
         Assert.Contains("NOT AT PARITY", night.Output, StringComparison.Ordinal);
     }
 
-    /// <summary>A recording of the night the recorder stopped watching holds nothing
-    /// for the parity command, which counts it in the denominator and still exits 0;
-    /// the night is held to every one of its recordings being PARITY by its own line
-    /// in the artifact, so such a recording is a run to read rather than a figure that
-    /// holds over none. What a recorder refusal on retail timing looks like in the
-    /// morning.</summary>
-    [GameFact]
-    public void ANightRecordingWithoutParityEvidenceExitsFourWithTheCount()
+    /// <summary>A recording of the night short of PARITY without having diverged is a
+    /// run to read, whatever the parity command's own exit code: a recording the
+    /// recorder stopped watching holds nothing for it and it still exits 0, and one
+    /// whose integrity is not complete fails it the same as a divergence would; the
+    /// night is held to every one of its recordings being PARITY by its own line in
+    /// the artifact, and only a recording that replayed and diverged is a parity
+    /// failure. What a recorder refusal on retail timing looks like in the morning.</summary>
+    [GameTheory]
+    [InlineData("continuity", "broken", "continuity", true)]
+    [InlineData("integrity", "non-standard", "integrity", false)]
+    public void ANightRecordingNotAtParityWithoutDivergingExitsFourWithTheCount(
+        string field, string value, string status, bool theCommandHolds)
     {
         if (OperatingSystem.IsWindows()) return;
         var (manifest, _) = ARecordingTheNightMakes();
         var staged = Path.Combine(_night, Path.GetFileName(manifest));
-        var broken = JsonNode.Parse(File.ReadAllText(staged))!;
-        broken["source"]!["native"]!["continuity"] = NativeSource.BrokenContinuity;
-        File.WriteAllText(staged, broken.ToJsonString());
+        var edited = JsonNode.Parse(File.ReadAllText(staged))!;
+        edited["source"]!["native"]![field] = value;
+        File.WriteAllText(staged, edited.ToJsonString());
 
         var night = Run("--runs", "1", "--stop-after-minutes", "1");
 
         Assert.Equal(4, night.ExitCode);
-        Assert.Contains($"night recording {SoakRun} holds no parity evidence: continuity", night.Output, StringComparison.Ordinal);
-        Assert.Contains("parity unproven for 1 of 1 night recording(s)", night.Output, StringComparison.Ordinal);
+        Assert.Contains($"night recording {SoakRun} is not at parity: {status}", night.Output, StringComparison.Ordinal);
+        Assert.Contains("parity unproven; 1 of 1 night recording(s) not at parity", night.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("parity holds", night.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("parity does not hold", night.Output, StringComparison.Ordinal);
         var parity = JsonDocument.Parse(File.ReadAllText(Path.Combine(_out, "parity.json"))).RootElement;
-        Assert.True(parity.GetProperty("at_parity").GetBoolean(), "the command's own verdict is what the night must not rest on");
+        Assert.Equal(theCommandHolds, parity.GetProperty("at_parity").GetBoolean());
     }
 
     /// <summary>A run the mod gave up in a state it did not know is named from

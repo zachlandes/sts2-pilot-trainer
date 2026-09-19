@@ -55,14 +55,16 @@ usage: retail-soak.sh [--runs <n>] [--seeds <a,b,c>] [--character <CHARACTER.X>]
                       (default build/evidence/soak/<launch time, UTC>)
 
 Exit 0 when soak-done arrived, every run ended cleanly, every recording of the
-night is at parity, and parity and coverage hold over the night's copy beside
-manifests/; 1 when a compared recording diverged or was refused, or coverage does
-not hold; 3 when the night measured nothing - the launch was refused, the night
-ended without soak-done, the mod refused the plan before starting a run, or it
-recorded nothing; 4 when a run ended in a state the mod refused - unknown-state,
-failed, timed-out or client-unusable - or a recording of the night holds no
-parity evidence - a broken continuity, no journal, an older recorder - each a
-finding to read in godot.log and parity.txt; 2 on a usage error.
+night is at parity, and coverage holds over the night's copy beside manifests/;
+1 when a recording that replayed diverged from its journal - the night's or a
+committed one - or coverage does not hold; 3 when the night measured nothing -
+the launch was refused, the night ended without soak-done, the mod refused the
+plan before starting a run, or it recorded nothing; 4 when a run ended in a
+state the mod refused - unknown-state, failed, timed-out or client-unusable - or
+a recording of the night is short of parity without having diverged - refused at
+replay, an integrity other than complete, a broken continuity, another build, no
+journal, an older recorder - each a finding to read in godot.log and parity.txt;
+2 on a usage error.
 EOF
 }
 
@@ -320,32 +322,41 @@ coverage_figure() {
 verdict=0
 say "parity:"
 set +e
-./scripts/arbiter parity --corpus "$copy" --corpus manifests --out "$out" > "$out/parity.txt" 2>&1
-parity_status=$?
+./scripts/arbiter parity --corpus "$copy" --corpus manifests --out "$out" > "$out/parity.txt" 2>&1 || true
 set -e
 cat "$out/parity.txt" >> "$log"
 parity_figure "$out/parity.txt"
 
-# The command's own verdict cannot see a recording that holds nothing - a broken
-# continuity, a journal it does not read - and a night whose every recording the
-# recorder stopped watching would read as at parity over none. Every recording of
-# the night has to be PARITY in the artifact, by its own line; the rest are the
-# findings the soak exists to surface.
+# The night's verdict is read off each recording's own line in the artifact and
+# never off the command's exit code: that code cannot see a recording that holds
+# nothing - a broken continuity, a journal it does not read - so a night whose every
+# recording the recorder stopped watching would read as at parity over none, and it
+# fails on a refused or an incomplete recording the same as on a compared one that
+# diverged. A night recording that replayed and diverged is a parity failure; every
+# other status short of PARITY is a run to read.
 night_total=0
-night_unproven=0
-while IFS=$'\t' read -r run_id status detail; do
-  night_total=$((night_total + 1))
-  if [[ "$status" != "parity" ]]; then
-    night_unproven=$((night_unproven + 1))
-    say "night recording $run_id holds no parity evidence: $status - $detail; read godot.log and parity.txt"
+night_diverged=0
+night_not_at_parity=0
+committed_diverged=0
+while IFS=$'\t' read -r where run_id status detail; do
+  if [[ "$where" == night ]]; then
+    night_total=$((night_total + 1))
+    if [[ "$status" != parity ]]; then
+      night_not_at_parity=$((night_not_at_parity + 1))
+      if [[ "$status" == diverged ]]; then night_diverged=$((night_diverged + 1)); fi
+      say "night recording $run_id is not at parity: $status - $detail; read godot.log and parity.txt"
+    fi
+  elif [[ "$status" == diverged ]]; then
+    committed_diverged=$((committed_diverged + 1))
+    say "committed recording $run_id diverged: $detail"
   fi
 done < <(python3 - "$out/parity.json" "$copy" <<'PY'
 import json, os, sys
 artifact, copy = sys.argv[1], sys.argv[2]
 night = {name for name in os.listdir(copy) if name.endswith(".replay.json")}
 for entry in json.load(open(artifact))["recordings"]:
-    if os.path.basename(entry["manifest"]) in night:
-        print("\t".join([entry["run_id"], entry["status"], entry.get("detail", "").replace("\n", " ")]))
+    where = "night" if os.path.basename(entry["manifest"]) in night else "committed"
+    print("\t".join([where, entry["run_id"], entry["status"], entry.get("detail", "").replace("\n", " ").replace("\t", " ")]))
 PY
 )
 if [[ "$night_total" == 0 ]]; then
@@ -361,14 +372,15 @@ cat "$out/coverage.txt" >> "$log"
 coverage_figure "$out/coverage.txt"
 
 echo
-if [[ "$parity_status" == 0 && "$night_unproven" == 0 ]]; then
+if [[ "$night_not_at_parity" == 0 && "$committed_diverged" == 0 ]]; then
   parity_word="holds over all $night_total night recording(s)"
-elif [[ "$parity_status" != 0 ]]; then
-  parity_word="does not hold; $night_unproven of $night_total night recording(s) without parity evidence"
+elif [[ "$night_diverged" -gt 0 || "$committed_diverged" -gt 0 ]]; then
+  parity_word="does not hold; $night_not_at_parity of $night_total night recording(s) not at parity, $night_diverged diverged"
+  if [[ "$committed_diverged" -gt 0 ]]; then parity_word="$parity_word, $committed_diverged committed recording(s) diverged"; fi
 else
-  parity_word="unproven for $night_unproven of $night_total night recording(s)"
+  parity_word="unproven; $night_not_at_parity of $night_total night recording(s) not at parity"
 fi
 say "the third figure: parity $parity_word beside manifests/; coverage $([[ "$coverage_status" == 0 ]] && echo holds || echo 'does not hold'); $findings run(s) to read; evidence in $out"
-if [[ "$parity_status" != 0 || "$coverage_status" != 0 ]]; then verdict=1; fi
-if [[ "$verdict" == 0 && $((findings + night_unproven)) -gt 0 ]]; then verdict=4; fi
+if [[ "$night_diverged" -gt 0 || "$committed_diverged" -gt 0 || "$coverage_status" != 0 ]]; then verdict=1; fi
+if [[ "$verdict" == 0 && $((findings + night_not_at_parity)) -gt 0 ]]; then verdict=4; fi
 exit "$verdict"
