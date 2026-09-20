@@ -134,6 +134,45 @@ internal sealed class RecordedActWalk : IDisposable
         return new Recorded(manifest, capture, walk.AskMet);
     }
 
+    /// <summary>
+    /// The walk through the recorder up to the first decision after which
+    /// <paramref name="stopWhen"/> says so of what the recorder has captured, and
+    /// the capture as it stood there: for a test about how the journey answers a
+    /// room on its way, which a whole walk to the ask would carry past the room and
+    /// past the fights behind it.
+    /// </summary>
+    /// <returns>The captured decisions, and whether the walk was stopped there
+    /// rather than finishing without the predicate ever holding.</returns>
+    internal (IReadOnlyList<ActionRecord> Actions, bool Stopped) WalkUntil(
+        WalkPolicy policy, Func<IReadOnlyList<ActionRecord>, bool> stopWhen, string seed = FixtureSeed,
+        IReadOnlyList<string>? acts = null, string character = Ironclad)
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        session.StartRun(seed, character, 0, "standard", acts ?? Acts);
+        using var driver = new RunDriver(session);
+        driver.ImproviseUnrecordedCardSelections();
+        driver.EnterFirstRoom();
+        Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+        var capture = RunRecorder.Active!.Capture;
+
+        try
+        {
+            SyntheticFixtureGenerator.WalkTheAct(session, driver, [], () =>
+            {
+                DrainSettles();
+                if (stopWhen(capture.Actions)) throw new WalkStopped();
+            }, visitEveryRoomType: true, policy);
+            return (capture.Actions.ToList(), false);
+        }
+        catch (WalkStopped)
+        {
+            return (capture.Actions.ToList(), true);
+        }
+    }
+
+    private sealed class WalkStopped : Exception;
+
     /// <summary>The recording as the recorder left it: continuous, complete, and
     /// refused nowhere.</summary>
     internal static void AssertWhole(Recorded recorded)

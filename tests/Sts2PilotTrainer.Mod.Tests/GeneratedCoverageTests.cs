@@ -83,12 +83,26 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// <c>coverage</c>'s per-axis lines are evidence for, and they retire the points a
 /// character's own deck reaches and no Ironclad walk does.
 ///
+/// The second-act rows are the seventh table, in two parts, each a whole first act
+/// carried into the second act (<see cref="WalkPolicy.AskInTheNextAct"/>) as the
+/// Defect, whose line survives a first act on half the hunted seeds, or as the
+/// Necrobinder where the ask is its own. The ancient rows of it: every option of
+/// Darv but the one the character row takes, on a seed hunted so the second act
+/// opens on Darv offering the relic; the card removal Dusty Tome's Forbidden
+/// Grimoire earns, claimed off the second act's fights; and the clone and the
+/// kindle at the second act's first rest site. The event rows of it: every option
+/// of the events the game allows only from the second act on or in the second act
+/// alone, Zen Weaver's acupuncture with a whole first act's purse, and Colorful
+/// Philosophers' Ironclad as the Defect, each at the second act's first question
+/// mark on a seed hunted so it opens the event; and the Fake Merchant beside them,
+/// bought from. A second act that opens elsewhere fails naming the ancient, and a
+/// run of one act is refused before a step.
+///
 /// What no row here can reach is what <c>DecisionExcusals</c> leaves excused with a
 /// reason of its own: what the headless host has no screen for, the undo of an ended
-/// turn, and every point only the second act on deals past its opening room - the
-/// events the game allows from act 2 on, the card removal only a Necrobinder's
-/// Forbidden Grimoire puts on the loot screen, and every option of Darv but the one
-/// the Ironclad's default-progression row takes at its second act's opening.
+/// turn, and what only a third act deals - the Grave of the Forgotten, War Historian
+/// Repy and Meat Cleaver's cook - beside the Relic Trader's five tradable relics and
+/// the Self-Help Book's empty page.
 /// </summary>
 public sealed class GeneratedCoverageTests
 {
@@ -499,9 +513,11 @@ public sealed class GeneratedCoverageTests
     /// <param name="ThenRests">The rest option the row is after past the event, at
     /// the first rest site after the mark, which is then the ask rather than the
     /// option: how a relic an event deals is walked to what it adds at a rest.</param>
+    /// <param name="Character">The character the row's run is started as; the
+    /// Ironclad, which every first-act event row plays, where none is named.</param>
     internal sealed record EventRow(
         string Event, string Key, string Seed, string[]? Via = null, string[]? AlsoRetires = null,
-        string? ClaimsReward = null, int FightsFirst = 0, string? ThenRests = null);
+        string? ClaimsReward = null, int FightsFirst = 0, string? ThenRests = null, string Character = RecordedActWalk.Ironclad);
 
     /// <summary>The acts lists the event rows run on: the default progression for act
     /// 1's events and the shared pool; its variant for the Underdocks' own; and the
@@ -534,7 +550,10 @@ public sealed class GeneratedCoverageTests
             new("EVENT.BRAIN_LEECH", "BRAIN_LEECH.pages.INITIAL.options.RIP", "HCM40F3ZGY"),
             new("EVENT.BRAIN_LEECH", "BRAIN_LEECH.pages.INITIAL.options.SHARE_KNOWLEDGE", "HCM40F3ZGY"),
             new("EVENT.BYRDONIS_NEST", "BYRDONIS_NEST.pages.INITIAL.options.EAT", "S7LTRQKC10"),
-            new("EVENT.BYRDONIS_NEST", "BYRDONIS_NEST.pages.INITIAL.options.TAKE", "S7LTRQKC10"),
+            // The egg taken is a quest card in the deck, and the next rest site offers
+            // to hatch it; the row rests after the event and the hatch is the ask
+            new("EVENT.BYRDONIS_NEST", "BYRDONIS_NEST.pages.INITIAL.options.TAKE", "S7LTRQKC10", AlsoRetires:
+                ["rest-option  HATCH", "seam  rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions"], ThenRests: "HATCH"),
             new("EVENT.DENSE_VEGETATION", "DENSE_VEGETATION.pages.INITIAL.options.REST", "HHNZNPJV6W", AlsoRetires:
                 ["seam  card-prompt:CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip) @ CardModel.OnPlay"]),
             new("EVENT.DENSE_VEGETATION", "DENSE_VEGETATION.pages.INITIAL.options.TRUDGE_ON", "HHNZNPJV6W"),
@@ -726,7 +745,7 @@ public sealed class GeneratedCoverageTests
     {
         var row = EventRowFor(act, eventId, key);
         using var harness = new RecordedActWalk();
-        var recorded = harness.Walk(PolicyFor(row, act), row.Seed, visitEveryRoomType: false, EventRowActs[act]);
+        var recorded = harness.Walk(PolicyFor(row, act), row.Seed, visitEveryRoomType: false, EventRowActs[act], character: row.Character);
         var opened = recorded.Manifest.Actions
             .Where(action => action.Verb == ActionVerb.ChooseEventOption)
             .Select(action => action.Args["event_id"])
@@ -942,7 +961,7 @@ public sealed class GeneratedCoverageTests
     [
         // The second act opens on Darv, and the walk takes the option its page offers
         // first, so the row retires the ancient and that option; the rest are the
-        // sixth stage's
+        // second-act ancient rows'
         new("CHARACTER.IRONCLAD", RecordedActWalk.Acts, "KNU8ZJM21D", "EVENT.DARV", AlsoRetires:
             ["event  EVENT.DARV", "event-option  EVENT.DARV RELIC.CALLING_BELL"]),
         // The Underdocks deals the Gremlin Merc, whose Fat Gremlin gives back the
@@ -1029,6 +1048,388 @@ public sealed class GeneratedCoverageTests
         }
 
         RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>
+    /// One second-act ancient row: the ancient the seed's second act opens on, the
+    /// relic its option grants, the seed the hunt found, the character whose line
+    /// survives the first act on it, and the ask the walk is after once it holds the
+    /// relic - obtaining it, a rest option it adds at the second act's first rest
+    /// site, or a reward a card it deals earns off a loot screen - with the seams of
+    /// the relic's the row falls short of. The seed is a constant with the hunt's
+    /// criterion beside it, as <see cref="SeedHunt"/> says: the second act's ancient
+    /// is read at the run's start (<see cref="SeedHunt.Opening.NextActAncientId"/>),
+    /// and which relics that ancient offers is rolled as its room is entered, so the
+    /// walk is the criterion for the offer and refuses by name where the ancient does
+    /// not offer the relic.
+    /// </summary>
+    internal sealed record SecondActAncientRow(
+        string Ancient, string Relic, string Seed, string Character, string Ask, string[]? AlsoRetires = null, string[]? ShortOf = null);
+
+    private const string ClaimTheCardRemoval = "claim the card removal";
+
+    /// <summary>The second-act ancient rows, by relic: every option of Darv but the
+    /// one the Ironclad's character row takes, and the two relics of act 2's own
+    /// ancients whose rest option the ancient rows fall short of - Pael's Growth's
+    /// clone and Pumpkin Candle's kindle, a rest site away from the ancient on a run
+    /// that carries a whole first act's deck. The seeds were found on v0.111.0 by
+    /// walking <c>SeedHunt.Candidates</c> in order as the Defect, whose line survives
+    /// a first act on half of them, reading the second act's ancient and its offer at
+    /// the act's opening room; Dusty Tome's is the Necrobinder's, because the tome
+    /// deals an ancient card of the run's own character and the removal reward is
+    /// Forbidden Grimoire's, which is the Necrobinder's.</summary>
+    internal static readonly IReadOnlyDictionary<string, SecondActAncientRow> SecondActAncientRows = new[]
+    {
+        // Darv: eleven options, on seeds whose second act opens on Darv offering each
+        new SecondActAncientRow("EVENT.DARV", "RELIC.ASTROLABE", "HCM40F3ZGY", "CHARACTER.DEFECT", ObtainIt),
+        // Black Star doubles an elite's relic reward, an elite fight away that this
+        // row does not walk to
+        new SecondActAncientRow("EVENT.DARV", "RELIC.BLACK_STAR", "HZ4GLM854W", "CHARACTER.DEFECT", ObtainIt, ShortOf:
+            ["seam  reward-kind:relic @ AbstractModel.TryModifyRewards"]),
+        // Dusty Tome adds an upgraded ancient card of the character's own pool to the
+        // deck - Forbidden Grimoire on a Necrobinder run - whose power puts a card
+        // removal on the loot screen of every fight it was played in; the row walks
+        // the second act's fights until one offers the removal and claims it
+        new SecondActAncientRow("EVENT.DARV", "RELIC.DUSTY_TOME", "J3CSMXQWW1", "CHARACTER.NECROBINDER", ClaimTheCardRemoval,
+            ["reward-kind  card_removal", "seam  reward-kind:card_removal @ AbstractModel.AfterCombatEnd"]),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.ECTOPLASM", "HJKF1VY6LT", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.EMPTY_CAGE", "KNU8ZJM21D", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.PANDORAS_BOX", "YCS2JYKWJX", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.PHILOSOPHERS_STONE", "HCM40F3ZGY", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.RUNIC_PYRAMID", "HZ4GLM854W", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.SNECKO_EYE", "TZ6EKQE4T4", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.SOZU", "HZ4GLM854W", "CHARACTER.DEFECT", ObtainIt),
+        new SecondActAncientRow("EVENT.DARV", "RELIC.VELVET_CHOKER", "QQ7PBBVZDS", "CHARACTER.DEFECT", ObtainIt),
+        // The rest options act 2's own ancients' relics add, at the second act's first
+        // rest site
+        new SecondActAncientRow("EVENT.PAEL", "RELIC.PAELS_GROWTH", "KY41W5MJER", "CHARACTER.DEFECT", "rest CLONE",
+            ["rest-option  CLONE", "seam  rest-option:CLONE @ AbstractModel.TryModifyRestSiteOptions"]),
+        new SecondActAncientRow("EVENT.TEZCATARA", "RELIC.PUMPKIN_CANDLE", "ZS724YW1MP", "CHARACTER.DEFECT", "rest KINDLE",
+            ["rest-option  KINDLE", "seam  rest-option:KINDLE @ AbstractModel.TryModifyRestSiteOptions"]),
+    }.ToDictionary(row => row.Relic, StringComparer.Ordinal);
+
+    public static IEnumerable<object[]> SecondActRelics() =>
+        SecondActAncientRows.Keys.Order(StringComparer.Ordinal).Select(relic => new object[] { relic });
+
+    internal static WalkPolicy PolicyFor(SecondActAncientRow row)
+    {
+        var policy = new WalkPolicy { AskInTheNextAct = true, AncientRelic = row.Relic };
+        return row.Ask switch
+        {
+            ObtainIt => policy,
+            ClaimTheCardRemoval => policy with
+            {
+                RewardKindToClaim = RewardKinds.CardRemoval,
+                RouteThrough = [MapPointType.Monster, MapPointType.Monster, MapPointType.Monster],
+            },
+            _ when row.Ask.StartsWith("rest ", StringComparison.Ordinal) => policy with
+            {
+                RestOption = row.Ask["rest ".Length..],
+                RouteThrough = [MapPointType.RestSite],
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(row), row.Ask, "no such ask"),
+        };
+    }
+
+    /// <summary>The points a second-act ancient row retires: the ancient's option
+    /// granting the relic, every seam the map lists the relic under but the ones the
+    /// row falls short of, and the points its ask is for. The ancient itself is a
+    /// character row's or an ancient row's already.</summary>
+    private static IEnumerable<DecisionPoint> RetiredBy(SecondActAncientRow row)
+    {
+        yield return DecisionPoint.EventOption(row.Ancient, row.Relic);
+        var shortOf = (row.ShortOf ?? []).Select(Point).ToHashSet();
+        foreach (var seam in DecisionSurface.ProducerMap().Where(seam => seam.Producers.Contains(row.Relic, StringComparer.Ordinal)))
+        {
+            if (!shortOf.Contains(seam.Point)) yield return seam.Point;
+        }
+
+        foreach (var point in row.AlsoRetires ?? [])
+        {
+            yield return Point(point);
+        }
+    }
+
+    /// <summary>
+    /// Each second-act ancient row on its own hunted seed: the second act opens on the
+    /// row's ancient, the walk survives every room type of the first act and its boss,
+    /// takes the ancient's option granting the relic through the recorded decision
+    /// naming both, meets the ask past it in the second act, the recording is whole
+    /// and reaches the option, every seam the map lists for the relic and the points
+    /// the row retires, and a fresh replay reproduces the journal decision for decision.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(SecondActRelics))]
+    public void ASecondActAncientRowSurvivesTheFirstActDealsTheRelicAndReplaysToParity(string relic)
+    {
+        var row = SecondActAncientRows[relic];
+        var opening = SeedHunt.ReadOpening(row.Seed, RecordedActWalk.Acts, row.Character);
+        Assert.True(
+            opening.NextActAncientId == row.Ancient,
+            $"seed {row.Seed} no longer opens its second act on {row.Ancient} (it opens on " +
+            $"{opening.NextActAncientId ?? "no ancient"}): the game's RNG has moved, so rerun the hunt for this row");
+
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(PolicyFor(row), row.Seed, visitEveryRoomType: true, RecordedActWalk.Acts, character: row.Character);
+        Assert.True(
+            recorded.AskMet,
+            $"the {row.Character} walk on {row.Seed} finished without meeting the ask of the {row.Relic} row ({row.Ask}); actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+
+        var proceed = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        Assert.Contains(recorded.Manifest.Actions, action =>
+            action.Seq > proceed.Seq && action.Verb == ActionVerb.ChooseEventOption
+            && action.Args.TryGetValue("event_id", out var eventId) && eventId == row.Ancient
+            && action.Args.TryGetValue("option_key", out var key) && key == row.Relic);
+
+        AssertReaches(recorded, RetiredBy(row), $"the {row.Relic} second-act row");
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The second-act event rows: one per option of every event the game
+    /// allows only from the second act on or in the second act alone, and the three
+    /// options a first act's line never holds the state for at its mark - Zen
+    /// Weaver's acupuncture at 250 gold, which a whole first act's purse reaches, and
+    /// Colorful Philosophers' Ironclad, withheld from an Ironclad run and offered to
+    /// the Defect's - each on a seed hunted so the second act's first question mark
+    /// opens the event, as the Defect. The seeds were found on v0.111.0 by walking
+    /// <c>SeedHunt.Candidates</c> in order through a whole first act to the second
+    /// act's first mark and reading what it opened; an event allowed only with gold
+    /// in hand is reached with the first act's purse, which the walk arrives with.
+    /// The Fake Merchant is beside the table, because it offers no option.</summary>
+    internal static readonly IReadOnlyList<EventRow> SecondActEventRows =
+    [
+        new("EVENT.COLORFUL_PHILOSOPHERS", "COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD", "BSDZJPMAF4", Character: "CHARACTER.DEFECT"),
+        new("EVENT.CRYSTAL_SPHERE", "CRYSTAL_SPHERE.pages.INITIAL.options.PAYMENT_PLAN", "CLPMLJ2J84", Character: "CHARACTER.DEFECT"),
+        new("EVENT.CRYSTAL_SPHERE", "CRYSTAL_SPHERE.pages.INITIAL.options.UNCOVER_FUTURE", "CLPMLJ2J84", Character: "CHARACTER.DEFECT"),
+        new("EVENT.DOLL_ROOM", "DOLL_ROOM.pages.INITIAL.options.EXAMINE", "87NGC17B9A", Character: "CHARACTER.DEFECT"),
+        new("EVENT.DOLL_ROOM", "DOLL_ROOM.pages.INITIAL.options.RANDOM", "87NGC17B9A", Character: "CHARACTER.DEFECT"),
+        new("EVENT.DOLL_ROOM", "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME", "87NGC17B9A", Character: "CHARACTER.DEFECT"),
+        new("EVENT.POTION_COURIER", "POTION_COURIER.pages.INITIAL.options.GRAB_POTIONS", "X5H41Q5Q7Y", Character: "CHARACTER.DEFECT"),
+        new("EVENT.POTION_COURIER", "POTION_COURIER.pages.INITIAL.options.RANSACK", "X5H41Q5Q7Y", Character: "CHARACTER.DEFECT"),
+        new("EVENT.RANWID_THE_ELDER", "RANWID_THE_ELDER.pages.INITIAL.options.GOLD", "1PKR7SMCWN", Character: "CHARACTER.DEFECT"),
+        new("EVENT.RANWID_THE_ELDER", "RANWID_THE_ELDER.pages.INITIAL.options.POTION", "1PKR7SMCWN", Character: "CHARACTER.DEFECT"),
+        new("EVENT.RANWID_THE_ELDER", "RANWID_THE_ELDER.pages.INITIAL.options.RELIC", "1PKR7SMCWN", Character: "CHARACTER.DEFECT"),
+        new("EVENT.STONE_OF_ALL_TIME", "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT", "ZS724YW1MP", Character: "CHARACTER.DEFECT"),
+        new("EVENT.STONE_OF_ALL_TIME", "STONE_OF_ALL_TIME.pages.INITIAL.options.PUSH", "ZS724YW1MP", Character: "CHARACTER.DEFECT"),
+        new("EVENT.SYMBIOTE", "SYMBIOTE.pages.INITIAL.options.APPROACH", "0WA4C6C2KF", Character: "CHARACTER.DEFECT"),
+        new("EVENT.SYMBIOTE", "SYMBIOTE.pages.INITIAL.options.KILL_WITH_FIRE", "0WA4C6C2KF", Character: "CHARACTER.DEFECT"),
+        new("EVENT.WELCOME_TO_WONGOS", "WELCOME_TO_WONGOS.pages.INITIAL.options.BARGAIN_BIN", "SDCTSVG5T3", Character: "CHARACTER.DEFECT"),
+        new("EVENT.WELCOME_TO_WONGOS", "WELCOME_TO_WONGOS.pages.INITIAL.options.FEATURED_ITEM", "SDCTSVG5T3", Character: "CHARACTER.DEFECT"),
+        new("EVENT.WELCOME_TO_WONGOS", "WELCOME_TO_WONGOS.pages.INITIAL.options.LEAVE", "SDCTSVG5T3", Character: "CHARACTER.DEFECT"),
+        new("EVENT.WELCOME_TO_WONGOS", "WELCOME_TO_WONGOS.pages.INITIAL.options.MYSTERY_BOX", "DVLVK2FHYU", Character: "CHARACTER.DEFECT"),
+        new("EVENT.ZEN_WEAVER", "ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE", "4QAYEK60RF", Character: "CHARACTER.DEFECT"),
+    ];
+
+    public static IEnumerable<object[]> SecondActEventRowKeys() =>
+        SecondActEventRows.Select(row => new object[] { row.Event, row.Key });
+
+    internal static EventRow SecondActEventRowFor(string eventId, string key) =>
+        SecondActEventRows.Single(row => row.Event == eventId && row.Key == key);
+
+    /// <summary>The policy a second-act event row walks under: the first act on the
+    /// fixture's own route, then the second act's first question mark by the
+    /// journey's own rule, with the first act's deck behind it.</summary>
+    internal static WalkPolicy PolicyFor(EventRow row) =>
+        PolicyFor(row, "ACT.OVERGROWTH") with { AskInTheNextAct = true };
+
+    /// <summary>
+    /// Each second-act event row on its own hunted seed: the walk survives the first
+    /// act, the second act's first question mark opens the row's event, the walk
+    /// chooses the row's option through the recorded decision naming both and meets
+    /// its ask, the recording is whole and reaches the event, the option and every
+    /// seam the row retires, and a fresh replay reproduces the journal decision for
+    /// decision.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(SecondActEventRowKeys))]
+    public void ASecondActEventRowSurvivesTheFirstActOpensTheEventAndReplaysToParity(string eventId, string key)
+    {
+        var row = SecondActEventRowFor(eventId, key);
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(PolicyFor(row), row.Seed, visitEveryRoomType: true, RecordedActWalk.Acts, character: row.Character);
+        var proceed = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var opened = recorded.Manifest.Actions
+            .Where(action => action.Seq > proceed.Seq && action.Verb == ActionVerb.ChooseEventOption)
+            .Select(action => action.Args["event_id"])
+            .FirstOrDefault(id => !DecisionSurface.ActAncients().Any(pair => pair.AncientId == id) && id != "EVENT.DARV");
+        Assert.True(
+            opened == row.Event,
+            $"seed {row.Seed} no longer opens {row.Event} at the second act's first question mark (it opened " +
+            $"{opened ?? "no event"}): the game's RNG has moved, so rerun the hunt for this row");
+        Assert.True(
+            recorded.AskMet,
+            $"the walk opened {row.Event} and finished without choosing {row.Key}; it chose " +
+            string.Join(", ", recorded.Manifest.Actions.Where(action => action.Verb == ActionVerb.ChooseEventOption).Select(action => action.Args["option_key"])));
+        RecordedActWalk.AssertWhole(recorded);
+
+        AssertReaches(recorded, RetiredBy(row), $"the {row.Event} {row.Key} second-act row");
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>The seed the Fake Merchant row walks: a whole first act as the Defect
+    /// whose second act's first question mark opens the Fake Merchant, found the way
+    /// the second-act event rows' seeds were.</summary>
+    private const string FakeMerchantSeed = "KNU8ZJM21D";
+
+    private const string FakeMerchantEvent = "EVENT.FAKE_MERCHANT";
+
+    /// <summary>
+    /// The Fake Merchant offers no option: it draws a shop of its own, stocked with
+    /// relics as the event starts, and its decisions are the purchases made from it,
+    /// which the driver replays through the member a merchant room's go through. The
+    /// walk empties its relic shelf the way it empties a merchant, on a seed hunted
+    /// so the second act's first question mark opens it, and the recording replays to
+    /// parity; the event itself is projected from no decision, because the format
+    /// reads an event off the option chosen in it and this one has none, which is
+    /// the class the map derives for it and the shelf's seam.
+    /// </summary>
+    [GameFact]
+    public void TheFakeMerchantSellsARelicAndReplaysToParity()
+    {
+        using var harness = new RecordedActWalk();
+        var recorded = harness.Walk(
+            new WalkPolicy { AskInTheNextAct = true, EventId = FakeMerchantEvent, RouteThrough = [MapPointType.Unknown] },
+            FakeMerchantSeed, visitEveryRoomType: true, RecordedActWalk.Acts, character: "CHARACTER.DEFECT");
+        Assert.True(
+            recorded.AskMet,
+            $"the walk finished without buying from the Fake Merchant: seed {FakeMerchantSeed} no longer opens it at the " +
+            "second act's first question mark, or the purse was short; actions: " +
+            string.Join(" ", recorded.Manifest.Actions.Select(action => action.Verb)));
+        RecordedActWalk.AssertWhole(recorded);
+
+        var proceed = Assert.Single(recorded.Manifest.Actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var purchases = recorded.Manifest.Actions.Where(action => action.Seq > proceed.Seq && action.Verb == ActionVerb.ShopPurchase).ToList();
+        Assert.NotEmpty(purchases);
+        Assert.All(purchases, purchase => Assert.Equal(ShopPurchaseKinds.Relic, purchase.Args["kind"]));
+
+        // The event and the shelf's seam are projected from no decision the recording
+        // holds, and are excused as not projectable rather than retired here
+        var points = DecisionFacts.Of(recorded.Manifest);
+        Assert.Contains(new DecisionPoint(DecisionKinds.ShopKind, ShopPurchaseKinds.Relic), points);
+        Assert.DoesNotContain(new DecisionPoint(DecisionKinds.Event, FakeMerchantEvent), points);
+        Assert.Equal(ExcusalClass.NotProjectable, DecisionExcusals.All[new DecisionPoint(DecisionKinds.Event, FakeMerchantEvent)].Class);
+        RecordedActWalk.ReplayToParity(recorded);
+    }
+
+    /// <summary>A walk whose ask is in the next act is refused on a run of one act
+    /// by name, before a step is taken: past that act's boss is the victory room, not
+    /// a second act, and a Darv row satisfied there would be about a room Darv is
+    /// never rolled for.</summary>
+    [GameFact]
+    public void AWalkIntoTheNextActRefusesARunOfOneAct()
+    {
+        using var harness = new RecordedActWalk();
+        var refusal = Assert.Throws<EngineException>(() => harness.Walk(
+            new WalkPolicy { AskInTheNextAct = true, AncientRelic = "RELIC.ASTROLABE" },
+            "HCM40F3ZGY", visitEveryRoomType: false, EventRowActs["ACT.HIVE"], character: "CHARACTER.DEFECT"));
+        Assert.StartsWith("The walk's ask is in the act after the first, and the run's acts list is ACT.HIVE alone", refusal.Message);
+    }
+
+    /// <summary>The seed on which the first act of a walk into the second, as the
+    /// Defect on the fixture's own route, opens a Room Full of Cheese - an event the
+    /// game shares between acts - found on v0.111.0 as the third of
+    /// <see cref="SeedHunt.Candidates"/> and the first whose first act met a shared
+    /// event.</summary>
+    private const string SharedEventInTheFirstActSeed = "RAGWB3H44W";
+
+    private const string RoomFullOfCheese = "EVENT.ROOM_FULL_OF_CHEESE";
+
+    /// <summary>
+    /// A walk whose ask is in the next act answers the asked event by the journey's
+    /// own rule where the first act rolls it: a shared event the first act deals as
+    /// well is the fixture's own decision there, and a walk that took the asked
+    /// option on it would arrive at the second act's mark with its ask already
+    /// consumed and answer the page the row is about by today's rule. Room Full of
+    /// Cheese offers GORGE and SEARCH and no proceed, so today's rule takes SEARCH
+    /// and a walk after GORGE that took it on the first act is one that read the
+    /// first act as the asked one.
+    /// </summary>
+    [GameFact]
+    public void AWalkIntoTheNextActLeavesTheAskedOptionAloneOnTheFirstAct()
+    {
+        const string asked = "ROOM_FULL_OF_CHEESE.pages.INITIAL.options.GORGE";
+        using var harness = new RecordedActWalk();
+        var (actions, stopped) = harness.WalkUntil(
+            new WalkPolicy { AskInTheNextAct = true, EventId = RoomFullOfCheese, EventOptionKey = asked },
+            captured => captured.Any(action => action.Verb == ActionVerb.ChooseEventOption && action.Args["event_id"] == RoomFullOfCheese),
+            SharedEventInTheFirstActSeed, RecordedActWalk.Acts, character: "CHARACTER.DEFECT");
+        Assert.True(
+            stopped,
+            $"seed {SharedEventInTheFirstActSeed} no longer opens {RoomFullOfCheese} on the first act's route: the game's RNG " +
+            "has moved, so rerun the hunt for this seed; it opened " +
+            string.Join(", ", actions.Where(action => action.Verb == ActionVerb.ChooseEventOption).Select(action => action.Args["event_id"])));
+        Assert.DoesNotContain(actions, action => action.Verb == ActionVerb.ProceedToNextAct);
+        var answered = actions.First(action => action.Verb == ActionVerb.ChooseEventOption && action.Args["event_id"] == RoomFullOfCheese);
+        Assert.NotEqual(asked, answered.Args["option_key"]);
+    }
+
+    /// <summary>A second act that opens on another ancient, or on Darv offering other
+    /// relics, fails the row naming what it opened on: the seed's reading first, and
+    /// the walk itself where the reading agrees and the offer does not.</summary>
+    [GameFact]
+    public void ASecondActOpeningElsewhereFailsNamingTheAncient()
+    {
+        // The whole-act fixture's seed opens its second act on Orobas
+        var opening = SeedHunt.ReadOpening(RecordedActWalk.FixtureSeed, RecordedActWalk.Acts, "CHARACTER.DEFECT");
+        Assert.Equal("EVENT.OROBAS", opening.NextActAncientId);
+
+        using var harness = new RecordedActWalk();
+        var refusal = Assert.Throws<EngineException>(() => harness.Walk(
+            new WalkPolicy { AskInTheNextAct = true, AncientRelic = "RELIC.ASTROLABE" },
+            RecordedActWalk.FixtureSeed, visitEveryRoomType: true, RecordedActWalk.Acts, character: "CHARACTER.DEFECT"));
+        Assert.StartsWith("The second act opens on EVENT.OROBAS offering ", refusal.Message);
+        Assert.Contains("not on an ancient offering RELIC.ASTROLABE", refusal.Message);
+    }
+
+    /// <summary>The second-act ancient rows are exactly Darv's options less the one the
+    /// character row takes, and the rest options act 2's ancients' relics add: an
+    /// option a game update adds to Darv is a row somebody has to hunt a seed for,
+    /// and a row for one Darv no longer offers is a walk for nothing.</summary>
+    [GameFact]
+    public void TheSecondActAncientRowsAreDarvsOptionsAndTheSecondActsRestOptions()
+    {
+        var darvs = DecisionSurface.EventOptionKeys()
+            .Where(option => option.EventId == "EVENT.DARV")
+            .Select(option => option.Key)
+            .ToList();
+        Assert.All(darvs, key => Assert.StartsWith("RELIC.", key, StringComparison.Ordinal));
+        var rows = SecondActAncientRows.Values.Where(row => row.Ancient == "EVENT.DARV").Select(row => row.Relic).ToList();
+        var takenByTheCharacterRow = CharacterRows
+            .SelectMany(row => row.AlsoRetires ?? [])
+            .Where(point => point.StartsWith("event-option  EVENT.DARV ", StringComparison.Ordinal))
+            .Select(point => point["event-option  EVENT.DARV ".Length..])
+            .ToList();
+        Assert.Equal(darvs.Order(StringComparer.Ordinal), rows.Concat(takenByTheCharacterRow).Order(StringComparer.Ordinal));
+
+        var actTwo = DecisionSurface.ActAncients().Where(pair => pair.ActId == RecordedActWalk.Acts[1]).Select(pair => pair.AncientId).ToHashSet();
+        var restRows = SecondActAncientRows.Values.Where(row => row.Ancient != "EVENT.DARV").ToList();
+        Assert.All(restRows, row => Assert.Contains(row.Ancient, actTwo));
+        Assert.Equal(
+            AncientRows.Values.Where(row => row.ShortOf is not null && actTwo.Contains(row.Ancient)).Select(row => row.Relic).Order(StringComparer.Ordinal),
+            restRows.Select(row => row.Relic).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>Asserts the recording projects to, or reaches by co-occurrence, every
+    /// point a row retires.</summary>
+    private static void AssertReaches(RecordedActWalk.Recorded recorded, IEnumerable<DecisionPoint> retired, string row)
+    {
+        var points = DecisionFacts.Of(recorded.Manifest);
+        var reached = DecisionCoverage.SeamsReachedBy(
+                new CoveredRecording(
+                    recorded.Manifest.RunId, points,
+                    RecordingStanding.Of(recorded.Manifest.Source.Native, recorded.Manifest.Environment, ThisBuild.Value, RunmobileVersion.Current),
+                    DecisionFacts.ModelsMet(recorded.Manifest)),
+                DecisionSurface.ProducerMap())
+            .ToHashSet();
+        foreach (var point in retired)
+        {
+            Assert.True(
+                points.Contains(point) || reached.Contains(point),
+                $"{row}'s recording does not reach {point}; it reaches " +
+                string.Join(", ", points.Concat(reached).Select(reachedPoint => reachedPoint.ToString())));
+        }
     }
 
     /// <summary>A walk the journey's rules do not carry through fails naming where it
@@ -1138,6 +1539,8 @@ public sealed class GeneratedCoverageTests
             .Concat(EventRows.Values.SelectMany(rows => rows).SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(BlessingRows.Keys.Select(relic => DecisionPoint.EventOption(DecisionFacts.NeowEventId, relic).ToString()))
             .Concat(CharacterRows.SelectMany(RetiredBy).Select(point => point.ToString()))
+            .Concat(SecondActAncientRows.Values.SelectMany(RetiredBy).Select(point => point.ToString()))
+            .Concat(SecondActEventRows.SelectMany(RetiredBy).Select(point => point.ToString()))
             .Concat(ThiefRetires)
             .ToHashSet(StringComparer.Ordinal);
         var credited = DecisionExcusals.All
@@ -1200,22 +1603,49 @@ public sealed class GeneratedCoverageTests
     }
 
     /// <summary>What an ancient row falls short of is a seam the map lists its relic
-    /// under, and is excused by what stands in the way rather than credited to this
-    /// test: the excusal has to be the line's-survival one for that relic, so it is
-    /// read for what it is and retired by a line that does survive.</summary>
+    /// under, and is either a second-act ancient row's - the rest site a relic of act
+    /// 2's ancients adds its option at, reached with a whole first act's deck - or
+    /// excused by what stands in the way rather than credited to this test: the
+    /// excusal has to be the line's-survival one for that relic, so it is read for
+    /// what it is and retired by a line that does survive. What a second-act ancient
+    /// row falls short of is excused the same way.</summary>
     [GameFact]
-    public void WhatAnAncientRowFallsShortOfIsExcusedByTheLinesSurvival()
+    public void WhatAnAncientRowFallsShortOfIsASecondActRowsOrExcusedByTheLinesSurvival()
     {
         var shortOf = AncientRows.Values.SelectMany(row => ShortOf(row).Select(point => (row.Relic, Point: point))).ToList();
         Assert.NotEmpty(shortOf);
+        var reachedInTheSecondAct = 0;
         foreach (var (relic, point) in shortOf)
         {
             Assert.Contains(
                 DecisionSurface.ProducerMap(),
                 seam => seam.Point == point && seam.Producers.Contains(relic, StringComparer.Ordinal));
             var excusal = Assert.Contains(point, DecisionExcusals.All);
+            if (SecondActAncientRows.TryGetValue(relic, out var secondActRow) && RetiredBy(secondActRow).Contains(point))
+            {
+                reachedInTheSecondAct++;
+                Assert.Equal(ExcusalClass.Generated, excusal.Class);
+                continue;
+            }
+
             Assert.Equal(ExcusalClass.NotOnTheRoute, excusal.Class);
             Assert.Equal(DecisionExcusals.BeyondTheLinesSurvival(relic), excusal);
+        }
+
+        Assert.Equal(2, reachedInTheSecondAct);
+
+        // Black Star's doubled elite relic, which the Darv row does not walk to: a seam
+        // the map lists the relic under, held by another row or excused on its own
+        var secondActShortOf = SecondActAncientRows.Values
+            .SelectMany(row => (row.ShortOf ?? []).Select(point => (row.Relic, Point: Point(point))))
+            .ToList();
+        Assert.NotEmpty(secondActShortOf);
+        foreach (var (relic, point) in secondActShortOf)
+        {
+            Assert.Contains(
+                DecisionSurface.ProducerMap(),
+                seam => seam.Point == point && seam.Producers.Contains(relic, StringComparer.Ordinal));
+            Assert.Contains(point, DecisionExcusals.All);
         }
     }
 

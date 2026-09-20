@@ -25,10 +25,12 @@ namespace Sts2PilotTrainer.Engine;
 /// act alone, for every event a first act's question mark or the Hive's or Glory's
 /// opens, every option of each, on a seed hunted so the first question mark opens
 /// that event, and for the points a character's own cards and potions reach on a
-/// whole first act, on the pinned seed each character survives one on
-/// (<c>GeneratedCoverageTests</c>); what is left is excused by what its producer is
-/// and why no walk yet reaches it, dated so its age is visible, for a walk past the
-/// second act's opening room and the retail soak.
+/// whole first act, on the pinned seed each character survives one on, and for what
+/// only the second act deals - Darv's options, its ancients' relics' rest options,
+/// the removal Dusty Tome's card earns and the events it alone allows - on a whole
+/// first act carried into the second (<c>GeneratedCoverageTests</c>); what is left is
+/// excused by what its producer is and why no walk yet reaches it, dated so its age
+/// is visible, for a walk into a third act and the retail soak.
 ///
 /// Every excusal carries an <see cref="ExcusalClass"/> beside its reason, and the
 /// coverage map says which classes it admits for each point
@@ -49,85 +51,56 @@ public static class DecisionExcusals
         "retired by a recording that does, from the retail soak (excused 2026-09-16)",
         producerIds);
 
-    /// <summary>Why nothing past a second act's opening room is reached by a generated
-    /// walk on this build: the character rows survive a first act on their pinned
-    /// seeds and stop at the room the second act opens on, and a walk on from there -
-    /// into the second act's question marks, at a strength the measured rule was not
-    /// measured for - is the sixth stage's.</summary>
-    private const string BeyondTheSecondActsOpening =
-        "reached only past a second act's opening room; the character rows survive a first act on the seeds the " +
-        "survival measurement of 2026-09-19 pinned and stop at the ancient the second act opens on, and a walk on " +
-        "from there into the second act's question marks is the sixth stage's - a seed hunted so the act deals the " +
-        "event, on a line measured past its first act - or the retail soak's";
+    /// <summary>Why what only a third act deals is reached by no generated walk on this
+    /// build: the second-act rows carry a whole first act into the second act's
+    /// opening room, its first rest site and its first question mark, and a walk on
+    /// through the second act's boss into a third is the next stage's, on a line
+    /// measured past its second act.</summary>
+    private const string BeyondTheSecondAct =
+        "the second-act rows walk a whole first act into the second act's opening room, first rest site and first " +
+        "question mark on seeds hunted on 2026-09-19, and a walk on through the second act's boss into a third act " +
+        "is the next stage's - a seed hunted so the third act deals it, on a line measured past its second act - " +
+        "or the retail soak's";
 
-    private const string DarvOffTheRoute =
-        "Darv is dealt to one act after the first as the run is generated (RunManager.GenerateRooms) and rolled as " +
-        "that act's opening ancient; the Ironclad's default-progression character row (KNU8ZJM21D) opens its second " +
-        "act on Darv and takes the option offered first, and the eleven options it does not take wait on the sixth " +
-        "stage's Darv rows, one per option on a seed hunted so Darv offers it, or on the retail soak";
-
-    /// <summary>The events no generated walk reaches, each with what stands in the way;
-    /// every one the game allows only from the second act on or only in a state the
-    /// first act's line never holds at its first question mark. By id, so an event a
-    /// game update adds is uncovered until somebody excuses it here.</summary>
+    /// <summary>The events no generated walk reaches, each with what stands in the way:
+    /// the Grave of the Forgotten is Glory's own and the third act's, War Historian
+    /// Repy is dealt only in the third act of a run that kept the Lantern Key, and the
+    /// Relic Trader wants five tradable relics a whole first act never holds. By id,
+    /// so an event a game update adds is uncovered until somebody excuses it here.</summary>
     private static readonly IReadOnlyDictionary<string, string> EventsOffTheRoute = new Dictionary<string, string>
     {
-        ["EVENT.CRYSTAL_SPHERE"] = "allowed only from the second act on, with 100 gold in hand (CrystalSphere.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.DOLL_ROOM"] = "allowed in the second act only (DollRoom.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.FAKE_MERCHANT"] = "allowed only from the second act on, with 100 gold or a Foul Potion in hand (FakeMerchant.IsAllowed), so " + BeyondTheSecondActsOpening,
         ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
-            "allowed only to a deck with a card its Souls enchantment can take (GraveOfTheForgotten.IsAllowed), which a starter deck " +
-            "has none of and Glory's first rewards dealt on none of 500 seeds hunted on v0.111.0; retired by a walk that takes such " +
-            "a card first, or the retail soak (excused 2026-09-18)",
-        ["EVENT.POTION_COURIER"] = "allowed only from the second act on (PotionCourier.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.RANWID_THE_ELDER"] = "allowed only from the second act on, with a relic it can take (RanwidTheElder.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.RELIC_TRADER"] = "allowed only from the second act on, with five relics to trade (RelicTrader.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.STONE_OF_ALL_TIME"] = "allowed in the second act only, with a potion in hand (StoneOfAllTime.IsAllowed), so " + BeyondTheSecondActsOpening,
-        ["EVENT.SYMBIOTE"] = "allowed only from the second act on (Symbiote.IsAllowed), so " + BeyondTheSecondActsOpening,
+            "Glory's own event, the third act's on the default progression, allowed only to a deck with a card its Souls " +
+            "enchantment can take (GraveOfTheForgotten.IsAllowed), which a starter deck has none of and Glory's first " +
+            "rewards dealt on none of 500 seeds hunted on v0.111.0 for a run of Glory alone; " + BeyondTheSecondAct +
+            " (excused 2026-09-18)",
+        ["EVENT.RELIC_TRADER"] =
+            "allowed only from the second act on, to a run holding five tradable relics (RelicTrader.IsAllowed over " +
+            "RelicModel.IsTradable: not the starter, not one with a pickup effect, not a pet's); the second-act rows " +
+            "reach the second act's first question mark holding four to six relics, the starter among them, and on " +
+            "none of the 1,000 seeds hunted on 2026-09-19 did that mark open the trader; retired by a walk that " +
+            "claims an elite's relic and the shop's on the way, or the retail soak (excused 2026-09-18)",
         ["EVENT.WAR_HISTORIAN_REPY"] =
-            "no act's roll allows it (WarHistorianRepy.IsAllowed is false); it is reached only through the Lantern Key card's own " +
-            "hook (LanternKey.ModifyNextEvent), at a second question mark of a run that kept the key from the first, which the " +
-            "Lantern Key row's walk ends at; owed to the sixth stage - a walk that goes on to a second question mark on a " +
-            "seed the line survives to it - or to the retail soak (excused 2026-09-18)",
-        ["EVENT.WELCOME_TO_WONGOS"] = "allowed in the second act only, with 100 gold in hand (WelcomeToWongos.IsAllowed), so " + BeyondTheSecondActsOpening,
+            "no act's roll allows it (WarHistorianRepy.IsAllowed is false); it replaces the next event only in the third " +
+            "act of the acts list (LanternKey.ModifyNextEvent returns it where CurrentActIndex is 2), of a run that kept " +
+            "the Lantern Key from the Hive's own event in the second, so no run of the Hive alone and no walk that stops " +
+            "in the second act reaches it; " + BeyondTheSecondAct + " (excused 2026-09-18)",
     };
 
     /// <summary>The options of events a row reaches that no row takes, each with what
-    /// stands in the way, by id: a state the row's line never holds at the mark. The
-    /// acupuncture is the one that waits on survival - gold is what a longer line
-    /// earns - and the empty page is not: it waits on a deck no first act builds,
-    /// whatever the line survives.</summary>
+    /// stands in the way, by id: a state no row's line holds at the mark. The empty
+    /// page waits on a deck no first act builds, whatever the line survives.</summary>
     private static readonly IReadOnlyDictionary<string, string> OptionsOffTheRoute = new Dictionary<string, string>
     {
-        ["EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"] =
-            "offered unlocked only with 250 gold in hand (ZenWeaver.GenerateInitialOptions, the ArachnidAcupunctureCost " +
-            "dynamic var), and the Zen Weaver rows walk a run of the Hive alone from its 99 starting gold through two " +
-            "fights to the mark, which holds nowhere near it; the map cannot read the bound off the event's own " +
-            "construction, which loads it from a dynamic var and not a constant, so no class derives it; retired by " +
-            "the sixth stage - a line that reaches the Hive's mark with an act's gold behind it - or by the retail " +
-            "soak (excused 2026-09-18)",
         ["EVENT.SELF_HELP_BOOK SELF_HELP_BOOK.pages.INITIAL.options.NO_OPTIONS"] =
             "constructed only where the deck holds no attack Sharp can enchant, no skill Nimble can and no power Swift " +
             "can (SelfHelpBook.GenerateInitialOptions over PlayerHasCardsAvailable, each through " +
             "EnchantmentModel.CanEnchant: a playable deck card carrying no enchantment); the Ironclad starter deck holds " +
             "six attacks and four skills, every one enchantable, the book's other three options each enchant exactly one " +
             "card of one type per visit (SelectAndEnchant's prefs select one; the 2 is the enchantment's amount), and an " +
-            "act's shuffled set deals the event once, so no first-act walk of any survival reaches a deck the page is " +
+            "act's shuffled set deals the event once, so no walk of a first act or a second reaches a deck the page is " +
             "constructed for, and no class derives an option a deck can reach; retired by the retail soak, or by a " +
             "walk whose earlier acts enchant or remove every attack and skill first (excused 2026-09-18)",
-    };
-
-    /// <summary>The options an event withholds from the run's own character, each with
-    /// the character the walk that reaches the event plays: Colorful Philosophers
-    /// offers a card of every other character's pool and never the played one's
-    /// (<c>DecisionSurface.OptionsWithheldFromTheCharacter</c>), so the Ironclad's
-    /// option is reached only by a run of another character at a question mark of the
-    /// Hive, which the event rows walk as the Ironclad and the character rows, of
-    /// every other character, stop short of at the second act's opening room; the
-    /// other four are event rows' already.</summary>
-    private static readonly IReadOnlyDictionary<string, string> OptionsWithheldFromTheWalksCharacter = new Dictionary<string, string>
-    {
-        ["EVENT.COLORFUL_PHILOSOPHERS COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"] = "CHARACTER.IRONCLAD",
     };
 
     /// <summary>A rest option an act's ancient's relic adds, and the seam it is
@@ -147,10 +120,10 @@ public static class DecisionExcusals
 
         return new Excusal(
             ExcusalClass.NotOnTheRoute,
-            $"no committed recording reaches it; added by {addedBy}, an ancient's relic the act-first ancient row " +
-            "obtains at the act's first room, and the journey's mechanical line does not survive from that ancient to " +
-            "a rest site at starter strength (none of 400 hunted seeds on v0.111.0); retired by a recording from the " +
-            "retail soak or by a line that survives act 2 and 3 (excused 2026-09-17)",
+            $"no committed recording reaches it; added by {addedBy}, a relic of Glory's own ancient Tanx - the third act's " +
+            "on the default progression - which the act-first ancient row obtains at the act's first room on a run of " +
+            "Glory alone, where the journey's mechanical line does not survive from that ancient to a rest site at " +
+            "starter strength (none of 400 hunted seeds on v0.111.0); " + BeyondTheSecondAct + " (excused 2026-09-17)",
             [relicId]);
     }
 
@@ -171,11 +144,19 @@ public static class DecisionExcusals
     /// the first question mark of a first act - the Overgrowth's, or the Underdocks'
     /// on the variant - on a seed hunted so that mark opens the event, the option
     /// chosen through the real recorder and replayed to parity on every merge.</summary>
-    private static readonly Excusal GeneratedByAnEventRow = new(
+    private static Excusal GeneratedByAnEventRowThrough(params string[] producers) => new(
         ExcusalClass.Generated,
         "reached by a GeneratedCoverageTests event row - the first act's first question mark, on a seed hunted so " +
         "it opens this event, the page answered by key - recorded through the real recorder and replayed to parity " +
-        "on every merge; the recording is generated rather than committed");
+        "on every merge; the recording is generated rather than committed",
+        producers);
+
+    private static readonly Excusal GeneratedByAnEventRow = GeneratedByAnEventRowThrough();
+
+    /// <summary>The one producer of the hatch on this build, by id: the quest card the
+    /// Byrdonis Nest's take deals, which adds the option at every rest site while it
+    /// is in the deck.</summary>
+    private const string ByrdonisEgg = "CARD.BYRDONIS_EGG";
 
     /// <summary>The same, on a run of the Hive or Glory alone: the acts list the
     /// ancient rows run on, admissible on the same footing and said to be so here.</summary>
@@ -275,6 +256,63 @@ public static class DecisionExcusals
         producers);
 
     private static readonly Excusal GeneratedByACharacterRow = GeneratedByACharacterRowThrough();
+
+    /// <summary>A point a <c>GeneratedCoverageTests</c> second-act ancient row reaches:
+    /// a whole first act on the default progression, on a seed hunted so the second
+    /// act opens on Darv, Pael or Tezcatara offering the relic, the option taken by
+    /// the relic's id and what the relic adds answered in the second act - a rest
+    /// option at its first rest site, a reward off its fights' loot - recorded through
+    /// the real recorder and replayed to parity on every merge. Named with the
+    /// producers the point is excused for where the sentence names one, so it is held
+    /// to the map.</summary>
+    private static Excusal GeneratedByASecondActAncientRowThrough(params string[] producers) => new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests second-act ancient row - a whole first act on the default progression, on " +
+        "a seed hunted so the second act opens on the ancient offering the relic, the option taken by the relic's id " +
+        "and what the relic adds answered in the second act - recorded through the real recorder and replayed to " +
+        "parity on every merge; the recording is generated rather than committed",
+        producers);
+
+    private static readonly Excusal GeneratedByASecondActAncientRow = GeneratedByASecondActAncientRowThrough();
+
+    /// <summary>A point a <c>GeneratedCoverageTests</c> second-act event row reaches: a
+    /// whole first act on the default progression and then the second act's first
+    /// question mark, on a seed hunted so it opens the event, the page answered by
+    /// key with the first act's purse and deck behind it, recorded through the real
+    /// recorder and replayed to parity on every merge.</summary>
+    private static readonly Excusal GeneratedByASecondActEventRow = new(
+        ExcusalClass.Generated,
+        "reached by a GeneratedCoverageTests second-act event row - a whole first act on the default progression and " +
+        "then the second act's first question mark, on a seed hunted so it opens this event, the page answered by " +
+        "key - recorded through the real recorder and replayed to parity on every merge; the recording is generated " +
+        "rather than committed");
+
+    /// <summary>The one producer of the card-removal reward a generated walk reaches,
+    /// by id: the power Forbidden Grimoire applies, which puts a removal on the loot
+    /// screen of every fight it was played in (<c>ForbiddenGrimoirePower.AfterCombatEnd</c>).
+    /// The card is an ancient of the Necrobinder's pool and Dusty Tome deals it, so the
+    /// second-act Dusty Tome row walks a Necrobinder.</summary>
+    private const string GrimoiresPower = "POWER.FORBIDDEN_GRIMOIRE_POWER";
+
+    /// <summary>The one event on this build that constructs no option, by id: the Fake
+    /// Merchant, whose decisions are purchases and a potion thrown.</summary>
+    private const string FakeMerchantEvent = "EVENT.FAKE_MERCHANT";
+
+    /// <summary>An event that constructs no option, and a seam only such an event
+    /// produces: the format projects an event from the option chosen in it and this one
+    /// offers none, so no recording projects it and no co-occurrence read names it
+    /// (<c>DecisionSurface.OptionlessEvents</c>). A <c>GeneratedCoverageTests</c> row
+    /// walks a whole first act into it on a seed hunted so the second act's first
+    /// question mark opens it, buys from its shelf through the recorded purchase and
+    /// replays to parity on every merge; what the row cannot do is be counted here.</summary>
+    private static Excusal NotProjectable(params string[] producers) => new(
+        ExcusalClass.NotProjectable,
+        "answered through purchases and a thrown potion, which the format projects as the shop kind and the verb, and " +
+        "never through an option, because the event constructs none (DecisionSurface.OptionlessEvents); an event is " +
+        "projected from the option chosen in it, so no recording projects this one and no co-occurrence read names " +
+        "it; the generated coverage rows' Fake Merchant row walks a whole first act into it at the second act's " +
+        "first question mark, buys from its shelf through the recorded purchase and replays to parity on every merge",
+        producers);
 
     /// <summary>
     /// The seams a character's own cards and potions open on a first act that no
@@ -712,6 +750,34 @@ public static class DecisionExcusals
     /// locked forms are above and the Doll Room's title-keyed dolls below.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> OptionsOfEventsOffTheRoute = new Dictionary<string, string[]>
     {
+        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
+        [
+            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.ACCEPT",
+            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT",
+        ],
+        ["EVENT.RELIC_TRADER"] =
+        [
+            "PROCEED",
+            "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
+            "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
+            "RELIC_TRADER.pages.INITIAL.options.TOP",
+        ],
+        ["EVENT.WAR_HISTORIAN_REPY"] =
+        [
+            "WAR_HISTORIAN_REPY.pages.INITIAL.options.UNLOCK_CAGE",
+            "WAR_HISTORIAN_REPY.pages.INITIAL.options.UNLOCK_CHEST",
+        ],
+    };
+
+    /// <summary>The options the second-act event rows take, by id under the event:
+    /// every option of the events the game allows only from the second act on or in
+    /// the second act alone, and the two a first act's line never holds the state for
+    /// at its mark - Zen Weaver's acupuncture at 250 gold, and Colorful Philosophers'
+    /// Ironclad, withheld from an Ironclad run and offered to the Defect's. The Doll
+    /// Room's title-keyed dolls are below.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsTakenBySecondActEventRows = new Dictionary<string, string[]>
+    {
+        ["EVENT.COLORFUL_PHILOSOPHERS"] = ["COLORFUL_PHILOSOPHERS.pages.INITIAL.options.IRONCLAD"],
         ["EVENT.CRYSTAL_SPHERE"] =
         [
             "CRYSTAL_SPHERE.pages.INITIAL.options.PAYMENT_PLAN",
@@ -722,11 +788,6 @@ public static class DecisionExcusals
             "DOLL_ROOM.pages.INITIAL.options.EXAMINE",
             "DOLL_ROOM.pages.INITIAL.options.RANDOM",
             "DOLL_ROOM.pages.INITIAL.options.TAKE_SOME_TIME",
-        ],
-        ["EVENT.GRAVE_OF_THE_FORGOTTEN"] =
-        [
-            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.ACCEPT",
-            "GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT",
         ],
         ["EVENT.POTION_COURIER"] =
         [
@@ -739,13 +800,6 @@ public static class DecisionExcusals
             "RANWID_THE_ELDER.pages.INITIAL.options.POTION",
             "RANWID_THE_ELDER.pages.INITIAL.options.RELIC",
         ],
-        ["EVENT.RELIC_TRADER"] =
-        [
-            "PROCEED",
-            "RELIC_TRADER.pages.INITIAL.options.BOTTOM",
-            "RELIC_TRADER.pages.INITIAL.options.MIDDLE",
-            "RELIC_TRADER.pages.INITIAL.options.TOP",
-        ],
         ["EVENT.STONE_OF_ALL_TIME"] =
         [
             "STONE_OF_ALL_TIME.pages.INITIAL.options.LIFT",
@@ -756,11 +810,6 @@ public static class DecisionExcusals
             "SYMBIOTE.pages.INITIAL.options.APPROACH",
             "SYMBIOTE.pages.INITIAL.options.KILL_WITH_FIRE",
         ],
-        ["EVENT.WAR_HISTORIAN_REPY"] =
-        [
-            "WAR_HISTORIAN_REPY.pages.INITIAL.options.UNLOCK_CAGE",
-            "WAR_HISTORIAN_REPY.pages.INITIAL.options.UNLOCK_CHEST",
-        ],
         ["EVENT.WELCOME_TO_WONGOS"] =
         [
             "WELCOME_TO_WONGOS.pages.INITIAL.options.BARGAIN_BIN",
@@ -768,7 +817,23 @@ public static class DecisionExcusals
             "WELCOME_TO_WONGOS.pages.INITIAL.options.LEAVE",
             "WELCOME_TO_WONGOS.pages.INITIAL.options.MYSTERY_BOX",
         ],
+        ["EVENT.ZEN_WEAVER"] = ["ZEN_WEAVER.pages.INITIAL.options.ARACHNID_ACUPUNCTURE"],
     };
+
+    /// <summary>The events the second-act event rows open, whose events the character
+    /// rows and the event rows do not: the ones the game allows only from the second
+    /// act on or in the second act alone. Colorful Philosophers and Zen Weaver are the
+    /// Hive's event rows' already.</summary>
+    private static readonly string[] EventsOpenedBySecondActEventRows =
+    [
+        "EVENT.CRYSTAL_SPHERE",
+        "EVENT.DOLL_ROOM",
+        "EVENT.POTION_COURIER",
+        "EVENT.RANWID_THE_ELDER",
+        "EVENT.STONE_OF_ALL_TIME",
+        "EVENT.SYMBIOTE",
+        "EVENT.WELCOME_TO_WONGOS",
+    ];
 
     /// <summary>The option of Darv the Ironclad's default-progression character row
     /// takes: the first its page offers on KNU8ZJM21D, where that row's second act
@@ -777,10 +842,10 @@ public static class DecisionExcusals
 
     /// <summary>The options of the one ancient no act opens on alone, by id, less the
     /// one the character row takes: Darv is dealt to an act after the first as the
-    /// run is generated and rolled as that act's opening ancient, so its options wait
-    /// on a walk through a first act on a seed whose second act rolls Darv offering
-    /// each, which the sixth stage hunts.</summary>
-    private static readonly IReadOnlyDictionary<string, string[]> OptionsOfAncientsOffTheRoute = new Dictionary<string, string[]>
+    /// run is generated and rolled as that act's opening ancient, so each is reached
+    /// by a second-act ancient row through a whole first act on a seed whose second
+    /// act rolls Darv offering it.</summary>
+    private static readonly IReadOnlyDictionary<string, string[]> OptionsTakenBySecondActAncientRows = new Dictionary<string, string[]>
     {
         ["EVENT.DARV"] =
         [
@@ -900,16 +965,12 @@ public static class DecisionExcusals
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs) @ AbstractModel.BeforeHandDraw",
         "card-prompt:CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter) @ CardModel.OnPlay",
         "card-prompt:CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs) @ ModifierModel.GenerateNeowOption",
-        "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions",
         "reward-kind:card @ ModifierModel.GenerateNeowOption",
-        "reward-kind:card_removal @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.AfterCombatEnd",
         "reward-kind:gold @ AbstractModel.TryModifyRewardsLate",
         "reward-kind:potion @ EventModel.Resume",
-        "reward-kind:relic @ ?",
         "reward-kind:relic @ AbstractModel.TryModifyRewardsLate",
         "reward-kind:relic @ EventModel.Resume",
-        "shop-kind:relic @ EventModel.BeforeEventStarted",
     ];
 
     /// <summary>
@@ -1002,14 +1063,24 @@ public static class DecisionExcusals
         "rewards:OfferCustom @ EventModel.Resume",
     ];
 
-    /// <summary>The rest options an act's ancient's relic adds, by option, relic and
-    /// the relic's title: the one seam class the ancient rows fall short of, for the
-    /// reason <see cref="BeyondTheLinesSurvival"/> gives.</summary>
+    /// <summary>The rest options an act's ancient's relic adds that no row reaches, by
+    /// option, relic and the relic's title: the one seam class the ancient rows fall
+    /// short of, for the reason <see cref="BeyondTheLinesSurvival"/> gives. Meat
+    /// Cleaver is Tanx's, and Tanx is Glory's, the third act's on the default
+    /// progression; Pael's Growth's clone and Pumpkin Candle's kindle are act 2's
+    /// ancients' and the second-act ancient rows reach them at the second act's first
+    /// rest site.</summary>
     private static readonly (string Option, string Relic, string AddedBy)[] RestOptionsBeyondTheLinesSurvival =
     [
-        ("CLONE", "RELIC.PAELS_GROWTH", "Pael's Growth"),
         ("COOK", "RELIC.MEAT_CLEAVER", "Meat Cleaver"),
-        ("KINDLE", "RELIC.PUMPKIN_CANDLE", "Pumpkin Candle"),
+    ];
+
+    /// <summary>The rest options act 2's ancients' relics add, by option and relic,
+    /// each reached by a second-act ancient row at the second act's first rest site.</summary>
+    private static readonly (string Option, string Relic)[] RestOptionsReachedBySecondActAncientRows =
+    [
+        ("CLONE", "RELIC.PAELS_GROWTH"),
+        ("KINDLE", "RELIC.PUMPKIN_CANDLE"),
     ];
 
     /// <summary>The seams answered only on the screens the headless host stands in for
@@ -1075,11 +1146,8 @@ public static class DecisionExcusals
         // Necrobinder ancient card that only Dusty Tome deals, which is Darv's; a
         // special card by a thief that dies holding a stolen card or by the Lantern Key
         // event, and a row claims each
-        excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = NotOnTheRoute(
-            "put on the loot screen by Forbidden Grimoire's power, an ancient card of the Necrobinder's pool that only " +
-            "Dusty Tome deals, on a Necrobinder run; the Necrobinder's character rows stop at the second act's opening " +
-            $"room and neither opens on Darv, and {DarvOffTheRoute}",
-            "POWER.FORBIDDEN_GRIMOIRE_POWER");
+        excusals[new DecisionPoint(DecisionKinds.RewardKind, "card_removal")] = GeneratedByASecondActAncientRowThrough(GrimoiresPower);
+        excusals[DecisionPoint.Seam("reward-kind:card_removal", "AbstractModel.AfterCombatEnd")] = GeneratedByASecondActAncientRowThrough(GrimoiresPower);
         excusals[new DecisionPoint(DecisionKinds.RewardKind, "special_card")] = GeneratedByTheSpecialCardRows(ThiefsPower, LanternKeyEvent);
         excusals[DecisionPoint.Seam("reward-kind:special_card", "AbstractModel.BeforeDeath")] = GeneratedByTheSpecialCardRows(ThiefsPower);
         excusals[DecisionPoint.Seam("reward-kind:special_card", "EventModel.GenerateInitialOptions")] = GeneratedByTheSpecialCardRows(LanternKeyEvent);
@@ -1098,11 +1166,12 @@ public static class DecisionExcusals
         // Candle kindles, Shovel digs, Meat Cleaver cooks, Byrdonis Egg hatches. Girya
         // and Shovel are the bag's and a walk on a seed whose bag front holds one
         // reaches its option; Pael's Wing is an ancient's and a walk on a run of that
-        // ancient's act alone reaches its sacrifice at the first fight's loot, where
-        // the three rest options an ancient's relic adds are a rest site away that
-        // the line does not survive to; a relic granted outside a recorded decision
-        // is state a replay of the recording never reproduces, so none is given to
-        // the walk's player any other way
+        // ancient's act alone reaches its sacrifice at the first fight's loot; the
+        // clone and the kindle are act 2's ancients' and a second-act row reaches
+        // each at the second act's first rest site, where the cook is Tanx's, in the
+        // third; the egg is the Byrdonis Nest's and the event row that takes it rests
+        // next; a relic granted outside a recorded decision is state a replay of the
+        // recording never reproduces, so none is given to the walk's player any other way
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "SACRIFICE")] = GeneratedByAnActFirstRow;
 
         foreach (var kind in new[] { "colorless_card", "relic", "potion" })
@@ -1122,9 +1191,16 @@ public static class DecisionExcusals
                 BeyondTheLinesSurvival(relic);
         }
 
-        excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = NotOnTheRoute(
-            "added by a Byrdonis Egg in the deck, which the Byrdonis Nest event deals",
-            "CARD.BYRDONIS_EGG");
+        foreach (var (option, relic) in RestOptionsReachedBySecondActAncientRows)
+        {
+            excusals[new DecisionPoint(DecisionKinds.RestOption, option)] = GeneratedByASecondActAncientRowThrough(relic);
+            excusals[new DecisionPoint(DecisionKinds.Seam, $"rest-option:{option} @ AbstractModel.TryModifyRestSiteOptions")] =
+                GeneratedByASecondActAncientRowThrough(relic);
+        }
+
+        excusals[new DecisionPoint(DecisionKinds.RestOption, "HATCH")] = GeneratedByAnEventRowThrough(ByrdonisEgg);
+        excusals[new DecisionPoint(DecisionKinds.Seam, "rest-option:HATCH @ AbstractModel.TryModifyRestSiteOptions")] =
+            GeneratedByAnEventRowThrough(ByrdonisEgg);
 
         // RestSiteOption.Generate adds the mend only to a run with more than one
         // player, and the recorder records singleplayer runs only
@@ -1146,6 +1222,11 @@ public static class DecisionExcusals
         foreach (var eventId in OptionsTakenByEventRowsOnAnActAlone.Keys)
         {
             excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = GeneratedByAnActFirstEventRow;
+        }
+
+        foreach (var eventId in EventsOpenedBySecondActEventRows)
+        {
+            excusals[new DecisionPoint(DecisionKinds.Event, eventId)] = GeneratedByASecondActEventRow;
         }
 
         foreach (var (eventId, reason) in EventsOffTheRoute)
@@ -1249,16 +1330,12 @@ public static class DecisionExcusals
             excusals[DecisionPoint.EventOption(identity[..space], identity[(space + 1)..])] = NotOnTheRoute(reason);
         }
 
-        foreach (var (identity, character) in OptionsWithheldFromTheWalksCharacter)
+        foreach (var (eventId, keys) in OptionsTakenBySecondActEventRows)
         {
-            var space = identity.IndexOf(' ', StringComparison.Ordinal);
-            excusals[DecisionPoint.EventOption(identity[..space], identity[(space + 1)..])] = new(
-                ExcusalClass.OfferedOnlyToAnotherCharacter,
-                $"withheld from a run of {character} by the event's own guard on the owner's card pool " +
-                "(DecisionSurface.OptionsWithheldFromTheCharacter), and the event rows that reach the event walk a " +
-                "run of the Hive alone as that character, while the character rows of the other four stop at the " +
-                "second act's opening room; retired by a walk of another character into the Hive's question marks - " +
-                "the sixth stage's - or the retail soak (excused 2026-09-18)");
+            foreach (var key in keys)
+            {
+                excusals[DecisionPoint.EventOption(eventId, key)] = GeneratedByASecondActEventRow;
+            }
         }
 
         // The three dolls are keyed by their relic's title with no relic set, so a
@@ -1273,14 +1350,19 @@ public static class DecisionExcusals
                 "can replay; stabilizing the spelling in the recorder and the driver is a later stage (excused 2026-09-17)");
         }
 
-        foreach (var (eventId, keys) in OptionsOfAncientsOffTheRoute)
+        foreach (var (eventId, keys) in OptionsTakenBySecondActAncientRows)
         {
             foreach (var key in keys)
             {
-                excusals[DecisionPoint.EventOption(eventId, key)] = NotOnTheRoute(
-                    $"an option of {eventId}, and {DarvOffTheRoute}");
+                excusals[DecisionPoint.EventOption(eventId, key)] = GeneratedByASecondActAncientRow;
             }
         }
+
+        // The Fake Merchant's shelf, and the rug and relics its fight's loot offers,
+        // which the map lists at no hook of the event's own
+        excusals[new DecisionPoint(DecisionKinds.Event, FakeMerchantEvent)] = NotProjectable();
+        excusals[DecisionPoint.Seam("shop-kind:relic", "EventModel.BeforeEventStarted")] = NotProjectable(FakeMerchantEvent);
+        excusals[DecisionPoint.Seam("reward-kind:relic", "?")] = NotProjectable(FakeMerchantEvent);
 
         foreach (var (ancientId, keys) in OptionsTakenByAncientRows)
         {

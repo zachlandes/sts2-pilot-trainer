@@ -81,6 +81,28 @@ public static partial class DecisionSurface
     /// <summary>The same, as (event id, option key) pairs.</summary>
     public static IReadOnlyList<(string EventId, string Key)> EventOptionKeys() => EventOptionWalk.Value;
 
+    /// <summary>
+    /// The events an act reaches whose code constructs no option and builds none at
+    /// runtime - the Fake Merchant on this build, whose <c>GenerateInitialOptions</c>
+    /// returns an empty array and which draws a shop of its own - by id. Such an
+    /// event is answered through purchases and a potion thrown, which the format
+    /// projects as the shop kind and the verb, and an event is projected from the
+    /// option chosen in it (<c>DecisionFacts.Of</c>), so no recording projects the
+    /// event and the seams only it produces are reached by no co-occurrence read:
+    /// the class <see cref="ExcusalClass.NotProjectable"/>, derived here and admitted
+    /// nowhere else. Read off the same walk that lists every other event's keys, so
+    /// a build that gives the event an option takes it off this list by itself.
+    /// </summary>
+    public static IReadOnlyList<string> OptionlessEvents() => OptionlessEventWalk.Value;
+
+    private static readonly Lazy<IReadOnlyList<string>> OptionlessEventWalk = new(() =>
+    {
+        var keyed = EventOptionKeys().Select(option => option.EventId).ToHashSet(StringComparer.Ordinal);
+        return Events()
+            .Where(eventId => eventId != ArchitectEventId && ActsReaching(eventId).Count > 0 && !keyed.Contains(eventId))
+            .ToList();
+    });
+
     private static readonly Lazy<IReadOnlyList<(string EventId, string Key)>> EventOptionWalk = new(() =>
     {
         EngineHost.Start();
@@ -1108,6 +1130,7 @@ public static partial class DecisionSurface
             case DecisionKinds.Event:
                 if (point.Identity == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
                 else if (ActsReaching(point.Identity).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
+                else if (OptionlessEvents().Contains(point.Identity, StringComparer.Ordinal)) yield return ExcusalClass.NotProjectable;
                 break;
             case DecisionKinds.EventOption:
                 var space = point.Identity.IndexOf(' ', StringComparison.Ordinal);
@@ -1142,6 +1165,11 @@ public static partial class DecisionSurface
                 }
 
                 if (seam.Producers.All(producer => producer == ArchitectEventId)) yield return ExcusalClass.ReachedByTheWin;
+                if (seam.Producers.Count > 0 && seam.Producers.All(producer => OptionlessEvents().Contains(producer, StringComparer.Ordinal)))
+                {
+                    yield return ExcusalClass.NotProjectable;
+                }
+
                 break;
             case DecisionKinds.CardPrompt:
                 var entryPoint = ChoiceEntryPoints.All().FirstOrDefault(method => ChoiceEntryPoints.QualifiedSignature(method) == point.Identity);

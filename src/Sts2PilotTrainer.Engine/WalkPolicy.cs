@@ -125,7 +125,9 @@ public sealed record WalkPolicy
     /// by the key the recorder writes - the option's text key, or the relic's id for an
     /// option that deals one - and the ask of a walk after an event: choosing it is
     /// the ask met. Every other page takes today's rule, or the way named by
-    /// <see cref="EventOptionsOnTheWay"/>.</summary>
+    /// <see cref="EventOptionsOnTheWay"/>. Null on a walk after the one event that
+    /// offers no option, the Fake Merchant, which draws a shop of its own: the walk
+    /// empties it the way it empties a merchant, and a purchase from it is the ask.</summary>
     public string? EventOptionKey { get; init; }
 
     /// <summary>Choose the option <see cref="EventOptionKey"/> names on every page
@@ -145,10 +147,15 @@ public sealed record WalkPolicy
     /// <summary>Make the ask in the act after the first: walk the first act through to
     /// the far side of its boss on the cheapest route, and only then take the
     /// ancient the next act opens on (<see cref="AncientRelic"/>) or route to its
-    /// first question mark (<see cref="EventId"/>). The one way to what a run reaches
-    /// only past its first act: Darv, who is rolled for an act after the first and
-    /// opened on by no act alone, and the events the game allows only from the second
-    /// act on.</summary>
+    /// first question mark (<see cref="EventId"/>), and make every other ask there
+    /// too - a rest option a relic of that ancient's adds, a reward a card of that
+    /// relic's earns. The one way to what a run reaches only past its first act:
+    /// Darv, who is rolled for an act after the first and opened on by no act alone,
+    /// the events the game allows only from the second act on, and what the relics
+    /// act 2's ancients deal add a rest site or a fight away. Nothing met on the
+    /// first act counts, because every decision there is the fixture's own, and a
+    /// run of one act is refused by name, because past its boss is the victory room
+    /// and not an act.</summary>
     public bool AskInTheNextAct { get; init; }
 
     /// <summary>The node types the route has to pass through on a walk that otherwise

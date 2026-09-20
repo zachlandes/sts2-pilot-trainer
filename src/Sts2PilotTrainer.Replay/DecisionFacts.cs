@@ -237,7 +237,7 @@ public static class DecisionFacts
 /// Why a point the build offers is allowed to stay unreached by the committed
 /// corpus, as a class the map can be held to.
 ///
-/// The first eight are derived: the coverage map says, from the game assembly and the
+/// The first nine are derived: the coverage map says, from the game assembly and the
 /// host's own tables, whether each is admissible for a point, and an excusal claiming
 /// one the map does not admit fails the bar. The last two are held by something
 /// else - a merge-gate row, or nothing yet - and are admissible only where no derived
@@ -291,6 +291,15 @@ public enum ExcusalClass
     /// recording of another character retires it.</summary>
     OfferedOnlyToAnotherCharacter,
 
+    /// <summary>An event that constructs no option - the Fake Merchant, which draws a
+    /// shop of its own - and the seams only such an event produces: its decisions are
+    /// purchases and a potion thrown, which the format projects as the shop kind and
+    /// the verb, and an event is projected from the option chosen in it, so no
+    /// recording projects the event and no co-occurrence read names it. A generated
+    /// walk buys from it and replays to parity all the same; what it cannot do is be
+    /// counted here.</summary>
+    NotProjectable,
+
     /// <summary>Reached by a generated recording on every merge, through the real
     /// recorder and replayed to parity; the recording is generated rather than
     /// committed, which is why the point is excused rather than counted.</summary>
@@ -309,7 +318,7 @@ public static class ExcusalClasses
     [
         ExcusalClass.NoProducerOnThisBuild, ExcusalClass.MultiplayerOnly, ExcusalClass.ScreenWithoutHeadlessHost,
         ExcusalClass.RetailOnlyTiming, ExcusalClass.NotReplayable, ExcusalClass.ReachedByTheWin, ExcusalClass.NotChoosable,
-        ExcusalClass.OfferedOnlyToAnotherCharacter,
+        ExcusalClass.OfferedOnlyToAnotherCharacter, ExcusalClass.NotProjectable,
     ];
 
     /// <summary>The classes admissible where the map derives none: held by a row, or
@@ -329,6 +338,7 @@ public static class ExcusalClasses
         ExcusalClass.ReachedByTheWin => "reached-by-the-win",
         ExcusalClass.NotChoosable => "not-choosable",
         ExcusalClass.OfferedOnlyToAnotherCharacter => "offered-only-to-another-character",
+        ExcusalClass.NotProjectable => "not-projectable",
         ExcusalClass.Generated => "generated",
         ExcusalClass.NotOnTheRoute => "not-on-the-route",
         _ => throw new ArgumentOutOfRangeException(nameof(excusalClass), excusalClass, "unknown excusal class"),
