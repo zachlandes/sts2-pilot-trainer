@@ -40,3 +40,15 @@ commands:
 ignore_patterns:
   - "*.lock"
   - "build/**"
+
+#
+# Trusted-only: no-mistakes honors this field solely from the default-branch
+# copy of this file, regardless of `allow_repo_commands`. It starts steering
+# reviews when this merges, not on the branch that introduces it.
+review:
+  path_instructions:
+    - path: "*"
+      instructions: |
+        Should this capability exist in this system at all?
+        If yes, does it fit the existing design or create a second way to do the same thing?
+        Name the owner and domain boundary, remove or justify every overlapping path, and recommend not building or removing the capability when its value does not justify a new concept.
