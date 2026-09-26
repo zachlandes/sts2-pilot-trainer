@@ -604,10 +604,16 @@ internal static class RetailSoak
     private static async Task FightRoomAsync(RoomType roomType, CancellationToken ct)
     {
         await FightAsync(roomType, ct);
+        // A lost fight puts the game-over screen up with the run still in progress;
+        // the drain after this takes it through its own handler
         await WaitHelper.Until(
-            () => NOverlayStack.Instance?.Peek() is NRewardsScreen || (NMapScreen.Instance?.IsOpen ?? false) ||
+            () => NOverlayStack.Instance?.Peek() is NRewardsScreen or NGameOverScreen || (NMapScreen.Instance?.IsOpen ?? false) ||
                   !RunManager.Instance.IsInProgress,
-            ct, ScreenSettleBudget, "neither the rewards nor the map came up after the fight");
+            ct, ScreenSettleBudget, "neither the rewards, the map nor the game-over screen came up after the fight");
+        if (NOverlayStack.Instance?.Peek() is NGameOverScreen)
+        {
+            Say($"the fight was lost {DescribeWhere()}; the run ends on the game-over screen recorder={RecorderState()}");
+        }
     }
 
     private static async Task FightAsync(RoomType roomType, CancellationToken ct)
@@ -767,8 +773,11 @@ internal static class RetailSoak
         if (holders.Count == 0) throw new UnknownStateException("the hand prompt is open with no visible holder to press");
 
         var pick = holders[0];
+        // Read before the press: the hand's own handler clears the holder's card
+        // node inside the press (NPlayerHand.RemoveCardHolder), so it is null after
+        var picked = pick.CardNode!.Model!.Id;
         pick.EmitSignal(NCardHolder.SignalName.Pressed, pick);
-        Say($"HAND PROMPT: pressed {pick.CardNode!.Model!.Id}");
+        Say($"HAND PROMPT: pressed {picked}");
         await RecordedFightRun.LetTheGameRun(0.3);
 
         if (hand.IsInCardSelection)
