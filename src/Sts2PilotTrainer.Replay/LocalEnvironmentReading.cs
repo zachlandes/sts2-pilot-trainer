@@ -218,3 +218,14 @@ public sealed record LocalRunReading
     [JsonPropertyName("acts")]
     public required IReadOnlyList<string> Acts { get; init; }
 }
+
+/// <summary>
+/// The other mods this game has active, said to the player and written to the log,
+/// never refused on. <see cref="EnvironmentPreflight.ActiveMods"/> is the one
+/// derivation and says why it is not a prerequisite.
+/// </summary>
+/// <param name="Names">Each other active mod's own declared name, in name order.
+/// What the player-facing sentence names.</param>
+/// <param name="Diagnostic">The longer account for the log: ids, versions, states,
+/// what each declares, and what the content hash cannot settle about them.</param>
+public sealed record ActiveModsAdvisory(IReadOnlyList<string> Names, string Diagnostic);

@@ -401,7 +401,8 @@ internal static class RunBrowserScreen
                 recording, RunLibraryStore.ReadProgress(), floor,
                 RecordedFightModule.Instance.FightsShownThisSitting(runId),
                 progressId: runId,
-                isPlayersOwn: isPlayersOwn);
+                isPlayersOwn: isPlayersOwn,
+                otherActiveMods: OtherActiveMods.Names());
 
             var id = runId;
             var mine = fromMyRuns;
@@ -455,6 +456,10 @@ internal static class RunBrowserScreen
         // Said once, beside the rows, where one of them would actually stand a player
         // somewhere - the way the shipped trainer says it beside its Enter button.
         if (view.NotSaved is { Length: > 0 } notSaved) facts.Add(notSaved);
+
+        // Another mod being active, said under the same rule and never as a reason:
+        // the rows stay offered, and the boundary check is what stops a changed fight.
+        if (view.OtherModsNote is { Length: > 0 } otherMods) facts.Add(otherMods);
 
         var id = runId;
         var mine = fromMyRuns;

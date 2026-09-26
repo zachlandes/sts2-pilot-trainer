@@ -105,110 +105,80 @@ public class EnvironmentPreflightTests
         Assert.Contains("has not been bounded", Diagnostic(result, "mod_environment"), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void AnAdditionalLoadedModRefusesEvenWhenTheContentHashMatches()
-    {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods = [new LocalMod("patcher", "Behavior Patcher", "1.0.0", false, "Loaded")],
-            });
-
-        Assert.False(result.Matches);
-        Assert.Contains("does not cover behaviour patches", Diagnostic(result, "loaded_mod_environment"),
-            StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AFailedModRefusesBecauseItsResourcesMayRemainLoaded()
-    {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods =
-                [
-                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
-                    new LocalMod("broken", "Broken Resource Mod", "1.0.0", false, "Failed"),
-                ],
-            });
-
-        Assert.False(result.Matches);
-        Assert.Contains("failed mod can leave resources loaded", Diagnostic(result, "loaded_mod_environment"),
-            StringComparison.Ordinal);
-    }
+    // ── Other active mods: a warning, never a prerequisite ─────────────────
 
     /// <summary>
-    /// The host failing on its own is our defect, not a compatibility problem.
-    ///
-    /// Every nonempty failure used to be reported as another active or failed mod,
-    /// which on a clean install with only Runmobile present sent the player off
-    /// to disable mods they do not have and blamed their game for ours.
+    /// Another mod being loaded is said and not refused on. Until 2026-09-20 this was
+    /// <c>loaded_mod_environment</c>, a prerequisite that refused play-from whenever
+    /// anything but the host was loaded; it refused on "loaded" where the thing that
+    /// matters is "did something", and the combat-boundary verification is what
+    /// measures that. So the prerequisites carry no such field, and the reading of the
+    /// list is an advisory beside them.
     /// </summary>
     [Fact]
-    public void TheHostFailingAloneIsReportedAsItsOwnFailure()
+    public void AnAdditionalLoadedModIsWarnedAboutAndNotRefused()
     {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed")],
-            });
+        var mods = new[] { new LocalMod("patcher", "Behavior Patcher", "1.0.0", false, "Loaded") };
 
-        Assert.False(result.Matches);
-        Assert.Equal(
-            "Runmobile failed to load. Restart the game and check again.",
-            Diagnostic(result, "loaded_mod_environment"));
+        var result = EnvironmentPreflight.Prerequisites(Environment(), Local() with { Mods = mods });
+        var advisory = EnvironmentPreflight.ActiveMods(mods);
+
+        Assert.True(result.Matches, Describe(result));
+        Assert.DoesNotContain(result.Fields, field => field.Field == "loaded_mod_environment");
+        Assert.NotNull(advisory);
+        Assert.Equal(["Behavior Patcher"], advisory.Names);
+        Assert.Contains("does not cover behaviour patches", advisory.Diagnostic, StringComparison.Ordinal);
+        Assert.Contains("combat-boundary verification", advisory.Diagnostic, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The same failure with somebody else's mod beside it is a compatibility
-    /// problem, and keeps the explanation that says why a hash cannot settle it.
-    /// </summary>
+    /// <summary>A failed mod can leave its resources loaded, so it is named like a
+    /// loaded one; still a warning.</summary>
     [Fact]
-    public void TheHostFailingBesideAnotherModIsStillReportedAsContamination()
+    public void AFailedModIsNamedInTheWarningBecauseItsResourcesMayRemainLoaded()
     {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods =
-                [
-                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
-                    new LocalMod("baselib", "BaseLib", "3.4.5", false, "Loaded"),
-                ],
-            });
+        var mods = new[]
+        {
+            new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
+            new LocalMod("broken", "Broken Resource Mod", "1.0.0", false, "Failed"),
+        };
 
-        Assert.False(result.Matches);
-        Assert.Contains(
-            "another active or failed mod",
-            Diagnostic(result, "loaded_mod_environment"),
-            StringComparison.Ordinal);
+        var result = EnvironmentPreflight.Prerequisites(Environment(), Local() with { Mods = mods });
+        var advisory = EnvironmentPreflight.ActiveMods(mods);
+
+        Assert.True(result.Matches, Describe(result));
+        Assert.NotNull(advisory);
+        Assert.Equal(["Broken Resource Mod"], advisory.Names);
+        Assert.Contains("failed mod can leave resources loaded", advisory.Diagnostic, StringComparison.Ordinal);
+        Assert.Contains("state: Failed", advisory.Diagnostic, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// A disabled mod beside a failed host is not another mod being there, so the
-    /// host's own failure is still what gets reported. Disabled is the state a player
-    /// reaches by doing exactly what the other sentence would have told them to do.
-    /// </summary>
+    /// <summary>The host is never one of the "other" mods, whatever state it is in,
+    /// and a disabled mod is not active. The names come out in name order so the
+    /// sentence reads the same whatever order the game discovered them in.</summary>
     [Fact]
-    public void ADisabledModBesideAFailedHostDoesNotBecomeContamination()
+    public void TheHostAndDisabledModsAreNotOtherActiveMods()
     {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods =
-                [
-                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
-                    new LocalMod("baselib", "BaseLib", "3.4.5", false, "Disabled"),
-                ],
-            });
+        var mods = new[]
+        {
+            new LocalMod("zeta", "Zeta Overlay", "1.0.0", false, "Loaded"),
+            new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
+            new LocalMod("baselib", "BaseLib", "3.4.5", false, "Disabled"),
+            new LocalMod("alpha", "Alpha Stats", "2.0.0", true, "AddedAtRuntime"),
+        };
 
-        Assert.Equal(
-            "Runmobile failed to load. Restart the game and check again.",
-            Diagnostic(result, "loaded_mod_environment"));
+        var advisory = EnvironmentPreflight.ActiveMods(mods);
+
+        Assert.NotNull(advisory);
+        Assert.Equal(["Alpha Stats", "Zeta Overlay"], advisory.Names);
+        Assert.DoesNotContain("BaseLib", advisory.Diagnostic, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheHostAloneWarnsAboutNothing()
+    {
+        Assert.Null(EnvironmentPreflight.ActiveMods(
+            [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded")]));
+        Assert.Null(EnvironmentPreflight.ActiveMods([]));
     }
 
     [Fact]
@@ -236,30 +206,24 @@ public class EnvironmentPreflightTests
         Assert.True(result.Matches, Describe(result));
     }
 
+    /// <summary>The list of what this machine has loaded is no prerequisite at all,
+    /// whatever is in it: the host's own declaration is held by the mod suite against
+    /// its manifest, and every other mod is the advisory's to name.</summary>
     [Fact]
-    public void TheKnownNonGameplayHostIsTheOnlyPermittedLoadedMod()
+    public void ThisMachinesLoadedModsAreNoPrerequisite()
     {
         var result = EnvironmentPreflight.Prerequisites(
             Environment(),
             Local() with
             {
-                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded")],
+                Mods =
+                [
+                    new LocalMod("Runmobile", "Runmobile", "0.1.0", true, "Loaded"),
+                    new LocalMod("rebalance", "Rebalance", "2.0", true, "Loaded"),
+                ],
             });
 
         Assert.True(result.Matches, Describe(result));
-    }
-
-    [Fact]
-    public void AGameplayClaimForTheHostRefuses()
-    {
-        var result = EnvironmentPreflight.Prerequisites(
-            Environment(),
-            Local() with
-            {
-                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", true, "Loaded")],
-            });
-
-        Assert.False(result.Matches);
     }
 
     [Fact]
@@ -782,8 +746,8 @@ public class EnvironmentPreflightTests
     ///
     /// The losing sequence: a player has three other mods installed and disabled, one
     /// of which declares itself gameplay-affecting. Their run is generated and played
-    /// with only Runmobile loaded. If the recorder writes every discovered mod,
-    /// <c>loaded_mod_environment</c> passes - it drops the disabled ones - while
+    /// with only Runmobile loaded. If the recorder writes every discovered mod, the
+    /// active-mods advisory names nothing - it drops the disabled ones - while
     /// <c>mod_environment</c> refuses the recording for a mod that never ran, and the
     /// gate fails on a statement that is not true of the run.
     /// </summary>
@@ -808,7 +772,7 @@ public class EnvironmentPreflightTests
             sourceKind: "native");
 
         Assert.True(Field(result, "mod_environment").Matches, Describe(result));
-        Assert.True(Field(result, "loaded_mod_environment").Matches, Describe(result));
+        Assert.Null(EnvironmentPreflight.ActiveMods(discovered));
 
         // And the count stays a count of what was loaded, so "we identified one of one"
         // is still distinguishable from "we identified one".

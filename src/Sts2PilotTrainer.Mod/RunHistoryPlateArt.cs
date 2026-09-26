@@ -40,6 +40,10 @@ internal static class RunHistoryPlateArt
     /// <summary>The step from one line to the next, as a multiple of its own size.</summary>
     private const float LineStep = 1.6f;
 
+    /// <summary>A label's own line box, in the type size; the rest of
+    /// <see cref="LineStep"/> is the gap under it.</summary>
+    private const float LabelLineRatio = 1.4f;
+
     /// <summary>How far in from the pane's left edge the plate's rows start.</summary>
     private const float Inset = 8f;
 
@@ -74,10 +78,10 @@ internal static class RunHistoryPlateArt
             // says the run is recorded.
             var colour = plate.Mark == PlateMark.OtherVersion ? LibraryPalette.Red : LibraryPalette.Muted;
             if (plate.Mark is { } mark) AddMark(root, mark, new Vector2(Inset, y), text.Body.Size, colour);
-            AddLabel(
+            y += AddLabel(
                 root, head, new Vector2(Inset + (text.Body.Size * 1.5f), y),
                 width - Inset - (text.Body.Size * 1.5f), colour, text.Body);
-            y += text.Body.Size * LineStep;
+            y += text.Body.Size * (LineStep - LabelLineRatio);
         }
 
         for (var index = 0; index < rows.Count; index++)
@@ -90,20 +94,30 @@ internal static class RunHistoryPlateArt
 
         if (plate.Reason is { Length: > 0 } why)
         {
-            AddLabel(
+            y += AddLabel(
                 root, why, new Vector2(Inset, y), width - (Inset * 2f),
                 LibraryPalette.Muted, text.Body);
-            y += text.Body.Size * LineStep;
+            y += text.Body.Size * (LineStep - LabelLineRatio);
         }
 
         // Said once, beside the rows, and never as a head line. The plate hands it over
         // only where one of its rows would actually stand a player somewhere.
         if (plate.NotSaved is { Length: > 0 } notSaved)
         {
-            AddLabel(
+            y += AddLabel(
                 root, notSaved, new Vector2(Inset, y), width - (Inset * 2f),
                 LibraryPalette.Muted, text.Body);
-            y += text.Body.Size * LineStep;
+            y += text.Body.Size * (LineStep - LabelLineRatio);
+        }
+
+        // The other-mods warning, under the same rule and in the same supporting ink:
+        // a fact about this game, never a reason a row above is refused
+        if (plate.OtherModsNote is { Length: > 0 } otherMods)
+        {
+            y += AddLabel(
+                root, otherMods, new Vector2(Inset, y), width - (Inset * 2f),
+                LibraryPalette.Muted, text.Body);
+            y += text.Body.Size * (LineStep - LabelLineRatio);
         }
 
         root.Size = new Vector2(width, y);
@@ -196,16 +210,23 @@ internal static class RunHistoryPlateArt
         root.AddChild(art);
     }
 
-    private static void AddLabel(
+    /// <summary>
+    /// One line of the plate, measured wrapped in its own font so a sentence longer
+    /// than the plate is wide takes the lines it needs rather than being clipped to one.
+    /// </summary>
+    /// <returns>The height the label took, for the next line to start under.</returns>
+    private static float AddLabel(
         Control root, string line, Vector2 at, float width, Color colour, GameTextStyle style)
     {
+        var oneLine = style.Size * LabelLineRatio;
+        var height = Math.Max(oneLine, style.WrappedHeight(line, width, oneLine));
         var label = new Label
         {
             Name = "RunmobilePlateLine",
             Text = line,
             Position = at,
             CustomMinimumSize = new Vector2(width, 0f),
-            Size = new Vector2(width, style.Size * 1.4f),
+            Size = new Vector2(width, height),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
@@ -213,5 +234,6 @@ internal static class RunHistoryPlateArt
         style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", colour);
         root.AddChild(label);
+        return height;
     }
 }

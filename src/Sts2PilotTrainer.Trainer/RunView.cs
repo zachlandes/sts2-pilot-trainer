@@ -162,7 +162,8 @@ public sealed record RunView(
     RunReading Reading,
     string FloorNote,
     string? NotSaved,
-    string? BookmarkNote = null)
+    string? BookmarkNote = null,
+    string? OtherModsNote = null)
 {
     /// <summary>The deck at the selected position's start, as the tiles the pane draws,
     /// or null where the recording says nothing there. A gap, never a zero.</summary>
@@ -183,10 +184,13 @@ public sealed record RunView(
     /// <param name="progressId">The library entry whose progress this view displays.</param>
     /// <param name="isPlayersOwn">Whether the library knows this recording is the
     /// player's own, which is what decides who the bookmark sentence names.</param>
+    /// <param name="otherActiveMods">The names of the other mods this game has active,
+    /// read by the host. Warned about beside the rows, and never a reason a row is
+    /// refused: the check at the start of the fight is what stops a changed run.</param>
     public static RunView For(
         ReplayManifest recording, RunProgress progress, int? selectedFloor = null,
         IReadOnlyCollection<int>? shownThisSitting = null, string? progressId = null,
-        bool isPlayersOwn = false)
+        bool isPlayersOwn = false, IReadOnlyList<string>? otherActiveMods = null)
     {
         var progressKey = progressId ?? recording.RunId;
         var positions = PositionsIn(recording);
@@ -231,7 +235,10 @@ public sealed record RunView(
             // recording has a credit, so a note here can always name somebody.
             selected is { Bookmarked: true }
                 ? LibraryCopy.BookmarkedFight(RecordingIdentity.Credit(recording, isPlayersOwn))
-                : null);
+                : null,
+            // Under the same rule as the not-saved sentence: a warning about playing is
+            // said only where a row would let somebody play
+            rows.Any(row => row.Enabled) ? LibraryCopy.OtherModsActive(otherActiveMods ?? []) : null);
     }
 
     /// <summary>

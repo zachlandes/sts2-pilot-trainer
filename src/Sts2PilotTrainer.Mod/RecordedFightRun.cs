@@ -279,6 +279,7 @@ internal static class RecordedFightRun
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
+        OtherActiveMods.LogAtPlayFrom();
         _credit = credit;
         _progressRunId = progressRunId ?? recording.RunId;
         _progressFloor = progressFloor ?? plan.Floor;

@@ -38,6 +38,7 @@ internal static partial class Commands
         Console.WriteLine($"progress : {progress} - {LocalEnvironment.OriginOf(progress)}");
         Console.WriteLine();
         PrintFields(result);
+        PrintActiveMods(EnvironmentPreflight.ActiveMods(reading.Mods));
 
         Console.WriteLine();
         Console.WriteLine("acts this build ships:");
@@ -213,6 +214,19 @@ internal static partial class Commands
             Console.WriteLine($"  {mark} {field.Field,-22} manifest={field.Expected,-30} local={field.Actual}");
             if (!field.Matches) Console.WriteLine($"       {field.Diagnostic}");
         }
+    }
+
+    /// <summary>
+    /// The other mods this game has active, as a note under the fields rather than a
+    /// field: it has no mark because it has no outcome. The run is constructed with them
+    /// loaded and the combat-boundary verification is what refuses a fight one of them
+    /// changed; <see cref="EnvironmentPreflight.ActiveMods"/> owns the reason.
+    /// </summary>
+    private static void PrintActiveMods(ActiveModsAdvisory? advisory)
+    {
+        if (advisory is null) return;
+        Console.WriteLine($"  note {"other_active_mods",-22} {string.Join(", ", advisory.Names)}");
+        Console.WriteLine($"       {advisory.Diagnostic}");
     }
 
     internal static int Replay(string[] args)

@@ -56,6 +56,17 @@ public static class Preflight
     public static PreflightResult EvaluateStartedRun(EnvironmentIdentity expected) =>
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
+    /// <summary>
+    /// Which other mods this game has active, read live, as the warning a play-from
+    /// surface says beside its rows.
+    ///
+    /// Not a gate and read by none: <see cref="Evaluate"/> ignores the list, and the
+    /// combat-boundary verification is what refuses a fight another mod changed.
+    /// <see cref="EnvironmentPreflight.ActiveMods"/> owns the rule and the reason.
+    /// </summary>
+    public static ActiveModsAdvisory? ActiveMods() =>
+        EnvironmentPreflight.ActiveMods(LocalEnvironment.ReadMods());
+
     /// <summary>Both gates, which a host must ask of a live game.</summary>
     public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected, string sourceKind = "vod") =>
         EnvironmentPreflight.Combine(

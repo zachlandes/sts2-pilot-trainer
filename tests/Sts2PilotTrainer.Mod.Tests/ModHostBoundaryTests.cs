@@ -357,34 +357,17 @@ public sealed class ModHostBoundaryTests
             Assert.Equal(declared, AssemblyName.GetAssemblyName(Path.Combine(installed, "Runmobile.dll")).Name);
             Assert.Equal(RunmobileMod.ModId, declared);
 
-            var expected = RecordedFightModule.Instance.Recording.Environment;
-            var preflight = EnvironmentPreflight.Prerequisites(
-                expected,
-                new LocalPrerequisites
-                {
-                    BuildVersion = expected.BuildVersion.Value,
-                    BuildDateUtc = expected.BuildDateUtc.Value,
-                    ContentHash = expected.ContentHash.Value,
-                    Mods =
-                    [
-                        new LocalMod(
-                            declared,
-                            manifest.GetProperty("name").GetString()!,
-                            manifest.GetProperty("version").GetString()!,
-                            manifest.GetProperty("affects_gameplay").GetBoolean(),
-                            "Loaded"),
-                    ],
-                    Unlocks = new UnlockInventory
-                    {
-                        Origin = "complete test inventory",
-                        FromPlayerProfile = false,
-                        Categories = [],
-                    },
-                    LockedActs = [],
-                });
-
-            Assert.True(
-                preflight.Fields.Single(field => field.Field == "loaded_mod_environment").Matches);
+            // The installed host, loaded alone, is the one mod the active-mods warning
+            // never names; a rename would make it warn about itself
+            Assert.Null(EnvironmentPreflight.ActiveMods(
+            [
+                new LocalMod(
+                    declared,
+                    manifest.GetProperty("name").GetString()!,
+                    manifest.GetProperty("version").GetString()!,
+                    manifest.GetProperty("affects_gameplay").GetBoolean(),
+                    "Loaded"),
+            ]));
         }
         finally
         {

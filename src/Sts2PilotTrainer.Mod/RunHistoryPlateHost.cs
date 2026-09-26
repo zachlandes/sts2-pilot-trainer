@@ -225,7 +225,10 @@ internal static class RunHistoryPlateHost
             SubmitAvailable: RunLibrary.SharingAvailable,
             LastFloor: last?.Floor,
             LastFloorKind: last?.Kind ?? FloorKind.Unknown,
-            HasOtherFloors: positions.Count > 1);
+            HasOtherFloors: positions.Count > 1)
+        {
+            OtherActiveMods = OtherActiveMods.Names(),
+        };
     }
 
     /// <summary>

@@ -87,6 +87,12 @@ internal static partial class Commands
             "creator         : " +
             (credit?.Label ?? "none - a generated fixture, with nobody to attribute it to"));
         Console.WriteLine($"progress        : {progress} - {LocalEnvironment.OriginOf(progress)}");
+        if (Engine.Preflight.ActiveMods() is { } otherMods)
+        {
+            // Said, never refused on: the boundary proof below is what catches a fight
+            // one of them changed
+            Console.WriteLine($"other mods      : {string.Join(", ", otherMods.Names)} - {otherMods.Diagnostic}");
+        }
 
         var profileBefore = ProfileReading(recording.Environment);
         var sandboxBefore = SandboxDigest();

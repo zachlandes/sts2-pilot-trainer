@@ -420,6 +420,32 @@ public static class LibraryCopy
     public const string NotSaved =
         "Playing from a run is not saved and does not count toward your run history.";
 
+    /// <summary>
+    /// Said once, beside the row that plays from a run, where this game has another
+    /// mod active. A warning and never a refusal.
+    ///
+    /// It names the mods by the names they declare, states the one fact - nothing here
+    /// has established what they do to a fight - and says what happens if one changed
+    /// it: the check at the start of the fight stops rather than stands the player in
+    /// the wrong one. It gives no instruction, because there is nothing the player must
+    /// do. The mod is named as the player installed it, not as the trainer.
+    ///
+    /// <para>Drawn under the same rule as <see cref="NotSaved"/>: only where a play-from
+    /// row is actually offered.</para>
+    /// </summary>
+    /// <returns>Null where no other mod is active.</returns>
+    public static string? OtherModsActive(IReadOnlyList<string> names)
+    {
+        if (names.Count == 0) return null;
+        var listed = names.Count == 1
+            ? names[0]
+            : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
+        var verb = names.Count == 1 ? "is" : "are";
+        return $"{listed} {verb} active alongside {MainMenuRow}. Nothing here has established what " +
+               $"{(names.Count == 1 ? "it does" : "they do")} to a fight, so if the fight differs from the " +
+               $"recording's, {MainMenuRow} stops at its start rather than stand you in the wrong one.";
+    }
+
     // ── The run-history plate ──────────────────────────────────────────────
 
     /// <summary>

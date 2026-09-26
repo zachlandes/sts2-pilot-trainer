@@ -529,6 +529,36 @@ public sealed class RunViewTests
     }
 
     /// <summary>
+    /// Another mod being active is warned about beside the rows under the not-saved
+    /// sentence's own rule, and refuses nothing: every row the view offers with no
+    /// other mod it offers with one. What stops a fight a mod changed is the check at
+    /// the boundary, which this surface says so a player knows what to expect.
+    /// </summary>
+    [Fact]
+    public void AnotherActiveModIsWarnedAboutBesideTheRowsAndRefusesNone()
+    {
+        var alone = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
+        var withOne = RunView.For(
+            ThreeFloors(), RunProgress.Empty, selectedFloor: 2, otherActiveMods: ["BaseLib"]);
+        var withTwo = RunView.For(
+            ThreeFloors(), RunProgress.Empty, selectedFloor: 2, otherActiveMods: ["BaseLib", "ModConfig"]);
+        var nothingOffered = RunView.For(Recording(), RunProgress.Empty, otherActiveMods: ["BaseLib"]);
+
+        Assert.Null(alone.OtherModsNote);
+        Assert.Equal(
+            "BaseLib is active alongside Runmobile. Nothing here has established what it does to a fight, " +
+            "so if the fight differs from the recording's, Runmobile stops at its start rather than stand " +
+            "you in the wrong one.",
+            withOne.OtherModsNote);
+        Assert.StartsWith("BaseLib and ModConfig are active alongside Runmobile. Nothing here has established " +
+            "what they do to a fight", withTwo.OtherModsNote, StringComparison.Ordinal);
+        Assert.Equal(
+            alone.Rows.Select(row => (row.Label, row.Enabled, row.Reason)),
+            withOne.Rows.Select(row => (row.Label, row.Enabled, row.Reason)));
+        Assert.Null(nothingOffered.OtherModsNote);
+    }
+
+    /// <summary>
     /// Every row about one floor carries what that floor held, so the drawing can mark
     /// it without reading the row's sentence. Start the run over is about no one floor
     /// and carries nothing.

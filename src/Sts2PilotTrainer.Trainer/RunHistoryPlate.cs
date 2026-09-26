@@ -84,7 +84,12 @@ public sealed record RunHistoryFacts(
     bool SubmitAvailable,
     int? LastFloor,
     FloorKind LastFloorKind,
-    bool HasOtherFloors);
+    bool HasOtherFloors)
+{
+    /// <summary>The names of the other mods this game has active, read by the host.
+    /// Warned about beside the rows and never a reason a row is refused.</summary>
+    public IReadOnlyList<string> OtherActiveMods { get; init; } = [];
+}
 
 /// <summary>
 /// The plate under the game's own run-history pane: what this run's recording is, and
@@ -116,12 +121,16 @@ public sealed record RunHistoryFacts(
 /// stand a player somewhere - the way the shipped trainer says it beside its Enter
 /// button. Never a head line, and never on a plate whose rows are all refused, where it
 /// would read as the reason they are.</param>
+/// <param name="OtherModsNote">The warning that another mod is active, under the same
+/// rule as <paramref name="NotSaved"/>, or null where none is or no row would play.
+/// A warning and never a refusal.</param>
 public sealed record RunHistoryPlate(
     PlateMark? Mark,
     string? Head,
     IReadOnlyList<PlateRow> Rows,
     string? Reason,
-    string? NotSaved)
+    string? NotSaved,
+    string? OtherModsNote = null)
 {
     /// <summary>
     /// The plate for one run of the player's history, or null when there is nothing to
@@ -171,7 +180,9 @@ public sealed record RunHistoryPlate(
             RowsFor(facts, floorEnabled: facts.LastFloor is not null, submitEnabled: submittable),
             facts.Rewound ? LibraryCopy.PlateRewound
                 : submittable ? null : LibraryCopy.PlateSubmitComing,
-            facts.LastFloor is not null ? LibraryCopy.NotSaved : null);
+            facts.LastFloor is not null ? LibraryCopy.NotSaved : null,
+            // Under the not-saved sentence's own rule: only where a row would play
+            facts.LastFloor is not null ? LibraryCopy.OtherModsActive(facts.OtherActiveMods) : null);
     }
 
     private static RunHistoryPlate Refused(

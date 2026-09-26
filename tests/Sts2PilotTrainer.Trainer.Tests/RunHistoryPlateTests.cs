@@ -76,6 +76,25 @@ public sealed class RunHistoryPlateTests
         Assert.Null(refused.NotSaved);
     }
 
+    /// <summary>
+    /// Another mod being active is a warning under the not-saved sentence's own rule
+    /// and never a reason: the rows a plate offers without it, it offers with it.
+    /// </summary>
+    [Fact]
+    public void AnotherActiveModIsWarnedAboutUnderTheRowsAndRefusesNone()
+    {
+        var alone = RunHistoryPlate.For(Facts())!;
+        var warned = RunHistoryPlate.For(Facts() with { OtherActiveMods = ["ModConfig"] })!;
+        var refused = RunHistoryPlate.For(Facts(keptOnly: true) with { OtherActiveMods = ["ModConfig"] })!;
+
+        Assert.Null(alone.OtherModsNote);
+        Assert.Equal(LibraryCopy.OtherModsActive(["ModConfig"]), warned.OtherModsNote);
+        Assert.Null(warned.Head);
+        Assert.Equal(alone.Rows, warned.Rows);
+        Assert.Equal(alone.Reason, warned.Reason);
+        Assert.Null(refused.OtherModsNote);
+    }
+
     /// <summary>Rows name floors, never fights. No player has the fight-number concept
     /// and the game's own screens count floors.</summary>
     [Fact]

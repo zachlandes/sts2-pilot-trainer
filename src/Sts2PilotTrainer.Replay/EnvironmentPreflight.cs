@@ -77,7 +77,6 @@ public static class EnvironmentPreflight
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
             EvaluateSourceMods(expected.Mods.Value, sourceKind),
-            EvaluateLocalMods(actual.Mods),
         };
 
         fields.AddRange(EvaluatePatchRoster(expected.Mods.Value, sourceKind));
@@ -419,9 +418,8 @@ public static class EnvironmentPreflight
                 "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
                 "would produce a different run under the same seed.");
 
-    /// <summary>The mod id the in-game host ships under. Its own failure is a
-    /// different problem from somebody else's mod being present, and telling them
-    /// apart is what stops a player being sent to disable mods they do not have.
+    /// <summary>The mod id the in-game host ships under. Told apart from every other
+    /// mod so the advisory names the others and never this one.
     ///
     /// It is the shell's id, not the recorded-fight journey's: the recorded-fight journey is one
     /// module inside the mod a player installs, and the mod list only ever shows the
@@ -434,53 +432,47 @@ public static class EnvironmentPreflight
     /// shown to anybody.</summary>
     private const string HostModName = "Runmobile";
 
-    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods)
+    /// <summary>
+    /// Which other mods this game has active, as a warning to play under rather than a
+    /// prerequisite to refuse on.
+    ///
+    /// Until 2026-09-20 this was <c>loaded_mod_environment</c>, a field of
+    /// <see cref="Prerequisites"/> that refused play-from whenever any mod but the host
+    /// was loaded. It refused on "loaded" where the thing that matters is "did
+    /// something", and play-from already has the detector for that: the combat-boundary
+    /// verification compares the complete hidden-state digest before anybody is handed
+    /// the fight, and a mod that changed the run is refused there, in front of the
+    /// player, with the engine's own sentence. Refusing on the list as well shut out
+    /// every player with a cosmetic mod enabled and established nothing the boundary
+    /// does not.
+    ///
+    /// <para>So this is not a field and has no outcome. It names the other active mods
+    /// for the player and keeps the longer account for the log, and nothing that
+    /// decides whether a run can be constructed reads it. What a recording was played
+    /// under stays a prerequisite - <c>mod_environment</c> and <c>patched_members</c>
+    /// judge the recording, not this machine, and they are the submission gate.</para>
+    /// </summary>
+    /// <returns>Null where the host is the only active mod, or none is.</returns>
+    public static ActiveModsAdvisory? ActiveMods(IReadOnlyList<LocalMod> mods)
     {
-        var active = mods.Where(mod => mod.Loaded).ToList();
-        var hostIsTheOnlyActiveMod = active.Count == 1 &&
-                                     active[0] is
-                                     {
-                                         Id: HostModId,
-                                         Name: HostModName,
-                                         AffectsGameplay: false,
-                                         State: "Loaded",
-                                     };
-        var permitted = hostIsTheOnlyActiveMod || active.Count == 0;
+        // A failed mod counts as active: a failed load can leave its resources loaded,
+        // which is the same unknown as a loaded one
+        var others = mods
+            .Where(mod => mod.Loaded && mod.Id != HostModId)
+            .OrderBy(mod => mod.Name, StringComparer.Ordinal)
+            .ToList();
+        if (others.Count == 0) return null;
 
-        // What is actually wrong, kept apart. A game whose only active mod is this one,
-        // failed, has nothing to do with compatibility: telling that player to disable
-        // every mod except Runmobile sends them to fix somebody else's mod when
-        // the only broken thing is ours, and blames a clean install for our defect.
-        var otherModsPresent = active.Any(mod => mod.Id != HostModId);
-        var hostFailedAlone = !otherModsPresent &&
-                              active.Count > 0 &&
-                              !active.Any(mod => mod is { Id: HostModId, State: "Loaded" });
+        var listed = string.Join("; ", others.Select(mod =>
+            $"{mod.Name} ({mod.Id}, {mod.Version}, state: {mod.State}, " +
+            $"affects gameplay: {mod.AffectsGameplay})"));
 
-        var actual = mods.Count == 0
-            ? "none discovered"
-            : string.Join("; ", mods.Select(mod =>
-                $"{mod.Name} ({mod.Id}, {mod.Version}, state: {mod.State}, " +
-                $"affects gameplay: {mod.AffectsGameplay})"));
-
-        return new PreflightField(
-            "loaded_mod_environment",
-            $"no active local mods except this loaded non-gameplay {HostModName} host",
-            actual,
-            permitted,
-            permitted ? null : Refusal());
-
-        string Refusal()
-        {
-            if (hostFailedAlone) return $"{HostModName} failed to load. Restart the game and check again.";
-
-            // Everything else is another mod actually being there - or, unreachably for
-            // a correctly shipped build, this host loading while declaring itself
-            // something other than the non-gameplay one its manifest contract requires.
-            return "The running game has another active or failed mod. Its behaviour cannot be established as " +
-                   "identical to the recording from the content hash, because a failed mod can leave resources " +
-                   "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
-                   $"non-gameplay. Disable every mod except {HostModName}, restart the game, and check again.";
-        }
+        return new ActiveModsAdvisory(
+            [.. others.Select(mod => mod.Name)],
+            $"Active beside the host: {listed}. Their behaviour cannot be established from the content " +
+            "hash, which does not cover behaviour patches or mods that declare themselves non-gameplay, " +
+            "and a failed mod can leave resources loaded. The run is constructed anyway; the " +
+            "combat-boundary verification is what refuses a fight one of them changed.");
     }
 
     private static PreflightField EvaluateSourceMods(ModEnvironment mods, string sourceKind)
