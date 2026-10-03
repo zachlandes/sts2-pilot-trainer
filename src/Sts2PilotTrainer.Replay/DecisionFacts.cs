@@ -306,8 +306,8 @@ public enum ExcusalClass
     Generated,
 
     /// <summary>No committed recording reaches it and no generated walk yet does: a
-    /// placeholder the retail soak or a later walk retires, and not an acceptable
-    /// excuse at release for a point a player can reach.</summary>
+    /// gap in recorded-route evidence, which the release note answers with the
+    /// mechanism evidence or missing proof for the point (docs/release-bar.md).</summary>
     NotOnTheRoute,
 }
 
