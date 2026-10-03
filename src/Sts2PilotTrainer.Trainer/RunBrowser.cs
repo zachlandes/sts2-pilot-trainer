@@ -309,12 +309,12 @@ public sealed record RunBrowser(
         status.Validate();
         return status.State switch
         {
-            PublicationState.Processing => new("Processing. This run is not published yet.", null, false),
-            PublicationState.Published => new("This run is published.", status.PublishedRun!.Code, true),
-            PublicationState.Refused => new($"This run was not published. {status.Reason}", null, false),
-            PublicationState.Failed => new($"Publication could not finish. {status.Reason}", null, false),
-            PublicationState.Expired => new($"Publication expired. {status.Reason}", null, false),
-            _ => throw new ShareProtocolException(SharingError.Malformed, "Unknown publication state."),
+            PublicationState.Processing => new("Processing. Not published yet.", null, false),
+            PublicationState.Published => new("Published.", status.PublishedRun!.Code, true),
+            PublicationState.Refused => new($"Not published. {status.Reason}", null, false),
+            PublicationState.Failed => new($"Couldn't finish publishing. {status.Reason}", null, false),
+            PublicationState.Expired => new($"Publishing timed out. {status.Reason}", null, false),
+            _ => throw new ShareProtocolException(SharingError.Malformed, "Status unknown."),
         };
     }
 

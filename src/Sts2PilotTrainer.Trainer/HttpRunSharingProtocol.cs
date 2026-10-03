@@ -18,7 +18,7 @@ public sealed partial class HttpRunSharingApi
         if (protocol.MinimumVersion > RunSharingProtocol.Version || protocol.MaximumVersion < RunSharingProtocol.Version ||
             protocol.MinimumVersion <= 0 || protocol.MinimumVersion > protocol.MaximumVersion || protocol.MaximumRequestBytes <= 0)
             throw new ShareProtocolException(SharingError.UnsupportedClient,
-                "This sharing service requires a different Runmobile sharing protocol.");
+                "Update Runmobile to keep sharing runs.");
         return protocol;
     }
 
@@ -28,7 +28,7 @@ public sealed partial class HttpRunSharingApi
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         var policy = await Read<SharingPolicy>(response, cancellationToken).ConfigureAwait(false);
         if (policy.Branches is null || policy.Branches.Count != 2)
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned an invalid branch policy.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back settings Runmobile couldn't read. Try again later.");
         _ = policy.For(RunBranch.Public);
         _ = policy.For(RunBranch.Beta);
         return policy;
@@ -47,7 +47,7 @@ public sealed partial class HttpRunSharingApi
         var before = (await PolicyAsync(cancellationToken).ConfigureAwait(false)).For(branch);
         before.RequireAdmission(recording.Environment, before.Generation, clock());
         if (!await localPublicationGate(cancellationToken).ConfigureAwait(false))
-            throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
+            throw new ShareValidationException("This run didn't pass Runmobile's checks, so it wasn't shared.");
         var after = (await PolicyAsync(cancellationToken).ConfigureAwait(false)).For(branch);
         after.RequireAdmission(recording.Environment, before.Generation, clock());
         return await AdmitAsync(manifestJson, submission, branch, before.Generation, cancellationToken).ConfigureAwait(false);
@@ -60,7 +60,7 @@ public sealed partial class HttpRunSharingApi
         submission.Validate();
         RequirePayloadSize(manifestJson);
         if (!Enum.IsDefined(branch) || policyGeneration <= 0)
-            throw new ShareProtocolException(SharingError.Malformed, "A branch and policy generation are required.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing couldn't start. Try again later.");
         var protocol = await NegotiateAsync(cancellationToken).ConfigureAwait(false);
         var identity = SharedRunIdentity.For(manifestJson, submission);
         using var request = Versioned(HttpMethod.Post, "runs");
@@ -72,7 +72,7 @@ public sealed partial class HttpRunSharingApi
         var status = await Read<SubmissionStatus>(response, cancellationToken).ConfigureAwait(false);
         status.Validate();
         if (status.Receipt.ShareId != identity || status.Receipt.Branch != branch)
-            throw new ShareProtocolException(SharingError.Malformed, "The receipt is for a different submission.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing mixed up this run with another. Try again later.");
         if (status.PublishedRun is { } shared)
             SharedRunIdentity.RequireMatch(shared, manifestJson, submission);
         return status;
@@ -82,13 +82,13 @@ public sealed partial class HttpRunSharingApi
         SubmissionReceipt receipt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(receipt.ReceiptId) || receipt.ReceiptId.Length > 128)
-            throw new ShareProtocolException(SharingError.Malformed, "Invalid private receipt.");
+            throw new ShareProtocolException(SharingError.Malformed, "This share receipt isn't valid.");
         using var request = Versioned(HttpMethod.Get, $"submissions/{Uri.EscapeDataString(receipt.ReceiptId)}");
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         var status = await Read<SubmissionStatus>(response, cancellationToken).ConfigureAwait(false);
         status.Validate();
         if (status.Receipt != receipt)
-            throw new ShareProtocolException(SharingError.Malformed, "The status is for a different receipt.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back the status of a different run. Try again later.");
         return status;
     }
 
@@ -101,7 +101,7 @@ public sealed partial class HttpRunSharingApi
         var status = await Read<SubmissionStatus>(response, cancellationToken).ConfigureAwait(false);
         status.Validate();
         if (status.Receipt.ShareId != shareId)
-            throw new ShareProtocolException(SharingError.Malformed, "The status is for a different submission.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back the status of a different run. Try again later.");
         return status;
     }
 
@@ -109,12 +109,12 @@ public sealed partial class HttpRunSharingApi
         string? cursor = null, string? etag = null, CancellationToken cancellationToken = default)
     {
         if (cursor?.Length > RunSharingProtocol.MaximumCursorCharacters)
-            throw new ShareProtocolException(SharingError.Malformed, "The catalogue cursor is too long.");
+            throw new ShareProtocolException(SharingError.Malformed, "Couldn't load more runs.");
         using var request = Versioned(HttpMethod.Get, cursor is null ? "runs" : $"runs?cursor={Uri.EscapeDataString(cursor)}");
         if (etag is not null)
         {
             if (etag.Length > 128 || !EntityTagHeaderValue.TryParse(etag, out var parsed))
-                throw new ShareProtocolException(SharingError.Malformed, "Invalid catalogue ETag.");
+                throw new ShareProtocolException(SharingError.Malformed, "Couldn't refresh the run list. Try again later.");
             request.Headers.IfNoneMatch.Add(parsed);
         }
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
@@ -122,21 +122,21 @@ public sealed partial class HttpRunSharingApi
         if (response.StatusCode == HttpStatusCode.NotModified)
         {
             if (etag is null || returnedTag != etag)
-                throw new ShareProtocolException(SharingError.Malformed, "An unconditional catalogue read cannot be not modified.");
+                throw new ShareProtocolException(SharingError.Malformed, "Couldn't refresh the run list. Try again later.");
             return new SharedRunPage([], cursor, etag, NotModified: true);
         }
         var page = await Read<SharedRunPage>(response, cancellationToken).ConfigureAwait(false);
         if (page.Runs is null || page.Runs.Count > RunSharingProtocol.MaximumPageSize ||
             page.NextCursor?.Length > RunSharingProtocol.MaximumCursorCharacters || page.NotModified ||
             returnedTag is null || page.ETag != returnedTag)
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned an invalid catalogue page.");
+            throw new ShareProtocolException(SharingError.Malformed, "Couldn't load the run list. Try again later.");
         foreach (var row in page.Runs)
         {
             if (row is null || row.Submission is null || row.Run is null || row.Environment is null)
-                throw new ShareProtocolException(SharingError.Malformed, "The catalogue contains an incomplete run.");
+                throw new ShareProtocolException(SharingError.Malformed, "One run in the list came back incomplete.");
             row.Submission.Validate();
             if (row.Code != SharedRunIdentity.CodeFor(row.ShareId))
-                throw new ShareProtocolException(SharingError.Malformed, "A catalogue code does not match its identity.");
+                throw new ShareProtocolException(SharingError.Malformed, "One run in the list has a code that doesn't match it.");
         }
         return page;
     }
@@ -152,14 +152,14 @@ public sealed partial class HttpRunSharingApi
     {
         if (manifestJson is null || manifestJson.Length > RunSharingProtocol.MaximumRequestBytes ||
             System.Text.Encoding.UTF8.GetByteCount(manifestJson) > RunSharingProtocol.MaximumRequestBytes)
-            throw new ShareProtocolException(SharingError.TooLarge, "The run exceeds the sharing protocol's size limit. This run was not submitted.");
+            throw new ShareProtocolException(SharingError.TooLarge, "This run is too large to share.");
     }
 
     internal static HttpContent BoundedJson<T>(T value, int limit = RunSharingProtocol.MaximumRequestBytes)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(value, WireJson);
         if (bytes.Length > limit)
-            throw new ShareProtocolException(SharingError.TooLarge, "The submission exceeds the sharing protocol's size limit. This run was not submitted.");
+            throw new ShareProtocolException(SharingError.TooLarge, "This run is too large to share.");
         var content = new ByteArrayContent(bytes);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         return content;
@@ -199,25 +199,25 @@ public sealed partial class HttpRunSharingApi
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.UpgradeRequired)
                 reportedError = error;
             throw new ShareProtocolException(reportedError,
-                string.IsNullOrWhiteSpace(message) ? $"The sharing service returned {(int)response.StatusCode}." : message, retry);
+                string.IsNullOrWhiteSpace(message) ? $"Sharing isn't responding right now (error {(int)response.StatusCode}). Try again later." : message, retry);
         }
         try
         {
             return JsonSerializer.Deserialize<T>(bytes, WireJson)
-                ?? throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned no result.");
+                ?? throw new ShareProtocolException(SharingError.Malformed, "Sharing didn't respond. Try again later.");
         }
         catch (JsonException)
         {
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned malformed or incompatible data.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back something Runmobile couldn't read. Update Runmobile or try again later.");
         }
     }
 
     internal static async Task<byte[]> ReadBounded(HttpContent content, int limit, CancellationToken cancellationToken)
     {
         if (content.Headers.ContentEncoding.Count != 0)
-            throw new ShareProtocolException(SharingError.Malformed, "Encoded sharing responses are not supported by this protocol.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back something Runmobile couldn't read. Try again later.");
         if (content.Headers.ContentLength > limit)
-            throw new ShareProtocolException(SharingError.TooLarge, "The sharing response exceeds the protocol's size limit.");
+            throw new ShareProtocolException(SharingError.TooLarge, "Sharing sent back more data than expected. Try again later.");
         using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var result = new MemoryStream();
         var buffer = new byte[8192];
@@ -227,7 +227,7 @@ public sealed partial class HttpRunSharingApi
             if (count == 0) return result.ToArray();
             result.Write(buffer, 0, count);
             if (result.Length > limit)
-                throw new ShareProtocolException(SharingError.TooLarge, "The sharing response exceeds the protocol's size limit.");
+                throw new ShareProtocolException(SharingError.TooLarge, "Sharing sent back more data than expected. Try again later.");
         }
     }
 

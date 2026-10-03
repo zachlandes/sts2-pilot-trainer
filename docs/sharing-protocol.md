@@ -57,7 +57,7 @@ It checks branch readiness before that gate and again before upload; it neither 
 The future service must check admission and reserve identity/code/job in one transaction.
 Beginning an update advances only the affected branch's generation and closes its admission before preparing any new engine inputs.
 The final transactional check decides the race: a losing request creates no receipt, identity reservation, or accepted job.
-It says: “Sharing is temporarily unavailable while support for this game update is prepared. This run was not submitted.”
+It says: “Sharing is paused while Runmobile catches up with the latest game update. This run wasn't shared.”
 There is no automatic resubmission when admission reopens.
 
 Admission requires fresh upstream observations, an exact mapped `LocalBuild`, a ready validator, an open branch, and the expected generation.

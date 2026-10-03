@@ -26,7 +26,7 @@ public sealed class RunSharingProtocolTests
         var view = RunBrowser.Publication(accepted);
         Assert.False(view.Published);
         Assert.Null(view.PublicCode);
-        Assert.Contains("not published", view.Message);
+        Assert.Equal("Processing. Not published yet.", view.Message);
         Assert.Empty((await fixture.Api.PageAsync()).Runs);
         Assert.Null(await fixture.Api.FindAsync(SharedRunIdentity.CodeFor(accepted.Receipt.ShareId)));
         Assert.Equal(accepted, await fixture.Api.StatusAsync(accepted.Receipt));
@@ -159,7 +159,7 @@ public sealed class RunSharingProtocolTests
         using var fixture = new Contract();
         fixture.Server.BeforeAdmission = () => fixture.Server.BeginUpdate(RunBranch.Public, "public-next");
         var error = await Error(SharingError.AdmissionClosed, () => fixture.Admit());
-        Assert.Contains("This run was not submitted", error.Message);
+        Assert.Equal("Sharing is paused while Runmobile catches up with the latest game update. This run wasn't shared.", error.Message);
         Assert.Equal(0, fixture.Server.AcceptedCount);
         Assert.Empty((await fixture.Api.PageAsync()).Runs);
         fixture.Server.BeforeAdmission = null;

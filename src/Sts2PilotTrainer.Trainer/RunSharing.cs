@@ -17,7 +17,7 @@ public sealed record ShareSubmission(
     public void Validate()
     {
         if (Description is null || DisplayName is null)
-            throw new ShareValidationException("Submission text is required.");
+            throw new ShareValidationException("This run has nothing to share.");
         if (string.IsNullOrWhiteSpace(Name) ||
             Name.EnumerateRunes().Count() > NameCharacterLimit)
             throw new ShareValidationException("Name is required and may contain at most 40 characters.");
@@ -25,7 +25,7 @@ public sealed record ShareSubmission(
             throw new ShareValidationException("Description may contain at most 200 characters.");
         if (string.IsNullOrWhiteSpace(DisplayName) ||
             DisplayName.EnumerateRunes().Count() > DisplayNameCharacterLimit)
-            throw new ShareValidationException("Display name is required and may contain at most 80 characters.");
+            throw new ShareValidationException("Enter a name of 80 characters or fewer.");
         if (!Cc0Consent)
             throw new ShareValidationException("CC0 consent is required before submission.");
     }
@@ -86,7 +86,7 @@ public static class SharedRunIdentity
         SharedRun shared, string manifestJson, ShareSubmission submission)
     {
         if (shared.ManifestJson is null || shared.Submission is null || shared.Run is null)
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned an incomplete run.");
+            throw new ShareProtocolException(SharingError.Malformed, "The shared run came back incomplete. Try again later.");
         shared.Submission.Validate();
         var expectedId = For(manifestJson, submission);
         var responseId = For(shared.ManifestJson, shared.Submission);
@@ -139,7 +139,7 @@ public sealed partial class HttpRunSharingApi(HttpClient client) : IRunSharingAp
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.Accepted)
             throw new ShareProtocolException(SharingError.UnsupportedClient,
-                "This client cannot track a processing submission. Update Runmobile before submitting again.");
+                "This version of Runmobile can't follow a run while it's processing. Update Runmobile, then share again.");
         var shared = await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
         SharedRunIdentity.RequireMatch(shared, manifestJson, submission);
         return shared;
@@ -158,14 +158,14 @@ public sealed partial class HttpRunSharingApi(HttpClient client) : IRunSharingAp
     {
         var wanted = code.Trim().ToUpperInvariant();
         if (wanted.Length != 12 || wanted.Any(character => !Uri.IsHexDigit(character)))
-            throw new ShareProtocolException(SharingError.Malformed, "A run code must contain twelve hexadecimal characters.");
+            throw new ShareProtocolException(SharingError.Malformed, "Run codes are 12 characters, using 0-9 and A-F.");
         using var request = Versioned(HttpMethod.Get, $"runs/{wanted}");
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         var shared = await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
         SharedRunIdentity.RequireMatch(shared, shared.ManifestJson, shared.Submission);
         if (shared.Code != wanted)
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned a different code.");
+            throw new ShareProtocolException(SharingError.Malformed, "That code returned a different run. Try again later.");
         return shared;
     }
 

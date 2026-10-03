@@ -68,7 +68,7 @@ public sealed record BranchReadiness(
             throw new ShareProtocolException(SharingError.StalePolicy, SharingPublication.NotSubmitted);
         if (!EnvironmentPreflight.Build(recording, Engine!).All(field => field.Matches))
             throw new ShareProtocolException(SharingError.NotCurrentBuild,
-                "This run was recorded on a build that is no longer current for its branch. This run was not submitted.");
+                "This run was recorded on an older build of this game branch, so it wasn't shared.");
     }
 
     public BranchReadiness BeginUpdate(string upstreamBuildId, DateTimeOffset observedAt,
@@ -91,7 +91,7 @@ public sealed record SharingPolicy(IReadOnlyList<BranchReadiness> Branches)
         var matching = Branches.Where(row => row.Branch == branch).ToArray();
         return matching.Length == 1 ? matching[0]
             : throw new ShareProtocolException(SharingError.Malformed,
-                "The sharing service did not provide one policy for this branch.");
+                "Sharing isn't set up for this game branch right now. Try again later.");
     }
 }
 
@@ -122,7 +122,7 @@ public sealed record SubmissionStatus(
             ((State == PublicationState.Published) != (PublishedRun is not null)) ||
             (State is PublicationState.Refused or PublicationState.Failed or PublicationState.Expired &&
              string.IsNullOrWhiteSpace(Reason)))
-            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned an invalid publication state.");
+            throw new ShareProtocolException(SharingError.Malformed, "Sharing sent back an unexpected status. Try again later.");
         _ = SharedRunIdentity.CodeFor(Receipt.ShareId);
         if (PublishedRun is { } shared)
         {
@@ -130,7 +130,7 @@ public sealed record SubmissionStatus(
             var recording = ManifestJson.Deserialize(shared.ManifestJson);
             if (shared.ShareId != Receipt.ShareId ||
                 !EnvironmentPreflight.Build(recording.Environment, Receipt.Engine).All(field => field.Matches))
-                throw new ShareProtocolException(SharingError.Malformed, "The published run does not match its receipt and accepted engine.");
+                throw new ShareProtocolException(SharingError.Malformed, "Something went wrong while publishing this run. Try sharing it again.");
         }
     }
 }
@@ -151,7 +151,7 @@ public sealed class PublicationAttempt
         if (!CanChange(expectedAttempt, now)) return false;
         Status = Status.AttemptGeneration < RunSharingProtocol.MaximumAttempts
             ? Status with { AttemptGeneration = Status.AttemptGeneration + 1 }
-            : Status with { State = PublicationState.Failed, Reason = "Validation could not finish after bounded retries." };
+            : Status with { State = PublicationState.Failed, Reason = "Couldn't finish checking this run. Try again later." };
         return true;
     }
 
@@ -170,7 +170,7 @@ public sealed class PublicationAttempt
     public void Expire(DateTimeOffset now)
     {
         if (Status.State == PublicationState.Processing && now >= Status.Receipt.ExpiresAt)
-            Status = Status with { State = PublicationState.Expired, Reason = "Validation expired. This run was not published." };
+            Status = Status with { State = PublicationState.Expired, Reason = "Checking this run took too long, so it wasn't published." };
     }
 
     private bool CanChange(int expectedAttempt, DateTimeOffset now)
@@ -186,5 +186,5 @@ public sealed record SharedRunPage(
 public sealed record SharingPublication(string Message, string? PublicCode, bool Published)
 {
     public const string NotSubmitted =
-        "Sharing is temporarily unavailable while support for this game update is prepared. This run was not submitted.";
+        "Sharing is paused while Runmobile catches up with the latest game update. This run wasn't shared.";
 }
