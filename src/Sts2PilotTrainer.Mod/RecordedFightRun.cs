@@ -276,6 +276,10 @@ internal static class RecordedFightRun
             return;
         }
 
+        // A build refusal belongs to the click, before a restore notice or a scene
+        // transition can cover it; returning to the menu can itself fail after fading
+        if (RefuseIncompatibleBuild(recording, credit)) return;
+
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
@@ -360,6 +364,30 @@ internal static class RecordedFightRun
             // under the wait, in which case it is nobody's.
             if (journey == _journey) Abandon(ex);
         }
+    }
+
+    private static bool RefuseIncompatibleBuild(ReplayManifest recording, RecordingCredit credit)
+    {
+        string? reason;
+        try
+        {
+            var build = EnvironmentPreflight.Build(
+                recording.Environment, GameIdentity.ReadForCurrentEngine().Build);
+            reason = LibraryCopy.PlayFromBuildRefusal(build);
+            if (reason is null) return false;
+            foreach (var field in build.Where(field => !field.Matches))
+            {
+                Log.Error($"[{RunmobileMod.ModId}] not playing from this run: {field.Refusal}", 2);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{RunmobileMod.ModId}] could not read this game's build: {ex.Message}", 2);
+            reason = ex.Message;
+        }
+
+        PrefightScreen.ShowRefusal(credit, null, reason, LibraryCopy.LookupRefusedTitle);
+        return true;
     }
 
     /// <summary>The walk route: the recording's run, constructed at its identity and

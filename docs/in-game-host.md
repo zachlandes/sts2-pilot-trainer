@@ -86,6 +86,10 @@ failed mod actually being there.
 
 ## Standing in the recorded fight
 
+A play-from click checks the build through `EnvironmentPreflight.Build` before the journey raises its write barrier, draws a restoring notice or starts either playback route.
+A refused build is explained by `PrefightScreen` over the screen the player clicked, using the library's existing incompatible-lookup wording rather than returning to the main menu.
+A return can itself fail after fading out, which previously left that refusal unshown; [the headless demonstration](../demo/PLAY-FROM-BUILD-REFUSAL.md) exercises the client entry with that failure injected.
+
 **The journey is the recording's, and the host only decides when.**
 `RecordedFightEntry` in `Sts2PilotTrainer.Engine` constructs the run, makes the recording's decisions in order, and proves the fight at the end of them is the recorded one.
 `RecordedFightRun` in this mod owns when each of those happens relative to the game's frames, what a player sees, and the retail-only deviation and lifecycle safety around the journey.
