@@ -1,7 +1,68 @@
 # The recorder's release bar
 
-The recorder ships when three numbers say it may: two computed by `./scripts/arbiter` over every recording on hand, and the same first number computed again over what a night of the retail client recorded on its own.
-None is a feeling about how much has been tested; each has a denominator somebody else produced - the recordings themselves, the game assembly, and the retail client's own clock - and a build is held to the first two on every merge and to all three at release.
+The release goal is confidence that someone's run was recorded validly and reproduces through Runmobile on another person's supported environment.
+The release account separates mechanism coverage, representative recorded runs and per-recording reproducibility.
+A count of content options is not a confidence percentage, and exercising every possible scenario is not a release obligation.
+
+The existing measurements remain: two computed by `./scripts/arbiter` over every recording on hand, and the first computed again over what a night of the retail client recorded on its own.
+A build is held to the first two on every merge and to all three at release.
+They support the claims below but do not replace the actual recording's publication, environment or entry checks.
+No recorder or replay rule changes with this account.
+
+## What the release evidence establishes
+
+### Mechanism coverage
+
+The recorder and driver must agree on command ingress, prompt shapes, when a decision has settled, saves and rollback, and failure or refusal paths.
+`EngineCommands.Verify()` checks the command table against the build; `EngineCommands.VerifyLedger()` and `./scripts/arbiter engine-commands` account for the other direction, every enumerated way a decision reaches the game, as claimed or excused.
+`DecisionLedgerTests` holds that account to `scripts/decision-ledger.txt`, including stale excusals and the recorded unreadable scan bodies.
+Classification is an account of what is observed, not proof that every claimed path has executed correctly.
+
+The execution evidence is in the existing recorder/driver tests: `CardPromptCaptureTests` for prompt capture through replay, `RecorderTimingTests` and `RecorderPacingTests` for settling and decisions arriving before the next poll, `RecorderContinueTests` for save/Continue/give-up and rollback, `RecorderSeamDefaultTests` for unclaimed decisions, and `ReplayRefusalRegressionTests` for recorded histories the driver previously refused.
+`RunCaptureTests`, `FightCaptureTests` and `TraceParityTests` hold the game-free contracts these tests use.
+`GeneratedCoverageTests` adds recorder-to-replay walks through materially different seams; its deliberately shortened acts lists remain explicitly generated evidence, never ordinary publishable runs.
+
+The mechanism triage of the coverage review's 59-point inventory is in progress as of 2026-10-03.
+It is evidence work for this claim, not a prerequisite merge for this document and not yet a completed mechanism matrix.
+It must identify the mechanism each point exercises, cite the existing test or name the missing proof, with particular attention to prompt shape, hook timing and event-resume rewards.
+An explicit diagnostic or injected setup can prove a missing mechanism without a full-route seed hunt, but its setup and the behavior it proves must be stated; it does not establish parity for an ordinary exported run and does not acquire corpus coverage credit by assertion.
+The decision ledger's ui-reach walk is not built, and headless tests do not by themselves establish scene-tree timing fidelity.
+
+### Representative recorded runs
+
+Natural recorder-to-replay walks and retail recordings must cross materially different seams and timing classes.
+`HeadlessGameplayCaptureTests` and the whole-act and character rows of `GeneratedCoverageTests` record engine-produced journeys and replay them through `TraceParity.Compare`, the same oracle the CLI's `parity` uses.
+The character, acts-list and ascension axes printed by `coverage` state what the crediting corpus actually represents, not every configuration a player might choose.
+The retail soak below tests the client's own clock, while the candidate's visible playthrough tests presentation.
+Neither generated diagnostic setups nor a successful headless walk replace retail recordings.
+
+`ParityTests`, `CoverageTests` and `DecisionSurfaceTests` enforce the corpus commands and denominator rules.
+The existing parity, coverage and overnight-soak checks remain required, including their named refusals, exclusions and excusals.
+The inventory guides the search for untested mechanisms; a content option sharing an already-proven mechanism does not require an independent route solely to increase this count.
+Unreached points still need an honest, admissible excusal and a release-note explanation of their mechanism evidence or missing proof.
+The first retail night has no recorded figure in this account yet, and the dated measurements below are historical evidence, not a measurement of the current candidate.
+
+### Per-recording reproducibility
+
+Confidence in the implementation does not verify a particular person's exported history.
+`./scripts/arbiter gate <manifest> --out <evidence directory>` applies the actual recording's publication standard through the real engine in fresh processes.
+`Commands.Gate` owns the conditions: publication source, provenance and continuity; environment; reproduction and any discarded branches; a completed covered fight; declared-boundary validation and complete boundary digests; determinism and required negative controls.
+For video reconstructions it also asks game-mode, seed-topology, BaseLib-path and evidence-binding questions.
+`NativeGateTests` holds the native distinction: the video-only questions are absent, and BaseLib-path is not evaluated for a native history, leaving the loaded mods' non-gameplay declarations as weaker evidence rather than an engine measurement.
+These limits remain explicit in the gate artifact.
+
+The recipient's environment must be checked locally, not inferred from the author's passing gate: build/content identity, mode and acts, mod declarations and patch roster, and the recorded unlock requirements remain the existing preflight's questions.
+[Environment identity](environment-identity.md) owns those rules; `PreflightTests` and `EnvironmentPreflightTests` hold their acceptance and named refusals.
+For a player to play from this fight of someone's run, `RecordedFightEntry` still requires a supported retail route and `BoundaryEquality` at the chosen boundary.
+`OwnRunPlaybackTests`, `RecordedFightEntryTests` and `BoundarySelectionTests` support entry and boundary verification, while `PackagedArbiterTests` exercises the packaged tool outside a worktree and with the game environment removed from its child process.
+Restoration remains limited to the verified cache and eligible arrivals described in [native replay format](native-replay-format.md); this account widens neither eligibility nor retail reachability.
+Publication and entry are different checks: a rewound run may be the player's to play from while publication refuses it.
+
+A genuine second-computer acceptance demonstration is in progress as of 2026-10-03, not established by the same-process parity tests or packaged-process tests.
+It must use the actual export without machine/profile/account identity, explicitly establish the recipient's supported build/content/mod/unlock compatibility, and record the same verified states or a named refusal through the existing verification and entry owners.
+[Distribution](distribution.md) owns the local-only identity rule.
+Until that demonstration is recorded, cross-computer acceptance remains missing evidence, and no local parity figure is described as having proved it.
+The mechanism triage and second-computer work can add evidence independently; their anticipated results are not treated as passing checks here.
 
 ## The two numbers
 
@@ -18,7 +79,9 @@ An excusal in a class the map does not admit fails the number by name, the way a
 An excusal whose reason says who produces the point - the card that adds a rest option, the power that puts a reward on the loot screen, the event whose fight deals it - names that producer by id beside the prose, and `coverage` holds each id to the producers the map lists for the point (`DecisionCoverage.ProducersListedAt`, the seam's own producers or those of every seam answered at the point); one the map does not list there is printed as a misnamed producer and fails the number, because a build that moves a producer leaves the class true and the sentence false.
 An event's option keys are the walk's reading of the event's own IL, never a list: a key the event builds at runtime is derived the way its code builds it, with the bound its code compares its counter against read off the constant the branch loads (`ChoiceEntryPoints.ConstantsComparedWith`) and every interpolated key held to the template the construction finishes with (`ChoiceEntryPoints.Construction.Template`), so a build that digs one page deeper or renames a page changes the denominator rather than passing under another build's keys.
 
-The release statement: parity is 100% over every recording on hand, and coverage lists no decision point reachable on this build that no recording exercises, or every such point is named with its excuse.
+The release statement reports the mechanism evidence and its gaps, the representative corpus's parity and coverage figures with their qualifications, and the per-recording publication and recipient-environment evidence actually obtained.
+Parity must be 100% over every comparable recording, with every recording that holds nothing still named in the denominator; coverage must leave no point uncovered, because each is exercised or carries an admissible named excuse.
+Those figures are not exhaustive scenario proof or a substitute for verifying the recording someone receives.
 
 ## The procedure
 
@@ -29,14 +92,19 @@ The release statement: parity is 100% over every recording on hand, and coverage
 
 Both exit 0, or the release does not go.
 The store is `user://Runmobile/<platform>/<account>/<profile>/recordings/`, copied by the person and named with `--corpus`; the command derives no path and writes nothing back.
-The artifacts under `--out` - `parity.json` and `coverage.json` - are the release evidence, and the release note carries:
+The artifacts under `--out` - `parity.json` and `coverage.json` - are corpus release evidence, and the release note carries:
 
+- the mechanism tests and ledger checks run against the candidate, with missing proof and unsupported behavior named separately from unreached content.
+- the actual recording's publication artifact and recipient-environment/entry results when obtained, including the second-computer demonstration's environment and verified states or named refusal.
+  A pending demonstration is reported as missing evidence, never replaced by the corpus figures.
 - the parity figure as printed, with every recording that holds nothing named by why - made on another build, no journal, a journal in a schema this build does not read, a continuity the recorder marked broken, written by an older recorder;
   a recording made on another build is named by `RecordingStanding` in the words the replay preflight refuses it in, credited to neither number and a failure of the parity bar, because it is unproven on the build under test; a store that spans a game update is measured once it holds only that build's recordings, and each artifact's header names that build.
   The store copy is measured over the release candidate's own recordings, and `parity` names the rest: a recording whose `source.native.recorder_version` is below the recorder the candidate carries - or names none this build reads, the unstamped `runmobile-recorder/1.0.0.0` included - is `OlderRecorder` by the same `RecordingStanding`, counted in the denominator and held to nothing, because its journal is what that older recorder got wrong and the figure is about this one; its manifest still replays on this build, so `coverage` credits what it reached, and each older-recorder line names the candidate's recorder beside the one that wrote the journal.
   The two versions are ordered as `RecorderVersion` orders them, a prerelease below its release, so a candidate declared `0.3.0-rc1` measures itself over its own `runmobile-recorder/0.3.0-rc1` recordings and names those of `0.2.0` and of `0.3.0-rc0` as the older recorder's; only a strictly older recorder is stood apart, and a recording a newer recorder wrote is held to the candidate's replay like its own, so a later recorder's fix fails the bar as a divergence rather than passing on this build's account.
 - every point still excused, with its class and its reason.
-  An excusal that says no committed recording reaches the point (`not-on-the-route`) is a placeholder, and at release it is not acceptable for a point a player can reach on this build: such a point is played, recorded and committed, or the release note says why not.
+  A `not-on-the-route` excusal names a gap in recorded-route evidence, not an automatic obligation to hunt an independent recording for every content option.
+  The release note must say which mechanism the point exercises and what existing test proves it, or name the missing mechanism evidence and why the point remains excused.
+  Reachable but unsupported behavior must remain a named limitation; neither mechanism triage nor an injected diagnostic setup makes an unsupported recording replayable.
   An excusal that names `GeneratedCoverageTests` is held by a generated walk through the real recorder on every merge and stands.
   A point reached by a recording of the store corpus is printed as `excused and reached by this corpus`; that is progress and not a failure, and it is the list of excusals a committed recording would retire.
 
@@ -66,6 +134,12 @@ Every `REFUSED` or `DIVERGED` line in `parity.txt` names the first decision and 
 The figure the release note carries is the night's parity line as printed, beside the coverage totals over the night's copy and the excusals it reached; the release statement is that every recording of the night is at parity.
 The first night has not run: this section records the command and where its evidence lands, and the first figure is written here the morning after the first night, whatever it is.
 What the night measures is scene-tree logic, recording integrity and replay parity, under the game's own timers and with no window; whether anything drawn is right is not in the claim, and the release candidate's visible playthrough by a person covers that.
+
+## Dated measurements and implementation history
+
+The following sections preserve the measurements, route hunts and defects found under the earlier content-by-content coverage plan.
+Their counts and outstanding route descriptions are dated facts; the release obligation is the mechanism-first account above, not retirement of every historical scenario excusal.
+No historical result is recomputed or relabeled as confidence here.
 
 ## The first measurement, 2026-09-17
 
