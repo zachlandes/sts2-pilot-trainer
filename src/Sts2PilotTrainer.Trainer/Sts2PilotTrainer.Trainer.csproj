@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Trainer.Tests" />
   </ItemGroup>
 
 </Project>

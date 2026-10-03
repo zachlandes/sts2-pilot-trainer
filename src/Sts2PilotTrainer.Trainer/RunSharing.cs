@@ -1,7 +1,5 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
-using System.Text;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
@@ -14,16 +12,20 @@ public sealed record ShareSubmission(
 {
     public const int NameCharacterLimit = 40;
     public const int DescriptionCharacterLimit = 200;
+    public const int DisplayNameCharacterLimit = 80;
 
     public void Validate()
     {
+        if (Description is null || DisplayName is null)
+            throw new ShareValidationException("Submission text is required.");
         if (string.IsNullOrWhiteSpace(Name) ||
             Name.EnumerateRunes().Count() > NameCharacterLimit)
             throw new ShareValidationException("Name is required and may contain at most 40 characters.");
         if (Description.EnumerateRunes().Count() > DescriptionCharacterLimit)
             throw new ShareValidationException("Description may contain at most 200 characters.");
-        if (string.IsNullOrWhiteSpace(DisplayName))
-            throw new ShareValidationException("Display name is required for submission.");
+        if (string.IsNullOrWhiteSpace(DisplayName) ||
+            DisplayName.EnumerateRunes().Count() > DisplayNameCharacterLimit)
+            throw new ShareValidationException("Display name is required and may contain at most 80 characters.");
         if (!Cc0Consent)
             throw new ShareValidationException("CC0 consent is required before submission.");
     }
@@ -60,7 +62,7 @@ public sealed record SharedRun(
     }
 }
 
-public sealed class ShareValidationException(string message) : Exception(message);
+public class ShareValidationException(string message) : Exception(message);
 
 public static class SharedRunIdentity
 {
@@ -75,7 +77,7 @@ public static class SharedRunIdentity
 
     public static string CodeFor(string shareId)
     {
-        if (shareId.Length != 64 || shareId.Any(character => !Uri.IsHexDigit(character)))
+        if (shareId is null || shareId.Length != 64 || shareId.Any(character => !Uri.IsHexDigit(character)))
             throw new ShareValidationException("The sharing identity is not a SHA-256 digest.");
         return shareId[..12].ToUpperInvariant();
     }
@@ -83,6 +85,9 @@ public static class SharedRunIdentity
     public static void RequireMatch(
         SharedRun shared, string manifestJson, ShareSubmission submission)
     {
+        if (shared.ManifestJson is null || shared.Submission is null || shared.Run is null)
+            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned an incomplete run.");
+        shared.Submission.Validate();
         var expectedId = For(manifestJson, submission);
         var responseId = For(shared.ManifestJson, shared.Submission);
         if (!string.Equals(shared.ShareId, expectedId, StringComparison.Ordinal) ||
@@ -103,16 +108,38 @@ public interface IRunSharingApi
         string manifestJson, ShareSubmission submission, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SharedRunSummary>> IndexAsync(CancellationToken cancellationToken = default);
     Task<SharedRun?> FindAsync(string code, CancellationToken cancellationToken = default);
+    Task<SharingProtocol> NegotiateAsync(CancellationToken cancellationToken = default);
+    Task<SharingPolicy> PolicyAsync(CancellationToken cancellationToken = default);
+    Task<SubmissionStatus> AdmitAsync(
+        string manifestJson, ShareSubmission submission, RunBranch branch, long policyGeneration,
+        CancellationToken cancellationToken = default);
+    Task<SubmissionStatus> StatusAsync(
+        SubmissionReceipt receipt, CancellationToken cancellationToken = default);
+    Task<SubmissionStatus> StatusForIdentityAsync(
+        string shareId, CancellationToken cancellationToken = default);
+    Task<SharedRunPage> PageAsync(
+        string? cursor = null, string? etag = null, CancellationToken cancellationToken = default);
+    Task<SubmissionStatus> SubmitForPublicationAsync(
+        string manifestJson, ShareSubmission submission, RunBranch branch,
+        Func<CancellationToken, Task<bool>> localPublicationGate,
+        Func<DateTimeOffset> clock, CancellationToken cancellationToken = default);
 }
 
-public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
+public sealed partial class HttpRunSharingApi(HttpClient client) : IRunSharingApi
 {
     public async Task<SharedRun> SubmitAsync(
         string manifestJson, ShareSubmission submission, CancellationToken cancellationToken = default)
     {
         submission.Validate();
-        using var response = await client.PostAsJsonAsync(
-            "runs", new ShareRequest(manifestJson, submission), cancellationToken).ConfigureAwait(false);
+        RequirePayloadSize(manifestJson);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "runs")
+        {
+            Content = BoundedJson(new ShareRequest(manifestJson, submission)),
+        };
+        using var response = await Send(request, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.Accepted)
+            throw new ShareProtocolException(SharingError.UnsupportedClient,
+                "This client cannot track a processing submission. Update Runmobile before submitting again.");
         var shared = await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
         SharedRunIdentity.RequireMatch(shared, manifestJson, submission);
         return shared;
@@ -121,33 +148,25 @@ public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
     public async Task<IReadOnlyList<SharedRunSummary>> IndexAsync(
         CancellationToken cancellationToken = default)
     {
-        using var response = await client.GetAsync("runs", cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "runs");
+        using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         return await Read<List<SharedRunSummary>>(response, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SharedRun?> FindAsync(
         string code, CancellationToken cancellationToken = default)
     {
-        using var response = await client.GetAsync(
-            $"runs/{Uri.EscapeDataString(code.Trim())}", cancellationToken).ConfigureAwait(false);
+        var wanted = code.Trim().ToUpperInvariant();
+        if (wanted.Length != 12 || wanted.Any(character => !Uri.IsHexDigit(character)))
+            throw new ShareProtocolException(SharingError.Malformed, "A run code must contain twelve hexadecimal characters.");
+        using var request = Versioned(HttpMethod.Get, $"runs/{wanted}");
+        using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        return await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task<T> Read<T>(
-        HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        if (!response.IsSuccessStatusCode)
-        {
-            var detail = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            throw new ShareValidationException(string.IsNullOrWhiteSpace(detail)
-                ? $"The sharing service returned {(int)response.StatusCode}."
-                : detail);
-        }
-
-        return await response.Content.ReadFromJsonAsync<T>(
-            cancellationToken: cancellationToken).ConfigureAwait(false)
-            ?? throw new ShareValidationException("The sharing service returned no result.");
+        var shared = await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
+        SharedRunIdentity.RequireMatch(shared, shared.ManifestJson, shared.Submission);
+        if (shared.Code != wanted)
+            throw new ShareProtocolException(SharingError.Malformed, "The sharing service returned a different code.");
+        return shared;
     }
 
     public sealed record ShareRequest(string ManifestJson, ShareSubmission Submission);

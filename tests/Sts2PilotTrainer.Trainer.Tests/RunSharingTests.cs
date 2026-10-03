@@ -86,7 +86,7 @@ public sealed class RunSharingTests
     {
         var service = Service(_ => false);
 
-        var error = await Assert.ThrowsAsync<ShareValidationException>(() => service.SubmitAsync(
+        var error = await Assert.ThrowsAsync<ShareProtocolException>(() => service.SubmitAsync(
             ManifestJson.Serialize(Fixture()),
             new ShareSubmission("Run", "", "Ada", true)));
 
@@ -120,7 +120,10 @@ public sealed class RunSharingTests
         var descriptionAtLimit = string.Concat(Enumerable.Repeat(
             scalar, ShareSubmission.DescriptionCharacterLimit));
 
-        new ShareSubmission(nameAtLimit, descriptionAtLimit, "Ada", true).Validate();
+        var displayNameAtLimit = string.Concat(Enumerable.Repeat(scalar, ShareSubmission.DisplayNameCharacterLimit));
+        new ShareSubmission(nameAtLimit, descriptionAtLimit, displayNameAtLimit, true).Validate();
+        Assert.Throws<ShareValidationException>(() => new ShareSubmission(
+            "Run", "", displayNameAtLimit + scalar, true).Validate());
 
         Assert.Throws<ShareValidationException>(() => new ShareSubmission(
             nameAtLimit + scalar, "", "Ada", true).Validate());
@@ -132,9 +135,9 @@ public sealed class RunSharingTests
     }
 
     [Fact]
-    public async Task SubmissionAcceptsAnUncappedNonemptyDisplayName()
+    public async Task SubmissionAcceptsADisplayNameAtTheProtocolLimit()
     {
-        var displayName = new string('A', 200);
+        var displayName = new string('A', ShareSubmission.DisplayNameCharacterLimit);
         var service = Service(_ => true);
 
         var shared = await service.SubmitAsync(
@@ -314,7 +317,7 @@ public sealed class RunSharingTests
             });
     }
 
-    private static ReplayManifest Fixture()
+    internal static ReplayManifest Fixture()
     {
         var assembly = typeof(ReplayManifest).Assembly;
         using var stream = assembly.GetManifestResourceStream(
