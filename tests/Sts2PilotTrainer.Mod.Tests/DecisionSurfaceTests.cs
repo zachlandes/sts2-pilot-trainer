@@ -636,7 +636,7 @@ public sealed class DecisionSurfaceTests
         Assert.Equal([ExcusalClass.ReachedByTheWin], Derived(DecisionKinds.EventOption, "EVENT.THE_ARCHITECT PROCEED"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.NEOW RELIC.WINGED_BOOTS"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.RELIC_TRADER PROCEED"));
-        Assert.Equal([ExcusalClass.NotReplayable], Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM relics.MR_STRUGGLES.title"));
+        Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM relics.MR_STRUGGLES.title"));
         Assert.Empty(Derived(DecisionKinds.EventOption, "EVENT.DOLL_ROOM DOLL_ROOM.pages.INITIAL.options.EXAMINE"));
         Assert.Equal([ExcusalClass.NotChoosable], Derived(DecisionKinds.EventOption, "EVENT.WATERLOGGED_SCRIPTORIUM WATERLOGGED_SCRIPTORIUM.pages.INITIAL.options.PRICKLY_SPONGE_LOCKED"));
         Assert.Equal([ExcusalClass.NotChoosable], Derived(DecisionKinds.EventOption, "EVENT.ZEN_WEAVER ZEN_WEAVER.pages.INITIAL.options.LOCKED"));

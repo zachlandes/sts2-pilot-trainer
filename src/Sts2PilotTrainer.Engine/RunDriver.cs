@@ -852,13 +852,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>
     /// What an event option is called, independently of where it sits.
     ///
-    /// The option's text key, which every event sets, or the relic's id for an option
-    /// that offers one: Doll Room names its options after the relic in each doll, so
-    /// the relic is the identity there. The recorder writes the same rule, and the two
-    /// agreeing is what makes a recorded key checkable at all.
+    /// The relic's id for an option carrying one, the title's localization identity
+    /// for a relic-titled option with none (Doll Room), or the option's text key.
+    /// Doll Room's TextKey is localized display text, not an identity. The recorder
+    /// and driver read the title's table and entry instead, without looking up text.
     /// </summary>
     public static string OptionKey(EventOption option) =>
-        option.Relic?.Id.ToString() ?? option.TextKey;
+        option.Relic?.Id.ToString() ?? (option.Title.LocTable == "relics"
+            ? $"{option.Title.LocTable}.{option.Title.LocEntryKey}"
+            : option.TextKey);
 
     /// <summary>
     /// The event this player is in, or null when there is none.

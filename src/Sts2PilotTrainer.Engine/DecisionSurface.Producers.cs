@@ -153,11 +153,10 @@ public static partial class DecisionSurface
     /// event's code reads: the pools, the dish constructions, the suffix helper, the
     /// doll table, the rider helper's literals, the dialogue set.
     ///
-    /// Doll Room's keys are the one place the recorded key is a title rather than an
-    /// id: the retail client writes the player's localized title where this process,
-    /// whose localization returns every key as itself, writes the title's key. The
-    /// walk lists what this process reads, and <see cref="TitleKeyedConstructions"/>
-    /// is the reading that says no recording of those points can replay on this build.
+    /// Doll Room constructs a TextKey from the relic's localized title with no relic
+    /// on the option. The walk lists the title's table and entry instead, the same
+    /// stable identity RunDriver.OptionKey reads for capture and replay.
+    /// TitleKeyedConstructions holds the constructors the IL must still name.
     /// </summary>
     private static IReadOnlyList<string>? RuntimeBuiltOptionKeys(EventModel model) => model switch
     {
@@ -311,18 +310,15 @@ public static partial class DecisionSurface
         return dolls.Cast<object>()
             .Select(doll => doll.GetType().GetField("relic")?.GetValue(doll) as RelicModel
                 ?? throw new InvalidOperationException($"{room.Id}'s doll table carries no relic on this build."))
-            .Select(relic => relic.Title.GetRawText())
+            .Select(relic => $"{relic.Title.LocTable}.{relic.Title.LocEntryKey}")
             .ToList();
     }
 
     /// <summary>
     /// The events that key an option by a <c>LocString</c>'s raw text rather than by a
     /// literal, each with the member that constructs it and the keys that member
-    /// produces: the reading behind <see cref="ExcusalClass.NotReplayable"/> for an
-    /// event option. A recorder writes such a key as the player's localized title and
-    /// this process reads the title's key, so <c>RunDriver.OptionKey</c> never matches
-    /// the recorded key on this build and no recording of the point can replay;
-    /// stabilizing the spelling in the recorder and the driver is a later stage. The
+    /// produces, read as the title's table and entry rather than localized text,
+    /// the same identity <c>RunDriver.OptionKey</c> reads for the recorder and replay. The
     /// table is held to the IL both ways in <see cref="OptionKeysOf"/>: a construction
     /// keyed through <c>GetRawText</c> in a member not named here is refused, and a
     /// member named here that no longer constructs one is stale and refused.
@@ -333,9 +329,8 @@ public static partial class DecisionSurface
             [typeof(DollRoom)] = ("OptionFromChoice", DollRoomKeys),
         };
 
-    /// <summary>The option keys of an event that a recording carries as a localized
-    /// title, so none it carries can replay: every key the event's title-keyed
-    /// constructions produce, none for an event with no such construction.</summary>
+    /// <summary>The stable title identities of an event's title-keyed constructions,
+    /// none for an event with no such construction.</summary>
     public static IReadOnlyList<string> TitleKeyedOptions(string eventId)
     {
         EngineHost.Start();
@@ -1138,7 +1133,6 @@ public static partial class DecisionSurface
                 var key = point.Identity[(space + 1)..];
                 if (eventId == ArchitectEventId) yield return ExcusalClass.ReachedByTheWin;
                 else if (eventId != DecisionFacts.NeowEventId && ActsReaching(eventId).Count == 0) yield return ExcusalClass.NoProducerOnThisBuild;
-                if (TitleKeyedOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotReplayable;
                 if (NotChoosableOptions(eventId).Contains(key, StringComparer.Ordinal)) yield return ExcusalClass.NotChoosable;
                 if (OptionsWithheldFromTheCharacter(eventId).ContainsKey(key)) yield return ExcusalClass.OfferedOnlyToAnotherCharacter;
 
@@ -1254,7 +1248,7 @@ public static partial class DecisionSurface
             {
                 if (construction.Literal == optionId && construction.Constant is { } constant)
                 {
-                    return ManifestCardSelector.EndsTheSelection((PostAlternateCardRewardAction)constant);
+                    return LootRewards.AlternativeEndsTheSelection((PostAlternateCardRewardAction)constant);
                 }
             }
         }
