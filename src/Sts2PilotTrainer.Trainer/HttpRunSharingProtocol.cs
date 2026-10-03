@@ -63,6 +63,7 @@ public sealed partial class HttpRunSharingApi
             throw new ShareProtocolException(SharingError.Malformed, "Sharing couldn't start. Try again later.");
         var protocol = await NegotiateAsync(cancellationToken).ConfigureAwait(false);
         var identity = SharedRunIdentity.For(manifestJson, submission);
+        var recording = ManifestJson.Deserialize(manifestJson);
         using var request = Versioned(HttpMethod.Post, "runs");
         request.Content = BoundedJson(new AdmissionRequest(manifestJson, submission, branch, policyGeneration),
             Math.Min(protocol.MaximumRequestBytes, RunSharingProtocol.MaximumRequestBytes));
@@ -71,7 +72,8 @@ public sealed partial class HttpRunSharingApi
         using var response = await Send(request, cancellationToken).ConfigureAwait(false);
         var status = await Read<SubmissionStatus>(response, cancellationToken).ConfigureAwait(false);
         status.Validate();
-        if (status.Receipt.ShareId != identity || status.Receipt.Branch != branch)
+        if (status.Receipt.ShareId != identity ||
+            !EnvironmentPreflight.Build(recording.Environment, status.Receipt.Engine).All(field => field.Matches))
             throw new ShareProtocolException(SharingError.Malformed, "Sharing mixed up this run with another. Try again later.");
         if (status.PublishedRun is { } shared)
             SharedRunIdentity.RequireMatch(shared, manifestJson, submission);
@@ -113,7 +115,7 @@ public sealed partial class HttpRunSharingApi
         using var request = Versioned(HttpMethod.Get, cursor is null ? "runs" : $"runs?cursor={Uri.EscapeDataString(cursor)}");
         if (etag is not null)
         {
-            if (etag.Length > 128 || !EntityTagHeaderValue.TryParse(etag, out var parsed))
+            if (etag.Length > RunSharingProtocol.MaximumEntityTagCharacters || !EntityTagHeaderValue.TryParse(etag, out var parsed))
                 throw new ShareProtocolException(SharingError.Malformed, "Couldn't refresh the run list. Try again later.");
             request.Headers.IfNoneMatch.Add(parsed);
         }
@@ -128,7 +130,7 @@ public sealed partial class HttpRunSharingApi
         var page = await Read<SharedRunPage>(response, cancellationToken).ConfigureAwait(false);
         if (page.Runs is null || page.Runs.Count > RunSharingProtocol.MaximumPageSize ||
             page.NextCursor?.Length > RunSharingProtocol.MaximumCursorCharacters || page.NotModified ||
-            returnedTag is null || page.ETag != returnedTag)
+            returnedTag is null || returnedTag.Length > RunSharingProtocol.MaximumEntityTagCharacters || page.ETag != returnedTag)
             throw new ShareProtocolException(SharingError.Malformed, "Couldn't load the run list. Try again later.");
         foreach (var row in page.Runs)
         {

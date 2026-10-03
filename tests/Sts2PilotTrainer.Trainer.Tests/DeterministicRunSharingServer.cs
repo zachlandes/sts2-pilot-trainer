@@ -26,7 +26,12 @@ internal sealed class DeterministicRunSharingServer(
     internal bool DropNextAcceptanceResponse { get; set; }
     internal Func<string, string> ReserveCode { get; set; } = SharedRunIdentity.CodeFor;
     internal int PageSize { get; set; } = RunSharingProtocol.MaximumPageSize;
-    internal LocalBuild? BrowseBuild { get; set; }
+    private LocalBuild? browseBuild;
+    internal LocalBuild? BrowseBuild
+    {
+        get { lock (transaction) return browseBuild; }
+        set { lock (transaction) { browseBuild = value; revision++; } }
+    }
     private int admissionRequests;
     internal int AdmissionRequests => Volatile.Read(ref admissionRequests);
     internal int AcceptedCount { get { lock (transaction) return pending.Count; } }
@@ -235,8 +240,8 @@ internal sealed class DeterministicRunSharingServer(
         hash, SharedRunIdentity.CodeFor(hash), canonical, submission,
         describe(manifest) with { Creator = submission.DisplayName }, Now, featured?.Invoke(manifest) == true);
 
-    private LibraryRun Project(SharedRun run) => BrowseBuild is null ||
-        EnvironmentPreflight.Build(ManifestJson.Deserialize(run.ManifestJson).Environment, BrowseBuild).All(field => field.Matches)
+    private LibraryRun Project(SharedRun run) => browseBuild is null ||
+        EnvironmentPreflight.Build(ManifestJson.Deserialize(run.ManifestJson).Environment, browseBuild).All(field => field.Matches)
             ? run.Run : run.Run with { Verdict = RunVerdict.Absent };
 
     private IReadOnlyList<SharedRunSummary> Index() => shared.Values.Where(run => !removed.Contains(run.ShareId))

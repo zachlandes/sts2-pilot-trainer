@@ -12,6 +12,7 @@ public static class RunSharingProtocol
     public const int MaximumResponseBytes = 4 * 1024 * 1024;
     public const int MaximumPageSize = 50;
     public const int MaximumCursorCharacters = 256;
+    public const int MaximumEntityTagCharacters = 128;
     public const int MaximumAttempts = 3;
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan MaximumProcessingTime = TimeSpan.FromHours(1);

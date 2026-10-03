@@ -45,7 +45,7 @@ These are protocol safety bounds, not measurements of cloud capacity or full-run
 A page ETag is scoped to its revision and cursor.
 Clients may send If-None-Match and receive HTTP 304 with the same ETag.
 `NotModified` means retain the cached page, not replace it with an empty catalogue.
-Publication and removal change the revision; exact-code retrieval observes the same visibility policy.
+Publication, removal, and a change to the compatibility projection change the revision; exact-code retrieval observes the same visibility policy.
 HTTP 401 identifies a missing/expired session, HTTP 403 identifies forbidden access, and another principal's private status returns HTTP 404.
 Authentication mechanism and credential acquisition are deliberately unspecified until Phase 0 establishes them.
 The fake's fixed session labels and predictable receipt ids are not production authentication or capability tokens.
@@ -72,6 +72,8 @@ Identity golden vectors include ordinary and Unicode public text and deliberatel
 A future canonicalization change must address these protocol identities before deployment, not silently update the vectors.
 
 An accepted receipt pins its branch generation, exact engine, acceptance time, and expiry.
+A duplicate of an admitted identity returns that original receipt, with its original branch and generation, even when the duplicate names the other branch.
+The client still requires the receipt's identity and pinned engine to match the recording it submitted.
 Processing exposes no published run or public code promise, and appears in neither discovery nor exact-code lookup.
 `RunBrowser.Publication` derives its explanation and exposes a code only for Published.
 Refused, Failed, and Expired are terminal private outcomes with explanations.

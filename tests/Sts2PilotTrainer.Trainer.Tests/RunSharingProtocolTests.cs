@@ -112,6 +112,42 @@ public sealed class RunSharingProtocolTests
     }
 
     [Fact]
+    public async Task ADuplicateOnTheOtherBranchReturnsTheOriginalPinnedReceipt()
+    {
+        using var fixture = new Contract();
+        var first = await fixture.Admit();
+        fixture.Server.Policy = new(fixture.Server.Policy!.Branches.Select(row => row.Branch == RunBranch.Beta
+            ? row with { Generation = 5 } : row).ToArray());
+        var duplicate = await fixture.Api.AdmitAsync(Manifest, Submission, RunBranch.Beta, 5);
+        Assert.Equal(first.Receipt, duplicate.Receipt);
+        Assert.Equal(RunBranch.Public, duplicate.Receipt.Branch);
+        Assert.Equal(1, duplicate.Receipt.PolicyGeneration);
+        Assert.Equal(1, fixture.Server.AcceptedCount);
+    }
+
+    [Fact]
+    public async Task AReceiptPinnedToAnotherEngineOrIdentityIsRefused()
+    {
+        var identity = SharedRunIdentity.For(Manifest, Submission);
+        foreach (var receipt in new[]
+        {
+            new SubmissionReceipt("private-1", identity, RunBranch.Public, 1, Build with { ContentHash = "other-content" }, Start, Start.AddMinutes(5)),
+            new SubmissionReceipt("private-1", SharedRunIdentity.For(Manifest, Submission with { Name = "Other" }), RunBranch.Public, 1, Build, Start, Start.AddMinutes(5)),
+        })
+        {
+            using var client = new HttpClient(new ResponseHandler(request => request.RequestUri!.AbsolutePath == "/sharing-protocol"
+                ? new(HttpStatusCode.OK) { Content = JsonContent.Create(new SharingProtocol(2, 2, RunSharingProtocol.MaximumRequestBytes)) }
+                : new(HttpStatusCode.Accepted)
+                {
+                    Content = JsonContent.Create(new SubmissionStatus(receipt, PublicationState.Processing, 1),
+                        options: RunSharingProtocol.CreateJsonOptions()),
+                }))
+            { BaseAddress = new("http://run-sharing.test/") };
+            await Error(SharingError.Malformed, () => new HttpRunSharingApi(client).AdmitAsync(Manifest, Submission, RunBranch.Public, 1));
+        }
+    }
+
+    [Fact]
     public void IdentityGoldenVectorFreezesTheExistingCanonicalizationOwner()
     {
         Assert.Equal("b69613a140960dfe9b402132913c34e17f5605b7e0d8a551689463819f94010c",
@@ -347,6 +383,26 @@ public sealed class RunSharingProtocolTests
         Assert.Equal(LookupOutcome.IncompatibleBuild, RunBrowser.Lookup(row.EntryId, [row], "next").Outcome);
     }
 
+    [Fact]
+    public async Task AChangedCompatibilityProjectionInvalidatesConditionalReadsAndCursors()
+    {
+        using var fixture = new Contract();
+        fixture.Server.PageSize = 1;
+        for (var i = 0; i < 2; i++)
+        {
+            var accepted = await fixture.Admit(Submission with { Name = $"Run {i}" });
+            fixture.Server.Complete(accepted.Receipt.ShareId, 1);
+        }
+        var cached = await fixture.Api.PageAsync();
+        Assert.Equal(RunVerdict.Passed, Assert.Single(cached.Runs).Run.Verdict);
+        fixture.Server.BrowseBuild = Build with { BuildVersion = "next", ContentHash = "new-content" };
+        var refreshed = await fixture.Api.PageAsync(etag: cached.ETag);
+        Assert.False(refreshed.NotModified);
+        Assert.NotEqual(cached.ETag, refreshed.ETag);
+        Assert.Equal(RunVerdict.Absent, Assert.Single(refreshed.Runs).Run.Verdict);
+        await Error(SharingError.StalePolicy, () => fixture.Api.PageAsync(cached.NextCursor));
+    }
+
     [Theory]
     [InlineData("{")]
     [InlineData("{}")]
@@ -422,6 +478,23 @@ public sealed class RunSharingProtocolTests
                     options: RunSharingProtocol.CreateJsonOptions()),
             };
             response.Headers.ETag = new("\"tag\"");
+            return response;
+        }))
+        { BaseAddress = new("http://run-sharing.test/") };
+        await Error(SharingError.Malformed, () => new HttpRunSharingApi(client).PageAsync());
+    }
+
+    [Fact]
+    public async Task AnEntityTagLongerThanTheBoundIsRefusedOnTheResponse()
+    {
+        var tag = $"\"{new string('a', RunSharingProtocol.MaximumEntityTagCharacters - 1)}\"";
+        using var client = new HttpClient(new ResponseHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new SharedRunPage([], null, tag), options: RunSharingProtocol.CreateJsonOptions()),
+            };
+            response.Headers.ETag = new(tag);
             return response;
         }))
         { BaseAddress = new("http://run-sharing.test/") };
