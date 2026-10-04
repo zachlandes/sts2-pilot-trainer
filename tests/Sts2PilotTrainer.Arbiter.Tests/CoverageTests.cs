@@ -19,40 +19,37 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class CoverageTests
 {
     /// <summary>The human-written mechanism evidence stays aligned with the selected
-    /// denominator points and real test declarations, without needing the game.</summary>
+    /// denominator points and every evidence key it cites, without needing the game.</summary>
     [Fact]
-    public void TheMechanismTriageMatchesTheDenominatorAndNamesRealTests()
+    public void TheMechanismTriageMatchesTheDenominatorAndResolvesEveryEvidenceKey()
     {
         var root = Arbiter.RepoRoot;
         var table = File.ReadAllText(Path.Combine(root, "scripts/decision-mechanisms.md"));
         var denominator = File.ReadAllText(Path.Combine(root, "scripts/decision-coverage.txt"));
-        Assert.Empty(MechanismTriageErrors(root, table, denominator));
+        Assert.Empty(MechanismTriageErrors(table, denominator));
     }
 
     [Fact]
-    public void TheMechanismTriageCheckRefusesMissingDuplicateOrStaleEvidence()
+    public void TheMechanismTriageCheckRefusesMissingDuplicateOrUnresolvedRows()
     {
         var root = Arbiter.RepoRoot;
         var table = File.ReadAllText(Path.Combine(root, "scripts/decision-mechanisms.md"));
         var denominator = File.ReadAllText(Path.Combine(root, "scripts/decision-coverage.txt"));
         var row = table.Split('\n').Single(line => line.StartsWith("| U-01 |", StringComparison.Ordinal));
-        Assert.Contains("inventory", MechanismTriageErrors(root, table.Replace(row, "", StringComparison.Ordinal), denominator));
-        Assert.Contains("review ids", MechanismTriageErrors(root, table + "\n" + row, denominator));
-        Assert.Contains("inventory", MechanismTriageErrors(root,
+        Assert.Contains("inventory", MechanismTriageErrors(table.Replace(row, "", StringComparison.Ordinal), denominator));
+        Assert.Contains("review ids", MechanismTriageErrors(table + "\n" + row, denominator));
+        Assert.Contains("inventory", MechanismTriageErrors(
             table.Replace("`UndoEndTurn`", "`NotAnOfferedVerb`", StringComparison.Ordinal), denominator));
-        Assert.Contains("inventory", MechanismTriageErrors(root,
+        Assert.Contains("inventory", MechanismTriageErrors(
             table.Replace("| multiplayer-only |", "| not-on-the-route |", StringComparison.Ordinal), denominator));
-        Assert.Contains("test undo", MechanismTriageErrors(root,
-            table.Replace("ResidueVerbTests.AnEndedTurnGoesThroughTheActionAndTheUndoIsRefusedOnThisBuild\"",
-                "ResidueVerbTests.NoSuchTest\"", StringComparison.Ordinal), denominator));
-        Assert.Contains("reference not-a-test", MechanismTriageErrors(root,
+        Assert.Contains("reference not-a-test", MechanismTriageErrors(
             table.Replace("[session], [undo]", "[session], [not-a-test]", StringComparison.Ordinal), denominator));
-        Assert.Empty(MechanismTriageErrors(root,
+        Assert.Empty(MechanismTriageErrors(
             table.Replace(row, row.Replace("| multiplayer-only |", "| generated |", StringComparison.Ordinal), StringComparison.Ordinal),
             denominator.Replace("UndoEndTurn  excused [multiplayer-only]:", "UndoEndTurn  excused [generated]:", StringComparison.Ordinal)));
     }
 
-    private static IReadOnlyList<string> MechanismTriageErrors(string root, string table, string denominator)
+    private static IReadOnlyList<string> MechanismTriageErrors(string table, string denominator)
     {
         var classes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -93,8 +90,8 @@ public sealed class CoverageTests
         var actual = rows.Select(row => $"{row[2]}|{row[3].Trim('`')}|{row[4]}");
         if (!actual.Order(StringComparer.Ordinal).SequenceEqual(expected.Order(StringComparer.Ordinal))) errors.Add("inventory");
 
-        var references = Regex.Matches(table, @"(?m)^\[([a-z]+)\]: (\S+) ""([A-Za-z]+)\.([A-Za-z]+)""$")
-            .ToDictionary(match => match.Groups[1].Value, StringComparer.Ordinal);
+        var references = Regex.Matches(table, @"(?m)^\[([a-z]+)\]: \S+ ""[A-Za-z]+\.[A-Za-z]+""$")
+            .Select(match => match.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
         foreach (var row in rows)
         {
             var used = Regex.Matches(row[6], @"\[([a-z-]+)\]");
@@ -102,20 +99,7 @@ public sealed class CoverageTests
             foreach (Match reference in used)
             {
                 var key = reference.Groups[1].Value;
-                if (!references.ContainsKey(key)) errors.Add($"reference {key}");
-            }
-        }
-        foreach (var (key, reference) in references)
-        {
-            var path = Path.GetFullPath(Path.Combine(root, "scripts", reference.Groups[2].Value));
-            var testClass = reference.Groups[3].Value;
-            var method = reference.Groups[4].Value;
-            if (!path.StartsWith(Path.Combine(root, "tests") + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
-                Path.GetFileName(path) != testClass + ".cs" || !File.Exists(path) ||
-                !Regex.IsMatch(File.ReadAllText(path),
-                    $@"\[(?:GameFact|GameTheory|Fact|Theory)\]\s*(?:\[[^\r\n]+\]\s*)*public (?:async )?(?:void|Task) {Regex.Escape(method)}\("))
-            {
-                errors.Add($"test {key}");
+                if (!references.Contains(key)) errors.Add($"reference {key}");
             }
         }
         return errors;

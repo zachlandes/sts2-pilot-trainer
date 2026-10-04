@@ -36,7 +36,7 @@ These are mappings to those owners, not additions to the replay contract.
 
 Each row retains its review ID and the denominator’s kind, identity and excusal class.
 The evidence keys link to a test method and its scope below; shared keys mean a shared mechanism, not shared coverage credit.
-`CoverageTests.TheMechanismTriageMatchesTheDenominatorAndNamesRealTests` checks this table even without the game, against the seven selected excusal classes and the referenced test declarations.
+`CoverageTests.TheMechanismTriageMatchesTheDenominatorAndResolvesEveryEvidenceKey` checks this table even without the game, against the seven selected excusal classes and the evidence keys defined below; it does not check that a named test exists or runs.
 A changed point, class or test name requires reviewing this mapping in the same change, rather than generating a new proof claim from a count.
 
 | Review | Kind | Identity | Excusal class | Recorder/driver mechanism | Proving tests | Limit |
