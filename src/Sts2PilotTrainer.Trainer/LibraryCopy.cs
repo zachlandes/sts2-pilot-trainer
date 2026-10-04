@@ -1,4 +1,5 @@
 using System.Globalization;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
 
@@ -229,6 +230,18 @@ public static class LibraryCopy
     /// <inheritdoc cref="LookupRefusedTitle"/>
     public static string LookupRefusedBuild(string recordedBuild, string thisBuild) =>
         $"This run exists. It was recorded on {recordedBuild} and your game is {thisBuild}.";
+
+    /// <summary>The build preflight at a play-from click, in the same words as an
+    /// incompatible run found by code. The fields are the preflight's verdict, not
+    /// another compatibility rule.</summary>
+    public static string? PlayFromBuildRefusal(IReadOnlyList<PreflightField> build)
+    {
+        var version = build.Single(field => field.Field == "build_version");
+        if (build.All(field => field.Matches)) return null;
+        return version.Matches
+            ? LookupRefusedNoLongerMatches
+            : LookupRefusedBuild(version.Expected, version.Actual);
+    }
 
     /// <summary>Said under <see cref="LookupRefusedBuild"/>, because the run is not
     /// gone - it is waiting on a verdict.</summary>

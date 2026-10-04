@@ -276,6 +276,10 @@ internal static class RecordedFightRun
             return;
         }
 
+        // A build refusal belongs to the click, before a restore notice or a scene
+        // transition can cover it; returning to the menu can itself fail after fading
+        if (RefuseIncompatibleBuild(recording, credit)) return;
+
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
@@ -360,6 +364,41 @@ internal static class RecordedFightRun
             // under the wait, in which case it is nobody's.
             if (journey == _journey) Abandon(ex);
         }
+    }
+
+    private static bool RefuseIncompatibleBuild(ReplayManifest recording, RecordingCredit credit)
+    {
+        string? reason;
+        try
+        {
+            var build = EnvironmentPreflight.Build(
+                recording.Environment, GameIdentity.ReadForCurrentEngine().Build);
+            reason = LibraryCopy.PlayFromBuildRefusal(build);
+            if (reason is null) return false;
+            foreach (var field in build.Where(field => !field.Matches))
+            {
+                Log.Error($"[{RunmobileMod.ModId}] not playing from this run: {field.Refusal}", 2);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{RunmobileMod.ModId}] could not read this game's build: {ex.Message}", 2);
+            reason = ex.Message;
+        }
+
+        // Refused whether or not it can be said, so a popup that fails does not start the run
+        try
+        {
+            PrefightScreen.ShowRefusal(credit, null, reason, LibraryCopy.LookupRefusedTitle);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not say why the run was refused: {ex.GetType().Name}: {ex.Message}",
+                2);
+        }
+
+        return true;
     }
 
     /// <summary>The walk route: the recording's run, constructed at its identity and
