@@ -304,6 +304,20 @@ public sealed record RunBrowser(
         return new RunLookup(LookupOutcome.Found, run, string.Empty, string.Empty, null);
     }
 
+    public static SharingPublication Publication(SubmissionStatus status)
+    {
+        status.Validate();
+        return status.State switch
+        {
+            PublicationState.Processing => new("Processing. Not published yet.", null, false),
+            PublicationState.Published => new("Published.", status.PublishedRun!.Code, true),
+            PublicationState.Refused => new($"Not published. {status.Reason}", null, false),
+            PublicationState.Failed => new($"Couldn't finish publishing. {status.Reason}", null, false),
+            PublicationState.Expired => new($"Publishing timed out. {status.Reason}", null, false),
+            _ => throw new ShareProtocolException(SharingError.Malformed, "Status unknown."),
+        };
+    }
+
     private static IReadOnlyList<BrowserGroup> Group(string? heading, IReadOnlyList<LibraryRun> runs) =>
         runs.Count == 0 ? [] : [new BrowserGroup(heading, runs)];
 

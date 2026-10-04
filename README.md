@@ -90,7 +90,7 @@ An established multiplayer run remains hidden.
 Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering the furthest floor this client can reach or the opened run's other floors.
 Where it cannot offer a place, the rows stay in place with the reason on them - the client cannot replay an earlier fight, the recording has a gap in it, it was made on another build, or a run is in progress.
 That plate also offers `Share this run` when the profile's `settings.json` names an authorized HTTPS sharing service; Runmobile has no built-in service, so otherwise the row says sharing is unavailable and sends nothing.
-The single sharing popup shows the run's identity and integrity seals, accepts a required run name of at most 40 characters and an optional description of at most 200, and requires a display name only when submitting.
+The single sharing popup shows the run's identity and integrity seals, accepts a required run name of at most 40 characters and an optional description of at most 200, and requires a display name of at most 80 only when submitting.
 It says that no other personal information travels, requires explicit CC0 consent, and runs the full publication validation locally before sending the manifest and those entered fields.
 
 **One whole fight, no undo.**
