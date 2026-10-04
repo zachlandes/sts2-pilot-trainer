@@ -234,8 +234,10 @@ public sealed class ReplayRefusalRegressionTests
     public void ADiagnosticResumedEventRewardIsClaimedAndReplaysToParity(int setting, string kind)
     {
         var harmony = new Harmony($"diagnostic-dummy-reward.{Guid.NewGuid():N}");
+        // Patch Resume rather than the RanOutOfTime getter: a trivial getter is inlined
+        // into Resume once an earlier walk has compiled it, which skips a getter prefix
         harmony.Patch(
-            AccessTools.PropertyGetter(typeof(MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter), "RanOutOfTime"),
+            AccessTools.Method(typeof(MegaCrit.Sts2.Core.Models.Events.BattlewornDummy), "Resume"),
             prefix: new HarmonyMethod(typeof(ReplayRefusalRegressionTests), nameof(DiagnosticDummyVictory)));
         try
         {
@@ -263,10 +265,13 @@ public sealed class ReplayRefusalRegressionTests
         }
     }
 
-    private static bool DiagnosticDummyVictory(ref bool __result)
+    private static void DiagnosticDummyVictory(AbstractRoom room)
     {
-        __result = false;
-        return false;
+        if (room is CombatRoom { Encounter: MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter encounter })
+        {
+            AccessTools.Field(typeof(MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter), "_ranOutOfTime")
+                .SetValue(encounter, false);
+        }
     }
 
     /// <summary>The Battleworn Dummy row's walk, carried to the move that leaves the
