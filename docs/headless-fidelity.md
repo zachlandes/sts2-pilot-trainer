@@ -186,9 +186,12 @@ A player who presses Skip and opens the same reward again is two clicks, and the
 recorder writes each as its own decision with its one answer; a completed loss from a
 player's store was refused at exactly that until the driver stopped reading the
 unclaimed reward as the engine refusing.
-The reroll keeps the selection open for an answer the recorder never writes - it
-refuses a second answer to one reward - so the selector refuses it by name and answers
-nothing, which is the engine's own way out of the selection.
+The reroll keeps the selection open for an answer this recorder cannot carry within the same reward selection.
+The recorder stops at the REROLL answer with integrity `unmapped` and continuity unchanged, keeping its identity, position and after-action in the stop receipt (`RunRecorderStopTests`).
+The selector refuses it by name and answers nothing, which is the engine's own way out of the selection (`CardRewardAlternativeTests`).
+Supporting it requires recording the reroll's identity and position, then the answer to the regenerated offer, including a decline, without treating that answer as a second loot-screen click.
+The recorder must refresh the offered cards after `CardReward.Reroll`, and the driver must consume those answers inside that same `CardReward.OnSelect` loop, with each before/after reading held to `TraceParity`.
+That contract is not implemented or claimed as covered.
 
 **Three prompts the seam does not reach.** `CardSelectCmd.FromChooseABundleScreen`,
 which Scroll Boxes opens, takes its first bundle without asking when the headless flag
@@ -407,6 +410,12 @@ return its own key.
 This is safe because nothing the project compares is localized: the canonical state
 is model ids and numbers, and display text is on the canonical form's excluded list
 by design. It costs legibility in a raw dump, which is what model ids are for.
+Doll Room's named doll options are an identity exception in the game: their `TextKey` contains the relic title's localized text, and the option carries no `Relic`.
+`RunDriver.OptionKey`, shared by recorder and driver, reads the title's `LocTable` and `LocEntryKey` there instead, such as `relics.MR_STRUGGLES.title`, beside the offered position.
+The choice obtains the doll and finishes the event, with no follow-up answer.
+`DollTitleContractTests` walks the existing second-act route through the recorder with synthetic localized doll labels, then removes that localization and replays each choice to `TraceParity`.
+This establishes the identity mechanism on a natural headless recorded route, not retail or recipient-environment publication proof.
+Older recordings carrying localized labels are not guessed or rewritten; the driver's identity check refuses them by name.
 
 **One honest caveat.** The game can pick a random string from a table
 (`LocString.GetRandomWithPrefix`), and against empty tables there is nothing to pick

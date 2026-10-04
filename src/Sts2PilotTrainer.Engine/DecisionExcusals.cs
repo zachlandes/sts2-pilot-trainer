@@ -1154,12 +1154,14 @@ public static class DecisionExcusals
 
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "Skip")] = Generated;
 
-        // The reroll Driftwood adds keeps the reward's selection open for an answer no
-        // recording carries, and the driver refuses it by name (ResidueVerbTests)
+        // A reroll needs another answer inside the same reward selection
         excusals[new DecisionPoint(DecisionKinds.CardRewardAlternative, "REROLL")] = new(
             ExcusalClass.NotReplayable,
-            "keeps the reward's selection open on this build (DoNothing), which the driver refuses by name; a " +
-            "recording of it cannot replay (excused 2026-09-16)");
+            "keeps the reward's selection open on this build (DoNothing); the recorder stops at REROLL with " +
+            "integrity unmapped and continuity unchanged, and the driver refuses it by name " +
+            "(RunRecorderStopTests, CardRewardAlternativeTests); support requires the reroll identity and position, " +
+            "the regenerated offer and its follow-up answer within the same reward selection, captured and replayed " +
+            "to TraceParity before this point is supported");
 
         // Pael's Wing adds the sacrifice, and a rest option past heal and smith is one
         // a relic or a quest card adds: Girya lifts, Pael's Growth clones, Pumpkin
@@ -1338,16 +1340,15 @@ public static class DecisionExcusals
             }
         }
 
-        // The three dolls are keyed by their relic's title with no relic set, so a
-        // recording carries the player's localized title where this process and the
-        // driver read the title's key (DecisionSurface.TitleKeyedConstructions)
         foreach (var key in new[] { "relics.BING_BONG.title", "relics.DAUGHTER_OF_THE_WIND.title", "relics.MR_STRUGGLES.title" })
         {
             excusals[DecisionPoint.EventOption("EVENT.DOLL_ROOM", key)] = new(
-                ExcusalClass.NotReplayable,
-                "keyed by the doll's relic title, a LocString's raw text, which the recorder writes as the player's " +
-                "localized title and RunDriver.OptionKey reads as the title's key on this build, so no recording of it " +
-                "can replay; stabilizing the spelling in the recorder and the driver is a later stage (excused 2026-09-17)");
+                ExcusalClass.Generated,
+                "DollTitleContractTests captures this choice on the existing second-act Doll Room route with " +
+                "synthetic localized titles, records the title's table and entry plus the offered position, and " +
+                "replays the recording without that localization to TraceParity; the doll choice finishes the " +
+                "event and needs no follow-up answer; this is headless mechanism and recorded-route evidence, " +
+                "not recipient-environment publication proof");
         }
 
         foreach (var (eventId, keys) in OptionsTakenBySecondActAncientRows)

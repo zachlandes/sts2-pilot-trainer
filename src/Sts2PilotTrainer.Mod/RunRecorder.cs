@@ -1080,9 +1080,11 @@ internal sealed class RunRecorder : IDisposable
     /// for may have been read after by the decision that followed it, at the instant
     /// that one was announced with the engine already quiet (<see cref="CloseStrandedDecisions"/>),
     /// and a wait that went on polling for a state already taken would read the state
-    /// the next decision left instead.
+    /// the next decision left instead. The pump also ends this wait for a named
+    /// card-reward stop, which needs only the opening reading and no settled state.
     /// </summary>
-    /// <returns>Null once the engine has settled, or the sentence saying why the wait
+    /// <returns>Null once the engine has settled or its reading is no longer needed,
+    /// or the sentence saying why the wait
     /// ended without it.</returns>
     internal static async Task<string?> WaitForTheEngine(
         Func<int> open,
@@ -1160,8 +1162,8 @@ internal sealed class RunRecorder : IDisposable
     /// that opened the screen is written as <see cref="ActionVerb.TakeCard"/> with it.
     /// A position past the cards is one of the reward's alternatives, and the same
     /// decision is written as <see cref="ActionVerb.TakeCardRewardAlternative"/>
-    /// naming it: on this build every alternative ends the selection, so the two are
-    /// the same click answered two ways.
+    /// naming it where the alternative ends the selection. A non-ending alternative
+    /// needs a follow-up answer this recorder cannot carry and stops the recording.
     /// </summary>
     internal static void CardRewardAnswered(
         IReadOnlyList<CardModel> offered, IReadOnlyList<CardRewardAlternative> alternatives, int? option)
@@ -1196,9 +1198,20 @@ internal sealed class RunRecorder : IDisposable
 
         if (index >= offered.Count)
         {
+            var answer = alternatives[index - offered.Count];
+            if (!LootRewards.AlternativeEndsTheSelection(answer.AfterSelected))
+            {
+                HoldScreenAnswerStop(MetAtScreen(
+                    nameof(NCardRewardSelectionScreen), answer.OptionId,
+                    "Runmobile can't record card reward rerolls yet.",
+                    ("option_id", answer.OptionId), ("option_index", Number(index)),
+                    ("after_selected", answer.AfterSelected.ToString())), nameof(ActionVerb.TakeCardRewardAlternative));
+                return;
+            }
+
             var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
             {
-                ["option_id"] = alternatives[index - offered.Count].OptionId,
+                ["option_id"] = answer.OptionId,
                 ["option_index"] = Number(index),
             };
 
@@ -1286,7 +1299,7 @@ internal sealed class RunRecorder : IDisposable
                         () => _disposed || _finished
                             ? "The recording ended before this decision could be read."
                             : RunWentAway(),
-                        () => next.ReadAfter is not null);
+                        () => next.ReadAfter is not null || HeldCardRewardStopFor(next.Verb) is not null);
             }
             catch (Exception ex)
             {
@@ -1334,6 +1347,13 @@ internal sealed class RunRecorder : IDisposable
     {
         try
         {
+            // A stop needs the opening reading, not a selection the player finishes
+            if (HeldCardRewardStopFor(next.Verb) is { } screenStop)
+            {
+                StopAt(screenStop, next.Before);
+                return;
+            }
+
             if (unsettled is not null)
             {
                 Refuse($"A {next.Verb} could not be read: {unsettled}");
@@ -1624,9 +1644,8 @@ internal sealed class RunRecorder : IDisposable
         List<ScreenAnswer> answers;
         lock (Gate)
         {
-            var takesRewardAnswers = verb == ActionVerb.TakeCard;
-            answers = _screenAnswers.Where(answer => takesRewardAnswers || !IsCardRewardAnswer(answer)).ToList();
-            _screenAnswers.RemoveAll(answer => takesRewardAnswers || !IsCardRewardAnswer(answer));
+            answers = _screenAnswers.Where(answer => AnswerBelongsTo(verbName, answer)).ToList();
+            _screenAnswers.RemoveAll(answer => AnswerBelongsTo(verbName, answer));
         }
 
         // A screen this decision opened answered with something the recorder could
@@ -2489,14 +2508,17 @@ internal sealed class RunRecorder : IDisposable
         lock (Gate)
         {
             while (_pending.Count > 0 && _pending.Peek().FightEnd) settledByTheEnd.Add(_pending.Dequeue());
-            if (_pending.Count == 1 && EngineIsQuiet()) settledByTheEnd.Add(_pending.Dequeue());
+            if (_pending.Count == 1 && (EngineIsQuiet() || HeldCardRewardStopFor(_pending.Peek().Verb) is not null))
+            {
+                settledByTheEnd.Add(_pending.Dequeue());
+            }
         }
 
         foreach (var step in settledByTheEnd)
         {
             try
             {
-                if (step.Unmapped is { } met)
+                if ((step.Unmapped ?? HeldCardRewardStopFor(step.Verb)) is { } met)
                 {
                     StopAt(met, step.Before);
                 }
@@ -2677,9 +2699,10 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// Held beside the screen's answers rather than stopping the capture now, because
     /// the screen was answered from inside the decision that opened it and that
-    /// decision has not settled. When it does, the stop stands at that decision's
-    /// ordinal, with its before-reading: recorded without its answer, the decision
-    /// would be one a replay makes differently.
+    /// decision has not settled. The stop stands at that decision's ordinal, with
+    /// its before-reading: recorded without its answer, the decision would be one a
+    /// replay makes differently. A named card-reward stop ends the owning decision's
+    /// wait without asking the player for a follow-up answer.
     /// </summary>
     private static void StopAtScreenAnswer(UnmappedFacts met)
     {
@@ -2689,12 +2712,22 @@ internal sealed class RunRecorder : IDisposable
         recorder.HoldScreenAnswerStop(met);
     }
 
-    internal void HoldScreenAnswerStop(UnmappedFacts met)
+    internal void HoldScreenAnswerStop(UnmappedFacts met, string? answerVerb = null)
     {
         lock (Gate)
         {
-            _screenAnswers.Add(new ScreenAnswer(met.Name, met.Args, met));
+            // Reward answers belong to their loot decision even when they stop it
+            _screenAnswers.Add(new ScreenAnswer(answerVerb ?? met.Name, met.Args, met));
         }
+    }
+
+    private static bool AnswerBelongsTo(string verb, ScreenAnswer answer) =>
+        verb == nameof(ActionVerb.TakeCard) || !IsCardRewardAnswer(answer);
+
+    private UnmappedFacts? HeldCardRewardStopFor(string verb)
+    {
+        if (verb != nameof(ActionVerb.TakeCard)) return null;
+        lock (Gate) return StopAmong(_screenAnswers.Where(IsCardRewardAnswer));
     }
 
     /// <summary>The stop a screen's answers carry, if one of them is one.</summary>

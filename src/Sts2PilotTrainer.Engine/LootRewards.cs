@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rewards;
 using Sts2PilotTrainer.Replay;
@@ -17,6 +18,13 @@ public static class LootRewards
     /// <summary>The kind the format names a card reward by in a description only; it
     /// is taken with <see cref="ActionVerb.TakeCard"/>, never claimed.</summary>
     public const string CardRewardKind = "card";
+
+    /// <summary>The after-actions that end a card reward's selection. A non-ending
+    /// answer needs another answer inside the same selection, which neither recorder
+    /// nor driver can carry yet. Both and the coverage map read this rule.</summary>
+    public static bool AlternativeEndsTheSelection(PostAlternateCardRewardAction afterSelected) =>
+        afterSelected is PostAlternateCardRewardAction.EndSelectionAndCompleteReward
+            or PostAlternateCardRewardAction.EndSelectionAndDoNotCompleteReward;
 
     public static string KindOf(Reward reward) => KindOf(reward.GetType());
 

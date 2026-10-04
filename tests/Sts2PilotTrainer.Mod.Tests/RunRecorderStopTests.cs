@@ -6,8 +6,10 @@ using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Rewards;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -597,6 +599,102 @@ public sealed class RunRecorderStopTests : IDisposable
             [ActionVerb.TakeCardRewardAlternative, ActionVerb.TakeCardRewardAlternative],
             twice.ToManifest().Actions.TakeLast(2).Select(action => action.Verb));
     });
+
+    /// <summary>Diagnostic setup: Driftwood is granted, not obtained on a recorded
+    /// route. Its own reward hook produces the reroll, and the recorder must stop at
+    /// that answer even if a later card answer arrives before the decision settles.</summary>
+    [GameFact]
+    public void ARerollStopsAtTheNamedAnswerWithoutBreakingTheWatch() => HeadlessRuns.WithARun(session =>
+    {
+        var (recorder, capture, journalPath) = Recording();
+        var player = session.RunState.Players[0];
+        var driftwood = ModelDb.Relic<Driftwood>().ToMutable();
+        RelicCmd.Obtain(driftwood, player).GetAwaiter().GetResult();
+        var reward = HeadlessRuns.ACardReward(player);
+        Assert.True(driftwood.TryModifyRewardsLate(player, [reward], null));
+        var offered = reward.Cards.ToList();
+        var alternatives = CardRewardAlternative.Generate(reward);
+        var reroll = Assert.Single(alternatives, alternative => alternative.OptionId == "REROLL");
+        var index = offered.Count + alternatives.ToList().IndexOf(reroll);
+        var before = Reading(Floor(2), Digest(1), 4200);
+
+        recorder.HoldCardRewardAnswer(offered, alternatives, index);
+        recorder.HoldCardRewardAnswer(offered, alternatives, 0);
+        recorder.Commit(nameof(ActionVerb.ClaimReward), Args(("reward_type", "gold")), before, before);
+        Assert.Null(capture.Stop);
+        var seq = capture.NextSeq;
+        recorder.Commit(nameof(ActionVerb.TakeCard), Args(("reward_index", "0")),
+            before, Reading(Floor(2), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(seq, stop.Decision.Seq);
+        Assert.Equal("NCardRewardSelectionScreen", stop.Decision.Name);
+        Assert.Equal("REROLL", stop.Decision.Discriminator);
+        Assert.Equal("REROLL", stop.Decision.Args["option_id"]);
+        Assert.Equal(HeadlessRuns.Number(index), stop.Decision.Args["option_index"]);
+        Assert.Equal("DoNothing", stop.Decision.Args["after_selected"]);
+        Assert.Equal("Runmobile can't record card reward rerolls yet.", stop.Decision.Evidence.Note);
+        Assert.Equal(before.Digest, stop.BeforeDigest);
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Empty(capture.Refusals);
+        Assert.DoesNotContain(capture.Actions, action => action.Verb == ActionVerb.TakeCardRewardAlternative);
+        Assert.Equal("REROLL", RunJournal.Parse(RunmobileStore.Read(journalPath)!).Stop!.Decision.Discriminator);
+
+        capture.Finish("abandoned");
+        Assert.Contains("REROLL", ManifestValidator.Validate(capture.ToManifest()).Describe(), StringComparison.Ordinal);
+    });
+
+    /// <summary>Diagnostic setup through the shell's actual reward-answer handler:
+    /// an unfinished selection must not delay the named stop until a follow-up click
+    /// or turn it into an unsettled-engine refusal at teardown.</summary>
+    [GameTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ARerollStopsEvenWhenTheRewardSelectionNeverFinishes(bool endBeforePolling)
+    {
+        using var harness = new RecordedActWalk();
+        HeadlessRuns.WithARun(session =>
+        {
+            using var driver = new RunDriver(session);
+            driver.EnterFirstRoom();
+            Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+            var recorder = RunRecorder.Active!;
+            var player = session.RunState.Players[0];
+            var driftwood = ModelDb.Relic<Driftwood>().ToMutable();
+            RelicCmd.Obtain(driftwood, player).GetAwaiter().GetResult();
+            var reward = HeadlessRuns.ACardReward(player);
+            Assert.True(driftwood.TryModifyRewardsLate(player, [reward], null));
+            var alternatives = CardRewardAlternative.Generate(reward);
+            var reroll = Assert.Single(alternatives, alternative => alternative.OptionId == "REROLL");
+            // The reward's own creation results, the list the engine hands the screen
+            var options = (IReadOnlyList<MegaCrit.Sts2.Core.Entities.Cards.CardCreationResult>)
+                HarmonyLib.AccessTools.Field(typeof(CardReward), "_cards").GetValue(reward)!;
+            RunRecorder.CardRewardScreen.After(options, alternatives);
+            var unfinished = new TaskCompletionSource();
+            RunRecorder.Announce(ActionVerb.TakeCard, Args(("reward_index", "0")), unfinished.Task);
+            var index = options.Count + alternatives.ToList().IndexOf(reroll);
+            CardScreensUp.Reward.Observe(Task.FromResult<int?>(index)).GetAwaiter().GetResult();
+
+            if (endBeforePolling)
+            {
+                typeof(RunManager).GetProperty("IsAbandoned")!.SetValue(RunManager.Instance, true);
+                RunRecorder.RunEnded(isVictory: false);
+            }
+            else
+            {
+                ((PumpedSettleClock)RunRecorder.Clock).Drain();
+            }
+
+            Assert.False(unfinished.Task.IsCompleted);
+            var capture = recorder.Capture;
+            Assert.Equal("REROLL", capture.Stop!.Decision.Discriminator);
+            Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+            Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+            Assert.Empty(capture.Refusals);
+            Assert.Empty(capture.Actions);
+        });
+    }
 
     /// <summary>What a card reward the engine put together for the run's player
     /// offers - its three cards and, from <c>CardRewardAlternative.Generate</c>, the
