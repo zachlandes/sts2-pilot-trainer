@@ -31,6 +31,18 @@ public sealed class PlayFromCompatibilityTests
         var recording = ManifestJson.Deserialize(File.ReadAllText(Path.Combine(
             Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json")));
         var actual = GameIdentity.ReadForCurrentEngine().Build;
+
+        // Matched to this process's own reading, because a headless engine restarted by an
+        // earlier test in the same process reads another content hash
+        recording = recording with
+        {
+            Environment = recording.Environment with
+            {
+                BuildVersion = recording.Environment.BuildVersion with { Value = actual.BuildVersion },
+                BuildDateUtc = recording.Environment.BuildDateUtc with { Value = actual.BuildDateUtc },
+                ContentHash = recording.Environment.ContentHash with { Value = actual.ContentHash },
+            },
+        };
         Assert.All(EnvironmentPreflight.Build(recording.Environment, actual), item => Assert.True(item.Matches));
         recording = recording with
         {

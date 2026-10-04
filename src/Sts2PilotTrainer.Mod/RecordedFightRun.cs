@@ -386,7 +386,18 @@ internal static class RecordedFightRun
             reason = ex.Message;
         }
 
-        PrefightScreen.ShowRefusal(credit, null, reason, LibraryCopy.LookupRefusedTitle);
+        // Refused whether or not it can be said, so a popup that fails does not start the run
+        try
+        {
+            PrefightScreen.ShowRefusal(credit, null, reason, LibraryCopy.LookupRefusedTitle);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not say why the run was refused: {ex.GetType().Name}: {ex.Message}",
+                2);
+        }
+
         return true;
     }
 
