@@ -667,7 +667,9 @@ public sealed class RunRecorderStopTests : IDisposable
             Assert.True(driftwood.TryModifyRewardsLate(player, [reward], null));
             var alternatives = CardRewardAlternative.Generate(reward);
             var reroll = Assert.Single(alternatives, alternative => alternative.OptionId == "REROLL");
-            var options = reward.Cards.Select(card => new MegaCrit.Sts2.Core.Entities.Cards.CardCreationResult(card)).ToList();
+            // The reward's own creation results, the list the engine hands the screen
+            var options = (IReadOnlyList<MegaCrit.Sts2.Core.Entities.Cards.CardCreationResult>)
+                HarmonyLib.AccessTools.Field(typeof(CardReward), "_cards").GetValue(reward)!;
             RunRecorder.CardRewardScreen.After(options, alternatives);
             var unfinished = new TaskCompletionSource();
             RunRecorder.Announce(ActionVerb.TakeCard, Args(("reward_index", "0")), unfinished.Task);
