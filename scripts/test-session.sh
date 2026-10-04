@@ -17,7 +17,8 @@
 # so does an abort or cancellation marker in the output even if the tool exits zero.
 # The last line printed is always the verdict, in the same words either way.
 #
-#   ./scripts/test-session.sh                       the whole solution, Release
+#   ./scripts/test-session.sh                       the change-aware solution, Release
+#   ./scripts/test-session.sh --full                force every generated coverage row
 #   ./scripts/test-session.sh <dotnet test args>    ... or any session you name
 #
 # It wraps `dotnet test` only. Preparing the tree - ./scripts/build.sh and
@@ -30,8 +31,52 @@ set -uo pipefail
 # session - the tests that hold this script quote all of them.
 readonly ABORT_MARKERS='^(Test Run Aborted|Test Run Canceled|Test Run Cancelled|Aborting test run|The active test run was aborted)'
 
+force_full=false
+if [ "${1:-}" = --full ]; then
+  force_full=true
+  shift
+fi
+
 if [ "$#" -eq 0 ]; then
-  set -- sts2-pilot-trainer.sln -c Release --nologo
+  # Serialize test assemblies so the collection cap is a suite-wide budget
+  set -- sts2-pilot-trainer.sln -c Release --nologo -m:1
+  threads="${RUNMOBILE_TEST_THREADS:-12}"
+  if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
+    echo "TEST SESSION FAILED - RUNMOBILE_TEST_THREADS must be a positive integer."
+    exit 1
+  fi
+
+  # Only known independent paths may omit the expensive generated rows
+  # Missing history, no changes and unknown paths all keep the complete suite
+  coverage=full
+  reason='forced or no trustworthy change set'
+  if [ "$force_full" = false ] && base="$(git merge-base HEAD refs/remotes/origin/main 2>/dev/null)" && paths="$(mktemp "${TMPDIR:-/tmp}/sts2-test-paths.XXXXXX")"; then
+    if git diff --name-only --no-renames -z "$base" -- > "$paths" && git ls-files --others --exclude-standard -z >> "$paths"; then
+      coverage=omit-generated
+      reason="only independent paths changed against $base"
+      changed=false
+      while IFS= read -r -d '' path; do
+        changed=true
+        case "$path" in
+          docs/*|demo/*|README.md|AGENTS.md|CLAUDE.md|LICENSE|.editorconfig|src/Sts2PilotTrainer.Trainer/*|tests/Sts2PilotTrainer.Trainer.Tests/*) ;;
+          *) coverage=full; reason="relevant or unknown path: $path (base $base)"; break ;;
+        esac
+      done < "$paths"
+      if [ "$changed" = false ]; then
+        coverage=full
+        reason="no changes against $base; run the complete standard"
+      fi
+    fi
+    rm -f "$paths"
+  fi
+  echo "Generated coverage: $coverage - $reason"
+  echo "Test parallelism: $threads collections, one test assembly at a time"
+  if [ "$coverage" = omit-generated ]; then
+    set -- "$@" --filter 'FullyQualifiedName!~Sts2PilotTrainer.Arbiter.Tests.GeneratedCoverageTests'
+  fi
+  set -- "$@" -- "xUnit.MaxParallelThreads=$threads"
+else
+  echo "Test scope: explicit dotnet test arguments (no automatic coverage exclusion)"
 fi
 
 # An explicit template rather than `mktemp -t`, which means a prefix on macOS and a

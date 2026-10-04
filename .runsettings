@@ -6,14 +6,19 @@
   indefinitely rather than fail it: nothing in dotnet test, the CI job or the local
   gate bounds a test run, so a stuck reader waits for as long as anybody lets it.
 
-  Forty-five minutes, because the bound has to clear a loaded machine and not just an
-  idle one. The Arbiter session took 14m06s idle and 17m05s with other work running
-  beside it, which aborted the fifteen-minute bound this used to carry - and an
-  aborted run is a failure the whole suite pays for, not a slow one. Headroom is
-  cheap here and a false abort is not.
+  Four hours, because the 2026-10-04 isolated Mod session completed 1008 tests in
+  153m25s with a ten-minute blame-hang bound and no hung test or dump. Its slowest
+  test took 146.56s. The uncapped full-suite Arbiter session completed in 5m09s,
+  while Mod exhausted both the 45-minute and two-hour session bounds.
+  Four hours leaves 86m35s (56 percent) above the measured complete Mod session;
+  the bound applies per test assembly, not to the sum of serialized assemblies.
+  This is headroom for healthy rows, not permission to reinterpret an abort.
 
-  A run past this bound is not a slow machine, it is a hang, and a hang that fails is
-  worth more than one nobody can interrupt. Raise the bound rather than removing it.
+  Keep the bound even when a suite grows. Raise it rather than removing it, and
+  investigate individual tests with blame-hang diagnostics before calling them hung.
+  Test assemblies share no engine state and run one at a time in test-session.sh;
+  their collection budget defaults to this M4 Max's twelve performance cores.
+  RUNMOBILE_TEST_THREADS overrides that budget in the default scripted session.
 
   What an abort is worth is a separate question, and ./scripts/test-session.sh owns
   it: `dotnet test` reports an aborted run as "Passed!" with a partial total, so the
@@ -21,6 +26,10 @@
 -->
 <RunSettings>
   <RunConfiguration>
-    <TestSessionTimeout>2700000</TestSessionTimeout>
+    <TestSessionTimeout>14400000</TestSessionTimeout>
+    <MaxCpuCount>1</MaxCpuCount>
   </RunConfiguration>
+  <xUnit>
+    <MaxParallelThreads>12</MaxParallelThreads>
+  </xUnit>
 </RunSettings>
