@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
@@ -55,6 +56,9 @@ internal static class PrefightScreen
     /// <param name="screen">The screen in the player's own word, or null on a refusal
     /// that is not about one - in which case the engine's own sentence is all there
     /// is, and it is shown rather than a noun being invented for it.</param>
+    // Never inlined, because a caller recompiled at tier 1 with this forwarder folded in
+    // no longer reaches a Harmony patch on it; PlayFromCompatibilityTests patches it
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ShowRefusal(
         RecordingCredit credit, string? screen, string reason, string? title = null) =>
         ShowRefusal(credit, screen, reason, details: false, title);
