@@ -336,7 +336,13 @@ public sealed class CardPromptCaptureTests : IDisposable
                 }
                 else
                 {
-                    RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new EndPlayerTurnAction(player, combat.TurnNumber));
+                    // Suppress yields as the driver's EndTurn does: an enemy turn drained
+                    // without it strands continuations that stall a later test's turn
+                    using (YieldSuppression.Enable())
+                    {
+                        RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new EndPlayerTurnAction(player, combat.TurnNumber));
+                        Pump.Drain();
+                    }
                 }
                 Pump.Drain();
 
