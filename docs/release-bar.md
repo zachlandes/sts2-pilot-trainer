@@ -105,7 +105,7 @@ The artifacts under `--out` - `parity.json` and `coverage.json` - are corpus rel
   A `not-on-the-route` excusal names a gap in recorded-route evidence, not an automatic obligation to hunt an independent recording for every content option.
   The release note must say which mechanism the point exercises and what existing test proves it, or name the missing mechanism evidence and why the point remains excused.
   Reachable but unsupported behavior must remain a named limitation; neither mechanism triage nor an injected diagnostic setup makes an unsupported recording replayable.
-  An excusal that names `GeneratedCoverageTests` is held by a generated walk through the real recorder on every merge and stands.
+  An excusal that names `GeneratedCoverageTests` is held by a generated walk through the real recorder on every relevant change, as [test-session.md](test-session.md) selects it, and stands.
   A point reached by a recording of the store corpus is printed as `excused and reached by this corpus`; that is progress and not a failure, and it is the list of excusals a committed recording would retire.
 
 What no recording can reach is the same on every build: a card prompt and a net action are not projectable from this format and are counted neither way; `AGENTS.md` names why.
