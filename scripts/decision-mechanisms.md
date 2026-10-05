@@ -17,7 +17,9 @@ The tests below have different scopes; a prompt-offer test, a refusal test and a
 The new diagnostics address hook-pause capture and event-resume reward claims.
 The existing dummy event rows exercise the timeout path without a reward, so they cannot prove claiming the resumed potion or relic.
 The new reward diagnostic forces only the encounter’s timeout reading in capture and replay, then lets the engine build and offer its own rewards.
-The doll-title identity rows and REROLL remain refusal/support follow-ups elsewhere; the Relic Trader zero-relic PROCEED is only a later classification question.
+The doll-title follow-up now captures stable localization identities and replays across changed text; those rows retain their review IDs with the denominator’s current generated excusal.
+REROLL remains unsupported, with recorder-stop and driver-refusal tests rather than a route obligation.
+The Relic Trader zero-relic PROCEED is only a later classification question.
 No new route hunt or exhaustive scenario obligation is added.
 
 ## Existing owners
@@ -45,16 +47,16 @@ A changed point, class or test name requires reviewing this mapping in the same 
 | U-02 | verb | `SelectRelicFromScreen` | screen-without-headless-host | queued relic prompt id/index; unconsumed-answer refusal | [relic] | No content producer; driver diagnostic only |
 | U-03 | verb | `RevealCrystalSphereCell` | screen-without-headless-host | minigame cell ingress; tool and reward settle | [crystal], [crystalroute] | Headless screen stand-in; no retail capture asserted |
 | U-04 | reward-kind | `LinkedRewardSet` | no-producer-on-this-build | reward-kind vocabulary exclusion | [shape] | No singleplayer constructor; no consumption proof |
-| U-05 | card-reward-alternative | `REROLL` | not-replayable | card-reward alternative follow-up contract | [reroll] | Refusal only; separate identity/follow-up task |
+| U-05 | card-reward-alternative | `REROLL` | not-replayable | recorder stop; driver refusal of unsupported follow-up | [reroll], [rerollcapture] | Refusal proved; reroll/follow-up replay support not claimed |
 | U-06 | rest-option | `COOK` | not-on-the-route | rest option work; exact-N deck removal prompt | [rest], [event], [exact], [hook] | Composition of rest/pick mechanisms; Cook effects/acquisition not proved |
 | U-07 | rest-option | `MEND` | multiplayer-only | session gate; another-player rest target | [session], [locked] | Outside singleplayer recording |
 | U-08 | event | `EVENT.FAKE_MERCHANT` | not-projectable | shop purchase ingress in an optionless event | [fake] | Already recorded; missing credit is projection, not replay |
 | U-09 | event | `EVENT.GRAVE_OF_THE_FORGOTTEN` | not-on-the-route | event option work; deck enchantment prompt | [event], [enchant], [eventwork] | Same mechanisms; Grave eligibility/acquisition not proved |
 | U-10 | event | `EVENT.RELIC_TRADER` | not-on-the-route | event option work; relic reward hand-over | [event], [eventwork], [handed], [claim] | Trader inventory eligibility/trade effects not proved |
 | U-11 | event | `EVENT.WAR_HISTORIAN_REPY` | not-on-the-route | event option work; potion/relic reward sets | [event], [eventwork], [gold], [claim] | Lantern Key replacement/third-act route not proved |
-| U-12 | event-option | `EVENT.DOLL_ROOM relics.BING_BONG.title` | not-replayable | localized option identity versus stable key | [event] | Generic event command only; no proving test for doll identity, separate task |
-| U-13 | event-option | `EVENT.DOLL_ROOM relics.DAUGHTER_OF_THE_WIND.title` | not-replayable | localized option identity versus stable key | [event] | Generic event command only; no proving test for doll identity, separate task |
-| U-14 | event-option | `EVENT.DOLL_ROOM relics.MR_STRUGGLES.title` | not-replayable | localized option identity versus stable key | [event] | Generic event command only; no proving test for doll identity, separate task |
+| U-12 | event-option | `EVENT.DOLL_ROOM relics.BING_BONG.title` | generated | stable option identity across localized titles | [doll] | Existing route with synthetic localization; no recipient-environment publication proof |
+| U-13 | event-option | `EVENT.DOLL_ROOM relics.DAUGHTER_OF_THE_WIND.title` | generated | stable option identity across localized titles | [doll] | Existing route with synthetic localization; no recipient-environment publication proof |
+| U-14 | event-option | `EVENT.DOLL_ROOM relics.MR_STRUGGLES.title` | generated | stable option identity across localized titles | [doll] | Existing route with synthetic localization; no recipient-environment publication proof |
 | U-15 | event-option | `EVENT.ENDLESS_CONVEYOR ENDLESS_CONVEYOR.pages.ALL.options.LOCKED` | not-choosable | locked/no-work option excluded before ingress | [locked] | Structural exclusion, not a recorded decision |
 | U-16 | event-option | `EVENT.GRAVE_OF_THE_FORGOTTEN GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.ACCEPT` | not-on-the-route | event option work; relic acquisition | [event], [claim] | Grave producer not reached |
 | U-17 | event-option | `EVENT.GRAVE_OF_THE_FORGOTTEN GRAVE_OF_THE_FORGOTTEN.pages.INITIAL.options.CONFRONT` | not-on-the-route | event option work; deck enchantment pick | [event], [enchant], [exact] | Grave producer not reached |
@@ -115,8 +117,14 @@ A changed point, class or test name requires reviewing this mapping in the same 
   Recorded walk: the Crystal Sphere PAYMENT_PLAN and UNCOVER_FUTURE rows answer the minigame in the headless host and replay the journal; this is not retail screen evidence.
 - [shape] — `DecisionSurfaceTests.TheRewardKindsAreTheSixTheFormatNamesAndTheOneItDoesNot`.
   Structural exclusion: the assembly walk retains LinkedRewardSet by name, outside the format kinds; it does not prove consuming a linked set.
-- [reroll] — `ResidueVerbTests.AnAlternativesEffectOnTheRewardIsTheAlternativesOwn`.
-  Driver diagnostic/refusal: Driftwood produces REROLL and the selector refuses its DoNothing follow-up contract; support is not claimed.
+- [reroll] — `CardRewardAlternativeTests.EveryAlternativeTheBuildProducesIsAnsweredAsTheEngineMeansIt`.
+  Driver diagnostic/refusal: the engine’s REROLL alternative is refused by name; support is not claimed.
+- [rerollcapture] — `RunRecorderStopTests.ARerollStopsAtTheNamedAnswerWithoutBreakingTheWatch`.
+  Recorder diagnostic: the engine offers REROLL and its answer stops capture once with integrity unmapped, continuity unchanged and the option identity in the journal.
+  No reroll/follow-up replay support is proved.
+- [doll] — `DollTitleContractTests.ALocalizedDollChoiceCapturesItsIdentityAndReplaysToParity`.
+  Existing second-act recorded route with synthetic localized titles during capture only: every doll choice records its stable table/entry key and offered position, then replays without that localization to TraceParity.
+  No inventory or event is injected; no recipient-environment publication proof is claimed.
 - [rest] — `GeneratedCoverageTests.AGeneratedWalkReachesThePointRecordsItAndReplaysToParity`.
   Recorded walk: the rest HEAL row proves ChooseRestSiteOption capture, work settling and replay; it does not prove Cook acquisition or its effects.
 - [exact] — `RewardAndScreenVerbTests.AScreenThatWantsMoreCardsThanTheManifestSuppliesIsRefused`.
@@ -164,7 +172,9 @@ A changed point, class or test name requires reviewing this mapping in the same 
 [crystal]: ../tests/Sts2PilotTrainer.Mod.Tests/ResidueVerbTests.cs "ResidueVerbTests.ACrystalSphereIsRevealedFromTheManifestThroughTheStoodInScreen"
 [crystalroute]: ../tests/Sts2PilotTrainer.Mod.Tests/GeneratedCoverageTests.cs "GeneratedCoverageTests.ASecondActEventRowSurvivesTheFirstActOpensTheEventAndReplaysToParity"
 [shape]: ../tests/Sts2PilotTrainer.Mod.Tests/DecisionSurfaceTests.cs "DecisionSurfaceTests.TheRewardKindsAreTheSixTheFormatNamesAndTheOneItDoesNot"
-[reroll]: ../tests/Sts2PilotTrainer.Mod.Tests/ResidueVerbTests.cs "ResidueVerbTests.AnAlternativesEffectOnTheRewardIsTheAlternativesOwn"
+[reroll]: ../tests/Sts2PilotTrainer.Mod.Tests/CardRewardAlternativeTests.cs "CardRewardAlternativeTests.EveryAlternativeTheBuildProducesIsAnsweredAsTheEngineMeansIt"
+[rerollcapture]: ../tests/Sts2PilotTrainer.Mod.Tests/RunRecorderStopTests.cs "RunRecorderStopTests.ARerollStopsAtTheNamedAnswerWithoutBreakingTheWatch"
+[doll]: ../tests/Sts2PilotTrainer.Mod.Tests/DollTitleContractTests.cs "DollTitleContractTests.ALocalizedDollChoiceCapturesItsIdentityAndReplaysToParity"
 [rest]: ../tests/Sts2PilotTrainer.Mod.Tests/GeneratedCoverageTests.cs "GeneratedCoverageTests.AGeneratedWalkReachesThePointRecordsItAndReplaysToParity"
 [exact]: ../tests/Sts2PilotTrainer.Arbiter.Tests/RewardAndScreenVerbTests.cs "RewardAndScreenVerbTests.AScreenThatWantsMoreCardsThanTheManifestSuppliesIsRefused"
 [event]: ../tests/Sts2PilotTrainer.Mod.Tests/GeneratedCoverageTests.cs "GeneratedCoverageTests.AnEventRowOpensTheEventChoosesTheOptionAndReplaysToParity"
