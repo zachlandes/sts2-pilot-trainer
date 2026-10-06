@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -17,6 +18,93 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class CoverageTests
 {
+    /// <summary>The human-written mechanism evidence stays aligned with the selected
+    /// denominator points and every evidence key it cites, without needing the game.</summary>
+    [Fact]
+    public void TheMechanismTriageMatchesTheDenominatorAndResolvesEveryEvidenceKey()
+    {
+        var root = Arbiter.RepoRoot;
+        var table = File.ReadAllText(Path.Combine(root, "scripts/decision-mechanisms.md"));
+        var denominator = File.ReadAllText(Path.Combine(root, "scripts/decision-coverage.txt"));
+        Assert.Empty(MechanismTriageErrors(table, denominator));
+    }
+
+    [Fact]
+    public void TheMechanismTriageCheckRefusesMissingDuplicateOrUnresolvedRows()
+    {
+        var root = Arbiter.RepoRoot;
+        var table = File.ReadAllText(Path.Combine(root, "scripts/decision-mechanisms.md"));
+        var denominator = File.ReadAllText(Path.Combine(root, "scripts/decision-coverage.txt"));
+        var row = table.Split('\n').Single(line => line.StartsWith("| U-01 |", StringComparison.Ordinal));
+        Assert.Contains("inventory", MechanismTriageErrors(table.Replace(row, "", StringComparison.Ordinal), denominator));
+        Assert.Contains("review ids", MechanismTriageErrors(table + "\n" + row, denominator));
+        Assert.Contains("inventory", MechanismTriageErrors(
+            table.Replace("`UndoEndTurn`", "`NotAnOfferedVerb`", StringComparison.Ordinal), denominator));
+        Assert.Contains("inventory", MechanismTriageErrors(
+            table.Replace("| multiplayer-only |", "| not-on-the-route |", StringComparison.Ordinal), denominator));
+        Assert.Contains("reference not-a-test", MechanismTriageErrors(
+            table.Replace("[session], [undo]", "[session], [not-a-test]", StringComparison.Ordinal), denominator));
+        Assert.Empty(MechanismTriageErrors(
+            table.Replace(row, row.Replace("| multiplayer-only |", "| generated |", StringComparison.Ordinal), StringComparison.Ordinal),
+            denominator.Replace("UndoEndTurn  excused [multiplayer-only]:", "UndoEndTurn  excused [generated]:", StringComparison.Ordinal)));
+    }
+
+    private static IReadOnlyList<string> MechanismTriageErrors(string table, string denominator)
+    {
+        var classes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "multiplayer-only", "no-producer-on-this-build", "not-choosable", "not-on-the-route",
+            "not-projectable", "not-replayable", "screen-without-headless-host",
+        };
+        var errors = new List<string>();
+        var rows = table.Split('\n').Where(line => line.StartsWith("| U-", StringComparison.Ordinal))
+            .Select(line => line.Split('|').Select(cell => cell.Trim()).ToArray()).ToList();
+        if (rows.Any(row => row.Length != 9 || row.Skip(1).Take(7).Any(string.IsNullOrWhiteSpace)))
+        {
+            return ["row shape"];
+        }
+        var ids = rows.Select(row => row[1]).ToList();
+        // Retain the review's ids even when a later test retires an excusal
+        if (ids.Count != ids.Distinct(StringComparer.Ordinal).Count() || ids.Any(id => !Regex.IsMatch(id, @"^U-\d{2}$")) ||
+            !Enumerable.Range(1, 59).All(n => ids.Contains($"U-{n:00}", StringComparer.Ordinal)))
+        {
+            errors.Add("review ids");
+        }
+        var mapped = rows.Select(row => $"{row[2]}|{row[3].Trim('`')}").ToHashSet(StringComparer.Ordinal);
+        var expected = new List<string>();
+        var kind = "";
+        foreach (var line in denominator.Split('\n'))
+        {
+            var section = Regex.Match(line, @"^# ([a-z-]+) \(\d+\)$");
+            if (section.Success) kind = section.Groups[1].Value;
+            var excusal = Regex.Match(line, @"^(.*?)  excused \[([a-z-]+)(?:;[^\]]*)?\]:");
+            if (excusal.Success && (classes.Contains(excusal.Groups[2].Value) || mapped.Contains($"{kind}|{excusal.Groups[1].Value}")))
+            {
+                expected.Add($"{kind}|{excusal.Groups[1].Value}|{excusal.Groups[2].Value}");
+            }
+            else if (mapped.Contains($"{kind}|{line.TrimEnd()}"))
+            {
+                expected.Add($"{kind}|{line.TrimEnd()}|reached");
+            }
+        }
+        var actual = rows.Select(row => $"{row[2]}|{row[3].Trim('`')}|{row[4]}");
+        if (!actual.Order(StringComparer.Ordinal).SequenceEqual(expected.Order(StringComparer.Ordinal))) errors.Add("inventory");
+
+        var references = Regex.Matches(table, @"(?m)^\[([a-z]+)\]: \S+ ""[A-Za-z]+\.[A-Za-z]+""$")
+            .Select(match => match.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            var used = Regex.Matches(row[6], @"\[([a-z-]+)\]");
+            if (used.Count == 0) errors.Add($"evidence {row[1]}");
+            foreach (Match reference in used)
+            {
+                var key = reference.Groups[1].Value;
+                if (!references.Contains(key)) errors.Add($"reference {key}");
+            }
+        }
+        return errors;
+    }
+
     [GameFact]
     public void TheCommittedCorpusCoversOrExcusesEveryPointThisBuildOffers()
     {

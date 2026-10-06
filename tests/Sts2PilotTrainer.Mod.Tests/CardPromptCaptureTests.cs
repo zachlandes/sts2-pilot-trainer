@@ -8,8 +8,10 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 using Sts2PilotTrainer.Engine;
@@ -194,15 +196,63 @@ public sealed class CardPromptCaptureTests : IDisposable
         Assert.Contains("no ConfirmCardScreen says the player stopped there", refusal.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Diagnostic setup: inject a power and three distinct draw-pile cards at fight
+    /// start, then end the turn through the retail action. Stratagem is forced to
+    /// shuffle by moving the draw pile to the
+    /// discard; Foregone Conclusion asks before the next hand draw. This proves the
+    /// hook's delayed pause offers the current pile, records every pick after EndTurn,
+    /// and the driver consumes those picks in a freshly staged run to the same digest.
+    /// It does not prove acquisition, a natural route, publication or retail rendering.
+    /// </summary>
+    [GameTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ADiagnosticTurnHookPromptIsCapturedAfterItsPauseAndReplayed(bool afterShuffle) =>
+        CaptureAndReplay(
+            () => ModelDb.Card<Headbutt>(),
+            stage: _ => { },
+            chooses: offered => offered.Where(card =>
+                    card.Id == ModelDb.Card<Headbutt>().Id ||
+                    card.Id == ModelDb.Card<BurningPact>().Id ||
+                    card.Id == ModelDb.Card<Discovery>().Id)
+                .Take(afterShuffle ? 1 : 3).ToList(),
+            expects: Enumerable.Repeat(ActionVerb.SelectCardFromScreen, afterShuffle ? 1 : 3).ToList(),
+            leaves: (combat, chosen) =>
+            {
+                Assert.Equal(afterShuffle ? 1 : 3, chosen.Count);
+                Assert.All(chosen, card => Assert.Contains(card, combat.Hand.Cards));
+            },
+            turnSetup: player =>
+            {
+                var combat = player.PlayerCombatState!;
+                // Use unique ids so the post-state assertion cannot find a different Strike
+                foreach (var canonical in new CardModel[] { ModelDb.Card<Headbutt>(), ModelDb.Card<BurningPact>(), ModelDb.Card<Discovery>() })
+                {
+                    CardPileCmd.Add(Deal(canonical, player), PileType.Draw).GetAwaiter().GetResult();
+                }
+                if (afterShuffle)
+                {
+                    foreach (var card in combat.DrawPile.Cards.ToList()) Discard(card);
+                    PowerCmd.Apply<StratagemPower>(new BlockingPlayerChoiceContext(), player.Creature, 1, player.Creature, null).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    PowerCmd.Apply<ForegoneConclusionPower>(new BlockingPlayerChoiceContext(), player.Creature, 3, player.Creature, null).GetAwaiter().GetResult();
+                }
+                Pump.Drain();
+            });
+
     // ── The harness ──────────────────────────────────────────────────────────────
 
     /// <summary>What one run wrote down about the prompt, and where it ended.</summary>
     private sealed record Captured(
-        int HandIndex, IReadOnlyList<ActionRecord> Answers, string DigestAfter, IReadOnlyList<string> ChosenIds);
+        ActionRecord Decision, IReadOnlyList<ActionRecord> Answers, string DigestBefore,
+        string DigestAfter, IReadOnlyList<string> ChosenIds);
 
     /// <summary>
-    /// Two runs of the probe seed. The first plays the card through the retail path and
-    /// records the prompt's answer; the second replays that answer through the driver.
+    /// Two runs of the probe seed. The first issues the play or ended turn through the
+    /// retail action and records the prompt's answer; the second replays it through the driver.
     /// </summary>
     /// <param name="expects">The answer records the recording is expected to carry
     /// after the play, in order - the picks, and the confirmation a range prompt ends
@@ -212,9 +262,10 @@ public sealed class CardPromptCaptureTests : IDisposable
         Action<PlayerCombatState> stage,
         Func<IReadOnlyList<CardModel>, IReadOnlyList<CardModel>> chooses,
         IReadOnlyList<ActionVerb> expects,
-        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves,
+        Action<Player>? turnSetup = null)
     {
-        var captured = Capture(card, stage, chooses, leaves);
+        var captured = Capture(card, stage, chooses, leaves, turnSetup);
 
         Assert.Equal(expects, captured.Answers.Select(answer => answer.Verb));
         Assert.Equal(
@@ -226,7 +277,7 @@ public sealed class CardPromptCaptureTests : IDisposable
             Assert.Equal(captured.ChosenIds.Count.ToString(CultureInfo.InvariantCulture), confirmation.Args["count"]);
         }
 
-        var replayed = Replay(card, stage, captured, leaves);
+        var replayed = Replay(card, stage, captured, leaves, turnSetup);
 
         Assert.Equal(captured.DigestAfter, replayed);
     }
@@ -234,8 +285,8 @@ public sealed class CardPromptCaptureTests : IDisposable
     /// <summary>
     /// The retail path, headlessly: the driver walks the run into its first fight and
     /// is then put away, so nothing of its own is on the engine's selector stack; a
-    /// selector on the local stack fills the seam the player's client fills; the card
-    /// is played through the engine's own action. The prompt's answer reaches the
+    /// selector on the local stack fills the seam the player's client fills; the play
+    /// or ended turn uses the engine's own action. The prompt's answer reaches the
     /// recorder the way it does in the client - through <see cref="CardPrompts"/> - and
     /// the decision it followed is committed with it.
     /// </summary>
@@ -243,7 +294,8 @@ public sealed class CardPromptCaptureTests : IDisposable
         Func<CardModel> dealt,
         Action<PlayerCombatState> stage,
         Func<IReadOnlyList<CardModel>, IReadOnlyList<CardModel>> chooses,
-        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves,
+        Action<Player>? turnSetup = null)
     {
         Captured? captured = null;
         HeadlessRuns.WithARun(session =>
@@ -255,10 +307,7 @@ public sealed class CardPromptCaptureTests : IDisposable
             }
 
             var combat = player.PlayerCombatState!;
-            var card = Deal(dealt(), player);
-            stage(combat);
-            var handIndex = combat.Hand.Cards.ToList().IndexOf(card);
-            Assert.True(handIndex >= 0, $"{card.Id} is not in the hand");
+            var decision = StageDecision(player, dealt, stage, turnSetup);
 
             var (recorder, capture) = Recording();
             using var watching = recorder;
@@ -280,7 +329,21 @@ public sealed class CardPromptCaptureTests : IDisposable
                 Assert.Null(CardSelectCmd.Selector);
 
                 var before = Reading();
-                RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(card, Target(card)));
+                if (turnSetup is null)
+                {
+                    var card = combat.Hand.Cards[int.Parse(decision.Args["hand_index"], CultureInfo.InvariantCulture)];
+                    RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(card, Target(card)));
+                }
+                else
+                {
+                    // Suppress yields as the driver's EndTurn does: an enemy turn drained
+                    // without it strands continuations that stall a later test's turn
+                    using (YieldSuppression.Enable())
+                    {
+                        RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new EndPlayerTurnAction(player, combat.TurnNumber));
+                        Pump.Drain();
+                    }
+                }
                 Pump.Drain();
 
                 Assert.NotNull(prompt);
@@ -289,16 +352,17 @@ public sealed class CardPromptCaptureTests : IDisposable
                 Assert.Equal(seam.Handed, prompt.Offered);
                 Assert.Equal(seam.Chose, chosen);
 
-                recorder.Commit(nameof(ActionVerb.PlayCard), PlayArgs(card, handIndex), before);
+                recorder.Commit(decision.Verb.ToString(), decision.Args, before);
             }
 
             leaves(combat, seam.Chose!);
             capture.Finish("abandoned");
             var actions = capture.ToManifest().Actions;
-            var play = actions.Last(action => action.Verb == ActionVerb.PlayCard);
+            var opening = actions.Last(action => action.Verb == decision.Verb);
             captured = new Captured(
-                handIndex,
-                actions.Where(action => action.Seq > play.Seq).ToList(),
+                opening,
+                actions.Where(action => action.Seq > opening.Seq).ToList(),
+                capture.Trace.Steps.First(step => step.Seq == opening.Seq).BeforeDigest!,
                 LiveRun.Read().Digest,
                 seam.Chose!.Select(card => card.Id.ToString()).ToList());
         });
@@ -310,7 +374,8 @@ public sealed class CardPromptCaptureTests : IDisposable
     /// same seed staged the same way.</summary>
     private static string Replay(
         Func<CardModel> dealt, Action<PlayerCombatState> stage, Captured captured,
-        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves,
+        Action<Player>? turnSetup = null)
     {
         string? digest = null;
         HeadlessRuns.WithARun(session =>
@@ -320,16 +385,15 @@ public sealed class CardPromptCaptureTests : IDisposable
             HeadlessRuns.EnterTheFirstFight(driver, session);
 
             var combat = player.PlayerCombatState!;
-            var card = Deal(dealt(), player);
-            stage(combat);
-            Assert.Equal(captured.HandIndex, combat.Hand.Cards.ToList().IndexOf(card));
-
-            var play = HeadlessRuns.Record(10, ActionVerb.PlayCard) with { Args = PlayArgs(card, captured.HandIndex) };
+            var decision = StageDecision(player, dealt, stage, turnSetup) with { Seq = 10 };
+            Assert.Equal(captured.Decision.Verb, decision.Verb);
+            Assert.Equal(captured.Decision.Args, decision.Args);
+            Assert.Equal(captured.DigestBefore, LiveRun.Read().Digest);
             var upcoming = captured.Answers
                 .Select((answer, offset) => answer with { Seq = 11 + offset })
                 .ToList();
 
-            driver.Apply(play, upcoming);
+            driver.Apply(decision, upcoming);
             foreach (var answer in upcoming) driver.Apply(answer);
 
             // The replay's copy of each chosen card, by id: a fresh run of the same
@@ -343,6 +407,23 @@ public sealed class CardPromptCaptureTests : IDisposable
         });
 
         return digest!;
+    }
+
+    private static ActionRecord StageDecision(
+        Player player, Func<CardModel> dealt, Action<PlayerCombatState> stage, Action<Player>? turnSetup)
+    {
+        if (turnSetup is not null)
+        {
+            turnSetup(player);
+            return HeadlessRuns.Record(10, ActionVerb.EndTurn);
+        }
+
+        var combat = player.PlayerCombatState!;
+        var card = Deal(dealt(), player);
+        stage(combat);
+        var index = combat.Hand.Cards.ToList().IndexOf(card);
+        Assert.True(index >= 0, $"{card.Id} is not in the hand");
+        return HeadlessRuns.Record(10, ActionVerb.PlayCard) with { Args = PlayArgs(card, index) };
     }
 
     /// <summary>Puts one generated card in the hand the way a card that creates one

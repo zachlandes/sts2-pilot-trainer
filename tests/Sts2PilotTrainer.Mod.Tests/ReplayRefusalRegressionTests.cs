@@ -220,6 +220,60 @@ public sealed class ReplayRefusalRegressionTests
         RecordedActWalk.ReplayToParity(recorded);
     }
 
+    /// <summary>
+    /// Diagnostic setup: force the dummy encounter's RanOutOfTime reading to false
+    /// in capture and replay, using the existing act-first row rather than hunting a stronger
+    /// deck. The game itself then builds the potion or relic set in Resume. This
+    /// proves capture and replay agree on a reward claimed from the resumed event,
+    /// including its before-digest. It does not prove beating the dummy, an ordinary
+    /// route, a retail recording or publication under an unpatched environment.
+    /// </summary>
+    [GameTheory]
+    [InlineData(1, "potion")]
+    [InlineData(3, "relic")]
+    public void ADiagnosticResumedEventRewardIsClaimedAndReplaysToParity(int setting, string kind)
+    {
+        var harmony = new Harmony($"diagnostic-dummy-reward.{Guid.NewGuid():N}");
+        // Patch Resume rather than the RanOutOfTime getter: a trivial getter is inlined
+        // into Resume once an earlier walk has compiled it, which skips a getter prefix
+        harmony.Patch(
+            AccessTools.Method(typeof(MegaCrit.Sts2.Core.Models.Events.BattlewornDummy), "Resume"),
+            prefix: new HarmonyMethod(typeof(ReplayRefusalRegressionTests), nameof(DiagnosticDummyVictory)));
+        try
+        {
+            using var harness = new RecordedActWalk();
+            var key = $"BATTLEWORN_DUMMY.pages.INITIAL.options.SETTING_{setting.ToString(CultureInfo.InvariantCulture)}";
+            var row = GeneratedCoverageTests.EventRowFor("ACT.GLORY", "EVENT.BATTLEWORN_DUMMY", key) with { ClaimsReward = kind };
+            var recorded = harness.Walk(
+                GeneratedCoverageTests.PolicyFor(row, "ACT.GLORY"), row.Seed, visitEveryRoomType: false,
+                GeneratedCoverageTests.EventRowActs["ACT.GLORY"]);
+            Assert.True(recorded.AskMet, "the diagnostic walk did not claim the resumed event's reward");
+            RecordedActWalk.AssertWhole(recorded);
+            var claim = Assert.Single(recorded.Manifest.Actions, action =>
+                action.Verb == ActionVerb.ClaimReward && action.Args["reward_type"] == kind &&
+                action.Seq > recorded.Manifest.Actions.Single(option =>
+                    option.Verb == ActionVerb.ChooseEventOption && option.Args["option_key"] == key).Seq);
+            var step = recorded.Capture.Trace.Steps.Single(candidate => candidate.Seq == claim.Seq);
+            Assert.Equal("none", step.Before["combat.outcome"]);
+            Assert.Equal("false", step.Before["combat.in_progress"]);
+            Assert.NotNull(step.BeforeDigest);
+            RecordedActWalk.ReplayToParity(recorded);
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    private static void DiagnosticDummyVictory(AbstractRoom room)
+    {
+        if (room is CombatRoom { Encounter: MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter encounter })
+        {
+            AccessTools.Field(typeof(MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter), "_ranOutOfTime")
+                .SetValue(encounter, false);
+        }
+    }
+
     /// <summary>The Battleworn Dummy row's walk, carried to the move that leaves the
     /// event, as the test above records it.</summary>
     private static RecordedActWalk.Recorded WalkPastTheDummysFight(RecordedActWalk harness)
