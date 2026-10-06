@@ -22,9 +22,8 @@ The execution evidence is in the existing recorder/driver tests: `CardPromptCapt
 `RunCaptureTests`, `FightCaptureTests` and `TraceParityTests` hold the game-free contracts these tests use.
 `GeneratedCoverageTests` adds recorder-to-replay walks through materially different seams; its deliberately shortened acts lists remain explicitly generated evidence, never ordinary publishable runs.
 
-The mechanism triage of the coverage review's 59-point inventory is in progress as of 2026-10-03.
-It is evidence work for this claim, not a prerequisite merge for this document and not yet a completed mechanism matrix.
-It must identify the mechanism each point exercises, cite the existing test or name the missing proof, with particular attention to prompt shape, hook timing and event-resume rewards.
+The mechanism triage of the coverage review's 59-point inventory is [scripts/decision-mechanisms.md](../scripts/decision-mechanisms.md), which owns each point's mechanism, its proving tests and their limits.
+`CoverageTests` holds its rows to the denominator and its evidence keys to the table's own references, without checking that a named test exists or runs.
 An explicit diagnostic or injected setup can prove a missing mechanism without a full-route seed hunt, but its setup and the behavior it proves must be stated; it does not establish parity for an ordinary exported run and does not acquire corpus coverage credit by assertion.
 The decision ledger's ui-reach walk is not built, and headless tests do not by themselves establish scene-tree timing fidelity.
 
@@ -62,7 +61,7 @@ A genuine second-computer acceptance demonstration is in progress as of 2026-10-
 It must use the actual export without machine/profile/account identity, explicitly establish the recipient's supported build/content/mod/unlock compatibility, and record the same verified states or a named refusal through the existing verification and entry owners.
 [Distribution](distribution.md) owns the local-only identity rule.
 Until that demonstration is recorded, cross-computer acceptance remains missing evidence, and no local parity figure is described as having proved it.
-The mechanism triage and second-computer work can add evidence independently; their anticipated results are not treated as passing checks here.
+The second-computer work can add evidence independently; its anticipated result is not treated as a passing check here.
 
 ## The two numbers
 
