@@ -251,16 +251,36 @@ public sealed class EncounterIntelTests
     }
 
     [GameFact]
-    public void LookupAssemblyHasNoSpoilerCommandsNetworkWritersOrRunmobileDependencies()
+    public void LookupAssemblyHasNoRunmobileDependencies()
     {
-        _ = ChoiceEntryPoints.Game;
         var assembly = typeof(RuntimeAdapter).Assembly;
         Assert.DoesNotContain(assembly.GetReferencedAssemblies(), reference => reference.Name?.StartsWith("Sts2PilotTrainer", StringComparison.Ordinal) == true || reference.Name == "Runmobile");
-        var methods = assembly.GetTypes().SelectMany(Methods).ToArray();
-        Assert.Empty(ForbiddenCalls(methods));
-        Assert.Contains(ForbiddenCalls(Methods(typeof(SpoilerControl))), call => call.Name == "RollMove");
     }
 
+    [GameFact]
+    public void LookupsCallNoWatchedCommandRandomStreamOrDeal()
+    {
+        HeadlessFights.InAFight("CHARACTER.IRONCLAD", "ENCOUNTER.SLUDGE_SPINNER_WEAK", (session, _) =>
+        {
+            var harmony = new Harmony("encounter-intel-test.forbidden-calls");
+            var prefix = new HarmonyMethod(typeof(EncounterIntelTests).GetMethod(nameof(RecordForbiddenCall), BindingFlags.Static | BindingFlags.NonPublic)!);
+            try
+            {
+                foreach (var method in WatchedGameplayMembers()) harmony.Patch(method, prefix: prefix);
+                var before = StateReceipt(session);
+                Assert.Empty(Watching(() =>
+                {
+                    Assert.Equal(BoardKind.Combat, RuntimeAdapter.ReadCurrent().Board.Kind);
+                    Assert.NotEmpty(RuntimeAdapter.ReadWorkedExamples());
+                }));
+                Assert.Equal(before, StateReceipt(session));
+                var spinner = Assert.Single(CombatManager.Instance.DebugOnlyGetState()!.Enemies);
+                Assert.Contains(Watching(() => spinner.Monster!.RollMove(CombatManager.Instance.DebugOnlyGetState()!.PlayerCreatures)),
+                    call => call.Name == nameof(MonsterModel.RollMove));
+            }
+            finally { harmony.UnpatchAll(harmony.Id); }
+        });
+    }
     [GameFact]
     public void APatchedReadGetterIsRefusedRatherThanStatingVanillaFacts()
     {
@@ -319,26 +339,42 @@ public sealed class EncounterIntelTests
     }
 
     private static void ChangeNumber(ref int __result) => __result += 1;
-    private sealed class SpoilerControl
+    private static List<MethodBase>? ForbiddenCalls;
+    private static void RecordForbiddenCall(MethodBase __originalMethod) => ForbiddenCalls?.Add(__originalMethod);
+
+    private static IReadOnlyList<MethodBase> Watching(Action body)
     {
-        // Never executed: a positive control for the command prohibition
-        public static void Advance(MonsterModel monster) => monster.RollMove([]);
+        ForbiddenCalls = [];
+        try
+        {
+            body();
+            return ForbiddenCalls;
+        }
+        finally { ForbiddenCalls = null; }
     }
 
-    private static IEnumerable<MethodBase> Methods(Type type)
+    private static IReadOnlyList<MethodBase> WatchedGameplayMembers()
     {
         const BindingFlags flags = BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
-        return type.GetMethods(flags).Cast<MethodBase>().Concat(type.GetConstructors(flags));
+        var commands = ChoiceEntryPoints.LoadedGameTypes()
+            .Where(type => type is { IsNested: false, ContainsGenericParameters: false, Namespace: "MegaCrit.Sts2.Core.Commands" })
+            .SelectMany(type => type.GetMethods(flags))
+            .Where(method => !method.IsAbstract && !method.ContainsGenericParameters && method.GetMethodBody() is not null);
+        var streams = typeof(MegaCrit.Sts2.Core.Random.Rng).GetMethods(flags)
+            .Where(method => method.Name.StartsWith("Next", StringComparison.Ordinal) && !method.ContainsGenericParameters);
+        var deals = new[]
+        {
+            typeof(ActModel).GetMethod(nameof(ActModel.GenerateRooms))!,
+            typeof(ActModel).GetMethod(nameof(ActModel.PullNextEncounter))!,
+            typeof(ActModel).GetMethod(nameof(ActModel.PullNextEvent))!,
+            typeof(EncounterModel).GetMethod(nameof(EncounterModel.GenerateMonstersWithSlots))!,
+            typeof(MonsterModel).GetMethod(nameof(MonsterModel.RollMove))!,
+        };
+        var watched = commands.Concat(streams).Cast<MethodBase>().Concat(deals).ToArray();
+        Assert.Contains(watched, method => method.DeclaringType == typeof(CreatureCmd));
+        Assert.Contains(watched, method => method.DeclaringType == typeof(MegaCrit.Sts2.Core.Random.Rng));
+        return watched;
     }
-
-    private static IEnumerable<MethodBase> ForbiddenCalls(IEnumerable<MethodBase> methods) => methods
-        .SelectMany(ChoiceEntryPoints.Callees).Where(callee =>
-            callee.Name is "Roll" or "GenerateRooms" or "PullNextEncounter" or "GenerateMonstersWithSlots" or "RollMove" or "FindNextMove" ||
-            (callee.DeclaringType?.FullName == "MegaCrit.Sts2.Core.Rooms.RoomSet" && callee.Name.StartsWith("get_Next", StringComparison.Ordinal)) ||
-            callee.DeclaringType?.Namespace?.StartsWith("MegaCrit.Sts2.Core.Commands", StringComparison.Ordinal) == true ||
-            callee.DeclaringType?.Namespace?.StartsWith("System.Net", StringComparison.Ordinal) == true ||
-            (callee.DeclaringType == typeof(File) && callee.Name is not "OpenRead") ||
-            (callee.DeclaringType == typeof(Directory)));
 
     private static void WithRun(int ascension, string[] acts, Action<GameSession> body)
     {

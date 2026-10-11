@@ -136,13 +136,14 @@ dotnet build tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj 
 ./scripts/package-encounter-intel.sh
 ```
 
-The narrow session completed with 20 passing cases and no skips on the identified build.
+The narrow session completed with 21 passing cases and no skips on the identified build.
 The importer's six tests passed, including malformed-input and provenance negative controls.
 The suite covers both act-one variants, A9's single and A10's double current-map bosses, quantities below and at A8/A9, live announced intents, Nibbit's context-dependent openings, Sludge Spinner's real branch table, Phrog's actual death hook and its spawned opening turn, and an event board before combat begins.
 Repeated lookups compare the complete gameplay digest and sandbox profile-file hashes and modification times before and after.
 Applying Strength and Weak through the game's own commands changes the announced Oil Spray reading from 8 to 11 to 8, while each lookup leaves those powers and the complete digest unchanged.
 Changing a wiki HP range produces a visible mismatch, changing effect wording refuses, changing the build hash refuses, and a patched numeric getter refuses until unpatched.
-A positive-control command call proves that the IL prohibition can actually detect a spoiler command.
+During a live fight, Harmony prefixes observe every non-generic method of the game's `Commands` types, the `Rng` stream's non-generic `Next` methods, `ActModel.GenerateRooms`, `PullNextEncounter` and `PullNextEvent`, `EncounterModel.GenerateMonstersWithSlots` and `MonsterModel.RollMove` while `ReadCurrent` and `ReadWorkedExamples` run, and none is called.
+An executed `RollMove` under the same prefixes is recorded, so the observation can actually see a call; generic members and call sites the JIT inlined are outside it.
 A separate load context proves that the mod's types can be enumerated with all Runmobile siblings unreachable.
 
 For reviewable readings from the actual engine, set `ENCOUNTER_INTEL_DEMO` to a temporary directory when running the narrow suite.
