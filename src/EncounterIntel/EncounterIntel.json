@@ -1,0 +1,12 @@
+{
+  "id": "EncounterIntel",
+  "name": "Encounter Intel",
+  "author": "zachlandes",
+  "description": "Read-only encounter reference data prototype. No UI in this build.",
+  "version": "0.1.0",
+  "min_game_version": "0.111.0",
+  "has_pck": false,
+  "has_dll": true,
+  "dependencies": [],
+  "affects_gameplay": false
+}

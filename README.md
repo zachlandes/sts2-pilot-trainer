@@ -9,7 +9,8 @@ Playing from a recording writes nothing to your saves, your stats or your run hi
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
 
-This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and its main-menu row and Compendium open the recorded-run library.
+This repository is `sts2-pilot-trainer`: its main mod is `Runmobile`, and its main-menu row and Compendium open the recorded-run library.
+A separate [Encounter Intel data prototype](docs/encounter-intel.md) reads current-act pools and visible enemies without Runmobile dependencies; it has no UI yet.
 The main-menu row appears by default for a player with no finished runs, while a player with run history uses the Compendium unless they turn the row on in settings.
 Anything marked **Coming soon** below is planned for launch and not built yet.
 A feature stops being coming soon by deleting the tag, so this file stays current without losing the framing.

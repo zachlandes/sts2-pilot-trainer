@@ -1,0 +1,31 @@
+Encounter Intel wiki catalogue
+
+The imported wiki descriptions and their saved Lua source tables are adapted
+from the Slay the Spire Wiki contributors and licensed under Creative Commons
+Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+https://creativecommons.org/licenses/by-sa/4.0/
+Copyright policy: https://slaythespire.wiki.gg/wiki/Meta:Copyrights
+
+Source: https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data
+Root revision: 28121
+Overgrowth revision: 50310
+Underdocks revision: 50311
+Hive revision: 50309
+Glory revision: 50308
+Elites revision: 50306
+Bosses revision: 50305
+Events revision: 50307
+Each per-module source is available under the root URL followed by /<module>.
+A pinned rendered revision is available with ?oldid=<revision>.
+Full URLs, SHA-256 hashes and fetch times accompany the embedded catalogue.
+
+Changes: parsed literal Lua tables into JSON, normalized field names, omitted
+art filenames, and retained the wiki's wikitext without executing or rendering it.
+Typed worked-example rules add independently reviewed encounter phases, openings
+and transitions for the inspected v0.111.0 game build.
+They do not make the rest of the imported wiki data build-verified.
+
+The independent C# and Python implementation is covered by the repository's MIT
+license; the adapted wiki dataset retains CC BY-SA 4.0.
+Mega Crit retains rights to Slay the Spire 2 and its game content.
+No game assembly, decompiled game code or game art is included in this package.

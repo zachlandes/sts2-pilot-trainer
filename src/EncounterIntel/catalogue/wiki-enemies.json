@@ -1,0 +1,5358 @@
+{
+  "schema": 1,
+  "generated_by": "tools/encounter-intel/import_wiki.py",
+  "attribution": {
+    "creator": "Slay the Spire Wiki contributors",
+    "source": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "policy_url": "https://slaythespire.wiki.gg/wiki/Meta:Copyrights",
+    "changes": "Parsed literal Lua tables; normalized fields; omitted art filenames; retained wikitext without executing or rendering it."
+  },
+  "sources": [
+    {
+      "module": "Module:Enemies/StS2_data",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data",
+      "revision": 28121,
+      "fetched_at": "2026-10-11T19:51:34.718874+00:00",
+      "sha256": "b985a8c978307734e1130780346581cf8046676ffa30e333f5278666e94c9571"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Overgrowth",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Overgrowth",
+      "revision": 50310,
+      "fetched_at": "2026-10-11T19:55:08.540741+00:00",
+      "sha256": "365f445dfd9accf230550f701d663735306038be502f7aefe0e4e7fa08fb039f"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Underdocks",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Underdocks",
+      "revision": 50311,
+      "fetched_at": "2026-10-11T19:55:42.777519+00:00",
+      "sha256": "3d7da53af767b80240656f66572619c1e2199481f66c5beba891cbf80ad767b7"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Hive",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Hive",
+      "revision": 50309,
+      "fetched_at": "2026-10-11T19:56:16.898286+00:00",
+      "sha256": "96b2fccb9e39519f2cce3fb8f8267666bb3d4b6e28b4ae096927c0f8cf76ac13"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Glory",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Glory",
+      "revision": 50308,
+      "fetched_at": "2026-10-11T19:56:49.534861+00:00",
+      "sha256": "76287f9f2f0698f1dce75d3cb75f9e8d66d615174c9f9322bfdc7f6dae0682d6"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Elites",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Elites",
+      "revision": 50306,
+      "fetched_at": "2026-10-11T19:57:21.070836+00:00",
+      "sha256": "7cff8abccbe0dd0bdcf32c744ea066cb232c80209e26db82a3f8e138ffc5080e"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Bosses",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Bosses",
+      "revision": 50305,
+      "fetched_at": "2026-10-11T19:57:57.965498+00:00",
+      "sha256": "1ad19668cdead10b81ee1d2aaa9e638b2ddb18f741f3f18032d9e4fa9d8c3297"
+    },
+    {
+      "module": "Module:Enemies/StS2_data/Events",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Events",
+      "revision": 50307,
+      "fetched_at": "2026-10-11T19:58:24.376588+00:00",
+      "sha256": "a1d34a7a67d2c027503f9f5e488b5cc1f6d2ef8982ef8a949a6da06c7ad897ce"
+    }
+  ],
+  "enemies": [
+    {
+      "name": "Aeonglass",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "512",
+      "asc_hp": "535",
+      "starts_with": "{{BD2|Withering Presence|<span style='text-wrap: wrap'>Withering Presence</span>}}<br>{{BD2|Artifact}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Ebb",
+          "text": "Deals 22 ({{Asc2|9|26}}) damage. Gains 33 {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 22 damage. Gains 33 {{KW2|Block}}.",
+            "Deals {{Asc2|9|26}} damage. Gains 33 {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack4",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Eye Lasers",
+          "text": "Deals 11 ({{Asc2|9|12}}) damage x2.",
+          "asc_text": [
+            "Deals 11 damage x2.",
+            "Deals {{Asc2|9|12}} damage x2."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Increasing Intensity",
+          "text": "Shuffles 1 ({{Asc2|9|2}}) {{C2|Wither|Wither+X}} into your discard pile. Gains 2({{Asc2|9|3}}) + X {{BD2|Strength}}. Upgrade all {{C2|Wither|Withers}}. {{BD2|Withering Presence}} effect now creates {{C2|Wither|Withers + X}}.",
+          "asc_text": [
+            "Shuffles 1 {{C2|Wither|Wither+X}} into your discard pile. Gains 2 + X {{BD2|Strength}}. Upgrade all {{C2|Wither|Withers}}. {{BD2|Withering Presence}} effect now creates {{C2|Wither|Withers + X}}.",
+            "Shuffles {{Asc2|9|2}} {{C2|Wither|Wither+X}} into your discard pile. Gains {{Asc2|9|3}} + X {{BD2|Strength}}. Upgrade all {{C2|Wither|Withers}}.  {{BD2|Withering Presence}} effect now creates {{C2|Wither|Withers + X}}."
+          ],
+          "icons": [
+            "StatusCard",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Assassin Raider",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "18-23",
+      "asc_hp": "19-24",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* 2 others randomly chosen from {{M|Axe Raider}}, {{M|Brute Raider}}, {{M|Crossbow Raider}}, {{M|Tracker Raider}}",
+      "moves": [
+        {
+          "name": "Killshot",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 10 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ruby Raiders#Assassin Raider",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Axe Raider",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "20-22",
+      "asc_hp": "21-23",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* 2 others randomly chosen from {{M|Assassin Raider}}, {{M|Brute Raider}}, {{M|Crossbow Raider}}, {{M|Tracker Raider}}",
+      "moves": [
+        {
+          "name": "Swing",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage. Gains 5 ({{Asc2|9|6}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 5 damage. Gains 5 {{KW2|Block}}.",
+            "Deals {{Asc2|9|6}} damage. Gains {{Asc2|9|6}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Big Swing",
+          "text": "Deals 12 ({{Asc2|9|13}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|13}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ruby Raiders#Axe Raider",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Axebot",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "70-78",
+      "asc_hp": "78-86",
+      "starts_with": "{{BD2|Stock}} 2",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Boot Up",
+          "text": "Gains 10({{Asc2|8|15}}) {{KW2|Block}} and 3/6({{Asc2|9|4/8}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 10 {{KW2|Block}} and 3 {{BD2|Strength}}.",
+            "Gains {{Asc2|8|15}} {{KW2|Block}} and {{Asc2|9|4}} {{BD2|Strength}}.",
+            "Gains 10 {{KW2|Block}} and 6 {{BD2|Strength}}.",
+            "Gains {{Asc2|8|15}} {{KW2|Block}} and {{Asc2|9|8}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Defend",
+            "Buff"
+          ]
+        },
+        {
+          "name": "The One-Two",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage 2 times.",
+          "asc_text": [
+            "Deals 9 damage 2 times.",
+            "Deals {{Asc2|9|10}} damage 2 times."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Hammer Uppercut",
+          "text": "Deals 12 ({{Asc2|9|14}}) damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 12 damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|14}} damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Axebot Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Axebot]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Battle Friend V1.0",
+      "source_module": "Module:Enemies/StS2_data/Events",
+      "kind": "Normal",
+      "base_hp": "75",
+      "asc_hp": null,
+      "starts_with": "{{BD2|Time Limit}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Nothing",
+          "text": "Does nothing.",
+          "asc_text": [],
+          "icons": []
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Event Encounter",
+            "enemies": "[[File:Battle FriendV1 Icon.png|class=monster-icon|48px|link=StS2:Battle Friend]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Battle Friend V2.0",
+      "source_module": "Module:Enemies/StS2_data/Events",
+      "kind": "Normal",
+      "base_hp": "150",
+      "asc_hp": null,
+      "starts_with": "{{BD2|Time Limit}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Nothing",
+          "text": "Does nothing.",
+          "asc_text": [],
+          "icons": []
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Event Encounter",
+            "enemies": "[[File:Battle FriendV2 Icon.png|class=monster-icon|48px|link=StS2:Battle Friend]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Battle Friend V3.0",
+      "source_module": "Module:Enemies/StS2_data/Events",
+      "kind": "Normal",
+      "base_hp": "300",
+      "asc_hp": null,
+      "starts_with": "{{BD2|Time Limit}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Nothing",
+          "text": "Does nothing.",
+          "asc_text": [],
+          "icons": []
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Event Encounter",
+            "enemies": "[[File:Battle Friend IconV3.png|class=monster-icon|48px|link=StS2:Battle Friend]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bowlbug (Egg)",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "21-22",
+      "asc_hp": "23-24",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Bite",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage. Gains 7 ({{Asc2|9|8}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 7 damage. Gains 7 {{KW2|Block}}.",
+            "Deals {{Asc2|9|8}} damage. Gains {{Asc2|9|8}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Bowlbugs#Bowlbug (Egg)",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Egg or Nectar) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bowlbug (Nectar)",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "35-38",
+      "asc_hp": "36-39",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Thrash",
+          "text": "Deals 3 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Buff",
+          "text": "Gains 15 ({{Asc2|9|16}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 15 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|16}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Bowlbugs#Bowlbug (Nectar)",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Egg or Nectar) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bowlbug (Rock)",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "45-48",
+      "asc_hp": "46-49",
+      "starts_with": "{{BD2|Imbalanced}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Headbutt",
+          "text": "Deals 15 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Dizzy",
+          "text": "Stunned. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Bowlbugs#Bowlbug (Rock)",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Egg or Nectar) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Slumbering Beetle Icon.png|class=monster-icon|48px|link=StS2:Slumbering Beetle]][[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbugs (Rock)]][[File:Bowlbug (Silk) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbugs (Silk)]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bowlbug (Silk)",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "40-43",
+      "asc_hp": "41-44",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Thrash",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage x2.",
+          "asc_text": [
+            "Deals 4 damage x2.",
+            "Deals {{Asc2|9|5}} damage x2."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Spin Web",
+          "text": "Applies 1 {{BD2|Weak}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Bowlbugs#Bowlbug (Silk)",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]][[File:Bowlbug (Lesser) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Slumbering Beetle Icon.png|class=monster-icon|48px|link=StS2:Slumbering Beetle]][[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Silk) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Silk)]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Brute Raider",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "30-33",
+      "asc_hp": "31-34",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* 2 others randomly chosen from {{M|Axe Raider}}, {{M|Assassin Raider}}, {{M|Crossbow Raider}}, {{M|Tracker Raider}}",
+      "moves": [
+        {
+          "name": "Beat",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage.",
+          "asc_text": [
+            "Deals 7 damage.",
+            "Deals {{Asc2|9|8}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Clap",
+          "text": "Gains 3 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ruby Raiders#Brute Raider",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bygone Effigy",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "127",
+      "asc_hp": "132",
+      "starts_with": "{{BD2|Slow}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Sleep",
+          "text": "Does nothing. Asleep.",
+          "asc_text": [],
+          "icons": [
+            "Sleep"
+          ]
+        },
+        {
+          "name": "Wake",
+          "text": "Gains 10 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Slashes",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Byrdonis",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "81-84",
+      "asc_hp": "90",
+      "starts_with": "{{BD2|Territorial}} 1",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Swoop",
+          "text": "Deals 17 ({{Asc2|9|19}}) damage.",
+          "asc_text": [
+            "Deals 17 damage.",
+            "Deals {{Asc2|9|19}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Peck",
+          "text": "Deals 3x3 ({{Asc2|9|4x3}}) damage.",
+          "asc_text": [
+            "Deals 3x3 damage.",
+            "Deals {{Asc2|9|4x3}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Calcified Cultist",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "38-41",
+      "asc_hp": "39-42",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* {{M|Damp Cultist}} (Cultists encounter)<br>* {{M|Seapunk}} (Seapunk Normal encounter)",
+      "moves": [
+        {
+          "name": "Incantation",
+          "text": "Gains 2 {{BD2|Ritual}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Dark Strike",
+          "text": "Deals 9 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 9 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Cultists#Calcified Cultist",
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Calcified Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Calcified Cultist]][[File:Damp Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Damp Cultist]]"
+          },
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Calcified Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Calcified Cultist]][[File:Seapunk Icon.png|class=monster-icon|48px|link=StS2:Seapunk]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ceremonial Beast",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "252",
+      "asc_hp": "262",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Stamp",
+          "text": "Gains {{BD2|Plow}} 150 ({{Asc2|9|160}}). When its HP drops to that amount, it becomes {{BD2|Stunned}} and loses all {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains {{BD2|Plow}} 150. When its HP drops to that amount, it becomes {{BD2|Stunned}} and loses all {{BD2|Strength}}.",
+            "Gains {{BD2|Plow}} {{Asc2|9|160}}. When its HP drops to that amount, it becomes {{BD2|Stunned}} and loses all {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Plow",
+          "text": "Deals 18 ({{Asc2|9|20}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 18 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|20}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Stun",
+          "text": "Stunned. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        },
+        {
+          "name": "Beast Cry",
+          "text": "Applies 1 {{BD2|Ringing}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Stomp",
+          "text": "Deals 15 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Crush",
+          "text": "Deals 17 ({{Asc2|9|19}}) damage. Gains 3 ({{Asc2|9|4}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 17 damage. Gains 3 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|19}} damage. Gains {{Asc2|9|4}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Chomper",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "60-64",
+      "asc_hp": "63-67",
+      "starts_with": "{{BD2|Artifact}} 2",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Clamp",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage ×2.",
+          "asc_text": [
+            "Deals 8 damage ×2.",
+            "Deals {{Asc2|9|9}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Screech",
+          "text": "Shuffles 3 {{C2|Dazed}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Chomper Icon.png|class=monster-icon|48px|link=StS2:Chomper]][[File:Chomper Icon.png|class=monster-icon|48px|link=StS2:Chomper]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Corpse Slug",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "25-27",
+      "asc_hp": "27-29",
+      "starts_with": "{{BD2|Ravenous}} 4 ({{Asc2|9|5}})",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* Corpse Slugs (Weak): 2× {{M|Corpse Slug}}<br>* Corpse Slugs (Normal): 3× {{M|Corpse Slug}}",
+      "moves": [
+        {
+          "name": "Whip Slap",
+          "text": "Deals 3 damage ×2.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Glomp",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage.",
+          "asc_text": [
+            "Deals 8 damage.",
+            "Deals {{Asc2|9|9}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Goop",
+          "text": "Applies 2 {{BD2|Frail}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Easy Encounter",
+            "enemies": "[[File:Corpse Slug Icon.png|class=monster-icon|48px|link=StS2:Corpse Slug]][[File:Corpse Slug Icon.png|class=monster-icon|48px|link=StS2:Corpse Slug]]"
+          },
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Corpse Slug Icon.png|class=monster-icon|48px|link=StS2:Corpse Slug]][[File:Corpse Slug Icon.png|class=monster-icon|48px|link=StS2:Corpse Slug]][[File:Corpse Slug Icon.png|class=monster-icon|48px|link=StS2:Corpse Slug]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Crossbow Raider",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "18-21",
+      "asc_hp": "19-22",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* 2 others randomly chosen from {{M|Axe Raider}}, {{M|Assassin Raider}}, {{M|Brute Raider}}, {{M|Tracker Raider}}",
+      "moves": [
+        {
+          "name": "Reload",
+          "text": "Gains 3 {{KW2|Block}}.",
+          "asc_text": [],
+          "icons": [
+            "Defend"
+          ]
+        },
+        {
+          "name": "Fire!",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ruby Raiders#Crossbow Raider",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Crusher",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "209",
+      "asc_hp": "219",
+      "starts_with": "{{BD2|Back Attack}}<br>{{BD2|Crab Rage}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Thrash",
+          "text": "Deals 12 ({{Asc2|9|14}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|14}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Enlarging Strike",
+          "text": "Deals 4 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Bug Sting",
+          "text": "Deals 6x2 ({{Asc2|9|7x2}}) damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 6x2 damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|7x2}} damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Adapt",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Guarded Strike",
+          "text": "Deals 12 ({{Asc2|9|14}}) damage. Gains 18 {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 12 damage. Gains 18 {{KW2|Block}}.",
+            "Deals {{Asc2|9|14}} damage. Gains 18 {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Kaiser Crab#Crusher",
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Cubex Construct",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "65",
+      "asc_hp": "70",
+      "starts_with": "{{BD2|Artifact}} 1",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>Appears as a solo normal encounter.<br><span class='enemy-infobox-party-header'>Glory</span><br>* Construct Menagerie: {{M|Punch Construct}} + {{M|Cubex Construct}} ×2",
+      "moves": [
+        {
+          "name": "Charge Up",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Repeater Blast",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 7 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|8}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Expel Blast",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage ×2.",
+          "asc_text": [
+            "Deals 5 damage ×2.",
+            "Deals {{Asc2|9|6}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Cubex Construct Icon.png|class=monster-icon|48px|link=StS2:Cubex Construct]]"
+          },
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Punch Construct Icon.png|class=monster-icon|48px|link=StS2:Punch Construct]][[File:Cubex Construct Icon.png|class=monster-icon|48px|link=StS2:Cubex Construct]][[File:Cubex Construct Icon.png|class=monster-icon|48px|link=StS2:Cubex Construct]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Damp Cultist",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "51-53",
+      "asc_hp": "52-54",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* {{M|Calcified Cultist}} (Cultists encounter)",
+      "moves": [
+        {
+          "name": "Incantation",
+          "text": "Gains 5 ({{Asc2|9|6}}) {{BD2|Ritual}}.",
+          "asc_text": [
+            "Gains 5 {{BD2|Ritual}}.",
+            "Gains {{Asc2|9|6}} {{BD2|Ritual}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Dark Strike",
+          "text": "Deals 1 ({{Asc2|9|3}}) damage.",
+          "asc_text": [
+            "Deals 1 damage.",
+            "Deals {{Asc2|9|3}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Cultists#Damp Cultist",
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Calcified Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Calcified Cultist]][[File:Damp Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Damp Cultist]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Decimillipede",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "40-46",
+      "asc_hp": "46-52",
+      "starts_with": "{{BD2|Reattach}} 25",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Bulk",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 6 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|7}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Writhe",
+          "text": "Deals 5x2 ({{Asc2|9|6x2}}) damage.",
+          "asc_text": [
+            "Deals 5x2 damage.",
+            "Deals {{Asc2|9|6x2}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Outgas",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Weak}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Weak}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Weak}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Reattach",
+          "text": "Revives with 25 HP (if other segments are alive).",
+          "asc_text": [],
+          "icons": [
+            "Heal"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Devoted Sculptor",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "162",
+      "asc_hp": "172",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Forbidden Incantation",
+          "text": "Gains 9 {{BD2|Ritual}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Savage",
+          "text": "Deals 12 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Easy Encounter",
+            "enemies": "[[File:Devoted Sculptor Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Devoted Sculptor]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Doormaker",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "489",
+      "asc_hp": "512",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Dramatic Open",
+          "text": "Transforms into the Doormaker. Sets current buff to {{BD2|Hunger}}.",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Hunger",
+          "text": "Deals 30 ({{Asc2|9|35}}) damage. Swaps current buff to {{BD2|Scrutiny}}.",
+          "asc_text": [
+            "Deals 30 damage. Swaps current buff to {{BD2|Scrutiny}}.",
+            "Deals {{Asc2|9|35}} damage. Swaps current buff to {{BD2|Scrutiny}}."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Scrutiny",
+          "text": "Deals 24 ({{Asc2|9|26}}) damage. Swaps current buff to {{BD2|Grasp}}.",
+          "asc_text": [
+            "Deals 24 damage. Swaps current buff to {{BD2|Grasp}}.",
+            "Deals {{Asc2|9|26}} damage. Swaps current buff to {{BD2|Grasp}}."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Grasp",
+          "text": "Deals 10x2 ({{Asc2|9|11x2}}) damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}.",
+          "asc_text": [
+            "Deals 10x2 damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}.",
+            "Deals {{Asc2|9|11x2}} damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}."
+          ],
+          "icons": [
+            "Attack4",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Entomancer",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "145",
+      "asc_hp": "155",
+      "starts_with": "{{BD2|Personal Hive}} 1",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Beeeees!",
+          "text": "Deals 3 damage ×7 ({{Asc2|9|×8}}).",
+          "asc_text": [
+            "Deals 3 damage ×7.",
+            "Deals 3 damage {{Asc2|9|×8}}."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Spear!",
+          "text": "Deals 18 ({{Asc2|9|20}}) damage.",
+          "asc_text": [
+            "Deals 18 damage.",
+            "Deals {{Asc2|9|20}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Pheromone Spit",
+          "text": "Gains 1 {{BD2|Personal Hive}} and 1 {{BD2|Strength}}. If {{BD2|Personal Hive}} is already at 3, gains 2 {{BD2|Strength}} instead.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Exoskeleton",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "24-28",
+      "asc_hp": "25-29",
+      "starts_with": "{{BD2|Hard to Kill}} 9",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Skitter",
+          "text": "Deals 1 damage ×3 ({{Asc2|9|×4}}).",
+          "asc_text": [
+            "Deals 1 damage ×3.",
+            "Deals 1 damage {{Asc2|9|×4}}."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Mandibles",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage.",
+          "asc_text": [
+            "Deals 8 damage.",
+            "Deals {{Asc2|9|9}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Enrage",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]][[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]][[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]]"
+          },
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]][[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]][[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]][[File:Exoskeleton Icon.png|class=monster-icon|48px|link=StS2:Exoskeleton]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Eye With Teeth",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Minion",
+      "base_hp": "6",
+      "asc_hp": null,
+      "starts_with": "{{BD2|Illusion}}",
+      "in_party_with": "Summoned by {{M|Fogmog||2}}.",
+      "moves": [
+        {
+          "name": "Distract",
+          "text": "Shuffles 3 {{C2|Dazed}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Fogmog#Eye With Teeth",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Fogmog Icon.png|class=monster-icon|48px|link=StS2:Fogmog]][[File:Eye With Teeth Icon.png|class=monster-icon|48px|link=StS2:Fogmog#Eye With Teeth]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Fabricator",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "150",
+      "asc_hp": "155",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Fabricate",
+          "text": "Summons 1 defensive bot ([[Guardbot]] or [[Noisebot]]) and 1 aggressive bot ([[Zapbot]] or [[Stabbot]]).",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Fabricating Strike",
+          "text": "Deals 18 ({{Asc2|9|21}}) damage. Summons 1 aggressive bot ([[Zapbot]] or [[Stabbot]]).",
+          "asc_text": [
+            "Deals 18 damage. Summons 1 aggressive bot ([[Zapbot]] or [[Stabbot]]).",
+            "Deals {{Asc2|9|21}} damage. Summons 1 aggressive bot ([[Zapbot]] or [[Stabbot]])."
+          ],
+          "icons": [
+            "Attack3",
+            "Summon"
+          ]
+        },
+        {
+          "name": "Disintegrate",
+          "text": "Deals 11 ({{Asc2|9|13}}) damage.",
+          "asc_text": [
+            "Deals 11 damage.",
+            "Deals {{Asc2|9|13}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Fat Gremlin",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Minion",
+      "base_hp": "13-17",
+      "asc_hp": "14-18",
+      "starts_with": null,
+      "in_party_with": "Summoned by {{M|Gremlin Merc}} on death.",
+      "moves": [
+        {
+          "name": "Spawned",
+          "text": "Wakes up. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        },
+        {
+          "name": "Flee",
+          "text": "Flees from combat with any stolen gold.",
+          "asc_text": [],
+          "icons": [
+            "Escape"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Gremlin Merc#Fat Gremlin",
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Gremlin Merc Icon.png|class=monster-icon|48px|link=StS2:Gremlin Merc]][[File:Summon Divider Icon.png]][[File:Sneaky Gremlin Icon.png|class=monster-icon|48px|link=StS2:Sneaky Gremlin]][[File:Fat Gremlin Icon.png|class=monster-icon|48px|link=StS2:Fat Gremlin]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Flail Knight",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "101",
+      "asc_hp": "108",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Spectral Knight}} + {{M|Magi Knight}}",
+      "moves": [
+        {
+          "name": "Breaker",
+          "text": "Gains 3 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Flail",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage ×2.",
+          "asc_text": [
+            "Deals 9 damage ×2.",
+            "Deals {{Asc2|9|10}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Ram",
+          "text": "Deals 15 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Knight_Gang#Flail Knight",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Flyconid",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "47-49",
+      "asc_hp": "51-53",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Flyconid encounter: {{M|Flyconid}} + 1 random from {{M|Leaf Slime (M)}} or {{M|Twig Slime (M)}}<br>* Snapping Jaxfruit encounter: {{M|Snapping Jaxfruit}} + {{M|Flyconid}}",
+      "moves": [
+        {
+          "name": "Weakening Spores",
+          "text": "Applies 2 {{BD2|Vulnerable}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Frail Spores",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Smash",
+          "text": "Deals 11 ({{Asc2|9|12}}) damage.",
+          "asc_text": [
+            "Deals 11 damage.",
+            "Deals {{Asc2|9|12}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Flyconid Icon.png|class=monster-icon|48px|link=StS2:Flyconid]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Flyconid Icon.png|class=monster-icon|48px|link=StS2:Flyconid]][[File:Snapping Jaxfruit Icon.png|class=monster-icon|48px|link=StS2:Snapping Jaxfruit]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Fogmog",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "74",
+      "asc_hp": "78",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>Appears as a solo normal encounter.<br>Summons {{M|Eye With Teeth}} mid-fight.",
+      "moves": [
+        {
+          "name": "Illusory Spores",
+          "text": "Summons an {{M|Eye With Teeth||2}}.",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Thwack",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Gains 1 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 8 damage. Gains 1 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|9}} damage. Gains 1 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Headbutt",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Fogmog Icon.png|class=monster-icon|48px|link=StS2:Fogmog]][[File:Eye With Teeth Icon.png|class=monster-icon|48px|link=StS2:Fogmog#Eye With Teeth]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Fossil Stalker",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "51-53",
+      "asc_hp": "54-56",
+      "starts_with": "{{BD2|Suck}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Latch",
+          "text": "Deals 12 ({{Asc2|9|14}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|14}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Tackle",
+          "text": "Deals 9 ({{Asc2|9|11}}) damage. Applies 1 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 9 damage. Applies 1 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|11}} damage. Applies 1 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Lash",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage ×2.",
+          "asc_text": [
+            "Deals 3 damage ×2.",
+            "Deals {{Asc2|9|4}} damage ×2."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Fossil Stalker Icon.png|class=monster-icon|48px|link=StS2:Fossil Stalker]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Frog Knight",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "191",
+      "asc_hp": "199",
+      "starts_with": "{{BD2|Plating}} 15 ({{Asc2|8|19}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Tongue Lash",
+          "text": "Deals 13 ({{Asc2|9|14}}) damage. Applies 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 13 damage. Applies 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|14}} damage. Applies 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Strike Down Evil",
+          "text": "Deals 21 ({{Asc2|9|23}}) damage.",
+          "asc_text": [
+            "Deals 21 damage.",
+            "Deals {{Asc2|9|23}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "For the Queen",
+          "text": "Gains 5 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Beetle Charge",
+          "text": "Deals 35 ({{Asc2|9|40}}) damage.",
+          "asc_text": [
+            "Deals 35 damage.",
+            "Deals {{Asc2|9|40}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Frog Knight Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Frog Knight]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Fuzzy Wurm Crawler",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "55-57",
+      "asc_hp": "58-59",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>Appears as a solo weak encounter.<br>Also appears in a strong encounter with {{M|Shrinker Beetle}}.",
+      "moves": [
+        {
+          "name": "Acid Goop",
+          "text": "Deals 4 ({{Asc2|9|6}}) damage.",
+          "asc_text": [
+            "Deals 4 damage.",
+            "Deals {{Asc2|9|6}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Inhale",
+          "text": "Gains 7 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Fuzzy Wurm Crawler Icon.png|class=monster-icon|48px|link=StS2:Fuzzy Wurm Crawler]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Fuzzy Wurm Crawler Icon.png|class=monster-icon|48px|link=StS2:Fuzzy Wurm Crawler]][[File:Shrinker Beetle Icon.png|class=monster-icon|48px|link=StS2:Shrinker Beetle]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gas Bomb",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Minion",
+      "base_hp": "7",
+      "asc_hp": "8",
+      "starts_with": "{{BD2|Minion}}",
+      "in_party_with": "Summoned by {{M|Living Fog}}.",
+      "moves": [
+        {
+          "name": "Explode",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Dies.",
+          "asc_text": [
+            "Deals 8 damage. Dies.",
+            "Deals {{Asc2|9|9}} damage. Dies."
+          ],
+          "icons": [
+            "DeathBlow"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Living Fog#Gas Bomb",
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Living Fog Icon.png|class=monster-icon|48px|link=StS2:Living Fog]][[File:Summon Divider Icon.png]][[File:Gas Bomb (+) Icon.png|class=monster-icon|48px|link=StS2:Gas Bomb]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Globe Head",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "148",
+      "asc_hp": "158",
+      "starts_with": "{{BD2|Galvanic}} 6",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Shocking Slap",
+          "text": "Deals 13 ({{Asc2|9|14}}) damage. Applies 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 13 damage. Applies 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|14}} damage. Applies 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Thunder Strike",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage 3 times.",
+          "asc_text": [
+            "Deals 6 damage 3 times.",
+            "Deals {{Asc2|9|7}} damage 3 times."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Galvanic Burst",
+          "text": "Deals 16 ({{Asc2|9|17}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 16 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|17}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Globe Head Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Globe Head]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gremlin Merc",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "47-49",
+      "asc_hp": "51-53",
+      "starts_with": "{{BD2|Surprise}} 1<br>{{BD2|Thievery}} 20",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>Appears as a solo normal encounter.<br>Summons {{M|Fat Gremlin}} and {{M|Sneaky Gremlin}} on death.",
+      "moves": [
+        {
+          "name": "Gimme",
+          "text": "Deals 7x2 ({{Asc2|8|8x2}}) damage.",
+          "asc_text": [
+            "Deals 7x2 damage.",
+            "Deals {{Asc2|8|8x2}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Double Smash",
+          "text": "Deals 6x2 ({{Asc2|8|7x2}}) damage. Applies 2 {{BD2|Weak}}.",
+          "asc_text": [
+            "Deals 6×2. Applies 2 {{BD2|Weak}}.",
+            "Deals {{Asc2|8|7x2}} damage. Applies 2 {{BD2|Weak}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Hehe",
+          "text": "Deals 8 ({{Asc2|8|9}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 8 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|8|9}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Gremlin Merc Icon.png|class=monster-icon|48px|link=StS2:Gremlin Merc]][[File:Summon Divider Icon.png]][[File:Sneaky Gremlin Icon.png|class=monster-icon|48px|link=StS2:Sneaky Gremlin]][[File:Fat Gremlin Icon.png|class=monster-icon|48px|link=StS2:Fat Gremlin]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Guardbot",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Minion",
+      "base_hp": "16-20",
+      "asc_hp": "17-21",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Guard",
+          "text": "Gives the Fabricator 15 {{KW2|Block}}.",
+          "asc_text": [],
+          "icons": [
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Fabricator#Guardbot",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Haunted Ship",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "63",
+      "asc_hp": "67",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Haunt",
+          "text": "Shuffles 5 {{C2|Dazed}} into your discard pile. Applies 3 {{BD2|Weak}}.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Swipe",
+          "text": "Deals 13 ({{Asc2|9|14}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|14}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Stomp",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage ×3.",
+          "asc_text": [
+            "Deals 4 damage ×3.",
+            "Deals {{Asc2|9|5}} damage ×3."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Haunted Ship Icon.png|class=monster-icon|48px|link=StS2:Haunted Ship]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hunter Killer",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "121",
+      "asc_hp": "126",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Tenderizing Goop",
+          "text": "Applies 1 {{BD2|Tender}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Bite",
+          "text": "Deals 17 ({{Asc2|9|19}}) damage.",
+          "asc_text": [
+            "Deals 17 damage.",
+            "Deals {{Asc2|9|19}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Puncture",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage ×3.",
+          "asc_text": [
+            "Deals 7 damage ×3.",
+            "Deals {{Asc2|9|8}} damage ×3."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Hunter Killer Icon.png|class=monster-icon|48px|link=StS2:Hunter Killer]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Infested Prism",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "161",
+      "asc_hp": "171",
+      "starts_with": "{{BD2|Vital Spark}} 2({{Asc2|9|3}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Jab",
+          "text": "Deals 15 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Radiate",
+          "text": "Deals 11 ({{Asc2|9|13}}) damage. Gains 16 ({{Asc2|9|18}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 11 damage. Gains 16 {{KW2|Block}}.",
+            "Deals {{Asc2|9|13}} damage. Gains {{Asc2|9|18}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Whirlwind",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage ×3.",
+          "asc_text": [
+            "Deals 5 damage ×3.",
+            "Deals {{Asc2|9|6}} damage ×3."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Pulsate",
+          "text": "Deal 8({{Asc2|9|10}}) damage. Gains 20 ({{Asc2|8|22}}) {{KW2|Block}} and {{BD2|Vital Spark}} 2({{Asc2|9|3}}).",
+          "asc_text": [
+            "Deal 8 damage. Gains 20 {{KW2|Block}} and {{BD2|Vital Spark}} 2.",
+            "Deal {{Asc2|9|10}} damage. Gains {{Asc2|8|22}} {{KW2|Block}} and {{BD2|Vital Spark}} {{Asc2|9|3}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff",
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Inklet",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "11-17",
+      "asc_hp": "12-18",
+      "starts_with": "{{BD2|Slippery}} 1",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Inklets: {{M|Inklet}} x3",
+      "moves": [
+        {
+          "name": "Jab",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage.",
+          "asc_text": [
+            "Deals 3 damage.",
+            "Deals {{Asc2|9|4}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Windup Punch",
+          "text": "Deals 2 ({{Asc2|9|3}}) damage ×3.",
+          "asc_text": [
+            "Deals 2 damage ×3.",
+            "Deals {{Asc2|9|3}} damage ×3."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Piercing Gaze",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 10 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Inklet Icon.png|class=monster-icon|48px|link=StS2:Inklet]][[File:Inklet Icon.png|class=monster-icon|48px|link=StS2:Inklet]][[File:Inklet Icon.png|class=monster-icon|48px|link=StS2:Inklet]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Kin Follower",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "58-59",
+      "asc_hp": "62-63",
+      "starts_with": "{{BD2|Minion}}",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* {{M|Kin Follower}} ×2<br>* {{M|Kin Priest}}",
+      "moves": [
+        {
+          "name": "Quick Slash",
+          "text": "Deals 5 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Boomerang",
+          "text": "Deals 2 damage ×2.",
+          "asc_text": [],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Power Dance",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "The Kin#Kin Follower",
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Kin Priest",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "190",
+      "asc_hp": "199",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* {{M|Kin Follower}} ×2<br>* {{M|Kin Priest}}",
+      "moves": [
+        {
+          "name": "Orb of Frailty",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Orb of Weakness",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Weak}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Weak}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Weak}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Soul Beam",
+          "text": "Deals 3 damage ×3.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Dark Ritual",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "The Kin#Kin Priest",
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Knight Gang",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": null,
+      "asc_hp": null,
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Flail Knight}} + {{M|Spectral Knight}} + {{M|Magi Knight}}",
+      "moves": [],
+      "additional_fields": {
+        "Link": "Knight_Gang",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Knowledge Demon",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "379",
+      "asc_hp": "399",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Curse of Knowledge",
+          "text": "Each player chooses one of two debuffs to receive. The options change each time this move is used.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Slap",
+          "text": "Deals 17 ({{Asc2|9|18}}) damage.",
+          "asc_text": [
+            "Deals 17 damage.",
+            "Deals {{Asc2|9|18}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Knowledge Overwhelming",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage ×3.",
+          "asc_text": [
+            "Deals 8 damage ×3.",
+            "Deals {{Asc2|9|9}} damage ×3."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Ponder",
+          "text": "Deals 11 ({{Asc2|9|13}}) damage. Heals 30 HP per player. Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 11 damage. Heals 30 HP per player. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|13}} damage. Heals 30 HP per player. Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Heal",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Lagavulin Matriarch",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "222",
+      "asc_hp": "233",
+      "starts_with": "{{BD2|Plating}} 12<br>{{BD2|Asleep}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Sleep",
+          "text": "Asleep. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Sleep"
+          ]
+        },
+        {
+          "name": "Slash",
+          "text": "Deals 19 ({{Asc2|9|21}}) damage.",
+          "asc_text": [
+            "Deals 19 damage.",
+            "Deals {{Asc2|9|21}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Disembowel",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage x2.",
+          "asc_text": [
+            "Deals 9 damage x2.",
+            "Deals {{Asc2|9|10}} damage x2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Slash2",
+          "text": "Deals 12 ({{Asc2|9|14}}) damage. Gains 12 ({{Asc2|8|14}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 12 damage. Gains 12 {{KW2|Block}}.",
+            "Deals {{Asc2|9|14}} damage. Gains {{Asc2|8|14}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Soul Siphon",
+          "text": "Removes 2 {{BD2|Strength}} and 2 {{BD2|Dexterity}} from the player. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Leaf Slime (M)",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "32-35",
+      "asc_hp": "33-36",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Slimes (Weak): {{M|Leaf Slime (S)}}, {{M|Twig Slime (S)}}, and randomly chosen as the medium slime<br>* Slimes (Normal): {{M|Leaf Slime (S)}}, {{M|Twig Slime (S)}}, {{M|Twig Slime (M)}}<br>* Flyconid: randomly chosen companion with {{M|Flyconid}}<br>* Slithering Strangler: possible companion with {{M|Slithering Strangler}} (medium slime variant)",
+      "moves": [
+        {
+          "name": "Clump Shot",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage.",
+          "asc_text": [
+            "Deals 8 damage.",
+            "Deals {{Asc2|9|9}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Sticky Shot",
+          "text": "Shuffles 2 {{C2|Slimed}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Slimes#Leaf Slime (M)",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Twig Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Twig Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Flyconid Icon.png|class=monster-icon|48px|link=StS2:Flyconid]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Leaf Slime (S)",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "11-15",
+      "asc_hp": "12-16",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Slimes (Weak): {{M|Twig Slime (S)}} + 1 random from {{M|Leaf Slime (M)}} or {{M|Twig Slime (M)}}<br>* Slimes (Normal): {{M|Leaf Slime (M)}}, {{M|Twig Slime (S)}}, {{M|Twig Slime (M)}}<br>* Slithering Strangler: possible companion with {{M|Slithering Strangler}} (2 small slimes variant)",
+      "moves": [
+        {
+          "name": "Tackle",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage.",
+          "asc_text": [
+            "Deals 3 damage.",
+            "Deals {{Asc2|9|4}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Goop",
+          "text": "Shuffles 1 {{C2|Slimed}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Slimes#Leaf Slime (S)",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Twig Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Twig Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Living Fog",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "80",
+      "asc_hp": "82",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>Appears as a solo normal encounter.<br>Summons {{M|Gas Bomb|Gas Bombs|2}} mid-fight.",
+      "moves": [
+        {
+          "name": "Advanced Gas",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Smoggy}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Smoggy}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Smoggy}}."
+          ],
+          "icons": [
+            "Attack2",
+            "CardDebuff"
+          ]
+        },
+        {
+          "name": "Bloat",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage. Summons 1 {{M|Gas Bomb|Gas Bomb|2}}.",
+          "asc_text": [
+            "Deals 5 damage. Summons 1 {{M|Gas Bomb|Gas Bomb|2}}.",
+            "Deals {{Asc2|9|6}} damage. Summons 1 {{M|Gas Bomb|Gas Bomb|2}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Summon"
+          ]
+        },
+        {
+          "name": "Super Gas Blast",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage.",
+          "asc_text": [
+            "Deals 8 damage.",
+            "Deals {{Asc2|9|9}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Living Fog Icon.png|class=monster-icon|48px|link=StS2:Living Fog]][[File:Summon Divider Icon.png]][[File:Gas Bomb (+) Icon.png|class=monster-icon|48px|link=StS2:Gas Bomb]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Living Shield",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "55",
+      "asc_hp": "65",
+      "starts_with": "{{BD2|Rampart}} 25",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Shield Slam",
+          "text": "Deals 6 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Smash",
+          "text": "Deals 16 ({{Asc2|9|18}}) damage. Gains 3 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 16 damage. Gains 3 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|18}} damage. Gains 3 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Turret Operator#Living Shield",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Easy Encounter",
+            "enemies": "[[File:Living Shield Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Living Shield]][[File:Turret Operator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Turret Operator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Louse Progenitor",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "134-136",
+      "asc_hp": "138-141",
+      "starts_with": "{{BD2|Curl Up}} 14 ({{Asc2|8|18}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Web Cannon",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage. Applies 2 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 9 damage. Applies 2 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|10}} damage. Applies 2 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Curl and Grow",
+          "text": "Gains 14 ({{Asc2|8|18}}) {{KW2|Block}}. Gains 5 {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 14 {{KW2|Block}}. Gains 5 {{BD2|Strength}}.",
+            "Gains {{Asc2|8|18}} {{KW2|Block}}. Gains 5 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Defend",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Pounce",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Louse Progenitor Icon.png|class=monster-icon|48px|link=StS2:Louse Progenitor]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Magi Knight",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "82",
+      "asc_hp": "89",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Flail Knight}} + {{M|Spectral Knight}}",
+      "moves": [
+        {
+          "name": "Power Shield",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage. Gains 5 ({{Asc2|8|9}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 6 damage. Gains 5 {{KW2|Block}}.",
+            "Deals {{Asc2|9|7}} damage. Gains {{Asc2|8|9}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack1",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Dampen",
+          "text": "Applies {{BD2|Dampen}}. While Magi Knight is alive, all your cards are Downgraded.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Ram",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 10 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Prep",
+          "text": "Gains 5 ({{Asc2|8|9}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Gains 5 {{KW2|Block}}.",
+            "Gains {{Asc2|8|9}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Defend"
+          ]
+        },
+        {
+          "name": "Magic Bomb",
+          "text": "Deals 35 ({{Asc2|9|40}}) damage.",
+          "asc_text": [
+            "Deals 35 damage.",
+            "Deals {{Asc2|9|40}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Knight_Gang#Magi Knight",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Mawler",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "72",
+      "asc_hp": "76",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Rip and Tear",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Roar",
+          "text": "Applies 3 {{BD2|Vulnerable}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Claw",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage ×2.",
+          "asc_text": [
+            "Deals 4 damage ×2.",
+            "Deals {{Asc2|9|5}} damage ×2."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Mawler Icon.png|class=monster-icon|48px|link=StS2:Mawler]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Mecha Knight",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "300",
+      "asc_hp": "320",
+      "starts_with": "{{BD2|Artifact}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Charge",
+          "text": "Deals 25 ({{Asc2|9|30}}) damage.",
+          "asc_text": [
+            "Deals 25 damage.",
+            "Deals {{Asc2|9|30}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Flamethrower",
+          "text": "Shuffles 4 {{C2|Burn}} into your hand.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Windup",
+          "text": "Gains 15 {{KW2|Block}} and 5 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Defend",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Heavy Cleave",
+          "text": "Deals 35 ({{Asc2|9|40}}) damage.",
+          "asc_text": [
+            "Deals 35 damage.",
+            "Deals {{Asc2|9|40}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Mysterious Knight",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "101",
+      "asc_hp": "108",
+      "starts_with": "{{BD2|Strength}} 6<br>{{BD2|Plating}} 6",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Breaker",
+          "text": "Gains 3 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Flail",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage x2.",
+          "asc_text": [
+            "Deals 9 damage x2.",
+            "Deals {{Asc2|9|10}} damage x2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Ram",
+          "text": "Deals 15 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|The Lantern Key}}"
+      }
+    },
+    {
+      "name": "Myte",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "61-67",
+      "asc_hp": "64-69",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Toxic Cornucopia",
+          "text": "Adds 2 {{C2|Toxic}} to your hand.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Bite",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Suck",
+          "text": "Deals 4 ({{Asc2|9|6}}) damage. Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 4 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|6}} damage. Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack1",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Myte Icon.png|class=monster-icon|48px|link=StS2:Myte]][[File:Myte Icon.png|class=monster-icon|48px|link=StS2:Myte]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Nibbit",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "42-46",
+      "asc_hp": "44-48",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Nibbits (Weak): appears alone<br>* Nibbits (Normal): {{M|Nibbit}} x2",
+      "moves": [
+        {
+          "name": "Butt",
+          "text": "Deals 12 ({{Asc2|9|13}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|13}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Hesitant Slice",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage. Gains 5 ({{Asc2|8|6}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 6 damage. Gains 5 {{KW2|Block}}.",
+            "Deals {{Asc2|9|7}} damage. Gains {{Asc2|8|6}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Hiss",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Nibbit_Icon.png|class=monster-icon|48px|link=StS2:Nibbit]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Nibbit_Icon.png|class=monster-icon|48px|link=StS2:Nibbit]][[File:Nibbit_Icon.png|class=monster-icon|48px|link=StS2:Nibbit]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Noisebot",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Minion",
+      "base_hp": "18-23",
+      "asc_hp": "19-24",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Noise",
+          "text": "Shuffles 2 {{C2|Dazed}} into the player's draw and discard piles.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Fabricator#Noisebot",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ovicopter",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "124-130",
+      "asc_hp": "126-132",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Lay Eggs",
+          "text": "Summons 3 {{2|Tough Egg|Tough Eggs}}.",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Smash",
+          "text": "Deals 16 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Tenderizer",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage. Applies 2 {{BD2|Vulnerable}}.",
+          "asc_text": [
+            "Deals 7 damage. Applies 2 {{BD2|Vulnerable}}.",
+            "Deals {{Asc2|9|8}} damage. Applies 2 {{BD2|Vulnerable}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Nutritional Paste",
+          "text": "Gains 3 ({{Asc2|9|4}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 3 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|4}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Ovicopter Icon.png|class=monster-icon|48px|link=StS2:Ovicopter]][[File:Summon Divider Icon.png]][[File:Tough Egg (+) Icon.png|class=monster-icon|48px|link=StS2:Ovicopter#Tough Egg]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Owl Magistrate",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "234",
+      "asc_hp": "243",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Magistrate Scrutiny",
+          "text": "Deals 16 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Peck Assault",
+          "text": "Deals 4 damage x6.",
+          "asc_text": [],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Judicial Flight",
+          "text": "Gains {{BD2|Soar}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Verdict",
+          "text": "Deals 33 ({{Asc2|9|36}}) damage. Applies 4 {{BD2|Vulnerable}}. Removes {{BD2|Soar}}.",
+          "asc_text": [
+            "Deals 33 damage. Applies 4 {{BD2|Vulnerable}}. Removes {{BD2|Soar}}.",
+            "Deals {{Asc2|9|36}} damage. Applies 4 {{BD2|Vulnerable}}. Removes {{BD2|Soar}}."
+          ],
+          "icons": [
+            "Attack4",
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Owl Magistrate Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Owl Magistrate]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Parafright",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Minion",
+      "base_hp": "21",
+      "asc_hp": null,
+      "starts_with": "{{BD2|Illusion}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Slam",
+          "text": "Deals 16 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "The Obscura#Parafright",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:The Obscura Icon.png|class=monster-icon|48px|link=StS2:The Obscura]][[File:Summon Divider Icon.png]][[File:Parafright Icon.png|class=monster-icon|48px|link=StS2:The Obscura#Parafright]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Phantasmal Gardener",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "26-31",
+      "asc_hp": "27-32",
+      "starts_with": "{{BD2|Skittish}} 6 ({{Asc2|8|7}})",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* {{M|Phantasmal Gardener}} ×4",
+      "moves": [
+        {
+          "name": "Bite",
+          "text": "Deals 5 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Lash",
+          "text": "Deals 7 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Flail",
+          "text": "Deals 1 damage ×3.",
+          "asc_text": [],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Enlarge",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Phrog Parasite",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "61-64",
+      "asc_hp": "66-68",
+      "starts_with": "{{BD2|Infested}}",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>Appears as a solo elite encounter.<br>Summons {{M|Wriggler}} ×4 upon death (via {{BD2|Infested}}).",
+      "moves": [
+        {
+          "name": "Infect",
+          "text": "Shuffles 3 {{C2|Infection}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Lash",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage ×4.",
+          "asc_text": [
+            "Deals 4 damage ×4.",
+            "Deals {{Asc2|9|5}} damage ×4."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Punch Construct",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "55",
+      "asc_hp": "60",
+      "starts_with": "{{BD2|Artifact}} 1",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>Appears as a solo normal encounter.<br><span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Cubex Construct}} ×2",
+      "moves": [
+        {
+          "name": "READY",
+          "text": "Gains 10 {{KW2|Block}}.",
+          "asc_text": [],
+          "icons": [
+            "Defend"
+          ]
+        },
+        {
+          "name": "Fast Punch",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage ×2. Applies 1 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 5 damage ×2. Applies 1 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|6}} damage ×2. Applies 1 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Strong Punch",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Punch Construct Icon.png|class=monster-icon|48px|link=StS2:Punch Construct]]"
+          },
+          {
+            "location": "{{2|Underdocks}} Event - [[StS2:Punch Off|Punch Off]]",
+            "enemies": "[[File:Punch Construct Icon.png|class=monster-icon|48px|link=StS2:Punch Construct]][[File:Punch Construct Icon.png|class=monster-icon|48px|link=StS2:Punch Construct]]"
+          },
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Punch Construct Icon.png|class=monster-icon|48px|link=StS2:Punch Construct]][[File:Cubex Construct Icon.png|class=monster-icon|48px|link=StS2:Cubex Construct]][[File:Cubex Construct Icon.png|class=monster-icon|48px|link=StS2:Cubex Construct]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Queen",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "400",
+      "asc_hp": "419",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Torch Head Amalgam}}",
+      "moves": [
+        {
+          "name": "Puppet Strings",
+          "text": "Applies 3 {{BD2|Chains of Binding}} to all players.",
+          "asc_text": [],
+          "icons": [
+            "CardDebuff"
+          ]
+        },
+        {
+          "name": "You're Mine",
+          "text": "Applies 99 {{BD2|Frail}}, 99 {{BD2|Weak}}, and 99 {{BD2|Vulnerable}} to all players.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Burn Bright for Me",
+          "text": "Gives 1 {{BD2|Strength}} to {{M|Torch Head Amalgam||2}}. Gains 20 {{KW2|Block}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Off with Your Head",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage x5.",
+          "asc_text": [
+            "Deals 3 damage x5.",
+            "Deals {{Asc2|9|4}} damage x5."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Execution",
+          "text": "Deals 15 ({{Asc2|9|18}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|18}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Enrage",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Rocket",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "199",
+      "asc_hp": "209",
+      "starts_with": "{{BD2|Back Attack}}<br>{{BD2|Crab Rage}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Targeting Reticle",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage.",
+          "asc_text": [
+            "Deals 3 damage.",
+            "Deals {{Asc2|9|4}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        },
+        {
+          "name": "Precision Beam",
+          "text": "Deals 18 ({{Asc2|9|20}}) damage.",
+          "asc_text": [
+            "Deals 18 damage.",
+            "Deals {{Asc2|9|20}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Charge Up",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Laser",
+          "text": "Deals 31 ({{Asc2|9|35}}) damage.",
+          "asc_text": [
+            "Deals 31 damage.",
+            "Deals {{Asc2|9|35}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Recharge",
+          "text": "Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Sleep"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Kaiser Crab#Rocket",
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "Scroll of Biting",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "31-38",
+      "asc_hp": "32-39",
+      "starts_with": "{{BD2|Paper Cuts}} 2",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Chomp",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "More Teeth",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Chew",
+          "text": "Deals 5 ({{Asc2|9|6}}) damage 2 times.",
+          "asc_text": [
+            "Deals 5 damage 2 times.",
+            "Deals {{Asc2|9|6}} damage 2 times."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Easy Encounter",
+            "enemies": "[[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]]"
+          },
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Seapunk",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "44-46",
+      "asc_hp": "47-49",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* {{M|Calcified Cultist}} (Seapunk encounter)",
+      "moves": [
+        {
+          "name": "Sea Kick",
+          "text": "Deals 11 ({{Asc2|9|13}}) damage.",
+          "asc_text": [
+            "Deals 11 damage.",
+            "Deals {{Asc2|9|13}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Spinning Kick",
+          "text": "Deals 2 damage ×4.",
+          "asc_text": [],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Bubble Burp",
+          "text": "Gains 7 ({{Asc2|8|8}}) {{KW2|Block}} and 1 ({{Asc2|9|2}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 7 {{KW2|Block}} and 1 {{BD2|Strength}}.",
+            "Gains {{Asc2|8|8}} {{KW2|Block}} and {{Asc2|9|2}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff",
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Easy Encounter",
+            "enemies": "[[File:Seapunk Icon.png|class=monster-icon|48px|link=StS2:Seapunk]]"
+          },
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Seapunk Icon.png|class=monster-icon|48px|link=StS2:Seapunk]][[File:Calcified Cultist Icon.png|class=monster-icon|48px|link=StS2:Cultists#Calcified Cultist]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sewer Clam",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "56",
+      "asc_hp": "58",
+      "starts_with": "{{BD2|Plating}} 8 ({{Asc2|8|9}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Jet",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 10 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Pressurize",
+          "text": "Gains 4 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Sewer Clam Icon.png|class=monster-icon|48px|link=StS2:Sewer Clam]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Shrinker Beetle",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "38-40",
+      "asc_hp": "40-42",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>Appears as a solo weak encounter.<br>Also appears in a strong encounter with {{M|Fuzzy Wurm Crawler}}.",
+      "moves": [
+        {
+          "name": "Shrinker",
+          "text": "Applies {{BD2|Shrink}}.",
+          "asc_text": [],
+          "icons": [
+            "DebuffStrong"
+          ]
+        },
+        {
+          "name": "Chomp",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage.",
+          "asc_text": [
+            "Deals 7 damage.",
+            "Deals {{Asc2|9|8}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Stomp",
+          "text": "Deals 13 ({{Asc2|9|14}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|14}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Shrinker Beetle Icon.png|class=monster-icon|48px|link=StS2:Shrinker Beetle]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Fuzzy Wurm Crawler Icon.png|class=monster-icon|48px|link=StS2:Fuzzy Wurm Crawler]][[File:Shrinker Beetle Icon.png|class=monster-icon|48px|link=StS2:Shrinker Beetle]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Skulking Colony",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "75",
+      "asc_hp": "80",
+      "starts_with": "{{BD2|Hardened Shell}} 20",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Zoom",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Inertia",
+          "text": "Deals 9 ({{Asc2|9|11}}) damage and gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 9 damage and gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|11}} damage and gains {{Asc2|9|4}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Piercing Stabs",
+          "text": "Deals 7x2 ({{Asc2|9|8x2}}) damage.",
+          "asc_text": [
+            "Deals 7x2 damage.",
+            "Deals {{Asc2|9|8x2}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Slimed Berserker",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "266",
+      "asc_hp": "276",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Vomit Ichor",
+          "text": "Shuffles 10 {{C2|Slimed}} into the discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Furious Pummeling",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage x4.",
+          "asc_text": [
+            "Deals 4 damage x4.",
+            "Deals {{Asc2|9|5}} damage x4."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Leeching Hug",
+          "text": "Applies 3 {{BD2|Weak}}. Gains 3 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Smother",
+          "text": "Deals 30 ({{Asc2|9|33}}) damage.",
+          "asc_text": [
+            "Deals 30 damage.",
+            "Deals {{Asc2|9|33}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Slimed Berserker Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Slimed Berserker]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Slithering Strangler",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "53-55",
+      "asc_hp": "54-56",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* {{M|Slithering Strangler}} + 1 random secondary: {{M|Snapping Jaxfruit}}, or 1 medium slime ({{M|Leaf Slime (M)}} or {{M|Twig Slime (M)}}), or 2 small slimes ({{M|Leaf Slime (S)}} + {{M|Twig Slime (S)}})",
+      "moves": [
+        {
+          "name": "Constrict",
+          "text": "Applies 3 {{BD2|Constrict}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Thwack",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage. Gains 5 {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 7 damage. Gains 5 {{KW2|Block}}.",
+            "Deals {{Asc2|9|8}} damage. Gains 5 {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Lash",
+          "text": "Deals 12 ({{Asc2|9|13}}) damage.",
+          "asc_text": [
+            "Deals 12 damage.",
+            "Deals {{Asc2|9|13}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Snapping Jaxfruit Icon.png|class=monster-icon|48px|link=StS2:Snapping Jaxfruit]] -or-<br>[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]] -or-<br>[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sludge Spinner",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "37-39",
+      "asc_hp": "41-42",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Oil Spray",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Weak}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Weak}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Weak}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Slam",
+          "text": "Deals 11 ({{Asc2|9|12}}) damage.",
+          "asc_text": [
+            "Deals 11 damage.",
+            "Deals {{Asc2|9|12}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Rage",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage. Gains 3 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 6 damage. Gains 3 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|7}} damage. Gains 3 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Easy Encounter",
+            "enemies": "[[File:Sludge Spinner Icon.png|class=monster-icon|48px|link=StS2:Sludge Spinner]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Slumbering Beetle",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "86",
+      "asc_hp": "89",
+      "starts_with": "{{BD2|Plating}} 15 ({{Asc2|8|18}})<br>{{BD2|Slumber}} 3",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Snore",
+          "text": "Does nothing. Asleep.",
+          "asc_text": [],
+          "icons": [
+            "Sleep"
+          ]
+        },
+        {
+          "name": "Roll Out",
+          "text": "Deals 16 ({{Asc2|9|18}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 16 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|18}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Slumbering Beetle Icon.png|class=monster-icon|48px|link=StS2:Slumbering Beetle]][[File:Bowlbug (Rock) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Rock)]][[File:Bowlbug (Silk) Icon.png|class=monster-icon|48px|link=StS2:Bowlbugs#Bowlbug (Silk)]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Snapping Jaxfruit",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "31-33",
+      "asc_hp": "34-36",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Snapping Jaxfruit encounter: {{M|Snapping Jaxfruit}} + {{M|Flyconid}}<br>* Slithering Strangler encounter: {{M|Slithering Strangler}} + 1 random companion ({{M|Snapping Jaxfruit}} or 1 medium slime or 2 small slimes)",
+      "moves": [
+        {
+          "name": "Energy Orb",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [
+            "Deals 3 damage. Gains 2 {{BD2|Strength}}.",
+            "Deals {{Asc2|9|4}} damage. Gains 2 {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Attack1",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Snapping Jaxfruit Icon.png|class=monster-icon|48px|link=StS2:Snapping Jaxfruit]][[File:Flyconid Icon.png|class=monster-icon|48px|link=StS2:Flyconid]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Snapping Jaxfruit Icon.png|class=monster-icon|48px|link=StS2:Snapping Jaxfruit]][[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sneaky Gremlin",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Minion",
+      "base_hp": "10-14",
+      "asc_hp": "11-15",
+      "starts_with": null,
+      "in_party_with": "Summoned by {{M|Gremlin Merc}} on death.",
+      "moves": [
+        {
+          "name": "Spawned",
+          "text": "Wakes up. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        },
+        {
+          "name": "Tackle",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage.",
+          "asc_text": [
+            "Deals 9 damage.",
+            "Deals {{Asc2|9|10}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Gremlin Merc#Sneaky Gremlin",
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Gremlin Merc Icon.png|class=monster-icon|48px|link=StS2:Gremlin Merc]][[File:Summon Divider Icon.png]][[File:Sneaky Gremlin Icon.png|class=monster-icon|48px|link=StS2:Sneaky Gremlin]][[File:Fat Gremlin Icon.png|class=monster-icon|48px|link=StS2:Fat Gremlin]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Soul Fysh",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "211",
+      "asc_hp": "221",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Beckon",
+          "text": "Shuffles 2 {{C2|Beckon}} into your deck (1 into draw pile, 1 into discard pile).",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "De-Gas",
+          "text": "Deals 16 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Gaze",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage. Shuffles 1 {{C2|Beckon}} into your discard pile.",
+          "asc_text": [
+            "Deals 7 damage. Shuffles 1 {{C2|Beckon}} into your discard pile.",
+            "Deals {{Asc2|9|8}} damage. Shuffles 1 {{C2|Beckon}} into your discard pile."
+          ],
+          "icons": [
+            "Attack2",
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Fade",
+          "text": "Gains 2 {{BD2|Intangible}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Scream",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage. Applies 3 {{BD2|Vulnerable}}.",
+          "asc_text": [
+            "Deals 13 damage. Applies 3 {{BD2|Vulnerable}}.",
+            "Deals {{Asc2|9|15}} damage. Applies 3 {{BD2|Vulnerable}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Soul Nexus",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "234",
+      "asc_hp": "254",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Soul Burn",
+          "text": "Deals 29 ({{Asc2|9|31}}) damage.",
+          "asc_text": [
+            "Deals 29 damage.",
+            "Deals {{Asc2|9|31}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Maelstrom",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage ×4.",
+          "asc_text": [
+            "Deals 6 damage ×4.",
+            "Deals {{Asc2|9|7}} damage ×4."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Drain Life",
+          "text": "Deals 18 ({{Asc2|9|19}}) damage. Applies 2 {{BD2|Vulnerable}} and 2 {{BD2|Weak}}.",
+          "asc_text": [
+            "Deals 18 damage. Applies 2 {{BD2|Vulnerable}} and 2 {{BD2|Weak}}.",
+            "Deals {{Asc2|9|19}} damage. Applies 2 {{BD2|Vulnerable}} and 2 {{BD2|Weak}}."
+          ],
+          "icons": [
+            "Attack3",
+            "DebuffStrong"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Spectral Knight",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "93",
+      "asc_hp": "97",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Flail Knight}} + {{M|Magi Knight}}",
+      "moves": [
+        {
+          "name": "Hex",
+          "text": "Applies {{BD2|Hex}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Soul Slash",
+          "text": "Deals 15 ({{Asc2|9|17}}) damage.",
+          "asc_text": [
+            "Deals 15 damage.",
+            "Deals {{Asc2|9|17}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Soul Flame",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage ×3.",
+          "asc_text": [
+            "Deals 3 damage ×3.",
+            "Deals {{Asc2|9|4}} damage ×3."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Knight_Gang#Spectral Knight",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Spiny Toad",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "116-119",
+      "asc_hp": "121-124",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Protruding Spikes",
+          "text": "Gains 5 {{BD2|Thorns}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Spike Explosion",
+          "text": "Deals 23 ({{Asc2|9|25}}) damage. Loses 5 {{BD2|Thorns}}.",
+          "asc_text": [
+            "Deals 23 damage. Loses 5 {{BD2|Thorns}}.",
+            "Deals {{Asc2|9|25}} damage. Loses 5 {{BD2|Thorns}}."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Tongue Lash",
+          "text": "Deals 17 ({{Asc2|9|19}}) damage.",
+          "asc_text": [
+            "Deals 17 damage.",
+            "Deals {{Asc2|9|19}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Spiny Toad Icon.png|class=monster-icon|48px|link=StS2:Spiny Toad]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stabbot",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Minion",
+      "base_hp": "18-23",
+      "asc_hp": "19-24",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Stab",
+          "text": "Deals 11 ({{Asc2|9|12}}) damage. Applies 1 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 11 damage. Applies 1 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|12}} damage. Applies 1 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Fabricator#Stabbot",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Terror Eel",
+      "source_module": "Module:Enemies/StS2_data/Elites",
+      "kind": "Elite",
+      "base_hp": "140",
+      "asc_hp": "150",
+      "starts_with": "{{BD2|Shriek}} 70 ({{Asc2|8|75}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Crash",
+          "text": "Deals 16 ({{Asc2|9|18}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|18}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Thrash",
+          "text": "Deals 3x3 ({{Asc2|9|4x3}}) damage. Gains 6 {{BD2|Vigor}}.",
+          "asc_text": [
+            "Deals 3x3 damage. Gains 6 {{BD2|Vigor}}.",
+            "Deals {{Asc2|9|4x3}} damage. Gains 6 {{BD2|Vigor}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Stun",
+          "text": "Stunned. Does nothing.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        },
+        {
+          "name": "Terror",
+          "text": "Applies 99 {{BD2|Vulnerable}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Test Subject",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "100",
+      "asc_hp": "111",
+      "starts_with": "{{BD2|Adaptable}}, {{BD2|Enrage}} 2 ({{Asc2|9|3}})",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Bite",
+          "text": "Deals 20 ({{Asc2|9|22}}) damage.",
+          "asc_text": [
+            "Deals 20 damage.",
+            "Deals {{Asc2|9|22}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Skull Bash",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage. Applies 1 {{BD2|Vulnerable}}.",
+          "asc_text": [
+            "Deals 14 damage. Applies 1 {{BD2|Vulnerable}}.",
+            "Deals {{Asc2|9|16}} damage. Applies 1 {{BD2|Vulnerable}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Test Subject#Phase 1",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Test Subject (Phase 2)",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "200",
+      "asc_hp": "212",
+      "starts_with": "{{BD2|Adaptable}}, {{BD2|Painful Stabs}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Multi-Claw",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage x3 (increases by 1 hit each use).",
+          "asc_text": [
+            "Deals 10 damage x3 (increases by 1 hit each use).",
+            "Deals {{Asc2|9|11}} damage x3 (increases by 1 hit each use)."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Test Subject#Phase 2",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Test Subject (Phase 3)",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "300",
+      "asc_hp": "313",
+      "starts_with": "{{BD2|Nemesis}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Lacerate",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage x3.",
+          "asc_text": [
+            "Deals 10 damage x3.",
+            "Deals {{Asc2|9|11}} damage x3."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Big Pounce",
+          "text": "Deals 45 damage.",
+          "asc_text": [],
+          "icons": [
+            "Attack5"
+          ]
+        },
+        {
+          "name": "Burning Growl",
+          "text": "Shuffles 3 ({{Asc2|9|5}}) {{C2|Burn}} into discard pile. Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Shuffles 3 {{C2|Burn}} into discard pile. Gains 2 {{BD2|Strength}}.",
+            "Shuffles {{Asc2|9|5}} {{C2|Burn}} into discard pile. Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "StatusCard",
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Test Subject#Phase 3",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "The Forgotten",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "106",
+      "asc_hp": "111",
+      "starts_with": "{{BD2|Possess Speed}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Miasma",
+          "text": "Removes 2 {{BD2|Dexterity}} from the player. Gains 8 {{KW2|Block}} and 2 {{BD2|Dexterity}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff",
+            "Defend",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Dread",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage plus the amount of {{BD2|Dexterity}} the Forgotten has.",
+          "asc_text": [
+            "Deals 13 damage plus the amount of {{BD2|Dexterity}} the Forgotten has.",
+            "Deals {{Asc2|9|15}} damage plus the amount of {{BD2|Dexterity}} the Forgotten has."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "The Lost and Forgotten#The Forgotten",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:The Lost Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Lost]][[File:The Forgotten Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Forgotten]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "The Insatiable",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "321",
+      "asc_hp": "341",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Liquify Ground",
+          "text": "Gains 4 {{BD2|Sandpit}} (counted separately for each player). Shuffles 6 {{C2|Frantic Escape}} into each player's deck (3 into draw pile, 3 into discard pile).",
+          "asc_text": [],
+          "icons": [
+            "Buff",
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Thrash",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage ×2.",
+          "asc_text": [
+            "Deals 8 damage ×2.",
+            "Deals {{Asc2|9|9}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Lunging Bite",
+          "text": "Deals 28 ({{Asc2|9|31}}) damage.",
+          "asc_text": [
+            "Deals 28 damage.",
+            "Deals {{Asc2|9|31}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Salivate",
+          "text": "Gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}.",
+          "asc_text": [
+            "Gains 2 {{BD2|Strength}}.",
+            "Gains {{Asc2|9|3}} {{BD2|Strength}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}"
+      }
+    },
+    {
+      "name": "The Lost",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "93",
+      "asc_hp": "99",
+      "starts_with": "{{BD2|Possess Strength}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Debilitating Smog",
+          "text": "Removes 2 {{BD2|Strength}} from the player and gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Eye Lasers",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage x2.",
+          "asc_text": [
+            "Deals 4 damage x2.",
+            "Deals {{Asc2|9|5}} damage x2."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "The Lost and Forgotten#The Lost",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:The Lost Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Lost]][[File:The Forgotten Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Forgotten]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "The Merchant???",
+      "source_module": "Module:Enemies/StS2_data/Events",
+      "kind": "Normal",
+      "base_hp": "165",
+      "asc_hp": "175",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Swipe",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Spew Coins",
+          "text": "Deals 2 damage ×8.",
+          "asc_text": [],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Throw Relic",
+          "text": "Deals 9 ({{Asc2|9|10}}) damage. Applies 1 {{BD2|Frail}}.",
+          "asc_text": [
+            "Deals 9 damage. Applies 1 {{BD2|Frail}}.",
+            "Deals {{Asc2|9|10}} damage. Applies 1 {{BD2|Frail}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Enrage",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} and {{2|Glory}} Event Encounter",
+            "enemies": "[[File:The Merchant??? Icon.png|class=monster-icon|48px|link=StS2:The Merchant???]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "The Obscura",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "123",
+      "asc_hp": "129",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Illusion",
+          "text": "Summons a {{M|Parafright}}.",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Piercing Gaze",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage.",
+          "asc_text": [
+            "Deals 10 damage.",
+            "Deals {{Asc2|9|11}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Wail",
+          "text": "All enemies gain 3 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Hardening Strike",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage. Gains 6 ({{Asc2|9|7}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Deals 6 damage. Gains 6 {{KW2|Block}}.",
+            "Deals {{Asc2|9|7}} damage. Gains {{Asc2|9|7}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Attack2",
+            "Defend"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:The Obscura Icon.png|class=monster-icon|48px|link=StS2:The Obscura]][[File:Summon Divider Icon.png]][[File:Parafright Icon.png|class=monster-icon|48px|link=StS2:The Obscura#Parafright]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Thieving Hopper",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "79",
+      "asc_hp": "84",
+      "starts_with": "{{BD2|Escape Artist}} 5",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Thievery",
+          "text": "Deals 17 ({{Asc2|9|19}}) damage. Steals a card from your deck.",
+          "asc_text": [
+            "Deals 17 damage. Steals a card from your deck.",
+            "Deals {{Asc2|9|19}} damage. Steals a card from your deck."
+          ],
+          "icons": [
+            "Attack3",
+            "CardDebuff"
+          ]
+        },
+        {
+          "name": "Flutter",
+          "text": "Gains {{BD2|Flutter}} (takes 50% less Attack damage; must be hit 5 times to {{BD2|Stun}} it).",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Hat Trick",
+          "text": "Deals 21 ({{Asc2|9|23}}) damage.",
+          "asc_text": [
+            "Deals 21 damage.",
+            "Deals {{Asc2|9|23}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Nab",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Escape",
+          "text": "Flees the combat, taking any stolen cards with it.",
+          "asc_text": [],
+          "icons": [
+            "Escape"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Thieving Hopper Icon.png|class=monster-icon|48px|link=StS2:Thieving Hopper]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Toadpole",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "21-25",
+      "asc_hp": "22-26",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* Toadpoles (Weak): {{M|Toadpole}} ×2",
+      "moves": [
+        {
+          "name": "Spike Spit",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage ×3. Removes 2 {{BD2|Thorns}} from self.",
+          "asc_text": [
+            "Deals 3 damage ×3. Removes 2 {{BD2|Thorns}} from self.",
+            "Deals {{Asc2|9|4}} damage ×3. Removes 2 {{BD2|Thorns}} from self."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Whirl",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage.",
+          "asc_text": [
+            "Deals 7 damage.",
+            "Deals {{Asc2|9|8}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Spiken",
+          "text": "Gains 2 {{BD2|Thorns}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Easy Encounter",
+            "enemies": "[[File:Toadpole Icon.png|class=monster-icon|48px|link=StS2:Toadpole]][[File:Toadpole Icon.png|class=monster-icon|48px|link=StS2:Toadpole]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Torch Head Amalgam",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Minion",
+      "base_hp": "199",
+      "asc_hp": "211",
+      "starts_with": "{{BD2|Minion}}",
+      "in_party_with": "<span class='enemy-infobox-party-header'>Glory</span><br>* {{M|Queen}}",
+      "moves": [
+        {
+          "name": "Strong Tackle",
+          "text": "Deals 26 ({{Asc2|9|32}}) damage.",
+          "asc_text": [
+            "Deals 26 damage.",
+            "Deals {{Asc2|9|32}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Tackle",
+          "text": "Deals 18 ({{Asc2|9|22}}) damage.",
+          "asc_text": [
+            "Deals 18 damage.",
+            "Deals {{Asc2|9|22}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Beam",
+          "text": "Deals 8 damage x3.",
+          "asc_text": [],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Weak Tackle",
+          "text": "Deals 14 ({{Asc2|9|16}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|16}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Queen#Torch Head Amalgam",
+        "Debut": "{{2|Glory}}"
+      }
+    },
+    {
+      "name": "Tough Egg",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Minion",
+      "base_hp": "14-18",
+      "asc_hp": "15-19",
+      "starts_with": "{{BD2|Hatch}}",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Hatch",
+          "text": "Hatches into a Hatchling with 19-22 ({{Asc2|8|20-23}}) HP. Removes all powers except {{BD2|Minion}}.",
+          "asc_text": [
+            "Hatches into a Hatchling with 19-22 HP. Removes all powers except {{BD2|Minion}}.",
+            "Hatches into a Hatchling with {{Asc2|8|20-23}} HP. Removes all powers except {{BD2|Minion}}."
+          ],
+          "icons": [
+            "Summon"
+          ]
+        },
+        {
+          "name": "Nibble",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage.",
+          "asc_text": [
+            "Deals 4 damage.",
+            "Deals {{Asc2|9|5}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ovicopter#Tough Egg",
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Normal Encounter",
+            "enemies": "[[File:Ovicopter Icon.png|class=monster-icon|48px|link=StS2:Ovicopter]][[File:Summon Divider Icon.png]][[File:Tough Egg (+) Icon.png|class=monster-icon|48px|link=StS2:Ovicopter#Tough Egg]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Tracker Raider",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "21-25",
+      "asc_hp": "22-26",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* 2 others randomly chosen from {{M|Axe Raider}}, {{M|Assassin Raider}}, {{M|Brute Raider}}, {{M|Crossbow Raider}}",
+      "moves": [
+        {
+          "name": "Track",
+          "text": "Applies 2 {{BD2|Frail}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Unleash the Hounds",
+          "text": "Deals 1 damage x8 ({{Asc2|9|x9}}).",
+          "asc_text": [
+            "Deals 1 damage x8.",
+            "Deals 1 damage {{Asc2|9|x9}}."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Ruby Raiders#Tracker Raider",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]][[File:Ruby_Raiders_Icon.png|class=monster-icon|48px|link=StS2:Ruby Raiders]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Tunneler",
+      "source_module": "Module:Enemies/StS2_data/Hive",
+      "kind": "Normal",
+      "base_hp": "87",
+      "asc_hp": "92",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Bite",
+          "text": "Deals 13 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 13 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Burrow",
+          "text": "Gains {{BD2|Burrowed}} and 32 ({{Asc2|8|37}}) {{KW2|Block}}.",
+          "asc_text": [
+            "Gains {{BD2|Burrowed}} and 32 {{KW2|Block}}.",
+            "Gains {{BD2|Burrowed}} and {{Asc2|8|37}} {{KW2|Block}}."
+          ],
+          "icons": [
+            "Buff",
+            "Defend"
+          ]
+        },
+        {
+          "name": "Attack from Below",
+          "text": "Deals 23 ({{Asc2|9|26}}) damage.",
+          "asc_text": [
+            "Deals 23 damage.",
+            "Deals {{Asc2|9|26}} damage."
+          ],
+          "icons": [
+            "Attack4"
+          ]
+        },
+        {
+          "name": "Emerging Strike",
+          "text": "{{KW2|Stunned}}. Does nothing this turn.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Hive}}",
+        "Encounters": [
+          {
+            "location": "{{2|Hive}} Easy Encounter",
+            "enemies": "[[File:Tunneler Icon.png|class=monster-icon|48px|link=StS2:Tunneler]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Turret Operator",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Normal",
+      "base_hp": "41",
+      "asc_hp": "51",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Unload!",
+          "text": "Deals 3 ({{Asc2|9|4}}) damage x5.",
+          "asc_text": [
+            "Deals 3 damage x5.",
+            "Deals {{Asc2|9|4}} damage x5."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Loading",
+          "text": "Gains 1 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Easy Encounter",
+            "enemies": "[[File:Living Shield Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Living Shield]][[File:Turret Operator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Turret Operator]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Twig Slime (M)",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "26-28",
+      "asc_hp": "27-29",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Slimes (Weak): {{M|Leaf Slime (S)}}, {{M|Twig Slime (S)}}, and randomly chosen as the medium slime<br>* Slimes (Normal): {{M|Leaf Slime (S)}}, {{M|Leaf Slime (M)}}, {{M|Twig Slime (S)}}<br>* Flyconid: randomly chosen companion with {{M|Flyconid}}<br>* Slithering Strangler: possible companion with {{M|Slithering Strangler}} (medium slime variant)",
+      "moves": [
+        {
+          "name": "Chomp",
+          "text": "Deals 11 ({{Asc2|9|12}}) damage.",
+          "asc_text": [
+            "Deals 11 damage.",
+            "Deals {{Asc2|9|12}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Sticky Shot",
+          "text": "Shuffles 1 {{C2|Slimed}} into your discard pile.",
+          "asc_text": [],
+          "icons": [
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Slimes#Twig Slime (M)",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Twig Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Twig Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Flyconid Icon.png|class=monster-icon|48px|link=StS2:Flyconid]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Twig Slime (S)",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "7-11",
+      "asc_hp": "8-12",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Slimes (Weak): {{M|Leaf Slime (S)}} + 1 random from {{M|Leaf Slime (M)}} or {{M|Twig Slime (M)}}<br>* Slimes (Normal): {{M|Leaf Slime (S)}}, {{M|Leaf Slime (M)}}, {{M|Twig Slime (M)}}<br>* Slithering Strangler: possible companion with {{M|Slithering Strangler}} (2 small slimes variant)",
+      "moves": [
+        {
+          "name": "Tackle",
+          "text": "Deals 4 ({{Asc2|9|5}}) damage.",
+          "asc_text": [
+            "Deals 4 damage.",
+            "Deals {{Asc2|9|5}} damage."
+          ],
+          "icons": [
+            "Attack1"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Slimes#Twig Slime (S)",
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Easy Encounter",
+            "enemies": "[[File:Slimes (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Twig Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (M) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Twig Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Leaf Slime (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Slithering Strangler Icon.png|class=monster-icon|48px|link=StS2:Slithering Strangler]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]][[File:Slimes (S) Icon.png|class=monster-icon|48px|link=StS2:Slimes]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Two-Tailed Rat",
+      "source_module": "Module:Enemies/StS2_data/Underdocks",
+      "kind": "Normal",
+      "base_hp": "17-21",
+      "asc_hp": "18-22",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Underdocks</span><br>* {{M|Two-Tailed Rat}} ×3",
+      "moves": [
+        {
+          "name": "Scratch",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage.",
+          "asc_text": [
+            "Deals 8 damage.",
+            "Deals {{Asc2|9|9}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Disease Bite",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage.",
+          "asc_text": [
+            "Deals 6 damage.",
+            "Deals {{Asc2|9|7}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Screech",
+          "text": "Applies 1 {{BD2|Frail}}.",
+          "asc_text": [],
+          "icons": [
+            "Debuff"
+          ]
+        },
+        {
+          "name": "Call for Backup",
+          "text": "Summons a new {{M|Two-Tailed Rat||2}}.",
+          "asc_text": [],
+          "icons": [
+            "Summon"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}",
+        "Encounters": [
+          {
+            "location": "{{2|Underdocks}} Normal Encounter",
+            "enemies": "[[File:Two-Tailed Rat Icon.png|class=monster-icon|48px|link=StS2:Two-Tailed Rat]][[File:Two-Tailed Rat Icon.png|class=monster-icon|48px|link=StS2:Two-Tailed Rat]][[File:Two-Tailed Rat Icon.png|class=monster-icon|48px|link=StS2:Two-Tailed Rat]][[File:Summon Divider Icon.png]][[File:Two-Tailed Rat (x3) Icon.png|class=monster-icon|48px|link=StS2:Two-Tailed Rat]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vantom",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "173",
+      "asc_hp": "183",
+      "starts_with": "{{BD2|Slippery}} 9",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Ink Blot",
+          "text": "Deals 7 ({{Asc2|9|8}}) damage.",
+          "asc_text": [
+            "Deals 7 damage.",
+            "Deals {{Asc2|9|8}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Inky Lance",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage ×2.",
+          "asc_text": [
+            "Deals 6 damage ×2.",
+            "Deals {{Asc2|9|7}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Dismember",
+          "text": "Deals 27 ({{Asc2|9|30}}) damage. Shuffles 3 {{C2|Wound}} into your discard pile.",
+          "asc_text": [
+            "Deals 27 damage. Shuffles 3 {{C2|Wound}} into your discard pile.",
+            "Deals {{Asc2|9|30}} damage. Shuffles 3 {{C2|Wound}} into your discard pile."
+          ],
+          "icons": [
+            "Attack4",
+            "StatusCard"
+          ]
+        },
+        {
+          "name": "Prepare",
+          "text": "Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}"
+      }
+    },
+    {
+      "name": "Vine Shambler",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "61",
+      "asc_hp": "64",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Swipe",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage ×2.",
+          "asc_text": [
+            "Deals 6 damage ×2.",
+            "Deals {{Asc2|9|7}} damage ×2."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        },
+        {
+          "name": "Grasping Vines",
+          "text": "Deals 8 ({{Asc2|9|9}}) damage. Applies 1 {{BD2|Tangled}}.",
+          "asc_text": [
+            "Deals 8 damage. Applies 1 {{BD2|Tangled}}.",
+            "Deals {{Asc2|9|9}} damage. Applies 1 {{BD2|Tangled}}."
+          ],
+          "icons": [
+            "Attack2",
+            "CardDebuff"
+          ]
+        },
+        {
+          "name": "Chomp",
+          "text": "Deals 16 ({{Asc2|9|18}}) damage.",
+          "asc_text": [
+            "Deals 16 damage.",
+            "Deals {{Asc2|9|18}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Normal Encounter",
+            "enemies": "[[File:Vine Shambler Icon.png|class=monster-icon|48px|link=StS2:Vine Shambler]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Waterfall Giant",
+      "source_module": "Module:Enemies/StS2_data/Bosses",
+      "kind": "Boss",
+      "base_hp": "240",
+      "asc_hp": "250",
+      "starts_with": null,
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Pressurize",
+          "text": "Gains 15 ({{Asc2|9|20}}) {{BD2|Steam Eruption}}.",
+          "asc_text": [
+            "Gains 15 {{BD2|Steam Eruption}}.",
+            "Gains {{Asc2|9|20}} {{BD2|Steam Eruption}}."
+          ],
+          "icons": [
+            "Buff"
+          ]
+        },
+        {
+          "name": "Stomp",
+          "text": "Deals 15 ({{Asc2|9|16}}) damage. Applies 1 {{BD2|Weak}}. Gains 3 {{BD2|Steam Eruption}}.",
+          "asc_text": [
+            "Deals 15 damage. Applies 1 {{BD2|Weak}}. Gains 3 {{BD2|Steam Eruption}}.",
+            "Deals {{Asc2|9|16}} damage. Applies 1 {{BD2|Weak}}. Gains 3 {{BD2|Steam Eruption}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Debuff",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Ram",
+          "text": "Deals 10 ({{Asc2|9|11}}) damage. Gains 3 {{BD2|Steam Eruption}}.",
+          "asc_text": [
+            "Deals 10 damage. Gains 3 {{BD2|Steam Eruption}}.",
+            "Deals {{Asc2|9|11}} damage. Gains 3 {{BD2|Steam Eruption}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Siphon",
+          "text": "Heals 15 HP per player. Gains 3 {{BD2|Steam Eruption}}.",
+          "asc_text": [],
+          "icons": [
+            "Heal",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Pressure Gun",
+          "text": "Deals 20 ({{Asc2|9|23}}) damage (increases by 5 each use). Gains 3 {{BD2|Steam Eruption}}.",
+          "asc_text": [
+            "Deals 20 damage (increases by 5 each use). Gains 3 {{BD2|Steam Eruption}}.",
+            "Deals {{Asc2|9|23}} damage (increases by 5 each use). Gains 3 {{BD2|Steam Eruption}}."
+          ],
+          "icons": [
+            "Attack4",
+            "Buff"
+          ]
+        },
+        {
+          "name": "Pressure Up",
+          "text": "Deals 13 ({{Asc2|9|14}}) damage. Gains 3 {{BD2|Steam Eruption}}.",
+          "asc_text": [
+            "Deals 13 damage. Gains 3 {{BD2|Steam Eruption}}.",
+            "Deals {{Asc2|9|14}} damage. Gains 3 {{BD2|Steam Eruption}}."
+          ],
+          "icons": [
+            "Attack3",
+            "Buff"
+          ]
+        },
+        {
+          "name": "About To Blow",
+          "text": "Becomes invulnerable. Removes {{BD2|Steam Eruption}} and prepares to explode.",
+          "asc_text": [],
+          "icons": [
+            "Stun"
+          ]
+        },
+        {
+          "name": "Explode",
+          "text": "Deals damage equal to its stored {{BD2|Steam Eruption}} amount, then dies.",
+          "asc_text": [],
+          "icons": [
+            "DeathBlow"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Underdocks}}"
+      }
+    },
+    {
+      "name": "Wriggler",
+      "source_module": "Module:Enemies/StS2_data/Overgrowth",
+      "kind": "Normal",
+      "base_hp": "17-21",
+      "asc_hp": "18-22",
+      "starts_with": null,
+      "in_party_with": "<span class='enemy-infobox-party-header'>Overgrowth</span><br>* Appears in the [[Dense Vegetation]] event (×4)<br>* Summoned by {{M|Phrog Parasite}} upon death (×4, via {{BD2|Infested}})",
+      "moves": [
+        {
+          "name": "Nasty Bite",
+          "text": "Deals 6 ({{Asc2|9|7}}) damage.",
+          "asc_text": [
+            "Deals 6 damage.",
+            "Deals {{Asc2|9|7}} damage."
+          ],
+          "icons": [
+            "Attack2"
+          ]
+        },
+        {
+          "name": "Wriggle",
+          "text": "Shuffles 1 {{C2|Infection}} into your discard pile. Gains 2 {{BD2|Strength}}.",
+          "asc_text": [],
+          "icons": [
+            "Buff",
+            "StatusCard"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Debut": "{{2|Overgrowth}}",
+        "Encounters": [
+          {
+            "location": "{{2|Overgrowth}} Event - [[sts2:Dense Vegetation|Dense Vegetation]]",
+            "enemies": "[[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]]"
+          },
+          {
+            "location": "{{2|Overgrowth}} Elite Encounter",
+            "enemies": "[[File:Phrog Parasite Icon.png|class=monster-icon|48px|link=StS2:Phrog Parasite]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]][[File:Wriggler Icon.png|class=monster-icon|48px|link=StS2:Wriggler]]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Zapbot",
+      "source_module": "Module:Enemies/StS2_data/Glory",
+      "kind": "Minion",
+      "base_hp": "18-23",
+      "asc_hp": "19-24",
+      "starts_with": "{{BD2|High Voltage}} 2",
+      "in_party_with": null,
+      "moves": [
+        {
+          "name": "Zap",
+          "text": "Deals 14 ({{Asc2|9|15}}) damage.",
+          "asc_text": [
+            "Deals 14 damage.",
+            "Deals {{Asc2|9|15}} damage."
+          ],
+          "icons": [
+            "Attack3"
+          ]
+        }
+      ],
+      "additional_fields": {
+        "Link": "Fabricator#Zapbot",
+        "Debut": "{{2|Glory}}",
+        "Encounters": [
+          {
+            "location": "{{2|Glory}} Normal Encounter",
+            "enemies": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]"
+          }
+        ]
+      }
+    }
+  ]
+}

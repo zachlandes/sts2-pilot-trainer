@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>EncounterIntel</AssemblyName>
+    <RootNamespace>EncounterIntel</RootNamespace>
+    <PreparedLibDir>$(MSBuildThisFileDirectory)../../build/lib</PreparedLibDir>
+    <!-- A separate mod must not inherit Runmobile's recording version -->
+    <IntelManifestPath>$(MSBuildThisFileDirectory)EncounterIntel.json</IntelManifestPath>
+    <Version>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText($(IntelManifestPath))), '(?s)^.*?"version"\s*:\s*"([^"]*)".*$', '$1'))</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="sts2" HintPath="$(PreparedLibDir)/sts2.dll" Private="false" />
+    <Reference Include="GodotSharp" HintPath="$(PreparedLibDir)/GodotSharp.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(PreparedLibDir)/0Harmony.dll" Private="false" />
+    <EmbeddedResource Include="catalogue/wiki-enemies.json" LogicalName="EncounterIntel.wiki-enemies.json" />
+    <None Update="EncounterIntel.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="RequirePreparedGame" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(PreparedLibDir)/sts2.dll')" Text="Prepare your installed game with scripts/bootstrap.sh before building EncounterIntel." />
+  </Target>
+</Project>

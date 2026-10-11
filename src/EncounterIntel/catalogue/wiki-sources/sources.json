@@ -1,0 +1,84 @@
+{
+  "modules": [
+    {
+      "title": "Module:Enemies/StS2_data",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data?action=raw&oldid=28121",
+      "revision": 28121,
+      "file": "Module_Enemies_StS2_data.lua",
+      "fetched_at": "2026-10-11T19:51:34.718874+00:00",
+      "outcome": "source saved",
+      "sha256": "b985a8c978307734e1130780346581cf8046676ffa30e333f5278666e94c9571"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Overgrowth",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Overgrowth",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Overgrowth?action=raw&oldid=50310",
+      "revision": 50310,
+      "file": "Module_Enemies_StS2_data_Overgrowth.lua",
+      "sha256": "365f445dfd9accf230550f701d663735306038be502f7aefe0e4e7fa08fb039f",
+      "fetched_at": "2026-10-11T19:55:08.540741+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Underdocks",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Underdocks",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Underdocks?action=raw&oldid=50311",
+      "revision": 50311,
+      "file": "Module_Enemies_StS2_data_Underdocks.lua",
+      "sha256": "3d7da53af767b80240656f66572619c1e2199481f66c5beba891cbf80ad767b7",
+      "fetched_at": "2026-10-11T19:55:42.777519+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Hive",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Hive",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Hive?action=raw&oldid=50309",
+      "revision": 50309,
+      "file": "Module_Enemies_StS2_data_Hive.lua",
+      "sha256": "96b2fccb9e39519f2cce3fb8f8267666bb3d4b6e28b4ae096927c0f8cf76ac13",
+      "fetched_at": "2026-10-11T19:56:16.898286+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Glory",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Glory",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Glory?action=raw&oldid=50308",
+      "revision": 50308,
+      "file": "Module_Enemies_StS2_data_Glory.lua",
+      "sha256": "76287f9f2f0698f1dce75d3cb75f9e8d66d615174c9f9322bfdc7f6dae0682d6",
+      "fetched_at": "2026-10-11T19:56:49.534861+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Elites",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Elites",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Elites?action=raw&oldid=50306",
+      "revision": 50306,
+      "file": "Module_Enemies_StS2_data_Elites.lua",
+      "sha256": "7cff8abccbe0dd0bdcf32c744ea066cb232c80209e26db82a3f8e138ffc5080e",
+      "fetched_at": "2026-10-11T19:57:21.070836+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Bosses",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Bosses",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Bosses?action=raw&oldid=50305",
+      "revision": 50305,
+      "file": "Module_Enemies_StS2_data_Bosses.lua",
+      "sha256": "1ad19668cdead10b81ee1d2aaa9e638b2ddb18f741f3f18032d9e4fa9d8c3297",
+      "fetched_at": "2026-10-11T19:57:57.965498+00:00",
+      "outcome": "source saved"
+    },
+    {
+      "title": "Module:Enemies/StS2 data/Events",
+      "url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Events",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data/Events?action=raw&oldid=50307",
+      "revision": 50307,
+      "file": "Module_Enemies_StS2_data_Events.lua",
+      "sha256": "a1d34a7a67d2c027503f9f5e488b5cc1f6d2ef8982ef8a949a6da06c7ad897ce",
+      "fetched_at": "2026-10-11T19:58:24.376588+00:00",
+      "outcome": "source saved"
+    }
+  ]
+}
