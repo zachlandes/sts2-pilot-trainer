@@ -17,7 +17,7 @@ caveats, on passes as well as failures.
 - `tools/Sts2PilotTrainer.Bootstrap` copies the player's own installed assemblies
   into `build/lib`, byte for byte on this build, and receipts what it copied. The
   installation is hashed before and after and the run fails if a byte moved.
-- `src/Sts2PilotTrainer.Engine` is the only project that knows anything about a
+- `src/Sts2PilotTrainer.Engine` is the only Runmobile project that knows anything about a
   specific game version. When the game ships a new build, it is the only one that
   should need to change.
 

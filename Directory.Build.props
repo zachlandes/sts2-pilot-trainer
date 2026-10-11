@@ -14,8 +14,11 @@
     <!-- Every test run is bounded, however it was started. See .runsettings. -->
     <RunSettingsFilePath>$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
 
-    <!-- One version for everything this repository ships, read out of the mod
-         manifest the player's game reads. Nothing else declares one.
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'EncounterIntel'">
+    <!-- One version for every Runmobile assembly, read out of the mod
+         manifest the player's game reads.
 
          A native recording names this build twice - once as the mod the game
          reported loaded, once as the recorder that wrote the file - and a reader
@@ -45,9 +48,9 @@
 
        A regex that fails to match returns the whole file, so a failed extraction is
        refused by the same condition. -->
-  <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild">
+  <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild" Condition="'$(MSBuildProjectName)' != 'EncounterIntel'">
     <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'))"
-           Text="The &quot;version&quot; field of $(RunmobileManifestPath) is '$(RunmobileVersion)', which is not a version this build reads: it must be major.minor.patch, with no leading zeros, optionally followed by a -prerelease of dot-separated identifiers, and never build metadata after a '+'. Every assembly here takes its version from that one field, and the release bar orders recorders by it." />
+           Text="The &quot;version&quot; field of $(RunmobileManifestPath) is '$(RunmobileVersion)', which is not a version this build reads: it must be major.minor.patch, with no leading zeros, optionally followed by a -prerelease of dot-separated identifiers, and never build metadata after a '+'. Every Runmobile assembly takes its version from that one field, and the release bar orders recorders by it." />
   </Target>
 
 </Project>

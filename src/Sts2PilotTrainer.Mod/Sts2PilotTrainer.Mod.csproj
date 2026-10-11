@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       Runmobile: the only project that runs inside the retail Slay the Spire 2
+       Runmobile: the project that runs this mod inside the retail Slay the Spire 2
        process. The Combat Trainer is one module inside it.
 
        It owns the game's UI surfaces the way Sts2PilotTrainer.Engine owns its

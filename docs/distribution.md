@@ -56,14 +56,15 @@ See [dependencies](dependencies.md).
 
 **One version, and it is the mod manifest's.**
 `src/Sts2PilotTrainer.Mod/Runmobile.json`'s `version` field is the only version declaration for the assemblies the mod ships.
-`Directory.Build.props` reads it and stamps every assembly here from it, so a release is one edit to one field and nothing can be left behind.
+`Directory.Build.props` reads it and stamps every Runmobile assembly from it, so a release is one edit to one field and nothing can be left behind.
 This matters past tidiness because a native recording names the build twice - once in its mod set, as the mod the game reported loaded, and once as `source.native.recorder_version` - and a reader deciding whether a recording is browsable and reproducible on their own patch is reading those strings.
 They disagreed: nothing declared a version, so the assemblies carried .NET's default `1.0.0.0` and every recording written before this said `runmobile-recorder/1.0.0.0` beside a mod set saying `Runmobile 0.1.0`.
 Those recordings are evidence of what happened and are not edited to match; `RunmobileVersion` is the one reader of the stamped value.
 The field is what the release bar reads a recorder's age off: `RecordingStanding` classes a recording whose `recorder_version` is below the running one, or is that unstamped `1.0.0.0`, as an older recorder's, so a release is also the bump that separates the candidate's recordings from what the recorder before it wrote; `docs/release-bar.md` owns the rule.
 The field is therefore held at build time to the grammar `RecorderVersion` reads - `major.minor.patch`, an optional `-prerelease` ordered below its release, never build metadata after a `+` - and a declaration outside it is a build error naming the field rather than an abort at the first recording of a corpus; `VersionAgreementTests` drives that target with both kinds.
 `VersionAgreementTests` and `RecorderVersionTests` assert it over every assembly of ours found beside the running test binary rather than a list they name, so a project added later is asked as soon as anything references it - the first suite covers the game-free set CI runs, the second the two that need the game.
-Two versions are deliberately outside the arrangement.
+Three versions are deliberately outside the arrangement.
+`EncounterIntel` is a separate mod, not part of Runmobile: its assembly takes its version from its own `src/EncounterIntel/EncounterIntel.json`, and `Directory.Build.props` excludes it by project name; see [Encounter Intel](encounter-intel.md).
 `GodotStubs` is not ours: that assembly has to keep `GodotSharp`'s own identity for the game assembly's references to resolve.
 `Arbiter.Version` in `Sts2PilotTrainer.Engine` is the headless arbiter's own version, written into every verification report as `arbiter_version`, and it stays independent because the CLI is a separate executable even though Runmobile packages it for local publication checks.
 The consequence is intended and worth stating: bump the mod's version and `arbiter_version` still reads the arbiter's own until somebody bumps that too.

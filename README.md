@@ -9,7 +9,8 @@ Playing from a recording writes nothing to your saves, your stats or your run hi
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
 
-This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and its main-menu row and Compendium open the recorded-run library.
+This repository is `sts2-pilot-trainer`: its main mod is `Runmobile`, and its main-menu row and Compendium open the recorded-run library.
+A separate [Encounter Intel data prototype](docs/encounter-intel.md) reads current-act pools and visible enemies without Runmobile dependencies; it has no UI yet.
 The main-menu row appears by default for a player with no finished runs, while a player with run history uses the Compendium unless they turn the row on in settings.
 Anything marked **Coming soon** below is planned for launch and not built yet.
 A feature stops being coming soon by deleting the tag, so this file stays current without losing the framing.
@@ -337,10 +338,11 @@ The full walkthrough, with commands and their real output, is in
 | | |
 |---|---|
 | `src/Sts2PilotTrainer.Replay` | The replay format and its rules. Depends on nothing — not the game, not a video pipeline, not a storefront. Its tests run on a machine that does not own the game. |
-| `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
+| `src/Sts2PilotTrainer.Engine` | The only Runmobile project that knows about a specific game version. |
 | `src/Sts2PilotTrainer.Trainer` | The game-free owner of recorded-fight wording, result models, and chart derivation. |
-| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the main-menu and Compendium entries and retail presentation. |
+| `src/Sts2PilotTrainer.Mod` | Runmobile's project loaded into the retail game; it owns the main-menu and Compendium entries and retail presentation. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
+| `src/EncounterIntel` | The separate [Encounter Intel](docs/encounter-intel.md) data prototype, bound to one game build of its own. |
 | `manifests/` | The reconstructed run and the map read from the video, plus two runs recorded inside the player's own game. Facts only. |
 | `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
 

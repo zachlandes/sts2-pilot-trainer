@@ -77,10 +77,9 @@ No game assemblies, localization tables, source-VOD frames or source-VOD stills.
 The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as product evidence; that is not permission to commit any source footage.
 Facts read from a video are fine and are what `manifests/` holds.
 
-**One owner for game-version-specific code.** Everything that knows how v0.111.0 is
-put together lives in `Sts2PilotTrainer.Engine`. `Sts2PilotTrainer.Replay` must stay
-free of the game assembly — that is what lets the format and its tests outlive a
-build.
+**One owner for Runmobile's game-version-specific code.**
+Everything in Runmobile that knows how v0.111.0 is put together lives in `Sts2PilotTrainer.Engine`.
+`Sts2PilotTrainer.Replay` must stay free of the game assembly — that is what lets the format and its tests outlive a build.
 
 **Find the engine's own command before writing one.** Every verb in `RunDriver` maps
 onto a method the retail client calls; none of them reimplement game logic. Whether a
@@ -343,9 +342,10 @@ The run library asks `RetailPlayback` about a boundary's prefix before it offers
 The driver still enforces the shared set, and `RetailPlayback` authorises nothing.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
-inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
-player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
-way in. Five traps in that process are written down there. Two cost a crash each: mod
+inside the retail client.**
+`Sts2PilotTrainer.Mod` is the project Runmobile loads into the player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the way in.
+Five traps in that process are written down there.
+Two cost a crash each: mod
 initialization runs before the game has a model database, and Godot does not load the
 game into the default assembly load context. Two are about *when* rather than what, and
 were live in a build whose tests were green: waiting a length of time is not waiting for
@@ -569,7 +569,7 @@ Do not add a second capture path, a turn-level reset, a score or a verdict; `doc
 
 **One version, written in one place.** `src/Sts2PilotTrainer.Mod/Runmobile.json`'s
 `version` field is the only version declaration for the assemblies the mod ships;
-`Directory.Build.props` reads it and stamps every assembly, `RunmobileVersion` is the
+`Directory.Build.props` reads it and stamps every Runmobile assembly, `RunmobileVersion` is the
 one reader, and a native recording names that build twice - in its mod set and as
 `source.native.recorder_version` - so the two have to be the same string. Do not add a
 second declaration; recordings written before this carry the old wrong value and are
