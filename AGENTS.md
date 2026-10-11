@@ -569,7 +569,7 @@ Do not add a second capture path, a turn-level reset, a score or a verdict; `doc
 
 **One version, written in one place.** `src/Sts2PilotTrainer.Mod/Runmobile.json`'s
 `version` field is the only version declaration for the assemblies the mod ships;
-`Directory.Build.props` reads it and stamps every assembly, `RunmobileVersion` is the
+`Directory.Build.props` reads it and stamps every Runmobile assembly, `RunmobileVersion` is the
 one reader, and a native recording names that build twice - in its mod set and as
 `source.native.recorder_version` - so the two have to be the same string. Do not add a
 second declaration; recordings written before this carry the old wrong value and are
