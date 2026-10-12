@@ -12,6 +12,9 @@
     <Reference Include="GodotSharp" HintPath="$(PreparedLibDir)/GodotSharp.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(PreparedLibDir)/0Harmony.dll" Private="false" />
     <EmbeddedResource Include="catalogue/wiki-enemies.json" LogicalName="EncounterIntel.wiki-enemies.json" />
+    <EmbeddedResource Include="catalogue/builds/**/patterns.json" LogicalName="EncounterIntel.%(RecursiveDir)patterns.json" />
+    <EmbeddedResource Include="catalogue/builds.json" LogicalName="EncounterIntel.builds.json" />
+    <EmbeddedResource Include="catalogue/wiki-pattern-pages.json" LogicalName="EncounterIntel.wiki-pattern-pages.json" />
     <None Update="EncounterIntel.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="RequirePreparedGame" BeforeTargets="BeforeBuild">

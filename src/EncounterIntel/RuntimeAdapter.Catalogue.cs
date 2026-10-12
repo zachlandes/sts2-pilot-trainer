@@ -28,8 +28,11 @@ public static partial class RuntimeAdapter
     {
         var run = CurrentRun() ?? throw new IntelRefusal("There is no run for ascension-sensitive catalogue quantities.");
         var wiki = catalogue ?? WikiCatalogue.Read();
-        var reviewed = ReviewedExamples.Monsters(wiki).ToDictionary(rule => rule.Id, StringComparer.Ordinal);
-        var encountersReviewed = ReviewedExamples.Encounters().ToDictionary(rule => rule.Id, StringComparer.Ordinal);
+        var patterns = ReadPatterns();
+        var pages = WikiPatternPages.Read();
+        var hasLegacyReview = patterns.Build.AssemblySha256 == SupportedBuild.AssemblySha256;
+        var reviewed = hasLegacyReview ? ReviewedExamples.Monsters(wiki).ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, MonsterRule>();
+        var encountersReviewed = hasLegacyReview ? ReviewedExamples.Encounters().ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, EncounterRule>();
         var monsters = new List<CatalogueMonster>();
         var encounters = new List<CatalogueEncounter>();
         var coverage = new List<CatalogueCoverage>();
@@ -74,7 +77,7 @@ public static partial class RuntimeAdapter
                 var names = WikiAliases.TryGetValue(name, out var aliases) ? aliases : [name];
                 var entries = wiki.Enemies.Where(enemy => names.Any(alias => Identity(alias) == Identity(enemy.Name))).ToArray();
                 foreach (var entry in entries) usedWiki.Add(entry.Name);
-                var row = CheckCatalogueMonster(model, entries, reviewed.GetValueOrDefault(id.ToString()), run.AscensionLevel);
+                var row = WithPattern(CheckCatalogueMonster(model, entries, reviewed.GetValueOrDefault(id.ToString()), run.AscensionLevel), patterns, pages, run.AscensionLevel);
                 monsters.Add(row);
                 coverage.Add(new(kind, row.Id, row.Standing, MonsterReasons(row)));
             }
@@ -106,7 +109,7 @@ public static partial class RuntimeAdapter
                 else gaps.Add("No encounter composition in the pinned bundle for these monsters.");
             }
             if (row.PossibleMonsterIds.Count == 0) gaps.Add("This definition has no possible monsters.");
-            var result = row with { RelatedWikiCompositions = references, Gaps = gaps };
+            var result = row with { RelatedWikiCompositions = references, Gaps = gaps, DamageSchedules = SchedulesFor(row, patterns) };
             coverage.Add(new("encounter", result.Id, result.Standing, result.Gaps));
             return result;
         }).ToList();
@@ -124,7 +127,10 @@ public static partial class RuntimeAdapter
         return new(SupportedBuild.Require(), run.AscensionLevel, wiki.Attribution, wiki.Sources,
             monsters.OrderBy(row => row.Id, StringComparer.Ordinal).ToArray(),
             encounters.OrderBy(row => row.Id, StringComparer.Ordinal).ToArray(),
-            coverage.OrderBy(row => row.Kind, StringComparer.Ordinal).ThenBy(row => row.Id, StringComparer.Ordinal).ToArray());
+            coverage.OrderBy(row => row.Kind, StringComparer.Ordinal).ThenBy(row => row.Id, StringComparer.Ordinal).ToArray())
+        {
+            PatternGaps = [.. patterns.Gaps, "Enemy-page source receipt: " + pages.Acquisition],
+        };
     }
 
     private static IReadOnlyList<string> MonsterReasons(CatalogueMonster row) =>
@@ -172,7 +178,8 @@ public static partial class RuntimeAdapter
                 foreach (var quantity in move.Quantities)
                 {
                     var field = $"{enemy.Name}.{move.Name}.{quantity.Kind}@{quantity.Offset}";
-                    var binding = CatalogueBindings.Find(model.GetType().Name, enemy.Name, move.Name, quantity.Kind);
+                    var binding = SupportedBuild.Require().AssemblySha256 == SupportedBuild.AssemblySha256
+                        ? CatalogueBindings.Find(model.GetType().Name, enemy.Name, move.Name, quantity.Kind) : null;
                     if (move.Quantities.Count(candidate => candidate.Kind == quantity.Kind) != 1)
                         uncheckedFields.Add(field + ": more than one quantity of this kind; no unambiguous binding.");
                     else if (binding is null) uncheckedFields.Add(field + ": no inspected numeric getter binding.");

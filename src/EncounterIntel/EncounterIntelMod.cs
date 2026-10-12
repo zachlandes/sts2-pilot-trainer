@@ -12,4 +12,5 @@ public static class EncounterIntelMod
     public static IntelReading Lookup() => RuntimeAdapter.ReadCurrent();
     public static IReadOnlyList<CheckedMonster> WorkedExamples() => RuntimeAdapter.ReadWorkedExamples();
     public static CatalogueReading Catalogue() => RuntimeAdapter.ReadCatalogue();
+    public static PatternAtlas Patterns() => RuntimeAdapter.ReadPatterns();
 }

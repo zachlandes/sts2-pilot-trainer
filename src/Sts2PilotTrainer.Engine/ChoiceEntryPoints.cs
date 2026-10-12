@@ -652,6 +652,14 @@ internal static class ChoiceEntryPoints
         return comparisons;
     }
 
+    // Accept only a literal-return body, never execute a weight delegate
+    internal static float? ConstantSingleReturn(MethodBase method)
+    {
+        var il = method.GetMethodBody()?.GetILAsByteArray();
+        return il is { Length: 6 } && il[0] == OpCodes.Ldc_R4.Value && il[5] == OpCodes.Ret.Value
+            ? BitConverter.ToSingle(il, 1) : null;
+    }
+
     private static IReadOnlyList<Operand> OperandsOf(MethodBase method)
     {
         if (!TryReadOperands(method, out var operands))

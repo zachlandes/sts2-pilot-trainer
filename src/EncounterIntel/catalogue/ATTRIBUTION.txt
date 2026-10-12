@@ -27,6 +27,11 @@ File links without executing or rendering them.
 Typed worked-example rules add independently reviewed encounter phases, openings
 and transitions for the inspected v0.111.0 game build.
 They do not make the rest of the imported wiki data build-verified.
+The build-scoped move atlas adds independently derived structural facts and
+source-inspected public rules, not wiki pattern agreement.
+Enemy-page acquisition stopped at a challenge with no pages saved.
+The separate page-source importer preserves attribution and revision receipts
+for any later authorized cached pages; their text remains editorial fallback.
 
 The independent C# and Python implementation is covered by the repository's MIT
 license; the adapted wiki dataset retains CC BY-SA 4.0.

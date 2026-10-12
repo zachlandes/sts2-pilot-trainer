@@ -73,7 +73,7 @@ public sealed record MonsterRule(string Id, string WikiName, AscendingValue MinH
 {
     public string SemanticAssemblySha256 => SupportedBuild.AssemblySha256;
 }
-public enum QuantityAuthority { LiveGetter, GameConstant, BuildReviewedLiteral }
+public enum QuantityAuthority { LiveGetter, GameConstant, BuildReviewedLiteral, ConstructedGraph }
 public sealed record ResolvedQuantity(string Field, int Wiki, int Game, QuantityAuthority Authority = QuantityAuthority.LiveGetter)
 {
     public bool Mismatch => Wiki != Game;

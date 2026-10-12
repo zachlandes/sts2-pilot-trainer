@@ -1,4 +1,4 @@
-# Encounter Intel: pinned catalogue and read-only data prototype
+# Encounter Intel: build-scoped move graphs and reference catalogue
 
 `src/EncounterIntel` is a separate mod, packaged as `EncounterIntel.dll` and `EncounterIntel.json`.
 It has no Runmobile project references, recorder, replay host, UI, settings, uploads or save writes.
@@ -12,14 +12,16 @@ The tests reuse the repository's existing headless fixtures and IL reader, but n
 
 ## Supported build and lookup
 
-The adapter supports the inspected game assembly only:
+The build registry currently admits only the inspected beta game assembly:
 
 ```text
 v0.111.0 / 2026.08.14 / 41cef1ea
 SHA-256: 9cb4f1ad8c9f284aa8fec3122ffd6d780bbf543d875c817abdd12ff63fbf12b4
 ```
 
-`SupportedBuild.Require` hashes the loaded game's assembly file once, read-only, and refuses another hash before looking up a run.
+`SupportedBuild.Require` hashes the loaded game's assembly file once, read-only, and resolves it through `catalogue/builds.json` before looking up a run.
+An unregistered beta or retail hash refuses.
+Registering another build requires its own evidence and `catalogue/builds/<sha>/` inputs and atlas; registering its identity does not reuse this beta's reviewed worked examples or numeric bindings.
 The reported version, date and commit describe that hash, not the latest game release or a mod manifest's version claim.
 `RuntimeAdapter.ReadCurrent` samples synchronously on demand; a later UI must call it on the game's thread and request another reading after state changes.
 It returns detached records, not game models or a resumable snapshot.
@@ -103,7 +105,7 @@ The local game's getters and commands are the authority for the implemented proo
 
 The conceptual-fit decision for phase 2 is to extend the existing importer and adapter.
 No new scraper, game-command interpreter, Runmobile dependency or configuration surface was added.
-The source bundle did not change, and this phase made no wiki or Codex request.
+The source bundle did not change during phase 2, which made no wiki or Codex request.
 
 `RuntimeAdapter.ReadCatalogue` returns the full reference catalogue in the current run's ascension context.
 It enumerates monster and encounter type metadata in the supported assembly, resolves registered canonical models, and reconciles every registered monster or encounter in `ModelDb.All` against that enumeration.
@@ -115,7 +117,8 @@ Each monster retains its wiki moves, source module, initial-power text and edito
 Exact identity aliases bind the Ruby Raiders, Battle Friend variants and Merchant to their game names.
 The three Decimillipede segment types share the editorial Decimillipede entry, and Test Subject's three editorial phases bind to the same game model with separate HP getters.
 These identity bindings do not establish their opening patterns or reactive transitions.
-The existing four reviewed monsters and four reviewed encounter rules remain the complete semantic examples; nothing in the broader import receives that authority by association.
+The existing four reviewed monsters and four reviewed encounter rules remain the examples with fully reviewed effect semantics; nothing in the broader import receives that authority by association.
+The separate move-graph atlas below supplies structural patterns and inspected public context rules without claiming that every move's effects were verified.
 
 The adapter checks reference HP and an allowlist of inspected, side-effect-free numeric getters.
 Move bindings require both the monster identity and the move's normalized name and quantity kind.
@@ -127,7 +130,8 @@ Private inherited getters are read from their declaring type, which permits the 
 `CatalogueStanding` separates catalogued, flagged and unsupported records.
 Missing patterns, unverified effect text and unchecked quantities are gaps distinct from numerical disagreement.
 `CatalogueEncounter.RelatedWikiCompositions` explicitly names related editorial evidence: sharing a monster does not prove that a row describes the same encounter, weak-versus-regular variant or opening phase.
-Only `ReviewedRule` supplies verified opening counts, slots and later phases.
+`ReviewedRule` supplies the original verified opening counts and slots.
+The move-graph atlas adds independently inspected context alternatives and source-described phases, with their authority retained separately from executed evidence.
 The Phrog death phase still describes four stunned Wrigglers and prevention of combat end through that existing rule.
 
 `CatalogueReading.Coverage` is the report, with a disposition and reasons for every game definition and every imported editorial encounter.
@@ -135,7 +139,8 @@ Wiki enemies absent from the build are listed separately, including Doormaker an
 No missing moveset or composition is represented as a successful empty record.
 The API has no UI in this phase; a later surface must show the warning and gaps rather than treating `Flagged` as verified.
 
-The pinned bundle's outstanding gaps are move patterns for every enemy beyond the existing reviewed examples, verified composition/slot alternatives beyond those examples, complex or unbound quantities, and full semantics for power hooks and phase transitions.
+The pinned wiki modules still supply no pattern text for an independent cross-check.
+Outstanding interpretation gaps include unbound encounter contexts, complex quantities, and full semantics for move effects and power hooks.
 Event fights remain separate definitions: Dense Vegetation's four-Wriggler icon row is imported, while a missing event-specific composition is named in its coverage row.
 These are source or interpretation gaps, not permission to fetch another wiki revision or generate a hypothetical encounter.
 
@@ -144,6 +149,76 @@ To reproduce the coverage report without a retail client, use the narrow test co
 The tests compare every registered definition against those rows, sample complete gameplay and profile receipts before and after lookup, and run the catalogue under the existing command/RNG/deal observation guard.
 They also edit an unreviewed number to require a warning, remove an enemy to require an unsupported row, and rename a move to require an unchecked binding.
 These headless readings establish catalogue behavior and read-only lookup, not retail UI compatibility or complete semantic verification.
+
+## Offline move-graph derivation
+
+The fit decision is to extend Encounter Intel's existing catalogue adapter, with an offline generator in the existing test project.
+The packaged mod reads an embedded atlas; it never constructs a hypothetical monster in the player's run.
+`EncounterIntelMod.Patterns()` is available without a current run, while `Catalogue()` attaches the selected ascension's patterns and all encounter schedule columns.
+
+`EncounterIntelPatternGenerator` clones each registered canonical monster and calls only its graph setup.
+It supplies ascension through a scoped read adapter, creates no creature or fight, and never executes a move, predicate, weight delegate, spawn hook or encounter roster factory.
+Constant weights are read from captured float arguments or exact literal-return bodies through the engine's existing IL reader.
+Unknown weight bodies stay uninterpreted.
+The probe uses a fresh test process because a previous test can inline the game's ascension read before the scoped adapter is installed.
+It preserves the existing worktree sandbox containment rule.
+
+On this beta all 126 registered monster models construct without fight context, including the registered mocks and non-combat definitions named in the denominator.
+The atlas retains every state, ordered conditional edge, weight, cooldown, repeat policy and mandatory transition flag.
+Structural reachability distinguishes Phrog's unused random branch from its actual alternating graph.
+This is reachability through all graph edges, not a prediction that a particular predicate will succeed.
+Unknown state shapes are flagged with gaps, and a failed construction names the exception without starting a fight to repair it.
+
+`semantics.json` contains build-scoped, source-inspected bindings for predicates, encounter property setters, move-name aliases, dynamic quantities and reactive phases.
+It contains facts rather than extracted game code.
+Openings include each inspected slot or offset alternative, never the choice the run dealt.
+The direct-call scan of `CreatureCmd.Add`, `CreatureCmd.Stun`, `SetMoveImmediate` and `ForceCurrentState` names producer members with source references or gaps.
+It uses the existing IL reader and does not establish complete coverage of indirect hooks or unreadable bodies.
+Reactive rules describe changes outside the ordinary graph, including death, revive, stun, summon and in-place hatch transitions; none was executed by this derivation.
+
+`patterns.json` is generated and compared in the merge suite, not edited by hand.
+Its header binds the whole atlas to assembly identity, graph schema and the game's maximum ascension.
+The beta's equal columns compress to thresholds 0, 8 and 9, covering A0 through A10.
+Unknown builds and graph schemas refuse instead of inheriting beta assumptions.
+The old reviewed examples remain bound to their original assembly hash even after another build is registered.
+
+`CatalogueEncounter.DamageSchedules` lists possible members and every inspected opening alternative by ascension column.
+A schedule follows fixed edges for nine turns, accumulating only inspected self-Strength gains, and stops at a conditional or random branch.
+It is reference damage before initial powers, allies or player interference, not announced damage or a next-turn forecast.
+An unknown prior buff leaves later damage absent rather than showing a plausible zero.
+Dynamic first-use values carry their rule, such as Multi Claw's increasing hit count or Pressure Gun's increasing damage; later dynamic values are not simulated.
+A context-bearing model without a binding for that encounter has no inferred opening schedule.
+
+For example, the beta Nibbit references begin as follows:
+
+| Encounter context | A0–A8 reference turns 1–6 | A9–A10 reference turns 1–6 |
+| --- | --- | --- |
+| Alone | Butt 12, Slice 6, Hiss, Butt 14, Slice 8, Hiss | Butt 13, Slice 7, Hiss, Butt 16, Slice 10, Hiss |
+| Front | Slice 6, Hiss, Butt 14, Slice 8, Hiss, Butt 16 | Slice 7, Hiss, Butt 16, Slice 10, Hiss, Butt 19 |
+| Back | Hiss, Butt 14, Slice 8, Hiss, Butt 16, Slice 10 | Hiss, Butt 16, Slice 10, Hiss, Butt 19, Slice 13 |
+
+Graph damage and hit-count comparisons require an explicit monster-and-move alias and an unambiguous quantity.
+`QuantityAuthority.ConstructedGraph` distinguishes them from live getters and reviewed command-body literals.
+The adapter preserves both numbers and flags disagreement; a name collision or dynamic ambiguity does not become an agreement.
+
+## Enemy-page source gap
+
+The authorized enemy-page acquisition used one paced Kernel session and stopped at the first challenge without saving a page.
+The session was deleted and not retried.
+Consequently no enemy-page pattern agreement or wiki fallback is claimed, even though the pinned phase-2 modules still permit numeric comparisons.
+`PatternComparison` and `PatternGaps` carry that unavailable disposition in the data.
+
+Acquisition is separate from graph generation.
+`catalogue/wiki-page-sources/sources.json` records the unavailable attempt, and `import_wiki_pages.py` accepts a future authorized cached bundle without making network requests.
+It verifies page hashes, pinned revision URLs and path containment before preserving source text and any explicit behavior section.
+Cached text is editorial fallback with an unchecked pattern disposition, not an automatically verified natural-language graph.
+Populating that cache does not require changing the graph adapter.
+
+```bash
+python3 tools/encounter-intel/import_wiki_pages.py \
+  src/EncounterIntel/catalogue/wiki-page-sources \
+  src/EncounterIntel/catalogue/wiki-pattern-pages.json --check
+```
 
 ## Worked examples and mismatch handling
 
@@ -188,7 +263,9 @@ dotnet build tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj 
 ./scripts/package-encounter-intel.sh
 ```
 
-The narrow suite includes the phase-1 engine proofs and the full-catalogue cases.
+The narrow suite includes the phase-1 engine proofs, full-catalogue cases and offline graph derivation.
+Its older semantic examples execute bounded fights; the new graph probe does not.
+To regenerate an atlas deliberately, set `ENCOUNTER_INTEL_PATTERN_UPDATE=1` and filter to `EveryMonsterGraphIsDerivedWithoutRunFightCommandsOrRandomness`, then rebuild to embed the new resource before running the suite again.
 Read its final `TEST SESSION` verdict rather than inferring success from printed totals.
 The importer tests include malformed-input and provenance negative controls, typed composition references and a hit-count ascension case that would otherwise produce a false disagreement.
 The suite covers both act-one variants, A9's single and A10's double current-map bosses, quantities below and at A8/A9, live announced intents, Nibbit's context-dependent openings, Sludge Spinner's real branch table, Phrog's actual death hook and its spawned opening turn, and an event board before combat begins.

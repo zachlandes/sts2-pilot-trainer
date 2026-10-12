@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.Json;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -17,11 +18,21 @@ public static class SupportedBuild
     private static readonly Lazy<BuildIdentity> Identity = new(ReadIdentity);
     public static BuildIdentity Require() => Identity.Value;
 
-    public static void RequireHash(string sha256)
+    private sealed record Registry(int Schema, IReadOnlyList<BuildIdentity> Builds);
+
+    public static BuildIdentity IdentifyHash(string sha256)
     {
-        if (!string.Equals(sha256, AssemblySha256, StringComparison.OrdinalIgnoreCase))
-            throw new IntelRefusal("Encounter Intel supports v0.111.0 / 41cef1ea only; this game assembly is not the inspected build.");
+        using var stream = typeof(SupportedBuild).Assembly.GetManifestResourceStream("EncounterIntel.builds.json")
+            ?? throw new IntelRefusal("The inspected-build registry is absent.");
+        var registry = JsonSerializer.Deserialize<Registry>(stream, PatternJson.Options)
+            ?? throw new IntelRefusal("The inspected-build registry is unreadable.");
+        if (registry.Schema != 1 || registry.Builds.Select(build => build.AssemblySha256).Distinct(StringComparer.OrdinalIgnoreCase).Count() != registry.Builds.Count)
+            throw new IntelRefusal("The inspected-build registry has an unknown schema or duplicate identity.");
+        return registry.Builds.SingleOrDefault(build => string.Equals(build.AssemblySha256, sha256, StringComparison.OrdinalIgnoreCase))
+            ?? throw new IntelRefusal("This game assembly has no inspected Encounter Intel adapter; beta and retail builds require their own identity and evidence.");
     }
+
+    public static void RequireHash(string sha256) => _ = IdentifyHash(sha256);
 
     private static BuildIdentity ReadIdentity()
     {
@@ -29,8 +40,7 @@ public static class SupportedBuild
         if (string.IsNullOrEmpty(path)) throw new IntelRefusal("The loaded game assembly cannot be identified.");
         using var stream = File.OpenRead(path);
         var hash = Convert.ToHexStringLower(SHA256.HashData(stream));
-        RequireHash(hash);
-        return new BuildIdentity("v0.111.0", "2026.08.14", "41cef1ea", hash);
+        return IdentifyHash(hash);
     }
 }
 
@@ -148,7 +158,7 @@ public static partial class RuntimeAdapter
              method.DeclaringType.Namespace?.StartsWith("MegaCrit.Sts2.Core.MonsterMoves", StringComparison.Ordinal) == true ||
              (method.DeclaringType.Namespace?.StartsWith("MegaCrit.Sts2.Core.Models", StringComparison.Ordinal) == true &&
               (method.Name.StartsWith("get_", StringComparison.Ordinal) || method.Name == "GenerateAllEncounters" ||
-               method.Name.Contains("ModifyDamage", StringComparison.Ordinal))) ||
+               method.Name.Contains("ModifyDamage", StringComparison.Ordinal) || method.Name == "GenerateMoveStateMachine")) ||
              method.DeclaringType.Namespace == "MegaCrit.Sts2.Core.Hooks" ||
              method.DeclaringType.FullName == "MegaCrit.Sts2.Core.Helpers.AscensionHelper"));
         if (patched is not null)
