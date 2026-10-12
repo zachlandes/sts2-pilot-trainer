@@ -1,4 +1,4 @@
-# Encounter Intel: phase 1 data prototype
+# Encounter Intel: pinned catalogue and read-only data prototype
 
 `src/EncounterIntel` is a separate mod, packaged as `EncounterIntel.dll` and `EncounterIntel.json`.
 It has no Runmobile project references, recorder, replay host, UI, settings, uploads or save writes.
@@ -69,7 +69,13 @@ Unknown expressions, changed wrappers, duplicate keys, mixed tables, missing mod
 The generated `wiki-enemies.json` contains 109 editorial enemy records, preserving move text and ascension variants as wikitext.
 It is not rendered HTML, executable content or a build-verified denominator.
 The importer omits art filenames from enemy fields and does not fetch any art.
-Encounter markup still contains wiki links describing composition.
+Schema 2 also imports encounter icon rows and party descriptions into typed records with source references.
+Repeated icon links retain their multiplicity, while party descriptions retain alternative compositions and spawn context as editorial text.
+Both are related evidence, not verified opening rosters.
+The importer extracts unambiguous damage, Block, Strength and hit-count claims, retaining their ascension thresholds and source-text offsets.
+Complex formulas stay in the move text rather than being partially interpreted as constants.
+The pinned modules contain no move-pattern field; every imported enemy names that gap instead of receiving a guessed pattern.
+An entry without intents, such as the Knight Gang group, names its missing moveset.
 
 The adapted wiki data and saved source tables retain **CC BY-SA 4.0**, with contributor attribution, source revisions, license link and a changes notice in the catalogue and `catalogue/ATTRIBUTION.txt`.
 The independently authored implementation uses the repository's MIT license.
@@ -93,11 +99,57 @@ An optional Codex API cross-check attempted the version-qualified Nibbit endpoin
 No fresh Codex agreement is claimed by this change.
 The local game's getters and commands are the authority for the implemented proof.
 
+## Full catalogue and coverage
+
+The conceptual-fit decision for phase 2 is to extend the existing importer and adapter.
+No new scraper, game-command interpreter, Runmobile dependency or configuration surface was added.
+The source bundle did not change, and this phase made no wiki or Codex request.
+
+`RuntimeAdapter.ReadCatalogue` returns the full reference catalogue in the current run's ascension context.
+It enumerates monster and encounter type metadata in the supported assembly, resolves registered canonical models, and reconciles every registered monster or encounter in `ModelDb.All` against that enumeration.
+Abstract definitions, unregistered definitions, types that cannot load, mock models and definitions with no wiki counterpart are named unsupported rather than disappearing from the denominator.
+This is broader than `ModelDb.AllEncounters`, which omits the Dense Vegetation and Punch Off event encounters on this build.
+It reads definition pools only, never an encounter's generated roster, its RNG or a dealt queue.
+
+Each monster retains its wiki moves, source module, initial-power text and editorial spawn statements.
+Exact identity aliases bind the Ruby Raiders, Battle Friend variants and Merchant to their game names.
+The three Decimillipede segment types share the editorial Decimillipede entry, and Test Subject's three editorial phases bind to the same game model with separate HP getters.
+These identity bindings do not establish their opening patterns or reactive transitions.
+The existing four reviewed monsters and four reviewed encounter rules remain the complete semantic examples; nothing in the broader import receives that authority by association.
+
+The adapter checks reference HP and an allowlist of inspected, side-effect-free numeric getters.
+Move bindings require both the monster identity and the move's normalized name and quantity kind.
+A missing binding is a named unchecked quantity, not a comparison against any getter whose number happens to match.
+Axebot's reference HP is flagged as context-dependent because its getter needs mutable Stock context; the existing visible-board reading still supplies actual HP.
+Private inherited getters are read from their declaring type, which permits the segment and Mysterious Knight definitions without creating a new monster instance.
+
+`CatalogueMonster.MayBeOutdated` and `Warning` retain a visible mismatch disposition alongside every wiki and game value.
+`CatalogueStanding` separates catalogued, flagged and unsupported records.
+Missing patterns, unverified effect text and unchecked quantities are gaps distinct from numerical disagreement.
+`CatalogueEncounter.RelatedWikiCompositions` explicitly names related editorial evidence: sharing a monster does not prove that a row describes the same encounter, weak-versus-regular variant or opening phase.
+Only `ReviewedRule` supplies verified opening counts, slots and later phases.
+The Phrog death phase still describes four stunned Wrigglers and prevention of combat end through that existing rule.
+
+`CatalogueReading.Coverage` is the report, with a disposition and reasons for every game definition and every imported editorial encounter.
+Wiki enemies absent from the build are listed separately, including Doormaker and the Knight Gang group.
+No missing moveset or composition is represented as a successful empty record.
+The API has no UI in this phase; a later surface must show the warning and gaps rather than treating `Flagged` as verified.
+
+The pinned bundle's outstanding gaps are move patterns for every enemy beyond the existing reviewed examples, verified composition/slot alternatives beyond those examples, complex or unbound quantities, and full semantics for power hooks and phase transitions.
+Event fights remain separate definitions: Dense Vegetation's four-Wriggler icon row is imported, while a missing event-specific composition is named in its coverage row.
+These are source or interpretation gaps, not permission to fetch another wiki revision or generate a hypothetical encounter.
+
+To reproduce the coverage report without a retail client, use the narrow test command below with `ENCOUNTER_INTEL_DEMO` set to a temporary directory.
+`catalogue-a0.json`, `catalogue-a7.json`, `catalogue-a8.json` and `catalogue-a9.json` contain the full detached catalogue and coverage rows.
+The tests compare every registered definition against those rows, sample complete gameplay and profile receipts before and after lookup, and run the catalogue under the existing command/RNG/deal observation guard.
+They also edit an unreviewed number to require a warning, remove an enemy to require an unsupported row, and rename a move to require an unchecked binding.
+These headless readings establish catalogue behavior and read-only lookup, not retail UI compatibility or complete semantic verification.
+
 ## Worked examples and mismatch handling
 
 `ReviewedExamples.Monsters` converts the bounded wiki examples to typed effects and keeps independently reviewed openings, transitions and encounter phases bound to the supported assembly hash.
 Only Nibbit, Phrog Parasite, its Wrigglers and Sludge Spinner are semantically reviewed here.
-A changed or additional effect in their wiki wording is named unsupported; the rest of the imported catalogue remains editorial data.
+A changed or additional effect in their wiki wording is refused; the rest of the imported catalogue retains editorial text and explicit gaps beside its bound live quantities.
 
 | Monster | HP below A8 / A8+ | Complete reviewed moves |
 | --- | --- | --- |
@@ -136,8 +188,9 @@ dotnet build tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj 
 ./scripts/package-encounter-intel.sh
 ```
 
-The narrow session completed with 21 passing cases and no skips on the identified build.
-The importer's six tests passed, including malformed-input and provenance negative controls.
+The narrow suite includes the phase-1 engine proofs and the full-catalogue cases.
+Read its final `TEST SESSION` verdict rather than inferring success from printed totals.
+The importer tests include malformed-input and provenance negative controls, typed composition references and a hit-count ascension case that would otherwise produce a false disagreement.
 The suite covers both act-one variants, A9's single and A10's double current-map bosses, quantities below and at A8/A9, live announced intents, Nibbit's context-dependent openings, Sludge Spinner's real branch table, Phrog's actual death hook and its spawned opening turn, and an event board before combat begins.
 Repeated lookups compare the complete gameplay digest and sandbox profile-file hashes and modification times before and after.
 Applying Strength and Weak through the game's own commands changes the announced Oil Spray reading from 8 to 11 to 8, while each lookup leaves those powers and the complete digest unchanged.

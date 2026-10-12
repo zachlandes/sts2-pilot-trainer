@@ -23,7 +23,7 @@ using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
-public sealed class EncounterIntelTests
+public sealed partial class EncounterIntelTests
 {
     [Fact]
     public void WikiCatalogueKeepsPinnedSourcesAndAttribution()
@@ -272,6 +272,7 @@ public sealed class EncounterIntelTests
                 {
                     Assert.Equal(BoardKind.Combat, RuntimeAdapter.ReadCurrent().Board.Kind);
                     Assert.NotEmpty(RuntimeAdapter.ReadWorkedExamples());
+                    Assert.NotEmpty(RuntimeAdapter.ReadCatalogue().Coverage);
                 }));
                 Assert.Equal(before, StateReceipt(session));
                 var spinner = Assert.Single(CombatManager.Instance.DebugOnlyGetState()!.Enemies);

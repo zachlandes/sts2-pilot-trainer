@@ -107,6 +107,65 @@ def parse_module(raw, module):
     return data
 
 
+QUANTITY = r'(?P<base>\d+)(?: \(\{\{Asc2\|(?P<tier>\d+)\|(?P<higher>\d+)\}\}\))?'
+
+
+def move_quantities(text):
+    """Extract only unambiguous reference quantities, not arbitrary effect semantics."""
+    patterns = {
+        'damage': r'Deals ' + QUANTITY + r' damage',
+        'block': r'Gains ' + QUANTITY + r' \{\{KW2\|Block\}\}',
+        'strength': r'Gains ' + QUANTITY + r' \{\{BD2\|Strength\}\}',
+        'hits': (r'damage [×x](?P<base>\d+)'
+                 r'(?: \(\{\{Asc2\|(?P<tier>\d+)\|[×x](?P<higher>\d+)\}\}\))?'
+                 r'(?!\d| \(\{\{Asc2)'),
+    }
+    result = []
+    for kind, pattern in patterns.items():
+        for match in re.finditer(pattern, text):
+            groups = match.groupdict()
+            result.append(dict(kind=kind, offset=match.start(), text=match[0],
+                               amount=dict(base=int(groups['base']),
+                                           threshold=int(groups['tier']) if groups.get('tier') else None,
+                                           higher=int(groups['higher']) if groups.get('higher') else None)))
+    return sorted(result, key=lambda quantity: quantity['offset'])
+
+
+def composition(location, text):
+    if not isinstance(location, str) or not isinstance(text, str):
+        raise ValueError('Encounter location and composition must be text')
+    # Repeated icons retain multiplicity, but a group link is not a monster identity
+    links = re.findall(r'\[\[File:[^\]]*\|link=StS2:([^\]]+)\]\]', text)
+    return dict(location=location, text=text, evidence_kind='icon-row', members=[dict(wiki_link=link, count=links.count(link))
+                for link in dict.fromkeys(links)], is_event=bool(re.search(r'\bEvent\b', location)),
+                gaps=['Icon links are editorial composition references, not verified opening rosters.'])
+
+
+def remember_composition(encounters, entry, name, title):
+    key = (entry['location'], entry['text'], entry['evidence_kind'])
+    if key not in encounters:
+        identity = hashlib.sha256(('\0'.join(key)).encode()).hexdigest()[:16]
+        encounters[key] = dict(id='wiki:' + identity, **entry, references=[])
+    reference = dict(enemy_name=name, source_module=title)
+    if reference not in encounters[key]['references']:
+        encounters[key]['references'].append(reference)
+    return encounters[key]['id']
+
+
+def party_phases(text, origin='party'):
+    """Retain authored spawn/death statements without inventing missing spawn mechanics."""
+    result = []
+    for line in re.split(r'<br>|\n', text or ''):
+        if not re.search(r'\b(?:summons|summoned|revives)\b', line, re.IGNORECASE):
+            continue
+        result.append(dict(trigger='death' if re.search(r'\b(?:death|dies|revives)\b', line, re.IGNORECASE) else 'summon',
+                           relation=('summoned-by' if re.search(r'summoned by', line, re.IGNORECASE)
+                                     else 'revives' if re.search(r'\brevives\b', line, re.IGNORECASE) else 'summons'),
+                           text=line, origin=origin, monster_names=re.findall(r'\{\{M\|([^|}]+)', line),
+                           gaps=['Editorial spawn statement; counts, slots and prevention of combat end are not game-verified.']))
+    return result
+
+
 def load_bundle(directory):
     directory = Path(directory).resolve()
     receipt = json.loads((directory / 'sources.json').read_text())
@@ -114,6 +173,7 @@ def load_bundle(directory):
     if len(modules) != 8:
         raise ValueError('Require root module and its seven delegates')
     sources, entries, titles = [], [], set()
+    encounters = {}
     delegates = None
     for index, source in enumerate(modules):
         title = source['title'].replace(' ', '_')
@@ -129,7 +189,7 @@ def load_bundle(directory):
         if source['sha256'] != digest:
             raise ValueError(f'Source hash differs: {title}')
         revision = source['revision']
-        if not isinstance(revision, int) or revision <= 0:
+        if type(revision) is not int or revision <= 0:
             raise ValueError('Require a positive revision id')
         url = 'https://slaythespire.wiki.gg/wiki/' + title
         pinned = url + '?action=raw&oldid=' + str(revision)
@@ -146,26 +206,47 @@ def load_bundle(directory):
                 raise ValueError(f'Unknown enemy shape: {name}')
             moves = []
             for move in enemy.get('Intents', []):
-                if not isinstance(move, dict) or not isinstance(move.get('Text'), str):
+                if (not isinstance(move, dict) or not isinstance(move.get('Text'), str) or not move['Text'].strip()
+                        or (move.get('Name') is not None and not isinstance(move['Name'], str))
+                        or any(not isinstance(move.get(key, []), list)
+                               or any(not isinstance(item, str) for item in move.get(key, []))
+                               for key in ('AscText', 'IntentIcons'))):
                     raise ValueError(f'Unknown move shape: {name}')
                 moves.append(dict(name=move.get('Name'), text=move['Text'], asc_text=move.get('AscText', []),
-                                  icons=move.get('IntentIcons', [])))
-            known = {'Type', 'BaseHP', 'AscHP', 'StartsWith', 'InPartyWith', 'Intents', 'Image', 'Icon'}
+                                  icons=move.get('IntentIcons', []), quantities=move_quantities(move['Text'])))
+            references = []
+            for encounter in enemy.get('Encounters', []):
+                if not isinstance(encounter, dict) or set(encounter) != {'location', 'enemies'}:
+                    raise ValueError(f'Unknown encounter shape: {name}')
+                entry = composition(encounter['location'], encounter['enemies'])
+                references.append(remember_composition(encounters, entry, name, title))
+            if enemy.get('InPartyWith'):
+                entry = dict(location=enemy.get('Debut') or 'Unspecified', text=enemy['InPartyWith'],
+                             evidence_kind='party-description', members=[],
+                             is_event='event' in enemy['InPartyWith'].lower(),
+                             gaps=['Party prose describes alternatives or spawns; it is not a verified opening roster.'])
+                references.append(remember_composition(encounters, entry, name, title))
+            known = {'Type', 'BaseHP', 'AscHP', 'StartsWith', 'InPartyWith', 'Intents', 'Image', 'Icon', 'Encounters'}
             entries.append(dict(name=name, source_module=title, kind=enemy.get('Type'), base_hp=enemy.get('BaseHP'),
                                 asc_hp=enemy.get('AscHP'), starts_with=enemy.get('StartsWith'),
                                 in_party_with=enemy.get('InPartyWith'), moves=moves,
+                                encounter_ids=references, phases=(party_phases(enemy.get('InPartyWith'))
+                                    + [phase for move in moves for phase in party_phases(move['text'], move['name'] or 'unnamed move')]),
+                                pattern=dict(text=None, gap='The pinned modules contain no move-pattern field.'),
+                                gaps=[] if moves else ['The pinned wiki entry has no moveset (group or missing data).'],
                                 additional_fields={k: v for k, v in enemy.items() if k not in known}))
     if delegates != titles - {'Module:Enemies/StS2_data'}:
         raise ValueError('Saved delegates differ from the root module')
     if len({e['name'] for e in entries}) != len(entries):
         raise ValueError('Duplicate enemy identity across modules')
-    return dict(schema=1, generated_by='tools/encounter-intel/import_wiki.py',
+    return dict(schema=2, generated_by='tools/encounter-intel/import_wiki.py',
                 attribution=dict(creator='Slay the Spire Wiki contributors',
                                  source='https://slaythespire.wiki.gg/wiki/Module:Enemies/StS2_data',
                                  license='CC BY-SA 4.0', license_url='https://creativecommons.org/licenses/by-sa/4.0/',
                                  policy_url='https://slaythespire.wiki.gg/wiki/Meta:Copyrights',
-                                 changes='Parsed literal Lua tables; normalized fields; omitted art filenames; retained wikitext without executing or rendering it.'),
-                sources=sources, enemies=sorted(entries, key=lambda e: e['name']))
+                                 changes='Parsed literal Lua tables; normalized fields and numeric claims; grouped editorial encounter references; retained spawn statements and wikitext without executing or rendering it; omitted standalone art fields. No missing patterns or rosters were invented.'),
+                sources=sources, enemies=sorted(entries, key=lambda e: e['name']),
+                encounters=sorted(encounters.values(), key=lambda e: e['id']))
 
 
 def main():

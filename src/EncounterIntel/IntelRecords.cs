@@ -4,10 +4,21 @@ namespace EncounterIntel;
 
 public sealed record WikiSource(string Module, string Url, int Revision, string FetchedAt, string Sha256);
 public sealed record WikiAttribution(string Creator, string Source, string License, string LicenseUrl, string PolicyUrl, string Changes);
-public sealed record WikiMove(string? Name, string Text, IReadOnlyList<string> AscText, IReadOnlyList<string> Icons);
+public sealed record WikiQuantity(string Kind, int Offset, string Text, AscendingValue Amount);
+public sealed record WikiMove(string? Name, string Text, IReadOnlyList<string> AscText, IReadOnlyList<string> Icons,
+    IReadOnlyList<WikiQuantity> Quantities);
+public sealed record WikiPattern(string? Text, string? Gap);
+public sealed record WikiPhase(string Trigger, string Relation, string Text, string Origin,
+    IReadOnlyList<string> MonsterNames, IReadOnlyList<string> Gaps);
+public sealed record WikiMember(string WikiLink, int Count);
+public sealed record WikiReference(string EnemyName, string SourceModule);
+public sealed record WikiEncounter(string Id, string Location, string Text, string EvidenceKind, IReadOnlyList<WikiMember> Members,
+    bool IsEvent, IReadOnlyList<string> Gaps, IReadOnlyList<WikiReference> References);
 public sealed record WikiEnemy(string Name, string SourceModule, string? Kind, string? BaseHp, string? AscHp,
-    string? StartsWith, string? InPartyWith, IReadOnlyList<WikiMove> Moves, IReadOnlyDictionary<string, JsonElement> AdditionalFields);
-public sealed record WikiCatalogue(int Schema, WikiAttribution Attribution, IReadOnlyList<WikiSource> Sources, IReadOnlyList<WikiEnemy> Enemies)
+    string? StartsWith, string? InPartyWith, IReadOnlyList<WikiMove> Moves, IReadOnlyDictionary<string, JsonElement> AdditionalFields,
+    IReadOnlyList<string> EncounterIds, IReadOnlyList<WikiPhase> Phases, WikiPattern Pattern, IReadOnlyList<string> Gaps);
+public sealed record WikiCatalogue(int Schema, WikiAttribution Attribution, IReadOnlyList<WikiSource> Sources,
+    IReadOnlyList<WikiEnemy> Enemies, IReadOnlyList<WikiEncounter> Encounters)
 {
     public static WikiCatalogue Read()
     {
@@ -17,7 +28,7 @@ public sealed record WikiCatalogue(int Schema, WikiAttribution Attribution, IRea
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         }) ?? throw new IntelRefusal("The pinned wiki catalogue is unreadable.");
-        if (catalogue.Schema != 1 || catalogue.Sources.Count != 8 || catalogue.Enemies.Count == 0)
+        if (catalogue.Schema != 2 || catalogue.Sources.Count != 8 || catalogue.Enemies.Count == 0)
             throw new IntelRefusal("The wiki catalogue has an unsupported schema or an incomplete source receipt.");
         return catalogue;
     }

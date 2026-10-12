@@ -61,7 +61,9 @@ public static partial class RuntimeAdapter
                 throw new IntelRefusal($"The inspected constant {model.Id}.{binding} is absent.");
             return value;
         }
-        var property = model.GetType().GetProperty(binding, members);
+        PropertyInfo? property = null;
+        for (var type = model.GetType(); type is not null && property is null; type = type.BaseType)
+            property = type.GetProperty(binding, members | BindingFlags.DeclaredOnly);
         if (property?.GetValue(model) is not int number)
             throw new IntelRefusal($"The inspected numeric getter {model.Id}.{binding} is absent.");
         return number;
