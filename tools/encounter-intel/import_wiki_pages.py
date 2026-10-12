@@ -140,8 +140,8 @@ def claims_of(text, name, found):
                 continue
             tables = [table for table in TABLE.finditer(pattern, 0, start)]
             target = (tables[-1][1].strip() if tables else name) + '.' + move[1].strip()
-            packed = list(re.finditer(r"\bDeals \((\d+)[x×](\d+);\{\{Asc2\|(\d+)\|(\d+)[x×](\d+)\}\}\) damage\b", effect[1]))
-            damage = list(re.finditer(r"\bDeals (" + AMOUNT + r") damage\b", effect[1]))
+            packed = list(re.finditer(r"\bDeals? \((\d+)[x×](\d+);\{\{Asc2\|(\d+)\|(\d+)[x×](\d+)\}\}\) damage\b", effect[1]))
+            damage = list(re.finditer(r"\bDeals? (" + AMOUNT + r") damage\b", effect[1]))
             if len(damage) + len(packed) != 1:
                 continue
             if packed:

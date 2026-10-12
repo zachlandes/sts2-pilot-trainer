@@ -218,7 +218,7 @@ Everything else on a page - other prose, predicates, reactive triggers and group
 It reads every pattern section the enemy owns, each kept as a region with its source line: every phase of a tabbed boss, and an anchored enemy's same-level sibling `Pattern` section as well as its own.
 A section under another enemy's heading and infobox belongs to that enemy's page, never the host's, and a table row's move takes its owner from the table it is in.
 Each assertion carries its exact source passage and line number.
-Literal attack quantities are read in every written form: `damage ×N`, `damage xN`, a packed `(DxN;{{Asc2|T|D'xN'}})` amount and a hit count with its own ascension value; a formula that is not literal numbers stays out.
+Literal attack quantities are read after "Deal" or "Deals" in every written form: `damage ×N`, `damage xN`, a packed `(DxN;{{Asc2|T|D'xN'}})` amount and a hit count with its own ascension value; a formula that is not literal numbers stays out.
 A fixed sequence is read from "cycles", "alternates" or "cycle:" followed by its linked moves, or from a `#` or `*` list introduced as a sequence, cycle or pattern; the existing qualifier guards still drop a sequence that names a condition, check or random choice.
 An intent-table row runs from its opener to the brace that closes it, whether that closes on the effect line or on a line of its own, so nested templates never merge two rows.
 Odds are read only where a sentence writes them literally: a fraction, a percentage or a weight beside every move of a random pick, an equal-chance qualifier, "twice as likely", or a bulleted list of percentages.
@@ -242,7 +242,7 @@ Remaining effect prose, conditional predicates and reactive triggers are not mad
 The current-run catalogue compares its ascension, and `CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun` checks every supported ascension, including wiki thresholds between compressed graph columns.
 `PatternComparison.SourceText` is the source fallback and `PatternGaps` retains the acquisition receipt.
 At A0, the beta's 126 registered graph rows have 79 partial agreements, six mismatches, five unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
-The compared A0 claims are 286 matches, nine mismatches and 53 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
+The compared A0 claims are 287 matches, nine mismatches and 53 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
 Vantom's cached Dismember row says 27 damage below A9, while this beta's constructor supplies 26, and both say 30 at A9.
 The page's own V0.104.0 update history records the reduction to 26, but its intent row was not updated.
 Flyconid's page gives its opening 2/3 Frail Spores and 1/3 Smash, and Hunter Killer's makes Puncture twice as likely as Bite, where both branches declare equal weights.

@@ -87,6 +87,9 @@ class PageImportTests(unittest.TestCase):
         self.assertEqual([('damage', at(7, 9, 8)), ('hits', at(3))], quantities("Deals (7;{{Asc2|9|8}}) damage ×3."))
         self.assertEqual([('damage', at(3)), ('hits', at(7, 9, 8))], quantities("Deals 3 damage (×7;{{Asc2|9|×8}})."))
         self.assertEqual([('damage', at(10, 9, 11)), ('hits', at(3))], quantities("Deals (10;{{Asc2|9|11}}) damage x3 (increases by 1 hit each use)."))
+        self.assertEqual([('damage', at(8, 9, 10))], quantities("Deal (8;{{Asc2|9|10}}) damage. Gains (20;{{Asc2|8|22}}) {{KW2|Block}}."))
+        self.assertEqual([('damage', at(5, 9, 6)), ('hits', at(5, 9, 6))], quantities("Deal (5x5;{{Asc2|9|6x6}}) damage."))
+        self.assertEqual([], quantities("Deals damage equal to its stored {{BD2|Steam Eruption}} amount, then dies."))
 
     def test_singular_cycles_and_bulleted_sequences_are_literal_sequences(self):
         from import_wiki_pages import claims_of, regions
@@ -234,6 +237,7 @@ class PageImportTests(unittest.TestCase):
         self.assertEqual(4, len(stated("Owl Magistrate", "fixed-cycle")[0][0]))
         self.assertEqual(5, len(stated("Thieving Hopper", "fixed-path")[0][0]))
         self.assertIn((["Slimed Berserker.Furious Pummeling"], None, None), stated("Slimed Berserker", "hits"))
+        self.assertIn((["Infested Prism.Pulsate"], None, None), stated("Infested Prism", "damage"))
         self.assertEqual(["Slimed Berserker.Furious Pummeling", "Slimed Berserker.Smother"], [moves[0] for moves, _, _ in stated("Slimed Berserker", "damage")][-2:])
         for page in pages.values():
             lines = page["source_text"].splitlines()

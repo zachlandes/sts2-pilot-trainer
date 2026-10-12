@@ -2209,6 +2209,19 @@
           }
         },
         {
+          "kind": "damage",
+          "moves": [
+            "Infested Prism.Pulsate"
+          ],
+          "source_line": 49,
+          "source_text": "{{Intents Table/row\n|Name   = Pulsate\n|Intent = Attack3, Buff, Defend\n|Effect = Deal (8;{{Asc2|9|10}}) damage. Gains (20;{{Asc2|8|22}}) {{KW2|Block}} and {{BD2|Vital Spark}} (2;{{Asc2|9|3}}).\n|GivesToEnemy = Block, Vital Spark\n}}",
+          "amount": {
+            "base": 8,
+            "threshold": 9,
+            "higher": 10
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Infested Prism.Jab",

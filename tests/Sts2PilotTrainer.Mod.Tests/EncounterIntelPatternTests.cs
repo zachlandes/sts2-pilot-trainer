@@ -310,6 +310,9 @@ public sealed partial class EncounterIntelTests
         Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebots.Select(variant => variant.OpeningMove));
         Assert.Equal("mismatch", Checks("Spectral Knight", "MONSTER.SPECTRAL_KNIGHT").Single(check => check.Claim.Kind == "fixed-cycle").Standing);
         Assert.Equal(2, pages.Pages.Single(page => page.Name == "Slimed Berserker").Claims.Count(claim => claim.Kind == "damage"));
+        var pulsate = Checks("Infested Prism", "MONSTER.INFESTED_PRISM").Single(check => check.Claim.Kind == "damage" && check.Claim.Moves[0] == "Infested Prism.Pulsate");
+        Assert.Equal((8, 10), (pulsate.Claim.Amount!.At(0), pulsate.Claim.Amount.At(9)));
+        Assert.NotEqual("unresolved", pulsate.Standing);
         Assert.Equal("matched", Checks("Byrdonis", "MONSTER.BYRDONIS").Single(check => check.Claim.Kind == "hits").Standing);
         Assert.Equal("matched", Checks("Exoskeleton", "MONSTER.EXOSKELETON").Single(check => check.Claim.Kind == "hits").Standing);
         Assert.Equal("matched", Checks("Globe Head", "MONSTER.GLOBE_HEAD").Single(check => check.Claim.Kind == "fixed-cycle").Standing);
