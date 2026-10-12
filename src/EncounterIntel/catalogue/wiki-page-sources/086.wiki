@@ -1,0 +1,263 @@
+'''Test Subject''' is a {{2|Bosses|Boss}} found in {{2|Glory}}. It has three phases, reviving twice with increasing HP and new powers.
+__TOC__
+<tabber>
+|-|Phase 1=
+{{Enemy Infobox
+|Name   = Test Subject
+|Image  = StS2_Test Subject.png
+|Icon   = StS2 Icon TestSubjectBoss.png
+|HP     = 100
+|AscHP  = 111
+|Powers = {{BD2|Adaptable}}, {{BD2|Enrage}} 2 ({{Asc2|9|3}})
+|Debut  = Glory
+|Type   = Boss
+}} 
+{{Power Infobox
+|Name         = Adaptable
+|Image        = StS2 Icon Adaptable.png
+|Description  = When it would be defeated, it instead revives even stronger.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+{{Power Infobox
+|Name         = Enrage
+|Image        = StS2 Icon Enrage.png
+|Description  = Whenever you play a Skill, gains X {{BD2|Strength}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Strength
+}}
+=== Pattern ===
+{{Intents Table/start|Test Subject}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack3
+|Effect = Deals (20;{{Asc2|9|22}}) damage.
+}}
+{{Intents Table/row
+|Name   = Skull Bash
+|Intent = Attack3, Debuff
+|Effect = Deals (14;{{Asc2|9|16}}) damage. Applies 1 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/end}}
+Starts with {{BD2|Adaptable}} and {{BD2|Enrage}} 2 ({{Asc2|9|3}}). Alternates between {{Int2|Test Subject|Bite}} and {{Int2|Test Subject|Skull Bash}}.
+
+When reduced to 0 HP, {{BD2|Adaptable}} prevents death and it revives into Phase 2.
+
+{{Clear}}
+
+|-|Phase 2=
+{{Enemy Infobox
+|Name   = Test Subject (Phase 2)
+|Image  = StS2_Test Subject_Phase_2.png
+|Icon   = StS2 Icon TestSubjectBoss.png
+|HP     = 200
+|AscHP  = 212
+|Powers = {{BD2|Adaptable}}, {{BD2|Painful Stabs}}
+|Debut  = Glory
+|Type   = Boss
+}} 
+{{Power Infobox
+|Name         = Adaptable
+|Image        = StS2 Icon Adaptable.png
+|Description  = When it would be defeated, it instead revives even stronger.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+{{Power Infobox
+|Name         = Painful Stabs
+|Image        = StS2 Icon PainfulStabs.png
+|Description  = Shuffle X {{C2|Wound|Wounds}} into your Discard Pile each time you receive unblocked attack damage.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+=== Pattern ===
+{{Intents Table/start|Test Subject (Phase 2)}}
+{{Intents Table/row
+|Name   = Multi-Claw
+|Intent = Attack4
+|Effect = Deals (10;{{Asc2|9|11}}) damage x3 (increases by 1 hit each use).
+}}
+{{Intents Table/end}}
+Revives with 200 ({{Asc2|8|212}}) HP, gains {{BD2|Painful Stabs}} and loses {{BD2|Enrage}}. Uses {{Int2|Test Subject (Phase 2)|Multi-Claw}} every turn. {{Int2|Test Subject (Phase 2)|Multi-Claw}} starts at 3 hits and gains +1 hit each use.
+
+When reduced to 0 HP again, it revives into Phase 3.
+
+{{Clear}}
+
+|-|Phase 3=
+{{Enemy Infobox
+|Name   = Test Subject (Phase 3)
+|Image  = StS2_Test Subject_Phase_3.png
+|Icon   = StS2 Icon TestSubjectBoss.png
+|HP     = 300
+|AscHP  = 313
+|Powers = {{BD2|Nemesis}}<br>{{BD2|Intangible}} 1
+|Debut  = Glory
+|Type   = Boss
+}} 
+{{Power Infobox
+|Name         = Nemesis
+|Image        = StS2 Icon Nemesis.png
+|Description  = At the end of every other turn, gains {{BD2|Intangible}} 1.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Intangible
+}}
+{{Power Infobox|Intangible|2}}
+=== Pattern ===
+{{Intents Table/start|Test Subject (Phase 3)}}
+{{Intents Table/row
+|Name   = Lacerate
+|Intent = Attack4
+|Effect = Deals (10;{{Asc2|9|11}}) damage x3.
+}}
+{{Intents Table/row
+|Name   = Big Pounce
+|Intent = Attack5
+|Effect = Deals 45 damage.
+}}
+{{Intents Table/row
+|Name   = Burning Growl
+|Intent = StatusCard, Buff
+|Effect = Shuffles (3;{{Asc2|9|5}}) {{C2|Burn}} into discard pile. Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Revives with 300 ({{Asc2|8|313}}) HP, gains {{BD2|Nemesis}}, and loses {{BD2|Adaptable}} and {{BD2|Painful Stabs}}. Cycles through:
+# {{Int2|Test Subject (Phase 3)|Lacerate}}
+# {{Int2|Test Subject (Phase 3)|Big Pounce}}
+# {{Int2|Test Subject (Phase 3)|Burning Growl}}
+# Back to {{Int2|Test Subject (Phase 3)|Lacerate}}
+
+{{Clear}}</tabber>
+
+== Notes ==
+* Each of Test Subject's phases will lose all status effects when transitioning to the next phase, including the {{BD2|Strength}} gained from {{BD2|Enrage}} in the first phase.
+* Cards with on-kill or {{KW2|Fatal}} triggers ({{C2|Feed}}, {{C2|The Hunt}}, {{C2|Knockout Blow}}, {{C2|Sunder}}, and {{C2|Hand of Greed}}) will trigger successfully during ''any'' of the Test Subject's phases.
+** Because the Test Subject is a {{2|Bosses|Boss}} in Act 3, after which there are no opportunities to spend {{KW2|Gold}} or earn card rewards, {{C2|Feed}}, {{C2|Knockout Blow}}, and {{C2|Sunder}} are the only cards with an on-kill or {{KW2|Fatal}} trigger that matters.
+* After Test Subject loses all its HP in a phase, it cannot be targeted by any cards until it revives into the next phase.
+** Cards with no targets can still be played, including Attack cards that hit all enemies or random enemies (such as {{C2|Sword Boomerang}} or {{C2|Sweeping Beam}}), but they will deal no damage. All other possible effects will still occur (for instance, {{C2|Sweeping Beam}} will still draw a card).
+
+== Trivia ==
+* Each phase of the Test Subject's boss battle is based on an Elite enemy from ''Slay the Spire'':
+** Phase 1's {{BD2|Enrage}} buff is shared with the Act 1 Elite {{M|Gremlin Nob}}. The Test Subject's claws and back spikes also resemble the Gremlin Nob's horns.
+** Phase 2's {{BD2|Painful Stabs}} buff is shared with the Act 2 Elite {{M|Book of Stabbing}}.
+** Phase 3's {{BD2|Nemesis}} buff is identical to the ability of the Act 3 Elite {{M|Nemesis}}, and its icon depicts the mask worn by Nemesis.
+* '''Test Subject''' starts each save as '''Test Subject #C8''' with the number increasing by 2 each time it's killed.
+
+== Animations ==
+<tabber>
+|-|Phase 1=
+{{Bestiary|Test Subject Phase 1}}
+|-|Phase 2=
+{{Bestiary|Test Subject Phase 2}}
+|-|Phase 3=
+{{Bestiary|Test Subject Phase 3}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Testsubjekt
+| DEUmeaning = 
+| ESPname    = Sujeto de prueba
+| ESPmeaning = 
+| FRAname    = Cobaye
+| FRAmeaning = 
+| ITAname    = Soggetto di prova
+| ITAmeaning = 
+| JPNname    = 実験体
+| JPNromanised = Jikken tai
+| JPNmeaning = 
+| INDname    = Subjek Eksperimen
+| INDmeaning = 
+| KORname    = 실험체
+| KORromanised = silheomche
+| KORmeaning = 
+| POLname    = Eksperyment
+| POLmeaning =The Experiment 
+| PTBname    = Cobaia
+| PTBmeaning = 
+| RUSname    = Подопытный
+| RUSromanised = Podopytnyj
+| RUSmeaning = 
+| SPAname    = Sujeto de pruebas
+| SPAmeaning = 
+| TURname    = Denek
+| TURmeaning = 
+| ZHSname    = 实验体
+| ZHSromanised = shiyanti
+| ZHSmeaning = 
+| CODEname    = TEST_SUBJECT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.110.0|* Added fire to Test Subject burn animation}}
+{{Update History Table/row|v0.106.0|* Fixed Test Subject starting phase 2 with extra strength if it is killed by Sleight of Flesh via Enfeebling Touch
+* Fixed a few issues with Test Subject in the Bestiary
+* Corrected HP scaling in multiplayer. 
+** ''Previously, phase 2 and 3 would respawn with <code> BaseHP * PlayerCount</code> instead of <code> BaseHP * PlayerCount * ActScaling</code> {{2|Multiplayer#Enemy Scaling|More Info.}}''}}
+{{Update History Table/row|V0.101.0|* Added Test Subject burn animation}}
+{{Update History Table/row|v0.100.0|* Changed Test Subject: Phase 2 no longer has the Pounce move, instead will repeat Multi Claw move every turn}}
+{{Update History Table/row|V0.96.0|* Nerfed Test Subject: Phase 3 Lacerate damage decreased from 11(12) -> 10(11)}}
+{{Update History Table/row|V0.95.0|* Buffed Test Subject phase 2 initially hits an additional time}}
+{{Update History Table/row|V0.91.0|* Changed Test Subject:
+** Phase 1's Skull Bash move damage decreased from 16(18) -> 14(16) and Vulnerable applied decreased from 2 -> 1
+** Phase 2 now starts with Multi Claw move instead of Pounce
+** Phase 3 now applies Intangible at end of turn instead of start
+* Bug Fix: Test Subject's Phase 3 now takes full Poison damage on non-Intangible turns}}
+{{Update History Table/row|V0.90.0|* Reworked Test Subject}}
+{{Update History Table/row|V0.89.0|* Made Test Subject opaque again if it is killed while it has Intangible}}
+{{Update History Table/row|V0.88.0|* Fixed Test Subject staying semi-transparent after losing Intangible while stunned}}
+{{Update History Table/row|V0.83.0|* Reworked Test Subject}}
+{{Update History Table/row|V0.78.0|* A10 Test Subject no longer disappears if it is killed by Doom on its 3rd form}}
+{{Update History Table/row|V0.75.0|* Test Subject monster's Painful Stabs power now properly gives Wound cards even when its owner dies to Thorns power
+* Test Subject no longer briefly fades out when transitioning between phases}}
+{{Update History Table/row|V0.71.0|* Buffed Test Subject:
+** Changed Growl move from gaining Block -> deals 18(20) damage
+** Now gains Block when it revives
+* Fixed softlock when viewing the victory screen of a run against Test Subject}}
+{{Update History Table/row|V0.70.0|* Removed speech line from Test Subject boss}}
+{{Update History Table/row|V0.67.0|* Added SFX for Test Subject
+* Added custom Test Subject BGM
+* Hang power no longer applies to Test Subject when it is killed first}}
+{{Update History Table/row|V0.65.0|* Reworked Test Subject}}
+{{Update History Table/row|V0.62.0|* Fixed an issue where Test Subject's Malleable power wasn't giving it enough block after multi-hit attacks}}
+{{Update History Table/row|V0.61.0|* Fixed Test Subject being unhittable if it is killed while it is stunned by Tanx's Whistle card}}
+{{Update History Table/row|V0.59.0|* Fixed an issue where, after shrinking Test Subject in phase 1 or 2 with Beetle Juice and then killing it, it would stay visually shrunk}}
+{{Update History Table/row|V0.53.0|* Fixed issue where Lightning orb would softlock on dead Test Subject
+* Playing an AOE attack while Test Subject is downed no longer makes the attack stuck}}
+{{Update History Table/row|V0.52.0|* Test Subject now gets bigger as he respawns}}
+{{Update History Table/row|V0.51.0|* Test Subject boss now uses correct death/revival animation in multiplayer}}
+{{Update History Table/row|V0.49.0|* Added Test Subject boss animations}}
+{{Update History Table/row|V0.47.0|* Fixed an issue that caused Test Subject to softlock if you killed him with Doom before he reached his final form}}
+{{Update History Table/row|V0.44.0|* Deprecated Test Subject’s Mutating Ichor card}}
+{{Update History Table/row|V0.42.0|* Fixed a softlock when killing Test Subject by discarding a hand full of Sly cards via Calculated Gamble}}
+{{Update History Table/row|V0.41.0|* Test Subject can no longer be hit by AOE when Adaptable activates
+* Test Subject no longer finishes multi-hit if Adaptable procs on the first hit
+* Test Subject no longer becomes invincible if Adaptable triggers off of Perfect Reflection power}}
+{{Update History Table/row|V0.40.0|* Reworked Test Subject}}
+{{Update History Table/row|V0.39.0|* Test Subject no longer shuffles status cards to the bottom of the draw pile}}
+{{Update History Table/row|V0.38.0|* Changed Test Subject: now adds cards to Draw Pile instead of hand
+* Fix misaligned Block indicator when hitting the Test Subject many times in sequence}}
+{{Update History Table/row|V0.37.0|* Test Subject now has Malleable instead of Mutegenic Adaptation
+* Test Subject's new status is Mutating Ichor: if this is in your hand at the end of your turn, Test Subject gains 1 strength}}
+{{Update History Table/row|V0.24.0|* Added new Act 3 boss, Test Subject to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,327 @@
+The '''Bowlbugs''' are a group of normal {{2|Monsters|Enemies}} found in the {{2|Hive}}. Each encounter features a Bowlbug (Rock) alongside 1 or 2 worker bowlbugs chosen from Egg, Silk, and Nectar types. Individual bowlbugs also appear alongside {{2|Slumbering Beetle}}.
+
+== Bowlbug (Rock) ==
+{{Enemy Infobox
+|Name   = Bowlbug (Rock)
+|Link   = Slay The Spire 2:Bowlbugs#Bowlbug (Rock)
+|Image  = StS2_Bowlbug (Rock).png
+|HP     = 45-48
+|AscHP  = 46-49
+|Powers = {{BD2|Imbalanced}}
+|Debut  = Hive
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Imbalanced
+|Image        = StS2 Icon Imbalanced.png
+|Description  = If the enemy's attacks are fully blocked, it becomes {{KW2|Stunned}}.
+|Type         = Debuff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Stunned
+}}
+=== Pattern ===
+{{Intents Table/start|Bowlbug (Rock)}}
+{{Intents Table/row
+|Name   = Headbutt
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/row
+|Name   = Dizzy
+|Intent = Stun
+|Effect = Stunned. Does nothing.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Bowlbug (Rock)|Headbutt}} every turn. However, if {{Int2|Bowlbug (Rock)|Headbutt}}'s damage is fully prevented by a player, the Bowlbug (Rock) becomes {{KW2|Stunned}} and uses {{Int2|Bowlbug (Rock)|Dizzy}} on its next turn, then resumes {{Int2|Bowlbug (Rock)|Headbutt}}.
+
+=== Notes ===
+* The in-game description of {{BD2|Imbalanced}} is somewhat misleading. The Bowlbug (Rock) will become {{KW2|Stunned}} as long as the player has at least 1 {{KW2|Block}} and {{Int|Bowlbug (Rock)|Headbutt|Headbutt's|2}} damage is fully prevented. Some other methods of preventing damage are:
+** Playing {{BD2|Buffer}}.
+** Reducing the Bowlbug (Rock)'s {{BD2|Strength}}.
+** Blocking all but 1 damage and preventing that 1 damage with {{R2|Tungsten Rod}}.
+* If the Bowlbug (Rock)'s attack damage is reduced to 0 (such as by {{BD2|Mangle}}) but the player has no {{KW2|Block}}, the Bowlbug (Rock) will ''not'' be {{KW2|Stunned}}.
+* If {{KW2|Osty}} takes damage from {{Int2|Bowlbug (Rock)|Headbutt}}, it will not become {{KW2|Stunned}}.
+* Since {{BD2|Imbalanced}} is a debuff, {{C2|Misery}} can apply it to other enemies in the fight.
+* In {{2|Multiplayer}}, only one player needs to fully block {{Int2|Bowlbug (Rock)|Headbutt}} to {{KW2|Stunned|Stun}} the Bowlbug (Rock).
+
+{{Clear}}
+
+== Bowlbug (Egg) ==
+{{Enemy Infobox
+|Name   = Bowlbug (Egg)
+|Link   = Slay The Spire 2:Bowlbugs#Bowlbug (Egg)
+|Image  = StS2_Bowlbug (Egg).png
+|HP     = 21-22
+|AscHP  = 23-24
+|Debut  = Hive
+|Type   = Normal
+|EncounterAliases = Bowlbug (Egg or Nectar), Bowlbug (Lesser)
+}}
+
+=== Pattern ===
+{{Intents Table/start|Bowlbug (Egg)}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack2, Defend
+|Effect = Deals (7;{{Asc2|9|8}}) damage. Gains (7;{{Asc2|9|8}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/end}}
+Uses {{Int2|Bowlbug (Egg)|Bite}} every turn.
+
+{{Clear}}
+
+== Bowlbug (Silk) ==
+{{Enemy Infobox
+|Name   = Bowlbug (Silk)
+|Link   = Slay The Spire 2:Bowlbugs#Bowlbug (Silk)
+|Image  = StS2_Bowlbug (Silk).png
+|HP     = 40-43
+|AscHP  = 41-44
+|Debut  = Hive
+|Type   = Normal
+|EncounterAliases = Bowlbug (Lesser)
+}}
+
+=== Pattern ===
+{{Intents Table/start|Bowlbug (Silk)}}
+{{Intents Table/row
+|Name   = Thrash
+|Intent = Attack2
+|Effect = Deals (4;{{Asc2|9|5}}) damage x2.
+}}
+{{Intents Table/row
+|Name   = Spin Web
+|Intent = Debuff
+|Effect = Applies 1 {{BD2|Weak}}.
+|GivesToPlayer = Weak
+}}
+{{Intents Table/end}}
+Alternates between {{Int2|Bowlbug (Silk)|Spin Web}} and {{Int2|Bowlbug (Silk)|Thrash}}.
+
+{{Clear}}
+
+== Bowlbug (Nectar) ==
+{{Enemy Infobox
+|Name   = Bowlbug (Nectar)
+|Link   = Slay The Spire 2:Bowlbugs#Bowlbug (Nectar)
+|Image  = StS2_Bowlbug (Nectar).png
+|HP     = 35-38
+|AscHP  = 36-39
+|Debut  = Hive
+|Type   = Normal
+|EncounterAliases = Bowlbug (Egg or Nectar), Bowlbug (Lesser)
+}}
+
+=== Pattern ===
+{{Intents Table/start|Bowlbug (Nectar)}}
+{{Intents Table/row
+|Name   = Thrash
+|Intent = Attack1
+|Effect = Deals 3 damage.
+}}
+{{Intents Table/row
+|Name   = Buff
+|Intent = Buff
+|Effect = Gains (15;{{Asc2|9|16}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Bowlbug (Nectar)|Thrash}}, then uses {{Int2|Bowlbug (Nectar)|Buff}} once, then uses {{Int2|Bowlbug (Nectar)|Thrash}} every turn after.
+
+{{Clear}}
+
+== Animations ==
+<tabber>
+|-|Bowlbug (Rock)=
+{{Bestiary|Bowlbug Rock}}
+|-|Bowlbug (Egg)=
+{{Bestiary|Bowlbug Egg}}
+|-|Bowlbug (Silk)=
+{{Bestiary|Bowlbug Silk}}
+|-|Bowlbug (Nectar)=
+{{Bestiary|Bowlbug Nectar}}
+</tabber>
+== Names in Other Languages ==
+{{Localization
+| Title = BowlBug (Rock)
+| DEUname    = Schalenkäfer (Stein)
+| DEUmeaning = 
+| ESPname    = Bichobol (roca)
+| ESPmeaning = 
+| FRAname    = Sphéropode (Pierre)
+| FRAmeaning = 
+| ITAname    = Scaraciotola (roccia)
+| ITAmeaning = 
+| JPNname    = ボウルバグ（岩）
+| JPNromanised = Bowl bug (iwa)
+| JPNmeaning = 
+| INDname    = Kumbang Mangkok (Batu)
+| INDmeaning = 
+| KORname    = 그릇벌레 (바위)
+| KORromanised = geuleusbeolle (ba-wi)
+| KORmeaning = 
+| POLname    = Skało-Robal
+| POLmeaning = 
+| PTBname    = Besouro Coletor (Pedra)
+| PTBmeaning = 
+| RUSname    = Полый рогач (с камнем)
+| RUSromanised = Polyj rogach (s kamnem)
+| RUSmeaning = 
+| SPAname    = Escaracuenco (Roca)
+| SPAmeaning = 
+| TURname    = Çanakböceği (Taş)
+| TURmeaning = 
+| ZHSname    = 盛碗虫（石）
+| ZHSromanised = shengwanchong（shi）
+| ZHSmeaning = 
+| CODEname    = BOWLBUG_ROCK
+| CODEmeaning = 
+}}
+{{Localization
+| Title = BowlBug (Egg)
+| DEUname    = Schalenkäfer (Ei)
+| DEUmeaning = 
+| ESPname    = Bichobol (huevo)
+| ESPmeaning = 
+| FRAname    = Sphéropode (Œuf)
+| FRAmeaning = 
+| ITAname    = Scaraciotola (uovo)
+| ITAmeaning = 
+| JPNname    = ボウルバグ（卵）
+| JPNromanised = Bowl bug (tamago)
+| JPNmeaning = 
+| INDname    = Kumbang Mangkok (Telur)
+| INDmeaning = 
+| KORname    = 그릇벌레 (알)
+| KORromanised = geuleusbeolle (al)
+| KORmeaning = 
+| POLname    = Jajo-Robal
+| POLmeaning = 
+| PTBname    = Besouro Coletor (Ovo)
+| PTBmeaning = 
+| RUSname    = Полый рогач (с яйцом)
+| RUSromanised = Polyj rogach (s jajtsom)
+| RUSmeaning = 
+| SPAname    = Escaracuenco (Huevo)
+| SPAmeaning = 
+| TURname    = Çanakböceği (Yumurta)
+| TURmeaning = 
+| ZHSname    = 盛碗虫（卵）
+| ZHSromanised = shengwanchong（luan）
+| ZHSmeaning = 
+| CODEname    = BOWLBUG_EGG
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Bowlbug (Silk)
+| DEUname    = Schalenkäfer (Seide)
+| DEUmeaning = 
+| ESPname    = Bichobol (seda)
+| ESPmeaning = 
+| FRAname    = Sphéropode (Soie)
+| FRAmeaning = 
+| ITAname    = Scaraciotola (seta)
+| ITAmeaning = 
+| JPNname    = ボウルバグ（糸）
+| JPNromanised = Bowl bug (ito)
+| JPNmeaning = 
+| INDname    = Kumbang Mangkok (Sutra)
+| INDmeaning = 
+| KORname    = 그릇벌레 (실크)
+| KORromanised = geuleusbeolle (silkeu)
+| KORmeaning = 
+| POLname    = Nicio-Robal
+| POLmeaning = 
+| PTBname    = Besouro Coletor (Seda)
+| PTBmeaning = 
+| RUSname    = Полый рогач (с шелком)
+| RUSromanised = Polyj rogach (s shelkom)
+| RUSmeaning = 
+| SPAname    = Escaracuenco (Seda)
+| SPAmeaning = 
+| TURname    = Çanakböceği (İpek)
+| TURmeaning = 
+| ZHSname    = 盛碗虫（丝）
+| ZHSromanised = shengwanchong（si）
+| ZHSmeaning = 
+| CODEname    = BOWLBUG_SILK
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Bowlbug (Nectar)
+| DEUname    = Schalenkäfer (Nektar)
+| DEUmeaning = 
+| ESPname    = Bichobol (néctar)
+| ESPmeaning = 
+| FRAname    = Sphéropode (Nectar)
+| FRAmeaning = 
+| ITAname    = Scaraciotola (nettare)
+| ITAmeaning = 
+| JPNname    = ボウルバグ（みつ）
+| JPNromanised = Bowl bug (mitsu)
+| JPNmeaning = 
+| INDname    = Kumbang Mangkok (Nektar)
+| INDmeaning = 
+| KORname    = 그릇벌레 (꿀)
+| KORromanised = geuleusbeolle (kkul)
+| KORmeaning = 
+| POLname    = Nekta-Robal
+| POLmeaning = 
+| PTBname    = Besouro Coletor (Néctar)
+| PTBmeaning = 
+| RUSname    = Полый рогач (с нектаром)
+| RUSromanised = Polyj rogach (s nektarom)
+| RUSmeaning = 
+| SPAname    = Escaracuenco (Néctar)
+| SPAmeaning = 
+| TURname    = Çanakböceği (Nektar)
+| TURmeaning = 
+| ZHSname    = 盛碗虫（蜜）
+| ZHSromanised = shengwanchong（mi）
+| ZHSmeaning = 
+| CODEname    = BOWLBUG_NECTAR
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.105.0|* Added unstun animation for Rock Bowlbug}}
+{{Update History Table/row|V0.100.0|* Changed the Tunneler normal encounter: the Bowlbug is now replaced by a Chomper that gives Dazed status cards on turn 1}}
+{{Update History Table/row|V0.99.1|* Fixed the word "Stunned" not appearing when Rock Bowlbug does its stunned move}}
+{{Update History Table/row|V0.99.0|* Fixed the word "Stunned" not appearing when Rock Bowlbug does its stunned move}}
+{{Update History Table/row|V0.90.0|* Buffed Silk Bowlbug: Thrash move damage increased from 3(4) -> 4(5)
+* Changed Weak Bowlbug encounter: can no longer spawn a Silk Bowlbug}}
+{{Update History Table/row|V0.87.0|* Tweaked Bowlbug moveset and damage values
+* Egg Bowlbug now uses animations when blocking
+* Nectar Bowlbug now uses cast animation}}
+{{Update History Table/row|V0.86.0|* Buffed Bowlbug Rock: headbutt move damage increased from 13(15) -> 15(16)}}
+{{Update History Table/row|V0.85.0|* Changed Egg Bowlbug: no longer spawns in the Slumber Party fight}}
+{{Update History Table/row|V0.84.0|* Reworked Bowlbug (Egg)
+* Reworked Bowlbug (Goop) and renamed to Bowlbug (Nectar)
+* Reworked and nerfed Bowlbug (Rock)}}
+{{Update History Table/row|V0.77.0|* Nerfed Rock Bowlbug: Headbutt move damage decreased from 17(19) -> 15(17)}}
+{{Update History Table/row|V0.63.0|* Changed Goop Bowlbug: reworked moveset}}
+{{Update History Table/row|V0.47.0|* Fixed an issue where Perfect Reflection card caused a softlock if its damage reflection killed Bowlbug (Rock) while also fully blocking one of its attacks}}
+{{Update History Table/row|V0.46.0|* Misery card no longer duplicates Rock Bowlbug's Imbalanced power onto other enemies}}
+{{Update History Table/row|V0.45.0|* Changed Bowlbug encounter: reworked Egg and Goop Bowlbug movesets}}
+{{Update History Table/row|V0.44.0|* Changed Bowlbugs:
+** No longer apply Frail
+** Silk Bowlbug now applies 1 Weak
+** Egg Bowlbug no longer applies debuffs, but attacks and gains Block}}
+{{Update History Table/row|V0.39.0|* Nerfed Rock Bowlbug: Momentum move damage decreased from 14(15) -> 11(13)}}
+{{Update History Table/row|V0.38.0|* Changed Rock Bowlbug: Momentum move Strength gain decreased from 4 -> and deals 14(15) damage}}
+{{Update History Table/row|V0.35.0|* Bowlbug enemy’s goop no longer does a multiattack}}
+{{Update History Table/row|V0.21.0|* Changed Toxic Goop Bowlbug: can no longer spawn with the Slumbering Beetle}}
+{{Update History Table/row|V0.19.0|* Rock Bowlbug gets correctly stunned when Weak and their damage is blocked exactly}}
+{{Update History Table/row|V0.15.0|* Nerfed Rock Bowlbug: HP lowered from 52-61 -> 42-51
+* Nerfed Silk Bowlbug: HP lowered from 47-51 -> 37-41
+* Slumber Party encounter now has the Slumbering Beetle in the back of the fight instead of the front and the type of Bowlbugs that can be encountered in this fight has been adjusted}}
+{{Update History Table/row|?|* Added Bowlbugs to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

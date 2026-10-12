@@ -1,0 +1,98 @@
+{{Enemy Infobox
+|Name   = Inklet
+|Image  = StS2_Inklet.png
+|HP     = 11-17
+|AscHP  = 12-18
+|Powers = {{BD2|Slippery}} 1
+|Debut  = Overgrowth
+|Type   = Normal
+}} 
+{{Power Infobox|Slippery|2}}
+'''Inklet''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}. They always appear in groups of three and start with one stack of {{BD2|Slippery}} each.
+
+== Pattern ==
+{{Intents Table/start|Inklet}}
+{{Intents Table/row
+|Name   = Jab
+|Intent = Attack1
+|Effect = Deals (3;{{Asc2|9|4}}) damage.
+}}
+{{Intents Table/row
+|Name   = Whirlwind
+|Intent = Attack2
+|Effect = Deals (2;{{Asc2|9|3}}) damage ×3.
+}}
+{{Intents Table/row
+|Name   = Piercing Gaze
+|Intent = Attack3
+|Effect = Deals (10;{{Asc2|9|11}}) damage.
+}}
+{{Intents Table/end}}
+The two outer Inklets open with {{Int2|Inklet|Jab}}. The middle Inklet always opens with {{Int2|Inklet|Whirlwind}}.
+
+Alternates between {{Int2|Inklet|Jab}} and a random choice (equal chance) between {{Int2|Inklet|Piercing Gaze}} or {{Int2|Inklet|Whirlwind}}.
+
+== Trivia ==
+* One of {{M2|Vantom}}'s death messages implies that Inklets are creatures transformed into monsters by Vantom.
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Inklet}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Tintchen
+| DEUmeaning = 
+| ESPname    = Tintamorfo
+| ESPmeaning = 
+| FRAname    = Encrelin
+| FRAmeaning = 
+| ITAname    = Inchiostrino
+| ITAmeaning = 
+| JPNname    = インクレット
+| JPNromanised = Ink let
+| JPNmeaning = 
+| INDname    = Inklet
+| INDmeaning = 
+| KORname    = 잉클릿
+| KORromanised = ingkeullis
+| KORmeaning = 
+| POLname    = Kropelka
+| POLmeaning = 
+| PTBname    = Nanquíneo
+| PTBmeaning = 
+| RUSname    = Чернильник
+| RUSromanised = Chernil'nik
+| RUSmeaning = 
+| SPAname    = Tintoide
+| SPAmeaning = 
+| TURname    = Mürekkepçik
+| TURmeaning = 
+| ZHSname    = 墨宝
+| ZHSromanised = mobao
+| ZHSmeaning = 
+| CODEname    = INKLET
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Fixed Inklet's head getting cut off during  Doom animation}}
+{{Update History Table/row|V0.106.0|* Inklet and Vantom's Slippery power no longer loses a stack when fully blocking all damage from a hit}}
+{{Update History Table/row|V0.89.0|* Updated Inklet animations}}
+{{Update History Table/row|V0.44.0|* Changed Inklet: changed moveset so fight is now less random}}
+{{Update History Table/row|V0.42.0|* Inklets now have a fast attack animation and improved death animation}}
+{{Update History Table/row|V0.40.0|* Buffed Inklets: HP increased from 6(7)-11(13) -> 11(12)->17(18)}}
+{{Update History Table/row|V0.39.0|* Reworked Inklets}}
+{{Update History Table/row|V0.27.1|* Added extra string of goo when Inklet explodes & tidied up rig}}
+{{Update History Table/row|2023-09-15|* Inklet HP decreased from 6 -> 5, no longer applies Vulnerable}}
+{{Update History Table/row|2023-05-12|* Inklets nerfed. Health from 5-7 -> always 6. Damage on small attack lowered by 1 from 7 -> 6.}}
+{{Update History Table/row|2023-04-21|* lil toad and inklet to close to end turn button
+* tweaked lil toad inklet positioning more}}
+{{Update History Table/row|2023-02-09|* GAMEPLAY: Inklet health and damage nerfs.}}
+{{Update History Table/row|?|* Added Inklet to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

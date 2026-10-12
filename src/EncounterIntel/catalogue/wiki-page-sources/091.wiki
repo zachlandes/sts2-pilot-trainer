@@ -1,0 +1,162 @@
+'''The Obscura''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}. It summons a {{M2|Parafright}} at the start of the fight.
+
+== The Obscura ==
+{{Enemy Infobox
+|Name   = The Obscura
+|Image  = StS2_The Obscura.png
+|HP     = 123
+|AscHP  = 129
+|Debut  = Hive
+|Type   = Normal
+}}
+=== Pattern ===
+{{Intents Table/start|The Obscura}}
+{{Intents Table/row
+|Name   = Illusion
+|Intent = Summon
+|Effect = Summons a {{M2|Parafright}}.
+}}
+{{Intents Table/row
+|Name   = Piercing Gaze
+|Intent = Attack3
+|Effect = Deals (10;{{Asc2|9|11}}) damage.
+}}
+{{Intents Table/row
+|Name   = Wail
+|Intent = Buff
+|Effect = All enemies gain 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Hardening Strike
+|Intent = Attack2, Defend
+|Effect = Deals (6;{{Asc2|9|7}}) damage. Gains (6;{{Asc2|9|7}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/end}}
+The Obscura always opens with {{Int2|The Obscura|Illusion}} to summon a {{M2|Parafright}}. After that, it randomly picks one of three moves — {{Int2|The Obscura|Piercing Gaze}}, {{Int2|The Obscura|Wail}}, or {{Int2|The Obscura|Hardening Strike}} — and cannot use the same move twice in a row.
+
+{{Clear}}
+
+== Parafright ==
+{{Enemy Infobox
+|Name   = Parafright
+|Image  = StS2_Parafright.png
+|HP     = 21
+|Powers = {{BD2|Illusion}}
+|Debut  = Hive
+|Type   = Minion
+}} {{Power Infobox|Illusion|2}}
+The Parafright is a minion summoned by The Obscura via {{Int2|The Obscura|Illusion}}.
+
+=== Pattern ===
+{{Intents Table/start|Parafright}}
+{{Intents Table/row
+|Name   = Slam
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Parafright|Slam}} every turn.
+
+{{Clear}}
+== Animations ==
+<tabber>
+|-|The Obscura=
+{{Bestiary|The Obscura}}
+|-|The Obscura (Phobia Mode)=
+{{Bestiary|Phobia The Obscura}}
+|-|Parafright=
+{{Bestiary|Parafright}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = The Obscura
+| DEUname    = Die Obscura
+| DEUmeaning = 
+| ESPname    = La Oscura
+| ESPmeaning = 
+| FRAname    = L'Obscura
+| FRAmeaning = 
+| ITAname    = Tenebra
+| ITAmeaning = 
+| JPNname    = オブスキュラ
+| JPNromanised = Obscura
+| JPNmeaning = 
+| INDname    = Sang Obscura
+| INDmeaning = 
+| KORname    = 영사자
+| KORromanised = yeongsaja
+| KORmeaning = 
+| POLname    = Przysłona
+| POLmeaning = 
+| PTBname    = A Obscura
+| PTBmeaning = 
+| RUSname    = Обскура
+| RUSromanised = Obskura
+| RUSmeaning = 
+| SPAname    = La Tenebrosa
+| SPAmeaning = 
+| TURname    = Belirsiz
+| TURmeaning = 
+| ZHSname    = 胧光怪
+| ZHSromanised = longguangguai
+| ZHSmeaning = 
+| CODEname    = THE_OBSCURA
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Parafright
+| DEUname    = Parafratze
+| DEUmeaning = 
+| ESPname    = Siembraterror
+| ESPmeaning = 
+| FRAname    = Pareffroi
+| FRAmeaning = 
+| ITAname    = Seminaterrore
+| ITAmeaning = 
+| JPNname    = パラフライト
+| JPNromanised = Para flight
+| JPNmeaning = 
+| INDname    = Bayangan Teror
+| INDmeaning = 
+| KORname    = 투사된 공포
+| KORromanised = tusadoen gongpo
+| KORmeaning = 
+| POLname    = Iluzja
+| POLmeaning = 
+| PTBname    = Aterrorizante
+| PTBmeaning = 
+| RUSname    = Параспуг
+| RUSromanised = Paraspug
+| RUSmeaning = 
+| SPAname    = Paraspectro
+| SPAmeaning = 
+| TURname    = Korkuzit
+| TURmeaning = 
+| ZHSname    = 寄生惧魔
+| ZHSromanised = jishengjumo
+| ZHSmeaning = 
+| CODEname    = PARAFRIGHT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.103.3|* Fixed the Parafright illusion keeping its negative Strength from Dark Shackles when you kill it for the turn}}
+{{Update History Table/row|V0.106.0|* Added alternate phobia mode art for The Obscura
+* Added Parafright enemy to the Bestiary}}
+{{Update History Table/row|V0.104.0|* Fixed Parafright illusion keeping its negative Strength from Dark Shackles when you kill it for the turn}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Obscura and Parafright}}
+{{Update History Table/row|V0.81.0|* Fixed the Obscuras missing animation when it applies strength}}
+{{Update History Table/row|V0.79.0|* Added animations for Parafright and Obscura enemies}}
+{{Update History Table/row|V0.73.0|* Reworked Illusion monsters like Eye With Teeth and Parafright: no longer have infinite HP, and they no longer have both the Illusion and Disrupt power. Instead, when an Illusion is "killed", it immediately revives to full HP and is stunned.}}
+{{Update History Table/row|V0.59.0|* Buffed Parafright: Disrupt power amount increased from 11 -> 21}}
+{{Update History Table/row|V0.54.0|* Reaper Form card can no longer kill illusions like Parafright}}
+{{Update History Table/row|V0.46.0|* Added new Act 2 encounter, The Obscura}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,110 @@
+{{Enemy Infobox
+|Name   = Globe Head
+|Image  = StS2_Globe Head.png
+|HP     = 148
+|AscHP  = 158
+|Powers = {{BD2|Galvanic}} 6 ({{Asc2|9|8}}) 
+|Debut  = Glory
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Galvanic
+|Image        = StS2 Icon Galvanic.png
+|Description  = Powers are afflicted with {{KW2|Galvanized}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToPlayer = Galvanized
+}}
+{{Keyword Infobox|Galvanized|2}}
+'''Globe Head''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Globe Head}}
+{{Intents Table/row
+|Name   = Shocking Slap
+|Intent = Attack2, Debuff
+|Effect = Deals (13;{{Asc2|9|14}}) damage. Applies 2 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Thunder Strike
+|Intent = Attack3
+|Effect = Deals (6;{{Asc2|9|7}}) damage 3 times.
+}}
+{{Intents Table/row
+|Name   = Galvanic Burst
+|Intent = Attack3, Buff
+|Effect = Deals (16;{{Asc2|9|17}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Follows a fixed cycle: {{Int2|Globe Head|Shocking Slap}}, {{Int2|Globe Head|Thunder Strike}}, {{Int2|Globe Head|Galvanic Burst}}, then repeats.
+
+== Notes ==
+* Damage from {{BD2|Galvanic}} is dealt after all of the played Power's effects have resolved and can be prevented with {{KW2|Block}}.
+** {{R2|Permafrost}} will gain {{KW2|Block}} before the damage is dealt, so it will fully prevent the damage (unless at {{Asc2|9}} or above).
+* When playing {{C2|Rupture}} or {{C2|Inferno}} with less than 6 {{KW2|Block}}, {{BD2|Galvanic}} will cause the player to lose HP and immediately triggers these effects.
+* When playing {{C2|Buffer}} with less than 6 {{KW2|Block}}, {{BD2|Galvanic}} would cause the player to lose HP. This immediately consumes a stack of {{BD2|Buffer}} to prevent that HP loss.
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Globe head}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Kugelkopf
+| DEUmeaning = 
+| ESPname    = Globicéfalo
+| ESPmeaning = 
+| FRAname    = Globocéphale
+| FRAmeaning = 
+| ITAname    = Testaglobo
+| ITAmeaning = 
+| JPNname    = グローブヘッド
+| JPNromanised = Glove head
+| JPNmeaning = 
+| INDname    = Kepala Bohlam
+| INDmeaning = 
+| KORname    = 구체 머리
+| KORromanised = guche meoli
+| KORmeaning = 
+| POLname    = Plazmogłowy
+| POLmeaning = 
+| PTBname    = Globocéfalo
+| PTBmeaning = 
+| RUSname    = Шароголовый
+| RUSromanised = Sharogolovyj
+| RUSmeaning = 
+| SPAname    = Plasmacéfalo
+| SPAmeaning = 
+| TURname    = Küre Kafa
+| TURmeaning = 
+| ZHSname    = 电球头
+| ZHSromanised = dianqiutou
+| ZHSmeaning = 
+| CODEname    = GLOBE_HEAD
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Globe Head: Galvanic power at A9 increased from 6(6) → 6(8)}}
+{{Update History Table/row|V0.92.0|* Changed Globe Head: HP changed from 146(149)-156(160) -> 148(158)}}
+{{Update History Table/row|V0.87.0|* Tweaked Globe Head moveset order
+* Globe Head now uses cast animation}}
+{{Update History Table/row|V0.80.0|* Nerfed Globe Head: Thunderstrike damage decreased from 7(8) x3 -> 6(7)x3}}
+{{Update History Table/row|V0.44.0|* Added Galvanic affliction for Globe Head}}
+{{Update History Table/row|V0.43.0|* Improved Globe Head's Galvanic power wording}}
+{{Update History Table/row|V0.41.0|* Reworked Globe Head}}
+{{Update History Table/row|V0.22.0|* Globe Head lightning orbs will now proc after poison}}
+{{Update History Table/row|V0.18.0|* Added Globe Head animations}}
+{{Update History Table/row|V0.15.0|* Removed Globe Head Duo encounter
+* Buffed Lone Globe Head encounter and made it a normal encounter; orbs now trigger at the end of player's turn}}
+{{Update History Table/row|V0.14.0|* Added Globe Head to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

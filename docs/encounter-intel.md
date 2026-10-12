@@ -201,18 +201,33 @@ Graph damage and hit-count comparisons require an explicit monster-and-move alia
 `QuantityAuthority.ConstructedGraph` distinguishes them from live getters and reviewed command-body literals.
 The adapter preserves both numbers and flags disagreement; a name collision or dynamic ambiguity does not become an agreement.
 
-## Enemy-page source gap
+## Cached enemy-page cross-check
 
-The authorized enemy-page acquisition used one paced Kernel session and stopped at the first challenge without saving a page.
-The session was deleted and not retried.
-Consequently no enemy-page pattern agreement or wiki fallback is claimed, even though the pinned phase-2 modules still permit numeric comparisons.
-`PatternComparison` and `PatternGaps` carry that unavailable disposition in the data.
+An initial non-stealth acquisition stopped at a challenge without saving pages.
+A later authorization permitted one paced stealth Kernel session to cache enemy-page source revisions and their redirect targets.
+Acquisition remains separate from graph generation, and rerunning the importer or checker makes no network request.
+Each saved page retains its revision URL, timestamp and hash; a resolved redirect retains both the redirect receipt and the target's receipt.
+The session saved 96 pinned source revisions, including six redirect targets, and its deletion was verified.
+The 17 requested pages without a source receipt remain named gaps rather than a successful empty cache.
+The first three were left without a receipt while correcting an edit-page revision reader; the others did not supply a public source textarea and revision together under their requested titles.
 
-Acquisition is separate from graph generation.
-`catalogue/wiki-page-sources/sources.json` records the unavailable attempt, and `import_wiki_pages.py` accepts a future authorized cached bundle without making network requests.
-It verifies page hashes, pinned revision URLs and path containment before preserving source text and any explicit behavior section.
-Cached text is editorial fallback with an unchecked pattern disposition, not an automatically verified natural-language graph.
-Populating that cache does not require changing the graph adapter.
+`import_wiki_pages.py` preserves source text and extracts bounded literal assertions from explicit pattern sections: fixed cycles or paths, opening alternatives, self-loops and unambiguous reference damage or hit counts.
+Each assertion carries its exact source passage and line number.
+Complex formulas and conditional sequence wording are not partially interpreted.
+`WikiPatternComparison.Compare` holds those assertions to explicit move aliases in the constructed graph without running game code.
+Its dispositions are partial agreement, mismatch and unchecked; each claim separately names matched, mismatch or unresolved.
+A missing graph still gets the cached editorial fallback, never an invented game pattern.
+
+An opening match establishes that the named opening exists in an inspected context, not that an uninterpreted prose qualifier applies to every encounter.
+Remaining effect prose, conditional predicates, random probabilities and reactive triggers are not made verified by nearby matching claims.
+`CatalogueMonster.MayBeOutdated` also flags page-claim disagreements and retains both quantities.
+The current-run catalogue compares its ascension, and `CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun` checks every supported ascension, including wiki thresholds between compressed graph columns.
+`PatternComparison.SourceText` is the source fallback and `PatternGaps` retains the acquisition receipt.
+At A0, the beta's 126 registered graph rows have 82 partial agreements, one mismatch, seven unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
+The compared A0 claims are 191 matches, one mismatch and 28 unresolved assertions.
+The sole mismatching enemy is Vantom: the cached Dismember row says 27 damage below A9, while this beta's constructor supplies 26, and both say 30 at A9.
+The page's own V0.104.0 update history records the reduction to 26, but its intent row was not updated.
+Its source passage and both quantities remain visible rather than rewriting the wiki table.
 
 ```bash
 python3 tools/encounter-intel/import_wiki_pages.py \

@@ -1,0 +1,134 @@
+{{Enemy Infobox
+|Name   = Vantom
+|Image  = StS2_Vantom.png
+|Icon   = StS2 Icon VantomBoss.png
+|HP     = 173
+|AscHP  = 183
+|Powers = {{BD2|Slippery}} 9
+|Debut  = Overgrowth
+|Type   = Boss
+}} {{Power Infobox
+|Name         = Slippery
+|Image        = StS2_Icon_Slippery.png
+|Description  = The next X times it loses HP, it only loses 1 HP instead.
+|Type         = Buff
+|Stacks       = Counter
+|BetweenTurns = Conserved
+|Cap          = 
+|InteractsWith = Draw
+}}
+The '''Vantom''' is a {{2|Bosses|Boss}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Vantom}}
+{{Intents Table/row
+|Name   = Ink Blot
+|Intent = Attack2
+|Effect = Deals (7;{{Asc2|9|8}}) damage.
+}}
+{{Intents Table/row
+|Name   = Inky Lance
+|Intent = Attack3
+|Effect = Deals (6;{{Asc2|9|7}}) damage ×2.
+}}
+{{Intents Table/row
+|Name   = Dismember
+|Intent = Attack4, StatusCard
+|Effect = Deals (27;{{Asc2|9|30}}) damage. Shuffles 3 {{C2|Wound}} into your discard pile.
+}}
+{{Intents Table/row
+|Name   = Prepare
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+The Vantom cycles through its four moves in a fixed order, repeating forever:
+# {{Int2|Vantom|Ink Blot}}
+# {{Int2|Vantom|Inky Lance}}
+# {{Int2|Vantom|Dismember}}
+# {{Int2|Vantom|Prepare}}
+
+== Useful Cards ==
+* Multi-hit attacks like {{C2|Conflagration}} or {{C2|Lunar Blast}} are effective at removing {{BD2|Slippery}} stacks quickly.
+* Even small amounts of {{BD2|Poison}} can consistently remove a stack of {{BD2|Slippery}} each turn. With {{C2|Accelerant}}, it will remove 2 (3 if {{KW2|Upgrade|Upgraded}}) stacks per turn, as long as Vantom has enough stacks of {{BD2|Poison}} for all instances to activate.
+* Consistent damage over time from cards like {{C2|Inferno}} or relics like {{R2|Mercury Hourglass}} can help remove {{BD2|Slippery}} faster.
+* Cards like {{C2|Stoke}} or {{C2|BEGONE!}} can remove {{C2|Wound}} from your deck.
+
+== Animations ==
+{{Bestiary|Vantom}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Vantom
+| DEUmeaning = 
+| ESPname    = Vantasma
+| ESPmeaning = 
+| FRAname    = Vantôme
+| FRAmeaning = 
+| ITAname    = Vantom
+| ITAmeaning = 
+| JPNname    = ヴァントム
+| JPNromanised = Vin Thom
+| JPNmeaning = 
+| INDname    = Vantom
+| INDmeaning = 
+| KORname    = 밴텀
+| KORromanised = baenteom
+| KORmeaning = 
+| POLname    = Fantom
+| POLmeaning = 
+| PTBname    = Vantasma
+| PTBmeaning = 
+| RUSname    = Вантом
+| RUSromanised = Vantom
+| RUSmeaning = 
+| SPAname    = Tintasma
+| SPAmeaning = 
+| TURname    = Vantom
+| TURmeaning = 
+| ZHSname    = 墨影幻灵
+| ZHSromanised = moyinghuanling
+| ZHSmeaning = 
+| CODEname    = VANTOM
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.106.0|* Inklet and Vantom's Slippery power no longer loses a stack when fully blocking all damage from a hit}}
+{{Update History Table/row|V0.105.0|* Tweaked Vantom explosion to look right on shrunken Vantom
+* Fixed Beetle Juice potion causing Vantom's tail to become visibly cut off}}
+{{Update History Table/row|V0.104.0|* Nerfed Vantom at lower Ascensions:
+** Dismember move damage decreased from 27(30) -> 26(30)
+** Slippery power goes from 9 -> 8(9)
+* Updated animation for Vantom}}
+{{Update History Table/row|V0.102.0|* Added background art and VFX for Vantom boss fight}}
+{{Update History Table/row|V0.92.0|* Buffed Vantom: Dismember move damage increased from 26(28) -> 27(30), Wounds from 2 -> 3}}
+{{Update History Table/row|V0.89.0|* Fixed crash during Vantom boss fight}}
+{{Update History Table/row|V0.86.0|* Buffed Vantom:
+** Dismember move damage increased from 24(26) -> 26(28)
+** Ink Blot move damage increased from 6(6) -> 7(8)}}
+{{Update History Table/row|V0.76.0|* Changed Vantom: is now always the first boss encountered in your first run}}
+{{Update History Table/row|V0.63.0|* Buffed Vantom: HP increased from 163(173) -> 173(183)}}
+{{Update History Table/row|V0.46.0|* Added SFX to Vantom combat}}
+{{Update History Table/row|V0.43.0|* Fixed visual glitches when Vantom dies to Doom}}
+{{Update History Table/row|V0.41.0|* Nerfed Vantom: A1 Slippery decreased from 12 -> 11}}
+{{Update History Table/row|V0.39.0|* Nerfed Vantom: Wound cards given by Dismember move decreased from 3 -> 2
+* Fixed softlock when Vantom dies to thorns}}
+{{Update History Table/row|V0.38.0|* Changed Vantom:
+** Wound cards given increased from 2 -> 3
+** Inky Lance damage decreased from 7(8)x2 -> 6(7)x2
+** Prepare move’s Strength gain decreased from 3 -> 2}}
+{{Update History Table/row|V0.35.0|* Changed Vantom: Dismember move now gives 2 less Wounds
+* Vantom attacking Osty no longer causes a softlock}}
+{{Update History Table/row|V0.24.0|* Nerfed Vantom:
+** Dismember move damage decreased from 25 -> 24
+** No longer gains Block on its buff turn}}
+{{Update History Table/row|V0.23.0|* Changed Vantom: no longer applies Weak}}
+{{Update History Table/row|V0.22.0|* Added Vantom, a new Act 1 boss}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

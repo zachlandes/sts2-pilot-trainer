@@ -1,0 +1,174 @@
+{{Enemy Infobox
+|Name   = Waterfall Giant
+|Image  = StS2_Waterfall Giant.png
+|Icon   = StS2 Icon WaterfallGiantBoss.png
+|HP     = 240
+|AscHP  = 250
+|Debut  = Underdocks
+|Type   = Boss
+}} 
+{{Power Infobox
+|Name         = Steam Eruption
+|Image        = StS2 Icon SteamEruption.png
+|Description  = When killed, deals X damage at the end of your next turn.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Waterfall Giant''' is a {{2|Bosses|Boss}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Waterfall Giant}}
+{{Intents Table/row
+|Name   = Pressurize
+|Intent = Buff
+|Effect = Gains (15;{{Asc2|9|20}}) {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/row
+|Name   = Stomp
+|Intent = Attack3, Debuff, Buff
+|Effect = Deals (15;{{Asc2|9|16}}) damage. Applies 1 {{BD2|Weak}}. Gains 3 {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Ram
+|Intent = Attack3, Buff
+|Effect = Deals (10;{{Asc2|9|11}}) damage. Gains 3 {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/row
+|Name   = Siphon
+|Intent = Heal, Buff
+|Effect = Heals (10;{{Asc2|8|15}}) HP per player. Gains 3 {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption, Heal
+}}
+{{Intents Table/row
+|Name   = Pressure Gun
+|Intent = Attack4, Buff
+|Effect = Deals (20;{{Asc2|9|23}}) damage (increases by 5 each use). Gains 3 {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/row
+|Name   = Pressure Up
+|Intent = Attack3, Buff
+|Effect = Deals (13;{{Asc2|9|14}}) damage. Gains 3 {{BD2|Steam Eruption}}.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/row
+|Name   = About To Blow
+|Intent = Stun
+|Effect = Becomes invulnerable. Removes {{BD2|Steam Eruption}} and prepares to explode.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/row
+|Name   = Explode
+|Intent = DeathBlow
+|Effect = Deals damage equal to its stored {{BD2|Steam Eruption}} amount, then dies.
+|GivesToEnemy = Steam Eruption
+}}
+{{Intents Table/end}}
+The Waterfall Giant uses {{Int2|Waterfall Giant|Pressurize}} on its first turn, then follows a repeating cycle:
+# {{Int2|Waterfall Giant|Stomp}}
+# {{Int2|Waterfall Giant|Ram}}
+# {{Int2|Waterfall Giant|Siphon}}
+# {{Int2|Waterfall Giant|Pressure Gun}}
+# {{Int2|Waterfall Giant|Pressure Up}}
+# Back to {{Int2|Waterfall Giant|Stomp}}
+
+Almost every move also adds 3 {{BD2|Steam Eruption}}. When the Waterfall Giant is killed while it has {{BD2|Steam Eruption}}, it becomes invulnerable and uses {{Int2|Waterfall Giant|About To Blow}}, cleansing all its buffs and debuffs. Next turn it will use {{Int2|Waterfall Giant|Explode}}, dealing damage equal to its accumulated {{BD2|Steam Eruption}} before dying.
+
+* If the Waterfall Giant is killed when it has no {{BD2|Steam Eruption}} (e.g. via {{BD2|Doom}}), it dies normally without triggering the explosion sequence.
+
+== Notes ==
+* Even though the HP bar in the last phase shows as "infinity", it is actually set to the finite number of 999,999,999 HP. As such, it is theoretically possible to kill the Waterfall Giant in its last phase.
+* If a card both deals damage and applies a debuff like {{C2|Neutralize}}, the damage can kill the '''Waterfall Giant''' and activate {{Int2|Waterfall Giant|About To Blow}}, then the debuff will be applied.
+
+== Useful Cards ==
+
+* Even if you can defeat the '''Waterfall Giant''', its final {{Int2|Waterfall Giant|Explode}} move can still easily kill you. Strong block cards like {{C2|Blood Wall}} or {{C2|Leg Sweep}} can be played on the final turn to block some of the damage from the explosion.
+* Increasing the block density of your deck over the course of the battle makes it less likely that you will draw a hand full of non-block cards when the '''Waterfall Giant''' uses {{Int2|Waterfall Giant|Explode}}. Cards like {{C2|Burning Pact}} and {{C2|BEGONE!}} can be used to remove non-block cards like {{C2|Strike (Ironclad)|Strike}}.
+* {{C2|Anger}} can be dangerous to play during this battle, as it increases the number of attack cards in your deck and makes it more likely that you will end up with few or no block cards on the final turn.
+* Necrobinder's Summon cards, such as {{C2|Bodyguard}} and {{C2|Afterlife}}, can use Osty to block damage on the final turn no matter which cards you happen to draw.
+* Cards like {{C2|Well-Laid Plans}} and {{C2|Convergence}} can hold block cards in hand to save them for the final turn.
+
+== Animations ==
+{{Bestiary|Waterfall Giant}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Wasserfall-Riese
+| DEUmeaning = 
+| ESPname    = Titán cascadoso
+| ESPmeaning = 
+| FRAname    = Géant de la Cascade
+| FRAmeaning = 
+| ITAname    = Gigante della cascata
+| ITAmeaning = 
+| JPNname    = 滝の巨人
+| JPNromanised = Taki no kyojin
+| JPNmeaning = 
+| INDname    = Raksasa Air Terjun
+| INDmeaning = 
+| KORname    = 폭포 거인
+| KORromanised = pogpo geo-in
+| KORmeaning = 
+| POLname    = Kaskadowy Olbrzym
+| POLmeaning = 
+| PTBname    = Cachoeira Titânica
+| PTBmeaning = 
+| RUSname    = Рифовый великан
+| RUSromanised = Rifovyj velikan
+| RUSmeaning = 
+| SPAname    = Cataronte
+| SPAmeaning = 
+| THAname    = ยักษ์น้ำตก
+| THAromanised = yaknamtk
+| THAmeaning = 
+| TURname    = Akarsu Devi
+| TURmeaning = 
+| ZHSname    = 瀑布巨兽
+| ZHSromanised = pubujushou
+| ZHSmeaning = 
+| CODEname    = WATERFALL_GIANT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.106.0|* Fixed Waterfall Giant not respawning in the Bestiary when you kill him
+* Waterfall Giant steam spouts no longer misbehave after death animation in Bestiary}}
+{{Update History Table/row|V0.104.0|* Nerfed Waterfall Giant: now heals less at lower Ascension, HP healed changed from 15 -> 10(15)}}
+{{Update History Table/row|v0.101.0|* Nerfed Waterfall Giant: HP decreased from 250(260) -> 240(250)}}
+{{Update History Table/row|V0.84.0|* Reworked Waterfall Giant}}
+{{Update History Table/row|V0.82.0|* Added SFX for Waterfall Giant
+* Added background music for Waterfall Giant}}
+{{Update History Table/row|V0.66.0|* Added animations for Waterfall Giant}}
+{{Update History Table/row|V0.60.0|* Changed Waterfall Giant: is now more aggressive and attacks more often for slightly more damage
+* Fixed incorrect Defend intent on Waterfall Giant}}
+{{Update History Table/row|V0.55.0|* Nerfed Waterfall Giant: Stomp move's Weak applied decreased from 2 -> 1}}
+{{Update History Table/row|V0.54.0|* Buffed Waterfall Giant:
+** Pressure Gun damage increased from 15(18) -> 20(23)
+** Stomp damage increased from 7(8) -> 12(13)
+* Go for the Eyes card now works on Waterfall Giant's Explode move}}
+{{Update History Table/row|V0.53.0|* Buffed Waterfall Giant:
+** Now gains more Steam Eruption
+** Also gains Steam Eruption whenever it heals}}
+{{Update History Table/row|V0.52.0|* Changed Waterfall Giant:
+** Now has a fixed moveset
+** No longer incorrectly scales
+** Steam Eruption starting amount increased from 6 -> 7}}
+{{Update History Table/row|V0.51.0|* Reworked Waterfall Giant}}
+{{Update History Table/row|V0.50.0|* Nerfed Waterfall Giant: Pressure Gun attack scaling decreased from +10 -> +5}}
+{{Update History Table/row|V0.49.0|* Waterfall Giant now applies Weak instead of Vulnerable. Can no longer repeat moves
+* Waterfall Giant now gets the stunned intent before the Steam Eruption turn}}
+{{Update History Table/row|V0.48.1|* Waterfall Giant moves all do increased damage
+* Waterfall Giant Pressure from 3 -> 4}}
+{{Update History Table/row|?|* Added Waterfall Giant to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

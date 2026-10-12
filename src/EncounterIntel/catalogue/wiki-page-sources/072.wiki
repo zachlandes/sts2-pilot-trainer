@@ -1,0 +1,110 @@
+{{Enemy Infobox
+|Name   = Shrinker Beetle
+|Image  = StS2_Shrinker Beetle.png
+|HP     = 38-40
+|AscHP  = 40-42
+|Debut  = Overgrowth
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Shrink (Enemy)
+|Image        = StS2 Icon Shrink.png
+|Description  = Attacks deal 30% less damage. Removed when the applier dies.
+|Type         = Debuff
+|Stacks       = Does not Stack
+|BetweenTurns = Conserved
+|Cap          = 
+}}
+'''Shrinker Beetle''' is a normal [[Monsters|Enemy]] found in the [[Overgrowth]].
+
+== Pattern ==
+{{Intents Table/start|Shrinker Beetle}}
+{{Intents Table/row
+|Name   = Shrinker
+|Intent = Debuff
+|Effect = Applies {{BD2|Shrink (Enemy)|Shrink}}.
+|GivesToPlayer = Shrink (Enemy)
+}}
+{{Intents Table/row
+|Name   = Chomp
+|Intent = Attack2
+|Effect = Deals (7;{{Asc2|9|8}}) damage.
+}}
+{{Intents Table/row
+|Name   = Stomp
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|14}}) damage.
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Shrinker Beetle|Shrinker}}, then alternates between {{Int2|Shrinker Beetle|Chomp}} and {{Int2|Shrinker Beetle|Stomp}}.
+
+== Notes ==
+* {{KW2|Osty}} is not affected by {{BD2|Shrink}} and deals full damage with his own Attack cards.
+
+== Trivia ==
+* The Shrinker Beetle resembles the {{R|Preserved Insect}} from ''Slay the Spire'', which made [[Elites]] appear smaller.
+** However, shrinking Elites this way indicated a reduction in their HP, not their attack damage.
+* {{P2|Beetle Juice}} presumably is sourced from Shrinker Beetles, since it has an identical effect to the {{BD2|Shrink}} debuff (albeit with a limited duration).
+
+== Animations ==
+{{Bestiary|Shrinker Beetle}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schrumpfkäfer
+| DEUmeaning = 
+| ESPname    = Escaramín
+| ESPmeaning = 
+| FRAname    = Scarabrideur
+| FRAmeaning = 
+| ITAname    = Scarabeo restringente
+| ITAmeaning = 
+| JPNname    = シュリンカービートル
+| JPNromanised = Shurinkaabiitoru
+| JPNmeaning = 
+| INDname    = Kumbang Penciut
+| INDmeaning = 
+| KORname    = 압축벌레
+| KORromanised = abchugbeolle
+| KORmeaning = 
+| POLname    = Żuczek Kurczyciel
+| POLmeaning = 
+| PTBname    = Besouro Encolhedor
+| PTBmeaning = 
+| RUSname    = Жук-ужиматель
+| RUSromanised = Zhuk-uzhimatel'
+| RUSmeaning = 
+| SPAname    = Encogebajo
+| SPAmeaning = 
+| TURname    = Küçültücü Böcek
+| TURmeaning = 
+| ZHSname    = 缩小甲虫
+| ZHSromanised = suoxiaojiachong
+| ZHSmeaning = 
+| CODEname    = SHRINKER_BEETLE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.76.0|* Nerfed Shrinker Beetle: HP decreased from 40(42)-43(44) -> 38(40)-40(42)}}
+{{Update History Table/row|V0.60.0|* Orb slots now move when your character grows/shrinks}}
+{{Update History Table/row|V0.39.0|* Nerfed Shrinker Beetle:
+** HP decreased from 45(46) -> 40(42)-43(44)
+** Stomp move damage decreased from 14(17) -> 13(14)}}
+{{Update History Table/row|V0.38.0|* Nerfed Shrinker Beetle: Stomp move damage decreased from 16(18) -> 14(17)}}
+{{Update History Table/row|V0.35.0|* Shrinker Beetle enemy’s shrink power now has radial blur}}
+{{Update History Table/row|V0.26.0|* Buffed Shrinker Beetle: Stomp damage increased from 15 -> 16}}
+{{Update History Table/row|V0.19.0|* Changed Shrinker Beetle: Shrink now wears off if the beetle is slain}}
+{{Update History Table/row|V0.18.0|* Shrink now always applies its damage decrease after Strength}}
+{{Update History Table/row|V0.12.0|* Blocking shrink with artifact no longer softlocks.}}
+{{Update History Table/row|V0.10.0|* Your character now regrows at the end of a Shrinker Beetle fight}}
+{{Update History Table/row|2023-09-15|* Shrinker Beetle HP increased from 33 -> 40, chomp damage 5 -> 7}}
+{{Update History Table/row|2023-08-25|* Fixed an issue where Shrinker Beetle's Shrink move wasn't visually shrinking the player}}
+{{Update History Table/row|2023-04-29|* Bug Fix: shrinker beetle intents incorrect}}
+{{Update History Table/row|2023-04-21|* Bug Fix: shrink power description not working}}
+{{Update History Table/row|?|* Added Shrinker Beetle to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

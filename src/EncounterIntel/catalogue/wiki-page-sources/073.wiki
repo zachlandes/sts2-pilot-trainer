@@ -1,0 +1,127 @@
+{{Enemy Infobox
+|Name   = Skulking Colony
+|Image  = StS2_Skulking Colony.png
+|HP     = 75
+|AscHP  = 80
+|Powers = {{BD2|Hardened Shell}} 20
+|Debut  = Underdocks
+|Type   = Elite
+}} 
+{{Power Infobox
+|Name         = Hardened Shell
+|Image        = StS2 Icon HardenedShell.png
+|Description  = It cannot lose more than X HP each turn.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Reset
+|Cap          = 
+}}
+'''Skulking Colony''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Skulking Colony}}
+{{Intents Table/row
+|Name   = Zoom
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/row
+|Name   = Inertia
+|Intent = Attack2, Buff
+|Effect = Deals (9;{{Asc2|9|11}}) damage and gains (2;{{Asc2|9|4}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Piercing Stabs
+|Intent = Attack3
+|Effect = Deals (7x2;{{Asc2|9|8x2}}) damage.
+}}
+{{Intents Table/end}}
+The Skulking Colony repeats the same four moves in order:
+# {{Int2|Skulking Colony|Zoom}}
+# {{Int2|Skulking Colony|Zoom}}
+# {{Int2|Skulking Colony|Inertia}}
+# {{Int2|Skulking Colony|Piercing Stabs}}
+
+== Notes ==
+* {{BD2|Hardened Shell}} resets on both the start of the ''player's turn'' as well as the start of the ''Skulking Colony's turn.'' Since {{BD2|Poison}} deals damage at the start of an enemy's turn, it is possible to deal a maximum of 40 damage in a single turn by doing 20 attack damage and having 20 stacks of {{BD2|Poison}} on it at the same time.
+* {{BD2|Thorns}}, {{BD2|Reflect}}, {{BD2|Flame Barrier}}, {{BD2|Necro Mastery}}, and {{BD2|Demise}} also trigger on the enemy turn.
+* {{BD2|Hardened Shell}} can be partially bypassed by {{R2|The Boot}}. If the enemy can only lose 1 to 4 more HP this turn, hitting it with an Attack will cause it to take 5 damage instead of the limited amount.
+** Any further Attacks this turn will still deal 0 damage and will not be affected.
+
+== Trivia ==
+* Skulking Colony is male.<ref> "Additionally I found that the Dazed statuses actually worked against the design goals of his power" https://store.steampowered.com/news/app/2868840/view/507357499795439629?l=english</ref>
+
+== Animations ==
+<tabber>
+|-|Skulking Colony=
+{{Bestiary|Skulking Colony}}
+|-|Skulking Colony (Phobia Mode)=
+{{Bestiary|Phobia Skulking Colony}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Versteckte Kolonie
+| DEUmeaning = 
+| ESPname    = Colonia furtiva
+| ESPmeaning = 
+| FRAname    = Colonie de rôdeurs
+| FRAmeaning = 
+| ITAname    = Colonia furtiva
+| ITAmeaning = 
+| JPNname    = 蠢く群生体
+| JPNromanised = Ugomeku gunsei tai
+| JPNmeaning = 
+| INDname    = Koloni Pengendap
+| INDmeaning = 
+| KORname    = 잠행 군체
+| KORromanised = jamhaeng gunche
+| KORmeaning = 
+| POLname    = Kolonia Koralowców
+| POLmeaning = 
+| PTBname    = Colônia Furtiva
+| PTBmeaning = 
+| RUSname    = Копотливая колония
+| RUSromanised = Kopotlivaja kolonija
+| RUSmeaning = 
+| SPAname    = Colonia acechadora
+| SPAmeaning = 
+| TURname    = Saklanan Koloni
+| TURmeaning = 
+| ZHSname    = 鬼祟珊瑚群
+| ZHSromanised = guisuishanhuqun
+| ZHSmeaning = 
+| CODEname    = SKULKING_COLONY
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|v0.107.0|* Buffed Skulking Colony: now gets +1 Strength on its Strength gain turn on high Ascension}}
+{{Update History Table/row|v0.106.0|* Changed Skulking Colony:
+** HP increased from 70(75) -> 75(80)
+** Hardened Shell power increased from 15 -> 20
+** Smash move removed, now uses Zoom move turns 1 and 2 instead
+** No longer gains Block
+* Added alternate phobia mode art for Skulking Colony 
+* Added SFX for Skulking Colony
+* Skulking Colony's per-turn damage cap now properly resets at the start of both the player's and the enemies' turns, fixing an issue where Poison damage counted towards the damage cap on the players' next turn}}
+{{Update History Table/row|v0.105.0|* Skulking Colony's health bar now changes color to indicate that it cannot take any more damage this turn
+* If the player has The Boot relic and deals Skulking Colony 1-4 damage, they now properly take 5 damage
+* Fixed a softlock that occurred if the player set up an infinite against Skulking Colony}}
+{{Update History Table/row|v0.104.0|* Added Skulking Colony animations}}
+{{Update History Table/row|v0.103.0|* Nerfed Skulking Colony: HP decreased from 74(79) -> 70(75)}}
+{{Update History Table/row|v0.102.0|* Buffed Skulking Colony:
+** Now attacks on all turns
+** Deals slightly more damage}}
+{{Update History Table/row|v0.101.0|* Nerfed Skulking Colony: deals less damage, damage scales slower, and no longer applies Dazed status cards}}
+{{Update History Table/row|v0.100.0|* Reworked Skulking Colony to have a deadlier moveset
+** ''Unlisted moveset change: Lowered Hardened Shell to 15 and made Smash shuffle 5 Dazed instead of 4.''}}
+{{Update History Table/row|V0.96.0|* Fixed an issue where Skulking Colony encounter was appearing in the Run History as Mad Crab}}
+{{Update History Table/row|?|* Added Skulking Colony to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

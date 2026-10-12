@@ -1,0 +1,184 @@
+The '''Cultists''' are a pair of normal {{2|Monsters|Enemies}} found in the {{2|Underdocks}}. The encounter consists of a [[Calcified Cultist]] and a [[Damp Cultist]]. Both follow the same pattern: they buff on their first turn, then attack every turn after.
+
+== Calcified Cultist ==
+{{Enemy Infobox
+|Name   = Calcified Cultist
+|Link   = Slay The Spire 2:Cultists#Calcified Cultist
+|Image  = StS2_Calcified Cultist.png
+|HP     = 38-41
+|AscHP  = 39-42
+|Debut  = Underdocks
+|Type   = Normal
+}}
+
+=== Pattern ===
+{{Intents Table/start|Calcified Cultist}}
+{{Intents Table/row
+|Name   = Incantation
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Ritual}}.
+|GivesToEnemy = Ritual
+}}
+{{Intents Table/row
+|Name   = Dark Strike
+|Intent = Attack2
+|Effect = Deals (9;{{Asc2|9|11}}) damage.
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Calcified Cultist|Incantation}} first, then {{Int2|Calcified Cultist|Dark Strike}} every turn after.
+
+=== Dialogue ===
+When using {{Int2|Calcified Cultist|Incantation}}.
+<blockquote><i>
+{{TS||shake|OUR POWER IS UNMATCHED!}}
+</i></blockquote>
+
+{{Clear}}
+
+== Damp Cultist ==
+{{Enemy Infobox
+|Name   = Damp Cultist
+|Link   = Slay The Spire 2:Cultists#Damp Cultist
+|Image  = StS2_Damp Cultist.png
+|HP     = 51-53
+|AscHP  = 52-54
+|Debut  = Underdocks
+|Type   = Normal
+}}
+
+=== Pattern ===
+{{Intents Table/start|Damp Cultist}}
+{{Intents Table/row
+|Name   = Incantation
+|Intent = Buff
+|Effect = Gains (5;{{Asc2|9|6}}) {{BD2|Ritual}}.
+|GivesToEnemy = Ritual
+}}
+{{Intents Table/row
+|Name   = Dark Strike
+|Intent = Attack1
+|Effect = Deals (1;{{Asc2|9|3}}) damage.
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Damp Cultist|Incantation}} first, then {{Int2|Damp Cultist|Dark Strike}} every turn after.
+
+=== Dialogue ===
+When using {{Int2|Damp Cultist|Incantation}}.
+<blockquote><i>
+{{TS||shake|CAW!<br>CAAAW}}
+</i></blockquote>
+
+{{Clear}}
+
+== Notes ==
+* The Cultists will not gain Strength on the turn that they use Incantation.
+
+== Animations ==
+<tabber>
+|-|Calcified Cultist=
+{{Bestiary|Calcified Cultist}}
+|-|Damp Cultist=
+{{Bestiary|Damp Cultist}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Calcified Cultist
+| DEUname    = Verkalkter Kultist
+| DEUmeaning = 
+| ESPname    = Sectario calciremojado
+| ESPmeaning = 
+| FRAname    = Adepte calcifié
+| FRAmeaning = 
+| ITAname    = Accolito calcificato
+| ITAmeaning = 
+| JPNname    = 石纏いの狂信者
+| JPNromanised = Ishimatoi no kyoushinsha
+| JPNmeaning = 
+| INDname    = Kultus Berkapur
+| INDmeaning = 
+| KORname    = 석회화된 광신자
+| KORromanised = seoghoehwadoen gwangsinja
+| KORmeaning = 
+| POLname    = Zwapniały Kultysta
+| POLmeaning = 
+| PTBname    = Cultista Calcificado
+| PTBmeaning = 
+| RUSname    = Окаменелый культист
+| RUSromanised = Okamenelyj kul'tist
+| RUSmeaning = 
+| SPAname    = Sectario calcificado
+| SPAmeaning = 
+| TURname    = Taşlaşmış Tarikatçı
+| TURmeaning = 
+| ZHSname    = 钙化邪教徒
+| ZHSromanised = gaihuaxiejiaotu
+| ZHSmeaning = 
+| CODEname    = CALCIFIED_CULTIST
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Damp Cultist
+| DEUname    = Triefender Kultist
+| DEUmeaning = 
+| ESPname    = Sectario empapado
+| ESPmeaning = 
+| FRAname    = Adepte moisi
+| FRAmeaning = 
+| ITAname    = Accolito zuppo
+| ITAmeaning = 
+| JPNname    = 湿った狂信者
+| JPNromanised = Shimetta kyoushinsha
+| JPNmeaning = 
+| INDname    = Kultus Lembab
+| INDmeaning = 
+| KORname    = 흠뻑 젖은 광신자
+| KORromanised = heumppeog jeoj-eun gwangsinja
+| KORmeaning = 
+| POLname    = Zwilgotniały Kultysta
+| POLmeaning = 
+| PTBname    = Cultista Encharcado
+| PTBmeaning = 
+| RUSname    = Промокший культист
+| RUSromanised = Promokshij kul'tist
+| RUSmeaning = 
+| SPAname    = Sectario empapado
+| SPAmeaning = 
+| TURname    = Islak Tarikatçi
+| TURmeaning = 
+| ZHSname    = 潮湿邪教徒
+| ZHSromanised = chaoshixiejiaotu
+| ZHSmeaning = 
+| CODEname    = DAMP_CULTIST
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.104.0|* Adjusted hitbox, speech, and intent position of Underdocks Cultists}}
+{{Update History Table/row|V0.102.0|* Adjusted Cultist "Cacaw" dialogue timings
+* Adjusted speech bubble positions for Damp and Calcified Cultists}}
+{{Update History Table/row|V0.100.0|* Changed Calcified Cultist + Toadpole encounter: now Calcified Cultist + Seapunk}}
+{{Update History Table/row|V0.95.0|* Buffed Damp Cultist: starting damage now scales with ascension}}
+{{Update History Table/row|V0.94.0|* Changed Toadpoles normal encounter: swapped the position of the Cultist and the Toadpole}}
+{{Update History Table/row|V0.91.0|* Changed normal Toadpoles encounter: replaced Seapunk -> Calcified Cultist}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Cultist (CAW CAW)}}
+{{Update History Table/row|V0.86.0|* Buffed Damp Cultist: HP increased from 45(46)-47(48) -> 51(52)->53(54)}}
+{{Update History Table/row|V0.82.0|* Added SFX for Cultists}}
+{{Update History Table/row|V0.70.0|* Updated dialogue for Cultist-related combats}}
+{{Update History Table/row|V0.61.0|* Changed Drowned Cultists:
+** Changed how they scale with Ascension
+** Their position in their combat encounter is no longer randomized
+** Have more HP differentiation between the two and less HP overall
+* Renamed Cultist M and Cultist F to Calcified Cultist and Damp Cultist respectively}}
+{{Update History Table/row|V0.59.0|* Cultist death animation is no longer cut off on the left}}
+{{Update History Table/row|?|* Deprecated normal Underdocks combat encounters:
+** Coral & Cultists
+** Slugs & Cultist
+* Added animations for Cultist enemy}}
+{{Update History Table/row|?|* Added Cultists to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

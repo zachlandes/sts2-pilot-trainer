@@ -1,0 +1,378 @@
+The '''Knights''' are an {{2|Elites|Elite}} encounter found in {{2|Glory}}, featuring three knights fighting together.
+
+== Flail Knight ==
+{{Enemy Infobox
+|Name   = Flail Knight
+|Link   = Slay the Spire 2:Knight Gang#Flail Knight
+|Image  = StS2_Mysterious Knight.png
+|HP     = 101
+|AscHP  = 108
+|Debut  = Glory
+|Type   = Elite
+}}
+=== Pattern ===
+{{Intents Table/start|Flail Knight}}
+{{Intents Table/row
+|Name   = Breaker
+|Intent = Buff
+|Effect = Gains 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Flail
+|Intent = Attack3
+|Effect = Deals (9;{{Asc2|9|10}}) damage ×2.
+}}
+{{Intents Table/row
+|Name   = Ram
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Flail Knight|Ram}}, then randomly uses {{Int2|Flail Knight|Breaker}}, {{Int2|Flail Knight|Flail}}, or {{Int2|Flail Knight|Ram}} each turn. {{Int2|Flail Knight|Breaker}} cannot be used two turns in a row. 
+
+{{Clear}}
+
+== Spectral Knight ==
+{{Enemy Infobox
+|Name   = Spectral Knight
+|Link   = Slay the Spire 2:Knight Gang#Spectral Knight
+|Image  = StS2_Spectral Knight.png
+|HP     = 93
+|AscHP  = 97
+|Debut  = Glory
+|Type   = Elite
+}} 
+{{Power Infobox
+|Name         = Hex
+|Image        = StS2 Icon Hex.png
+|Description  = While Spectral Knight is alive, ALL your cards are {{KW2|Ethereal}}.
+|Type         = Debuff
+|Stacks       = Does not stack
+|BetweenTurns = Conserved
+|GivesToPlayer = Hexed, Ethereal
+}}
+=== Pattern ===
+{{Intents Table/start|Spectral Knight}}
+{{Intents Table/row
+|Name   = Hex
+|Intent = Debuff
+|Effect = Applies {{BD2|Hex}}.
+|GivesToEnemy = Hex
+}}
+{{Intents Table/row
+|Name   = Soul Slash
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/row
+|Name   = Soul Flame
+|Intent = Attack2
+|Effect = Deals (3;{{Asc2|9|4}}) damage ×3.
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Spectral Knight|Hex}}. After that, alternates between {{Int2|Spectral Knight|Soul Slash}} and {{Int2|Spectral Knight|Soul Flame}}.
+
+{{Clear}}
+
+== Magi Knight ==
+{{Enemy Infobox
+|Name   = Magi Knight
+|Link   = Slay the Spire 2:Knight Gang#Magi Knight
+|Image  = StS2_Magi Knight.png
+|HP     = 82
+|AscHP  = 89
+|Debut  = Glory
+|Type   = Elite
+}} 
+{{Power Infobox
+|Name         = Dampen
+|Image        = StS2 Icon Dampen.png
+|Description  = While Magi Knight is alive, ALL your cards are Downgraded.
+|Type         = Debuff
+|Stacks       = Does not stack
+|BetweenTurns = Conserved
+}}
+=== Pattern ===
+{{Intents Table/start|Magi Knight}}
+{{Intents Table/row
+|Name   = Power Shield
+|Intent = Attack1, Defend
+|Effect = Deals (6;{{Asc2|9|7}}) damage. Gains (5;{{Asc2|8|9}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Dampen
+|Intent = Debuff
+|Effect = Applies {{BD2|Dampen}}. While Magi Knight is alive, all your cards are Downgraded.
+|GivesToEnemy = Dampen
+}}
+{{Intents Table/row
+|Name   = Ram
+|Intent = Attack2
+|Effect = Deals (10;{{Asc2|9|11}}) damage.
+}}
+{{Intents Table/row
+|Name   = Prep
+|Intent = Defend
+|Effect = Gains (5;{{Asc2|8|9}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Magic Bomb
+|Intent = Attack4
+|Effect = Deals (35;{{Asc2|9|40}}) damage.
+}}
+{{Intents Table/end}}
+Starts with {{Int2|Magi Knight|Power Shield}}, followed by {{Int2|Magi Knight|Dampen}}.
+Then repeatedly uses {{Int2|Magi Knight|Ram}}, {{Int2|Magi Knight|Prep}}, and {{Int2|Magi Knight|Magic Bomb}} in that order.
+
+
+{{Clear}}
+
+== Notes ==
+* Since {{C2|Nightmare}} creates cards at the start of your turn, upgraded cards duplicated by {{C2|Nightmare}} are not affected by {{BD2|Dampen}}.
+
+== Trivia ==
+* The {{Int2|Spectral Knight|Hex}} move technically applies 2 stacks of {{BD2|Hex}}. Since {{BD2|Hex}} does not stack this has no additional effect.
+
+== Animations ==
+<tabber>
+|-|Flail Knight=
+{{Bestiary|Flail Knight}}
+|-|Spectral Knight=
+{{Bestiary|Spectral Knight}}
+|-|Magi Knight=
+{{Bestiary|Magi Knight}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Knight Gang
+| DEUname    = Ritterbande
+| DEUmeaning = 
+| ESPname    = pandilla de caballeros
+| ESPmeaning = 
+| FRAname    = Bande de chevaliers
+| FRAmeaning = 
+| ITAname    = gruppo di cavalieri
+| ITAmeaning = 
+| JPNname    = 騎士のギャング
+| JPNromanised = Kishi no gang
+| JPNmeaning = 
+| INDname    = Geng Kesatria
+| INDmeaning = 
+| KORname    = 기사 패거리
+| KORromanised = gisa paegeoli
+| KORmeaning = 
+| POLname    = Kompania Rycerska
+| POLmeaning = 
+| PTBname    = Grupo de Cavaleiros
+| PTBmeaning = 
+| RUSname    = Банда рыцарей
+| RUSromanised = Banda rytsarej
+| RUSmeaning = 
+| SPAname    = Pandilla de caballeros
+| SPAmeaning = 
+| TURname    = Şövalye Çetesi
+| TURmeaning = 
+| ZHSname    = 骑士团伙
+| ZHSromanised = qishituanhuo
+| ZHSmeaning = 
+| CODEname    = KNIGHTS_ELITE
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Flail Knight
+| DEUname    = Flegel-Ritter
+| DEUmeaning = 
+| ESPname    = Caballero flagelador
+| ESPmeaning = 
+| FRAname    = Chevalier au fléau
+| FRAmeaning = 
+| ITAname    = Cavaliere flagellatore
+| ITAmeaning = 
+| JPNname    = フレイルナイト
+| JPNromanised = Flail night
+| JPNmeaning = 
+| INDname    = Kesatria Gada
+| INDmeaning = 
+| KORname    = 철퇴 기사
+| KORromanised = cheoltoe gisa
+| KORmeaning = 
+| POLname    = Szeroki Rycerz
+| POLmeaning = 
+| PTBname    = Cavaleiro Flagelador
+| PTBmeaning = 
+| RUSname    = Цепной рыцарь
+| RUSromanised = Tsepnoj rytsar'
+| RUSmeaning = 
+| SPAname    = Caballero flagelador
+| SPAmeaning = 
+| TURname    = Gürzlü Şövalye
+| TURmeaning = 
+| ZHSname    = 连枷骑士
+| ZHSromanised = lianjiaqishi
+| ZHSmeaning = 
+| CODEname    = FLAIL_KNIGHT
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Spectral Knight
+| DEUname    = Spektral-Ritter
+| DEUmeaning = 
+| ESPname    = Espectrocaballero
+| ESPmeaning = 
+| FRAname    = Chevalier spectral
+| FRAmeaning = 
+| ITAname    = Cavaliere spettrale
+| ITAmeaning = 
+| JPNname    = スペクトルナイト
+| JPNromanised = Spectre night
+| JPNmeaning = 
+| INDname    = Kesatria Gaib
+| INDmeaning = 
+| KORname    = 유령 기사
+| KORromanised = yulyeong gisa
+| KORmeaning = 
+| POLname    = Rycerz Widmo
+| POLmeaning = 
+| PTBname    = Cavaleiro Espectral
+| PTBmeaning = 
+| RUSname    = Призрачный рыцарь
+| RUSromanised = Prizrachnyj rytsar'
+| RUSmeaning = 
+| SPAname    = Caballero espectral
+| SPAmeaning = 
+| TURname    = Hayalet Şövalye
+| TURmeaning = 
+| ZHSname    = 幽灵骑士
+| ZHSromanised = youlingqishi
+| ZHSmeaning = 
+| CODEname    = SPECTRAL_KNIGHT
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Magi Knight
+| DEUname    = Magus-Ritter
+| DEUmeaning = 
+| ESPname    = Magicaballero
+| ESPmeaning = 
+| FRAname    = Chevalier mage
+| FRAmeaning = 
+| ITAname    = Magicavaliere
+| ITAmeaning = 
+| JPNname    = マギナイト
+| JPNromanised = Magi night
+| JPNmeaning = 
+| INDname    = Kesatria Majus
+| INDmeaning = 
+| KORname    = 마법 기사
+| KORromanised = mabeob gisa
+| KORmeaning = 
+| POLname    = Mag
+| POLmeaning = 
+| PTBname    = Cavaleiro Mago
+| PTBmeaning = 
+| RUSname    = Маг-рыцарь
+| RUSromanised = Mag-rytsar'
+| RUSmeaning = 
+| SPAname    = Caballero magi
+| SPAmeaning = 
+| TURname    = Büyücü Şövalye
+| TURmeaning = 
+| ZHSname    = 魔法骑士
+| ZHSromanised = mofaqishi
+| ZHSmeaning = 
+| CODEname    = MAGI_KNIGHT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.0|* Fixed an issue where, after killing Spectral Knight, cards that would normally be Ethereal could sometimes become non-Ethereal}}
+{{Update History Table/row|V0.104.0|* Fixed a rare issue in multiplayer when playing Armaments card during the Knight Gang encounter}}
+{{Update History Table/row|V0.94.0|* Changed Knights encounter: swapped the position of the Spectral Knight and the Magi Knight}}
+{{Update History Table/row|V0.93.0|* Nerfed Magi Knight: Bomb move damage decreased from 40(45) -> 35(40)
+* Buffed Spectral Knight:
+** Soul Slash move damage increased from 13(15) -> 15(17)
+** Now always does Soul Slash after Hex move}}
+{{Update History Table/row|V0.92.0|* Changed Flail Knight: HP changed from 101(103)-106(109) -> 101(108)
+* Buffed Spectral Knight: HP increased from 91(94)-93(97) -> 93(97)
+* Changed Magi Knight:
+** HP changed from 81(82)-85(86) -> 82(89)
+** Power Shield move's Block gain now scales with Ascension from 5 -> 9}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Magi Knight}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Flail Knight and Mysterious Knight}}
+{{Update History Table/row|V0.80.0|* Changed Knights:
+** Now an Elite combat
+** All HP increased by 10 now that they are an Elite combat
+** Removed weak Act 3 Knights encounter}}
+{{Update History Table/row|V0.70.0|* Fixed an issue where, if a card with the Echoing enchantment was downgraded by an effect like Magi Knight's Dampen move, it would receive an additional Replay}}
+{{Update History Table/row|V0.65.0|* Nerfed Magi Knight:
+** Block gain on first Shield decreased from 8 -> 5
+** Shield damage decreased from 8(9) -> 6(7)
+** Spear damage decreased from 15(17) -> 10(11)
+* Spirit of Ash card no longer incorrectly triggers itself when it's been given Ethereal by an effect like Spectral Knight monster's Hex power}}
+{{Update History Table/row|V0.63.0|* Fixed softlock with Magi knight magic bomb animation}}
+{{Update History Table/row|V0.62.0|* Fixed a softlock that sometimes occurred when Magi Knight used its Magic Bomb move}}
+{{Update History Table/row|V0.61.0|* Fixed Flail Knight's attack animations not playing}}
+{{Update History Table/row|V0.51.0|* Transforming cards during combat, playing those cards, then killing Spectral Knight on the same turn no longer causes a softlock}}
+{{Update History Table/row|V0.48.0|* Fixed an issue where killing Magi Knight enemy while playing cards very fast could cause a softlock}}
+{{Update History Table/row|V0.44.0|* Changed Magi Knight: changed moveset}}
+{{Update History Table/row|V0.43.0|* Added SFX for Flail Knight and Spectral Knight}}
+{{Update History Table/row|V0.41.0|* Deprecated Lieutenant Knight combat
+* Sovereign Blade card no longer loses its extra Forge damage after being downgraded by Magi Knight}}
+{{Update History Table/row|V0.29.0|* Added Spectral Knight animations
+* Added fire VFX For Spectral Knight and revised VFX for Mecha Knight
+* Spectral Knight’s Hex move now applies Ethereal to cards generated in combat}}
+{{Update History Table/row|V0.18.0|* Changed Flail Knight: HP slightly lowered to differentiate from Spectral Knight decreased from 80 -> 78 max
+* Nerfed Lieutenant: HP decreased from 71-74 -> 66}}
+{{Update History Table/row|V0.16.0|* Changed Magi Knight: move AI reworked
+* Fixed softlock when Hex is applied to Osty by Spectral Knight
+* Magi Knight no longer incorrectly shows the affliction intent for its 15 damage ram move}}
+{{Update History Table/row|V0.15.0|* Nerfed Flail Knight: HP lowered from 92-96 -> 76-80
+* Nerfed Spectral Knight: no longer Exhausts your cards on hit, just through his debuff
+* Changed Magiknight: Ram now does 15 damage instead of 12 and no longer Shatters}}
+{{Update History Table/row|V0.14.0|* Added Spectral Knight
+* Reworked knight encounters:
+** 1 knight encounter is now 2 knights
+** 2 knights encounter is now 3 knights
+** Added additional hard encounter with 2 knights and 1 lieutenant
+** Multiples of the same knight can no longer repeat in any encounter type
+* Reworked Flail Knight:
+** HP decreased from 131-136 -> 92-96
+** Ram no longer Shatters cards, and cannot be repeated twice
+** War Chant move added: adds 2 strength, cannot be repeated
+** Breaker move removed
+** Enough power removed
+* Reworked Magi Knight:
+** HP decreased from 90 -> 71-75
+** Dampen power changed: "Downgrade all your cards. When Magi Knight is slain, return your cards to normal."
+** Now always uses Dampen, then Power Shield, then Magic Bomb}}
+{{Update History Table/row|V0.11.0|* * Changed Act 3 Knights normal encounter: Decreased number of random Knights from 3 -> 2
+* Nerfed Flail Knight:
+** HP decreased from 140 -> 131-139
+** Breaker now applies 1 Frail instead of 2 Vulnerable
+** Moveset frequency changes
+** Minor damage tweaks on all moves
+** Breaker damage increased from 6 -> 8
+** Flail damage decreased from 20 -> 18
+** Ram damage increased 12 -> 13 
+* Nerfed Lieutenant:
+** HP decreased from 180 -> 71-74
+** Damage lowered from 15 -> 11
+** Moveset changes to be less randomized and less aggressive
+** No longer gains strength when attacking.}}
+{{Update History Table/row|V0.10.0|* Claw damage is no longer reset when Magi Knight downgrades it
+* Genetic Algorithm block is no longer reset when Magi Knight downgrades it}}
+{{Update History Table/row|2023-09-01|* The Lieutenant no longer cries when you die}}
+{{Update History Table/row|2023-07-14|* Flail Knight's Enough power now only decrements from single-target attacks}}
+{{Update History Table/row|2023-06-30|* Implemented Flail Knight encounter}}
+{{Update History Table/row|2023-06-09|* Implement Lieutenant enemy}}
+{{Update History Table/row|?|* Added Magi Knight and Spectral Knight to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Elites]]
+[[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,131 @@
+{{Enemy Infobox
+|Name   = Phantasmal Gardener
+|Image  = StS2_Phantasmal Gardener.png
+|HP     = 26-31
+|AscHP  = 27-32
+|Powers = {{BD2|Skittish}} 6 ({{Asc2|8|7}})
+|Debut  = Underdocks
+|Type   = Elite
+}}
+{{Power Infobox
+|Name         = Skittish
+|Image        = StS2 Icon Skittish.png
+|Description  = The first time it is hit each turn, it gains X {{KW2|Block}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Reset
+|Cap          = 
+|GivesToEnemy = Block
+}}
+'''Phantasmal Gardener''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in the {{2|Underdocks}}. Four appear together in the encounter.
+
+== Pattern ==
+{{Intents Table/start|Phantasmal Gardener}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack2
+|Effect = Deals 5 damage.
+}}
+{{Intents Table/row
+|Name   = Lash
+|Intent = Attack2
+|Effect = Deals 7 damage.
+}}
+{{Intents Table/row
+|Name   = Flail
+|Intent = Attack1
+|Effect = Deals 1 damage ×3.
+}}
+{{Intents Table/row
+|Name   = Enlarge
+|Intent = Buff
+|Effect = Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+All four Gardeners cycle through the same four moves in a fixed order:
+# {{Int2|Phantasmal Gardener|Bite}}
+# {{Int2|Phantasmal Gardener|Lash}}
+# {{Int2|Phantasmal Gardener|Flail}}
+# {{Int2|Phantasmal Gardener|Enlarge}}
+From the left, the first Gardener starts with Flail, the second with Bite, the third with Lash, and the fourth with Enlarge.
+
+== Notes ==
+* '''Phantasmal Gardeners''' gain {{KW|Block}} after the first attack played against them resolves. For example, playing {{C2|Twin Strike}} will deal 5 damage twice, ''then'' the '''Phantasmal Gardener''' will gain {{KW|Block}}.
+** However, cards with '''Replay''' count as being played multiple times, so if an attack with '''Replay''' is played against a '''Phantasmal Gardener''' then it will gain {{KW|Block}} after the first play and before the second one.
+
+== Useful Cards ==
+* Any attack which hits all enemies, such as {{C2|Sow}} or {{C2|Dagger Spray}}, can deal a significant amount of damage.
+* Damaging the '''Phantasmal Gardeners''' indirectly through non-Attack cards will not trigger {{BD2|Skittish}}, so cards like {{C2|Negative Pulse}}, {{C2|Flame Barrier}}, {{C2|Noxious Fumes}}, or {{C2|Haze}} can be useful against them.
+* {{C2|Sunder}} deals almost enough damage to kill a '''Phantasmal Gardener''' in one hit, so it can easily finish one off and refund its cost if a basic attack like {{C2|Strike (Defect)}} was played on a previous turn.
+** If upgraded, '''Sunder+''' deals enough damage to instantly kill a '''Phantasmal Gardener'''.
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Trügerischer Gärtner
+| DEUmeaning = 
+| ESPname    = Anguila espectral
+| ESPmeaning = 
+| FRAname    = Jardinier spectral
+| FRAmeaning = 
+| ITAname    = Giardiniere spettrale
+| ITAmeaning = 
+| JPNname    = 幻影蟲
+| JPNromanised = Gen'ei mushi
+| JPNmeaning = 
+| INDname    = Pengebun Jiwa
+| INDmeaning = 
+| KORname    = 허깨비 정원사
+| KORromanised = heo-kkaebi jeong-wonsa
+| KORmeaning = 
+| POLname    = Węgorzówka
+| POLmeaning = 
+| PTBname    = Enguia Espectral
+| PTBmeaning = 
+| RUSname    = Фантомный альгочист
+| RUSromanised = Fantomnyj al'gochist
+| RUSmeaning = 
+| SPAname    = Acechamareas
+| SPAmeaning = 
+| TURname    = Bahçe Yılan Balığı
+| TURmeaning = 
+| ZHSname    = 花园幽灵鳗
+| ZHSromanised = huayuanyoulingman
+| ZHSmeaning = 
+| CODEname    = PHANTASMAL_GARDENER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.100.0|* Nerfed Phantasmal Gardeners: HP decreased from 28(29)-32(33) -> 26(27)-31(32)}}
+{{Update History Table/row|V0.92.0|* Buffed Phantasmal Gardeners: Skittish power now scales with Tough Enemies Ascension from 6 -> 7}}
+{{Update History Table/row|V0.88.0|* Improved hitboxes for Phantasmal Gardeners, Queen, and Amalgam enemies}}
+{{Update History Table/row|V0.87.0|* Nerfed Phantasmal Gardener: Strength 3(4) -> 2(3), BiteDamage 6(6) -> 5(5), LashDamage 8(9) -> 7(7)}}
+{{Update History Table/row|V0.82.0|* Added SFX for Phantasmal Gardener}}
+{{Update History Table/row|V0.80.0|* Buffed Phantasmal Gardeners: Strength gain increased from 2(3) -> 3(4)}}
+{{Update History Table/row|V0.77.0|* Changed Phantasmal Gardeners:
+** Damage decreased
+** Moveset changed to include multihits less
+** Now scales Strength gain with Ascension instead of additional hits
+** Skittish Power Block increased from 4 -> 6}}
+{{Update History Table/row|V0.71.0|* Nerfed Phantasmal Gardeners: Strength gain decreased from 3 -> 2}}
+{{Update History Table/row|V0.70.0|* Reworked Phantasmal Gardeners moveset}}
+{{Update History Table/row|V0.66.0|* Phantasmal Gardeners' Skittish power now activates on Osty attacks}}
+{{Update History Table/row|V0.65.0|* The second hit from Omnislice card now properly triggers Phantasmal Gardener monster's Skittish power
+* Fixed an issue with Phantasmal Gardener monster's Skittish power in multiplayer}}
+{{Update History Table/row|V0.56.0|* Nerfed Phantasmal Gardeners: Lash damage decreased from 9(10) -> 8(9)}}
+{{Update History Table/row|V0.54.0|* Nerfed Phantasmal Gardeners:
+** Skittish Block decreased from 5 -> 4
+** Heal decreased from 6 -> 5}}
+{{Update History Table/row|V0.53.0|* Nerfed Phantasmal Gardeners: no longer applies weak
+* Removed the confusing Burrowing wording on the Phantasmal Gardener's Skittish power
+* Fixed missing space in Phantasmal Gardener death quote}}
+{{Update History Table/row|V0.52.0|* Changed Phantasmal Gardeners: initial moves changed to be all unique
+* Fixed Phantasmal Gardeners so that their HP is now ranged from 28(29)-32(33) instead of incorrectly either 28/29 or 32/33}}
+{{Update History Table/row|V0.51.0|* Added new Underdocks Elite, Phantasmal Gardener}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

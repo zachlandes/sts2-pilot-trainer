@@ -135,6 +135,7 @@ public static partial class RuntimeAdapter
 
     private static IReadOnlyList<string> MonsterReasons(CatalogueMonster row) =>
         [.. row.Gaps, .. row.Moves.SelectMany(move => move.Gaps),
+         .. row.PatternComparison.Checks.Where(check => check.Standing == "mismatch").Select(check => "May be outdated: " + check.Reason),
          .. row.Quantities.Concat(row.Moves.SelectMany(move => move.Quantities)).Where(value => value.Mismatch)
              .Select(value => $"May be outdated: {value.Field}: wiki {value.Wiki}, game {value.Game}.")];
 

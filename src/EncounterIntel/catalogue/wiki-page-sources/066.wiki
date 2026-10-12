@@ -1,0 +1,105 @@
+{{Enemy Infobox
+|Name   = Punch Construct
+|Image  = StS2_Punch Construct.png
+|HP     = 55
+|AscHP  = 60
+|Powers = {{BD2|Artifact}} 1
+|Debut  = Underdocks
+|Type   = Normal
+}}
+'''Punch Construct''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}} and {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Punch Construct}}
+{{Intents Table/row
+|Name   = READY
+|Intent = Defend
+|Effect = Gains 10 {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Fast Punch
+|Intent = Attack3, Debuff
+|Effect = Deals (5;{{Asc2|9|6}}) damage ×2. Applies 1 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Strong Punch
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/end}}
+Cycles through its moves in a fixed order:
+# {{Int2|Punch Construct|READY}}
+# {{Int2|Punch Construct|Fast Punch}}
+# {{Int2|Punch Construct|Strong Punch}}
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Punch Construct}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Boxer-Konstrukt
+| DEUmeaning = 
+| ESPname    = Constructo pugilista
+| ESPmeaning = 
+| FRAname    = Assemblage de pugilat
+| FRAmeaning = 
+| ITAname    = Assemblaggio pugile
+| ITAmeaning = 
+| JPNname    = ボクシングロボ
+| JPNromanised = Boxing robot
+| JPNmeaning = 
+| INDname    = Mesin Tinju
+| INDmeaning = 
+| KORname    = 권투형 구조체
+| KORromanised = gwontuhyeong gujoche
+| KORmeaning = 
+| POLname    = Robokser
+| POLmeaning = 
+| PTBname    = Constructo Pugilista
+| PTBmeaning = 
+| RUSname    = Бойкий агрегат
+| RUSromanised = Bojkij agregat
+| RUSmeaning = 
+| SPAname    = Puñotrón
+| SPAmeaning = 
+| THAname    = จักรกลชกต่อย
+| THAromanised = chaknknchakatoi
+| THAmeaning = 
+| TURname    = Yumruklayan Yapı
+| TURmeaning = 
+| ZHSname    = 拳击构装体
+| ZHSromanised = quanjigouzhuangti
+| ZHSmeaning = 
+| CODEname    = PUNCH_CONSTRUCT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|v0.106.0|* Changed Punch Construct:
+** Fast Punch move now leads into Strong Punch instead of Strong Punch leading into Fast Punch
+** Ready move now leads into Fast Punch
+** Now applies Frail instead of Weak}}
+{{Update History Table/row|V0.95.0|* Buffed Punch Construct: Strong Punch move damage increased from 12(14) -> 14(16)
+* Nerfed Punch Off event fight: the Punch Constructs now start off weaker}}
+{{Update History Table/row|V0.94.0|* The Punch Constructs in the Punch Off event now face and punch each other until combat starts}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Punch Construct}}
+{{Update History Table/row|V0.87.0|* Changed Punch Off event "I Can Take Them" fight: punch constructs now start with some missing HP (1-6 less current HP each) to represent that they have been fighting}}
+{{Update History Table/row|V0.82.0|* Added SFX for Punch Construct}}
+{{Update History Table/row|V0.75.0|* Buffed Punch Construct: Fast Punch damage increased from 4(4) -> 6(5)}}
+{{Update History Table/row|V0.71.0|* Added Punch Construct animations}}
+{{Update History Table/row|V0.57.0|* Buffed Punch Construct:
+** HP increased from 50(55) -> 55(60)
+** Strong Punch move damage increased from 12(13) -> 12(14)
+* Normal encounter changed, now only contains a lone Punch Construct}}
+{{Update History Table/row|V0.50.0|* Fixed game over message when dying to Punch Constructs}}
+{{Update History Table/row|V0.49.0|* Punch constructs fast punch move now correctly displays that it will also debuff you}}
+{{Update History Table/row|?|* Added Punch Construct to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

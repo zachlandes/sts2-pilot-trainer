@@ -1,0 +1,98 @@
+{{Enemy Infobox
+|Name   = Sludge Spinner
+|Image  = StS2_Sludge Spinner.png
+|HP     = 37-39
+|AscHP  = 41-42
+|Debut  = Underdocks
+|Type   = Normal
+}}
+'''Sludge Spinner''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Sludge Spinner}}
+{{Intents Table/row
+|Name   = Oil Spray
+|Intent = Attack2, Debuff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Applies 1 {{BD2|Weak}}.
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Slam
+|Intent = Attack3
+|Effect = Deals (11;{{Asc2|9|12}}) damage.
+}}
+{{Intents Table/row
+|Name   = Rage
+|Intent = Attack2, Buff
+|Effect = Deals (6;{{Asc2|9|7}}) damage. Gains 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Sludge Spinner|Oil Spray}} first. After that, randomly uses one of its three moves each turn. Cannot use the same move twice in a row.
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Sludge Spinner}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schlickschleuder
+| DEUmeaning = 
+| ESPname    = Caracofango
+| ESPmeaning = 
+| FRAname    = Tisse-boue
+| FRAmeaning = 
+| ITAname    = Poltiglia rotante
+| ITAmeaning = 
+| JPNname    = スラッジスピナー
+| JPNromanised = Sludge spinner
+| JPNmeaning = 
+| INDname    = Cangkang Lendir
+| INDmeaning = 
+| KORname    = 오물팽이
+| KORromanised = omulpaeng-i
+| KORmeaning = 
+| POLname    = Wirówka
+| POLmeaning = 
+| PTBname    = Náutilo Oleoso
+| PTBmeaning = 
+| RUSname    = Грязевой вертоплюй
+| RUSromanised = Grjazevoj vertopljuj
+| RUSmeaning = 
+| SPAname    = Girador cenagoso
+| SPAmeaning = 
+| TURname    = Çamurdöner
+| TURmeaning = 
+| ZHSname    = 淤泥旋螺
+| ZHSromanised = yunixuanluo
+| ZHSmeaning = 
+| CODEname    = SLUDGE_SPINNER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.104.0|
+* Repositioned Sludge Spinner's death landing spot}}
+{{Update History Table/row|V0.92.0|
+* Nerfed Sludge Spinner: HP decreased from 39(41)-42(44) -> 37(41)-49(42)}}
+{{Update History Table/row|V0.85.0|
+* Changed Sludge Spinner:
+** Strength gain increased from 2 -> 3
+** Weak application decreased from 2 -> 1}}
+{{Update History Table/row|V0.81.0|
+* Nerfed Sludge Spinner: HP decreased from 41(43)-45(47) -> 39(41)-42(44)}}
+{{Update History Table/row|V0.77.0|
+* Changed Sludge Spinner:
+** HP decreased
+** Weak increased from 1 -> 2
+* Fixed Sludge Spinner's attack VFX when it gets interrupted}}
+{{Update History Table/row|V0.67.0|
+* Added SFX for Sludge Spinner enemy}}
+{{Update History Table/row|V0.56.0|
+* Added new Sludge Spinner enemy}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

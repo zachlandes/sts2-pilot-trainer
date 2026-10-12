@@ -2,9 +2,17 @@ using System.Text.Json;
 
 namespace EncounterIntel;
 
-public sealed record WikiPatternPage(string Name, WikiSource Source, string SourceText, string? PatternText);
+public sealed record WikiPatternClaim(string Kind, IReadOnlyList<string> Moves, int SourceLine, string SourceText, AscendingValue? Amount);
+public sealed record WikiPageGap(string Name, string Reason);
+public sealed record WikiPatternPage(string Name, WikiSource Source, string SourceText, string? PatternText)
+{
+    public IReadOnlyList<WikiPatternClaim> Claims { get; init; } = [];
+    public IReadOnlyList<string> Gaps { get; init; } = [];
+    public IReadOnlyList<WikiSource> RedirectSources { get; init; } = [];
+}
 public sealed record WikiPatternPages(int Schema, string Acquisition, IReadOnlyList<WikiPatternPage> Pages)
 {
+    public IReadOnlyList<WikiPageGap> UnavailablePages { get; init; } = [];
     public static WikiPatternPages Read()
     {
         using var stream = typeof(WikiPatternPages).Assembly.GetManifestResourceStream("EncounterIntel.wiki-pattern-pages.json")
@@ -17,11 +25,6 @@ public sealed record WikiPatternPages(int Schema, string Acquisition, IReadOnlyL
     }
 }
 
-public sealed record WikiPatternComparison(string Standing, string Reason, string? SourceText)
-{
-    public static WikiPatternComparison Unavailable => new("unavailable",
-        "No cached enemy-page pattern text is available for this enemy; pinned modules contain no pattern text.", null);
-}
 public sealed record EncounterPatternMember(string MonsterId, IReadOnlyList<PatternVariant> OpeningAlternatives,
     IReadOnlyList<PatternPhase> Phases, IReadOnlyList<string> Gaps);
 public sealed record EncounterScheduleColumn(int Ascension, IReadOnlyList<EncounterPatternMember> PossibleMembers);
@@ -44,10 +47,12 @@ public static partial class RuntimeAdapter
     private static CatalogueMonster WithPattern(CatalogueMonster monster, PatternAtlas atlas, WikiPatternPages pages, int ascension)
     {
         var source = pages.Pages.FirstOrDefault(page => monster.Wiki.Any(enemy => enemy.Name == page.Name));
-        var comparison = source is null ? WikiPatternComparison.Unavailable with { Reason = WikiPatternComparison.Unavailable.Reason + " Acquisition: " + pages.Acquisition } : new WikiPatternComparison("unchecked",
-            "Cached source text is available as editorial fallback; its natural-language pattern has not been interpreted as graph claims.", source.PatternText ?? source.SourceText);
-        monster = monster with { PatternComparison = comparison };
         var pattern = PatternAt(atlas, ascension, monster.Id);
+        var comparison = source is null ? WikiPatternComparison.Unavailable with
+        {
+            Reason = WikiPatternComparison.Unavailable.Reason + " " + string.Join("; ", pages.UnavailablePages.Where(page => monster.Wiki.Any(enemy => enemy.Name == page.Name)).Select(page => page.Reason)) + " Acquisition: " + pages.Acquisition,
+        } : WikiPatternComparison.Compare(source, pattern, ascension);
+        monster = monster with { PatternComparison = comparison };
         if (pattern is null) return monster with { Gaps = [.. monster.Gaps, "No graph row for this monster on this build."] };
         var nodes = pattern.Variants.FirstOrDefault()?.Nodes ?? [];
         var moves = monster.Moves.Select(move =>

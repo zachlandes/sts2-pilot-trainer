@@ -1,0 +1,173 @@
+'''Living Fog''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}. It summons {{M|Gas Bomb|Gas Bombs|2}} that explode for damage and then die.
+
+== Living Fog ==
+{{Enemy Infobox
+|Name   = Living Fog
+|Image  = StS2_Living Fog.png
+|HP     = 80
+|AscHP  = 82
+|Debut  = Underdocks
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Smoggy
+|Image        = StS2 Icon Smoggy.png
+|Description  = You can only play 1 Skill per turn.
+|Type         = Debuff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+=== Pattern ===
+{{Intents Table/start|Living Fog}}
+{{Intents Table/row
+|Name   = Advanced Gas
+|Intent = Attack2, CardDebuff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Applies 1 {{BD2|Smoggy}}.
+|GivesToPlayer = Smoggy
+}}
+{{Intents Table/row
+|Name   = Bloat
+|Intent = Attack2, Summon
+|Effect = Deals (5;{{Asc2|9|6}}) damage. Summons 1 {{M|Gas Bomb|Gas Bomb|2}}.
+}}
+{{Intents Table/row
+|Name   = Super Gas Blast
+|Intent = Attack2
+|Effect = Deals (8;{{Asc2|9|9}}) damage.
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Living Fog|Advanced Gas}} first, then alternates between {{Int2|Living Fog|Bloat}} and {{Int2|Living Fog|Super Gas Blast}}.
+
+{{Clear}}
+
+== Gas Bomb ==
+{{Enemy Infobox
+|Name   = Gas Bomb
+|Link   = Slay the Spire 2:Living Fog#Gas Bomb
+|Image  = StS2_Gas Bomb.png
+|HP     = 7
+|AscHP  = 8
+|Powers = {{BD2|Minion}}
+|Debut  = Underdocks
+|Type   = Minion
+}} {{Power Infobox|Minion|2}}
+Gas Bombs are minions summoned by Living Fog via {{Int2|Living Fog|Bloat}}.
+
+=== Pattern ===
+{{Intents Table/start|Gas Bomb}}
+{{Intents Table/row
+|Name   = Explode
+|Intent = DeathBlow
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Dies.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Gas Bomb|Explode}} every turn, dealing damage and killing itself.
+{{Clear}}
+
+== Animations ==
+<tabber>
+|-|Living Fog=
+{{Bestiary|Living Fog}}
+|-|Gas Bomb=
+{{Bestiary|Gas Bomb}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Living Fog
+| DEUname    = Lebender Nebel
+| DEUmeaning = 
+| ESPname    = Niebla viviente
+| ESPmeaning = 
+| FRAname    = Brouillard vivant
+| FRAmeaning = 
+| ITAname    = Nebbia vivente
+| ITAmeaning = 
+| JPNname    = 生きた霧
+| JPNromanised = Ikita kiri
+| JPNmeaning = 
+| INDname    = Kabut Berjiwa
+| INDmeaning = 
+| KORname    = 살아있는 안개
+| KORromanised = sal-a-issneun angae
+| KORmeaning = 
+| POLname    = Żywa Mgła
+| POLmeaning = 
+| PTBname    = Névoa Viva
+| PTBmeaning = 
+| RUSname    = Живой туман
+| RUSromanised = Zhivoj tuman
+| RUSmeaning = 
+| SPAname    = Nieblamprea
+| SPAmeaning = 
+| TURname    = Yaşayan Sis
+| TURmeaning = 
+| ZHSname    = 活雾
+| ZHSromanised = huowu
+| ZHSmeaning = 
+| CODEname    = LIVING_FOG
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Gas Bomb
+| DEUname    = Gasbombe
+| DEUmeaning = 
+| ESPname    = Núcleo gaseoso
+| ESPmeaning = 
+| FRAname    = Bombe à gaz
+| FRAmeaning = 
+| ITAname    = Bomba di gas
+| ITAmeaning = 
+| JPNname    = ガス爆弾
+| JPNromanised = Gas bakudan
+| JPNmeaning = 
+| INDname    = Bom Gas
+| INDmeaning = 
+| KORname    = 가스 폭탄
+| KORromanised = gaseu pogtan
+| KORmeaning = 
+| POLname    = Bomba Gazowa
+| POLmeaning = 
+| PTBname    = Bomba Gasosa
+| PTBmeaning = 
+| RUSname    = Газовая бомба
+| RUSromanised = Gazovaja bomba
+| RUSmeaning = 
+| SPAname    = Bomba de gas
+| SPAmeaning = 
+| TURname    = Gaz Bombası
+| TURmeaning = 
+| ZHSname    = 气态炸弹
+| ZHSromanised = qitaizhadan
+| ZHSmeaning = 
+| CODEname    = GAS_BOMB
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.107.0|* Fixed the Living Fog encounter name in the death quote}}
+{{Update History Table/row|V0.106.0|* Fixed Living Fog missing its smoke}}
+{{Update History Table/row|V0.103.3|* Fixed Living Fog missing its smoke}}
+{{Update History Table/row|V0.103.0|* Nerfed Living Fog: no longer increases the amount of bombs it spawns over time}}
+{{Update History Table/row|V0.100.0|* Nerfed Living Fog encounter: Gas Bomb HP decreased from 10(12) -> 7(8)}}
+{{Update History Table/row|V0.95.0|* Changed Living Fog: now attacks on the turn it summons}}
+{{Update History Table/row|V0.94.0|* Buffed Living Fog: turn 1 Gas move now also deals 8(9) damage}}
+{{Update History Table/row|V0.82.0|* Added SFX for Living Fog}}
+{{Update History Table/row|V0.62.0|* Evil Gas renamed to Living Fog}}
+{{Update History Table/row|V0.57.0|* Nerfed Evil Gas:
+** Blast move damage decreased from 13(14) -> 8(9)
+** Gas Bomb minion HP decreased from 10(12) -> 8(9)
+** Smoggy affliction/power reworked to "You may only play 1 Skill per turn."}}
+{{Update History Table/row|V0.54.0|* Reworked Super Evil Gas combat encounter & renamed to "Evil Gas"
+* Deprecated old Evil Gas encounter}}
+{{Update History Table/row|V0.50.0|* Deprecated Double Evil Gas fight}}
+{{Update History Table/row|V0.48.1|* New Underdocks encounter - Evil Gas Normal. (2x Evil Gas)
+* Evil Gas and Super Evil Gas move and damage tweaks and buffs}}
+{{Update History Table/row|?|* Added Super Evil Gas to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

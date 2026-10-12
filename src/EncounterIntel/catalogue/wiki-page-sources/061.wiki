@@ -1,0 +1,274 @@
+'''Ovicopter''' is a normal {{2|Monsters|Enemy}} found in the {{2|Hive}}. It summons {{M2|Tough Egg|Tough Eggs}} that hatch into {{M2|Hatchling|Hatchlings}}.
+
+== Ovicopter ==
+{{Enemy Infobox
+|Name   = Ovicopter
+|Image  = StS2_Ovicopter.png
+|HP     = 124-130
+|AscHP  = 126-132
+|Debut  = Hive
+|Type   = Normal
+}}
+=== Pattern ===
+{{Intents Table/start|Ovicopter}}
+{{Intents Table/row
+|Name   = Lay Eggs
+|Intent = Summon
+|Effect = Summons 3 {{2|Tough Egg|Tough Eggs}}.
+}}
+{{Intents Table/row
+|Name   = Smash
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/row
+|Name   = Tenderizer
+|Intent = Attack2, Debuff
+|Effect = Deals (7;{{Asc2|9|8}}) damage. Applies 2 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/row
+|Name   = Nutritional Paste
+|Intent = Buff
+|Effect = Gains (3;{{Asc2|9|4}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Ovicopter|Lay Eggs}} to summon 3 {{2|Tough Egg|Tough Eggs}}, then uses {{Int2|Ovicopter|Smash}}, then {{Int2|Ovicopter|Tenderizer}}.
+
+After {{Int2|Ovicopter|Tenderizer}}, it checks how many allies it has. If it has 3 or fewer living allies, it uses {{Int2|Ovicopter|Lay Eggs}} again. If it has more than 3, it uses {{Int2|Ovicopter|Nutritional Paste}} instead. Then the cycle continues with {{Int2|Ovicopter|Smash}} and {{Int2|Ovicopter|Tenderizer}}.
+
+{{Clear}}
+
+== Tough Egg ==
+{{Enemy Infobox
+|Name   = Tough Egg
+|Link   = Slay the Spire 2:Ovicopter#Tough Egg
+|Image  = StS2_Tough Egg.png
+|HP     = 14-18
+|AscHP  = 15-19
+|Powers = {{BD2|Minion}} {{BD2|Hatch}} 2
+|Type   = Minion
+|Debut  = Hive
+|EncounterAliases = Tough Egg (+)
+}} 
+{{Power Infobox|Minion|2}}
+{{Power Infobox
+|Name         = Hatch
+|Image        = StS2 Icon Hatch.png
+|Description  = Hatches after X turns.
+|Type         = Buff
+|Stacks       = Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+The Tough Egg is a minion summoned by Ovicopter via {{Int2|Ovicopter|Lay Eggs}}. It starts with the {{BD2|Hatch}} power, which counts down over turns.
+
+=== Pattern ===
+{{Intents Table/start|Tough Egg}}
+{{Intents Table/row
+|Name   = Hatch
+|Intent = Summon
+|Effect = Hatches into a Hatchling. Removes all powers except {{BD2|Minion}}.
+|PowerGives = Minion
+}}
+{{Intents Table/end}}
+The Tough Egg waits while its {{BD2|Hatch}} timer counts down. When the timer expires, it uses {{Int2|Tough Egg|Hatch}} to transform into a {{M2|Hatchling}} with new HP.
+
+{{Clear}}
+
+== Hatchling ==
+{{Enemy Infobox
+|Name   = Hatchling
+|Link   = Slay the Spire 2:Ovicopter#Hatchling
+|Image  = StS2_Hatchling.png
+|HP     = 19-22
+|AscHP  = 20-23
+|Powers = {{BD2|Minion}}
+|Type   = Minion
+|Debut  = Hive
+|EncounterAliases = Tough Egg (+)
+}}
+{{Power Infobox|Minion|2}}
+The Hatchling is a minion that spawns from a {{M2|Tough Egg}}
+
+=== Pattern ===
+{{Intents Table/start|Hatchling}}
+{{Intents Table/row
+|Name   = Nibble
+|Intent = Attack1
+|Effect = Deals (4;{{Asc2|9|5}}) damage.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Hatchling|Nibble}} every turn.
+
+{{Clear}}
+
+== Notes ==
+* {{BD2|Hatch}} timer starts at 2 if summoned during the enemy turn, or 1 during the player turn.
+* Hatching removes all negative status effects which were applied to the '''Tough Egg'''.
+
+== Animations ==
+<tabber>
+|-|Ovicopter=
+{{Bestiary|Ovicopter}}
+|-|Tough Egg=
+{{Bestiary|Tough Egg}}
+|-|Hatchling=
+{{Bestiary|Hatchling}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Ovicopter
+| DEUname    = Ovikopter
+| DEUmeaning = 
+| ESPname    = Ovicóptero
+| ESPmeaning = 
+| FRAname    = Ovicoptère
+| FRAmeaning = 
+| ITAname    = Ovicoptero
+| ITAmeaning = 
+| JPNname    = オビコプター
+| JPNromanised = Obi copter
+| JPNmeaning = 
+| INDname    = Ovikopter
+| INDmeaning = 
+| KORname    = 산란비충
+| KORromanised = sanlanbichung
+| KORmeaning = 
+| POLname    = Jajokopter
+| POLmeaning = 
+| PTBname    = Ovicóptero
+| PTBmeaning = 
+| RUSname    = Овикоптер
+| RUSromanised = Ovikopter
+| RUSmeaning = 
+| SPAname    = Ovocóptero
+| SPAmeaning = 
+| TURname    = Kuluçkopter
+| TURmeaning = 
+| ZHSname    = 直飞产卵虫
+| ZHSromanised = zhifeichanluanchong
+| ZHSmeaning = 
+| CODEname    = OVICOPTER
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Tough Egg
+| DEUname    = Robustes Ei
+| DEUmeaning = 
+| ESPname    = Ovoduro
+| ESPmeaning = 
+| FRAname    = Œuf robuste
+| FRAmeaning = 
+| ITAname    = Uovo forte
+| ITAmeaning = 
+| JPNname    = 固い卵
+| JPNromanised = Katai tamago
+| JPNmeaning = 
+| INDname    = Telur Keras
+| INDmeaning = 
+| KORname    = 튼튼한 알
+| KORromanised = teunteunhan al
+| KORmeaning = 
+| POLname    = Twarde jajo
+| POLmeaning = 
+| PTBname    = Ovo Resistente
+| PTBmeaning = 
+| RUSname    = Крепкое яйцо
+| RUSromanised = Krepkoe jajtso
+| RUSmeaning = 
+| SPAname    = Huevo endurecido
+| SPAmeaning = 
+| TURname    = Dayanıklı Yumurta
+| TURmeaning = 
+| ZHSname    = 结实的卵
+| ZHSromanised = jieshideluan
+| ZHSmeaning = 
+| CODEname    = TOUGH_EGG
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Hatchling
+| DEUname    = Schlüpfling
+| DEUmeaning = 
+| ESPname    = Eclosión
+| ESPmeaning = 
+| FRAname    = Larve
+| FRAmeaning = 
+| ITAname    = Schiusa
+| ITAmeaning = 
+| JPNname    = ハッチリング
+| JPNromanised = Hatch ring
+| JPNmeaning = 
+| INDname    = Anakan
+| INDmeaning = 
+| KORname    = 해츨링
+| KORromanised = haecheulling
+| KORmeaning = 
+| POLname    = Larwa
+| POLmeaning = 
+| PTBname    = Prole
+| PTBmeaning = 
+| RUSname    = Вылупленец
+| RUSromanised = Vyluplenets
+| RUSmeaning = 
+| SPAname    = Cría
+| SPAmeaning = 
+| TURname    = Yavru
+| TURmeaning = 
+| ZHSname    = 幼虫
+| ZHSromanised = youchong
+| ZHSmeaning = 
+| CODEname    = HATCHLING
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.110.0|* Tough Egg can now have 1 more max HP
+* Fixed error that occurred when Tough Egg would hatch in the Bestiary}}
+{{Update History Table/row|V0.100.0|* Added animation for Ovicopter buff}}
+{{Update History Table/row|V0.87.0|* Tweaked Ovicopter encounter moveset}}
+{{Update History Table/row|V0.77.0|* Nerfed Ovicopter: damage and HP decreased
+* Tough Egg healthbars are no longer offset incorrectly}}
+{{Update History Table/row|V0.63.0|* Nerfed Tough Egg: HP decreased from 14(15)-19(20) -> 14(15)-18(19)}}
+{{Update History Table/row|V0.54.0|* Reworked Ovicopter combat encounter
+* Ovicopter's eggs now spawn in with full HP}}
+{{Update History Table/row|V0.52.0|* Tough Eggs in Ovicopter fight no longer appear offscreen}}
+{{Update History Table/row|V0.40.0|* Nerfed Ovicopter: attack damage decreased}}
+{{Update History Table/row|V0.38.0|* Changed Ovicopter encounter:
+** Bite damage decreased from 19(21) -> 17(19)
+** Nibble damage decreased from 7(8) -> 6(7)
+** Munch damage decreased from 10(12) -> 8(9)
+** Chomp damage decreased from 14(16) -> 11(12)
+** Tough Egg HP lowered from 23(24)-29 -> 14(15)-19(20)
+** Hatchling HP lowered from 26(28)-34(36) -> 21(22)-26(27)
+** Workbug Egg Hatchling merged with Ovicopter hatchling
+** Hatchling now starts with a random move
+* Cleaned up Ovicopter’s animation
+* Cleaned up Tough Egg’s animation}}
+{{Update History Table/row|V0.29.0|* Buffed Ovicopter:
+** Bite move damage from 16 -> 19
+** HP increased from 122-129 -> 132-138}}
+{{Update History Table/row|V0.18.0|* Changed Ovicopter: no longer has the Mother's Rage power}}
+{{Update History Table/row|V0.17.0|* Egg Layer room name switched to Ovicopter}}
+{{Update History Table/row|V0.16.0|* Changed Ovicopter: Furious Scratches attack changed from 2x4 -> 4x2 (so it scales less with Strength)
+* Nerfed Tough Egg: HP lowered from 26-34 -> 23-29}}
+{{Update History Table/row|V0.15.0|* Updated Egg Layer combat}}
+{{Update History Table/row|2023-09-15|* Updated Egg Layer's animations}}
+{{Update History Table/row|2023-08-25|* Workerbug egg now correctly spawns in egg}}
+{{Update History Table/row|2023-06-30|* Updated Egg Layer and Baby anims}}
+{{Update History Table/row|2023-05-05|* Added alternate egg skins for Tough Tgg
+* Tough Egg becomes hatchling instead of spawning one}}
+{{Update History Table/row|2023-04-21|* Animaton for EggBaby #eggbaby.json
+* egg layer idle animation
+* Import EggLayer skeleton assets
+* Bug Fix: Tough egg's hatch power value was 1 off}}
+{{Update History Table/row|?|* Added Egg Layer to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

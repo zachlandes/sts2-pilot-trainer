@@ -9,8 +9,8 @@ public sealed record CatalogueMonster(string Id, IReadOnlyList<WikiEnemy> Wiki,
 {
     public EnemyPattern? Pattern { get; init; }
     public WikiPatternComparison PatternComparison { get; init; } = WikiPatternComparison.Unavailable;
-    public bool MayBeOutdated => Quantities.Concat(Moves.SelectMany(move => move.Quantities)).Any(value => value.Mismatch);
-    public string? Warning => MayBeOutdated ? "May be outdated: wiki and game quantities disagree." : null;
+    public bool MayBeOutdated => PatternComparison.Mismatch || Quantities.Concat(Moves.SelectMany(move => move.Quantities)).Any(value => value.Mismatch);
+    public string? Warning => MayBeOutdated ? "May be outdated: wiki and game reference claims disagree." : null;
     public CatalogueStanding Standing => Wiki.Count == 0 ? CatalogueStanding.Unsupported
         : MayBeOutdated || Gaps.Count > 0 || Moves.Any(move => move.Gaps.Count > 0) ? CatalogueStanding.Flagged
         : CatalogueStanding.Catalogued;

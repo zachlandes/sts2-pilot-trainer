@@ -1,0 +1,143 @@
+{{Enemy Infobox
+|Name   = Seapunk
+|Image  = StS2_Seapunk.png
+|HP     = 44-46
+|AscHP  = 47-49
+|Debut  = Underdocks
+|Type   = Normal
+}}
+'''Seapunk''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Seapunk}}
+{{Intents Table/row
+|Name   = Sea Kick
+|Intent = Attack3
+|Effect = Deals (11;{{Asc2|9|13}}) damage.
+}}
+{{Intents Table/row
+|Name   = Spinning Kick
+|Intent = Attack2
+|Effect = Deals 2 damage ×4
+.
+}}
+{{Intents Table/row
+|Name   = Bubble Burp
+|Intent = Buff, Defend
+|Effect = Gains (7;{{Asc2|8|8}}) {{KW2|Block}} and (1;{{Asc2|9|2}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength, Block
+}}
+{{Intents Table/end}}
+Cycles through its moves in a fixed order:
+# {{Int2|Seapunk|Sea Kick}}
+# {{Int2|Seapunk|Spinning Kick}}
+# {{Int2|Seapunk|Bubble Burp}}
+# Back to {{Int2|Seapunk|Sea Kick}}
+
+== Damage Schedule ==
+{| class="wikitable"
+|- 
+! Turn !! default !! {{Asc2|9}} + !! 
+|-
+! scope="row" | 1 
+| 11 || 13
+| 
+|-
+! scope="row" | 2
+| 8 (2x4) || 8 (2x4)
+| 
+|-
+! scope="row" | 3
+| 
+| 
+| 7 ({{Asc2|9|8}}) {{KW2|Block}} 
+|-
+! scope="row" | 4
+| 12 || 15
+| 
+|-
+! scope="row" | 5
+| 12 (3x4) || 16 (4x4)
+| 
+|-
+! scope="row" | 6
+| 
+| 
+| 7 ({{Asc2|9|8}}) {{KW2|Block}} 
+|-
+! scope="row" | 7
+| 13 || 17
+|
+|-
+! scope="row" | 8
+| 16 (4x4) || 24 (6x4)
+|
+|}
+
+== Animations ==
+{{Bestiary|Seapunk}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Meerespunk
+| DEUmeaning = 
+| ESPname    = Rufián marino
+| ESPmeaning = 
+| FRAname    = Voyou marin
+| FRAmeaning = 
+| ITAname    = Teppista marino
+| ITAmeaning = 
+| JPNname    = シーパンク
+| JPNromanised = Sea punk
+| JPNmeaning = 
+| INDname    = Berandal Laut
+| INDmeaning = 
+| KORname    = 불량 해초
+| KORromanised = bullyang haecho
+| KORmeaning = 
+| POLname    = Gloniarz
+| POLmeaning = 
+| PTBname    = Arruaceiro Marinho
+| PTBmeaning = 
+| RUSname    = Зламинария
+| RUSromanised = Zlaminarija
+| RUSmeaning = 
+| SPAname    = Canalla marino
+| SPAmeaning = 
+| THAname    = หร่ายเล
+| THAromanised = raile
+| THAmeaning = 
+| TURname    = Deniz Haydutu
+| TURmeaning = 
+| ZHSname    = 海洋混混
+| ZHSromanised = haiyanghunhun
+| ZHSmeaning = 
+| CODEname    = SEAPUNK
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|v0.100.0|* Changed Calcified Cultist + Toadpole encounter: now Calcified Cultist + Seapunk
+* Buffed Seapunk: Sea Kick move damage increased from 11(12) -> 11(13)}}
+{{Update History Table/row|V0.96.0|* Buffed Seapunk:
+** Sea Kick move damage increased from 9(10) -> 11(12)
+** Strength gain now scales with Ascension from 1(1) -> 1(2)}}
+{{Update History Table/row|V0.92.0|* Changed Seapunk:
+** HP decreased from 47(49)-51(53) -> 44(47)-46(49)
+** Bubble move's Block now scales with Ascension from 7 -> 8}}
+{{Update History Table/row|V0.91.0|* Changed normal Toadpoles encounter: replaced Seapunk -> Calcified Cultist}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for the following enemies: Seapunk (hurt)}}
+{{Update History Table/row|V0.67.0|* Added SFX for Seapunk}}
+{{Update History Table/row|V0.61.0|* Adjusted intent position, hitbox size, and center for Seapunk}}
+{{Update History Table/row|V0.58.0|* Buffed Seapunk:
+** Kick move damage increased from 8(9) -> 9(10)
+** Spinning Kick move damage increased from 1x4 -> 2x4}}
+{{Update History Table/row|V0.57.0|* Deprecated normal Underdocks combat encounters: Lone Seapunk}}
+{{Update History Table/row|V0.51.0|* Added Seapunk animations}}
+{{Update History Table/row|?|* Added Seapunk to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,205 @@
+{{Deprecated Content|Message=The Doormaker was deprecated in [[sts2:V0.107.1 - Major Update 2#Enemy Changes|Major Update #2]] and replaced with a new boss, the {{M2|Aeonglass}}.}}
+{{Enemy Infobox
+|Name   = Doormaker
+|HP     = 489
+|AscHP  = 512
+|Powers = {{BD2|Hunger}}<br>{{BD2|Scrutiny}}<br>{{BD2|Grasp}}
+|Debut  = Glory
+|Type   = Boss
+|Icon   = StS2_Icon_DoormakerBoss.png
+|Tab1   = Closed
+|Image  = StS2_Doormaker-Closed.webp
+|Tab2   = Hunger
+|Tab2Image = StS2_Doormaker-Hunger.webp
+|Tab3   = Scrutiny
+|Tab3Image = StS2_Doormaker-Scrutiny.webp
+|Tab4   = Grasp
+|Tab4Image = StS2_Doormaker-Grasp.webp
+|NoStore = yes
+}}
+{{Power Infobox
+|Name         = Hunger
+|Image        = StS2 Icon Hunger.png
+|Description  = Whenever you play an Attack or Skill, it is {{KW2|Exhaust|Exhausted}}.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Removed
+|NoStore = yes
+}}
+{{Power Infobox
+|Name         = Scrutiny
+|Image        = StS2 Icon Scrutiny.png
+|Description  = You cannot draw additional cards during your turn.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Removed
+|NoStore = yes
+}}
+{{Power Infobox
+|Name         = Grasp
+|Image        = StS2 Icon Grasp.png
+|Description  = Whenever you play a card, lose {{Icon2|CE}}.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Removed
+|NoStore = yes
+}}
+The '''Doormaker''' was a {{2|Bosses|Boss}} found in {{2|Glory}}. The fight starts with the '''Doormaker''' appearing as the Door with infinite health. It then transforms into the '''Doormaker''' on its first turn. 
+
+== Pattern ==
+{{Intents Table/start|Doormaker}}
+{{Intents Table/row
+|Name   = Dramatic Open
+|Intent = Summon
+|Effect = Transforms into the Doormaker. Sets current buff to {{BD2|Hunger}}.
+|GivesToEnemy = Hunger
+|NoStore = yes
+}}
+{{Intents Table/row
+|Name   = Hunger
+|Intent = Attack4
+|Effect = Deals (30;{{Asc2|9|35}}) damage. Swaps current buff to {{BD2|Scrutiny}}.
+|GivesToEnemy = Scrutiny
+|NoStore = yes
+}}
+{{Intents Table/row
+|Name   = Scrutiny
+|Intent = Attack4
+|Effect = Deals (24;{{Asc2|9|26}}) damage. Swaps current buff to {{BD2|Grasp}}.
+|GivesToEnemy = Grasp
+|NoStore = yes
+}}
+{{Intents Table/row
+|Name   = Grasp
+|Intent = Attack4, Buff
+|Effect = Deals (10x2;{{Asc2|9|11x2}}) damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}.
+|GivesToEnemy = Strength, Hunger
+|NoStore = yes
+}}
+{{Intents Table/end}}
+The Doormaker uses {{Int2|Doormaker|Dramatic Open}} on its first turn, then follows a repeating cycle:
+# {{Int2|Doormaker|Hunger}}
+# {{Int2|Doormaker|Scrutiny}}
+# {{Int2|Doormaker|Grasp}}
+
+== Notes ==
+* Even though the HP bar in the first phase shows as "infinity", it is actually set to the finite number of 999,999,999 HP. As such, it is theoretically possible to kill the Doormaker in its first phase.
+
+== Trivia ==
+* The Doormaker was the third in a series of Act 3 boss reworks, starting with the Illusionist, then the Dreamer, then the Doormaker. Now he has been replaced with a 4th boss, {{M2|Aeonglass}}.
+** Doormaker was removed because "While Doormaker had interesting micro decisions in the fight, he was over the complexity threshold of what we want and had lingering issues". In a later interview, a developer clarified that "Doormaker's 3 different phases also meant that it wasn't good at teaching a coherent lesson to the player, as it was too complicated for players to build a deck that could defeat all three phases." 
+** There was also no clear feedback as on which phase was being problematic, with all 3 phases being criticized as being "too hard" by different players.<ref>https://youtu.be/8QBRmK4Ahk0?t=646</ref>
+
+== Gallery ==
+<gallery>
+StS2_Map-Doormaker.png| Doormaker's Map Illustration
+StS2_Icon_DoormakerBoss.png| Doormaker's Summary Icon
+</gallery>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Türmacher
+| DEUmeaning = 
+| ESPname    = Portalero
+| ESPmeaning = 
+| FRAname    = L'Huissier
+| FRAmeaning = 
+| ITAname    = Fabbricaporte
+| ITAmeaning = 
+| JPNname    = ドアメーカー
+| JPNromanised = Door maker
+| JPNmeaning = 
+| KORname    = 문을 만드는 자
+| KORromanised = mun-eul mandeuneun ja
+| KORmeaning = 
+| POLname    = Tytan Pustki
+| POLmeaning = 
+| PTBname    = Porteiro
+| PTBmeaning = 
+| RUSname    = Привратник
+| RUSromanised = Privratnik
+| RUSmeaning = 
+| SPAname    = Titán interdimensional
+| SPAmeaning = 
+| TURname    = Kapı Ustası
+| TURmeaning = 
+| ZHSname    = 门扉缔造者
+| ZHSromanised = menfeidizaozhe
+| ZHSmeaning = 
+| CODEname    = DOORMAKER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.1|
+* Replaced the Act 3 boss {{2|Doormaker}} with a brand-new boss, {{2|Aeonglass}} (its moveset and {{C2|Wither}} / {{BD2|Withering Presence}} mechanics were refined throughout the beta).}}
+{{Update History Table/row|V0.105.0|
+* '''Doormaker''' has been replaced with a brand new boss, '''Aeonglass'''! 
+** While '''Doormaker''' had interesting micro decisions in the fight, he was over the complexity threshold of what we want and had lingering issues. We decided that starting over fresh will let us hit what we actually want for an Act 3 boss.}}
+{{Update History Table/row|V0.103.0|
+* Nerfed '''Doormaker''':
+** Damage numbers nerfed and moves moved around to better align with the Doormaker powers
+*** Multihit attack is now on the Grasp turn
+** No longer applies debuffs
+** Gains less Strength}}
+{{Update History Table/row|V0.102.0|
+* Reworked '''Doormaker''': Grasp turn and power: now attacks for 20(23) and the power is reworked to "Whenever you play a card, lose 1 energy."}}
+{{Update History Table/row|V0.101.0|
+* Reworked and nerfed the '''Doormaker.''' Fight is now less random.
+* Cycles between 3 abilities each turn.
+** Hunger: Whenever you play an attack or Skill, it is Exhausted.
+** Scrutiny: You cannot draw additional cards during your turn.
+** Grasp: The first card you play each turn costs 1 additional energy.
+* Fixed a softlock when playing Scrape card against The Doormaker boss}}
+{{Update History Table/row|V0.100.0|
+* Reworked '''Doormaker.''' ''Beware.''
+** Door mechanic removed. Instead starts the first turn as the door with infinite health then transforms into the Doormaker proper. Has Hunger of the Void: Every 10th card drawn is eaten, giving Doormaker 1 Strength.}}
+{{Update History Table/row|V0.99.0|
+* Fixed Doormaker's Door HP not scaling correctly after the Doormaker escapes}}
+{{Update History Table/row|V0.96.0|
+* Killing Doormaker with the <code>kill all</code> console command no longer causes a softlock}}
+{{Update History Table/row|V0.95.0|
+* Changed Doormaker: Is now out for one additional turn and gets another turn of attacks in}}
+{{Update History Table/row|V0.94.0|
+* Buffed Doormaker
+** Attack damage increased from 30(33) -> 35(40)
+** Gains 5 Strength on the turn that he escapes
+* Updated Doormaker art
+* Added new map node assets for the Doormaker
+* Removed Doormaker's heal intent on the turn where he escapes}}
+{{Update History Table/row|V0.89.0|
+* Reworked the Doormaker (details unknown)}}
+{{Update History Table/row|V0.86.0|
+* Doormaker is now the last Glory boss you discover
+* Doormaker's powers are now positioned correctly when they spawn in with powers}}
+{{Update History Table/row|V0.85.0|
+* Fixed Rolling Boulder softlock when it would kill the Doormaker}}
+{{Update History Table/row|V0.84.0|
+* Fixed a softlock when killing Doormaker boos with Thorns power}}
+{{Update History Table/row|V0.81.0|
+* Fixed the Doormaker combat so that the Doormaker now attacks before the Door}}
+{{Update History Table/row|V0.80.0|
+* Changed Doormaker combat:
+** Door's Enforce damage decreased from 15 -> 10
+** Door's Enforce no longer gives additional Artifact
+** Changed Door move order
+** Door no longer stuns when the door is opened
+** Doormaker's Doorslam move changed from 10(11)x3 -> 15(15)x2
+** Doormaker now also attacks for 20(22) on the turn he flees behind the Door
+** Door's Knock power now ticks down on hit instead of once per Attack}}
+{{Update History Table/row|V0.79.0|
+* Added new boss, the Doormaker, to replace the now deprecated Dreamer boss}}
+{{Update History Table/row|V0.77.0|
+* Powdered Demise potion debuff can no longer cause the Dreamer to skip its Dream move}}
+{{Update History Table/row|V0.76.0|
+* Dreamer giving Illusions more Max HP now scales in multiplayer}}
+{{Update History Table/row|V0.75.0|
+* Reworked Illusionist boss (now Dreamer)}}
+{{Update History Table/row|V0.74.0|
+* Added new Act 3 boss, The Illusionist}}
+{{Update History Table/end}}
+
+[[Category:Bosses]]
+[[Category:Slay the Spire 2 Content]]
+[[Category:Deprecated Content]]

@@ -1,0 +1,101 @@
+{{Beta content}} {{Enemy Infobox
+|Name   = Mecha Knight
+|Image  = StS2_Mecha Knight.png
+|HP     = 300
+|AscHP  = 320
+|Powers = {{BD2|Artifact}} 3
+|Debut  = Glory
+|Type   = Elite
+}}
+{{Power Infobox|Artifact|2}}
+'''Mecha Knight''' is an {{2|Elites|Elite}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Mecha Knight}}
+{{Intents Table/row
+|Name   = Charge
+|Intent = Attack4
+|Effect = Deals (25;{{Asc2|9|30}}) damage.
+}}
+{{Intents Table/row
+|Name   = Flamethrower
+|Intent = Attack4, StatusCard
+|Effect = Deals (8;{{Asc2|9|12}}) damage. Adds 4 {{C2|Burn}} to your hand.
+}}
+{{Intents Table/row
+|Name   = Windup
+|Intent = Defend, Buff
+|Effect = Gains 15 {{KW2|Block}} and 5 {{BD2|Strength}}.
+|GivesToEnemy = Block, Strength
+}}
+{{Intents Table/row
+|Name   = Heavy Cleave
+|Intent = Attack4
+|Effect = Deals (35;{{Asc2|9|40}}) damage.
+}}
+{{Intents Table/end}}
+Starts with {{Int2|Mecha Knight|Charge}} and then repeats this cycle for the rest of combat:
+* {{Int2|Mecha Knight|Flamethrower}}
+* {{Int2|Mecha Knight|Windup}}
+* {{Int2|Mecha Knight|Heavy Cleave}}
+
+== Animations ==
+{{Bestiary|Mecha Knight}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Mecha-Ritter
+| DEUmeaning = 
+| ESPname    = Cibercaballero
+| ESPmeaning = 
+| FRAname    = Méca-Chevalier
+| FRAmeaning = 
+| ITAname    = Cavaliere meccanico
+| ITAmeaning = 
+| JPNname    = メカナイト
+| JPNromanised = Mechanism night
+| JPNmeaning = 
+| INDname    = Kesatria Mesin
+| INDmeaning = 
+| KORname    = 기계 기사
+| KORromanised = gigye gisa
+| KORmeaning = 
+| POLname    = Mecha-Rycerz
+| POLmeaning = 
+| PTBname    = Cavaleiro Mecânico
+| PTBmeaning = 
+| RUSname    = Механический рыцарь
+| RUSromanised = Mehanicheskij rytsar'
+| RUSmeaning = 
+| SPAname    = Caballero mecanizado
+| SPAmeaning = 
+| TURname    = Meka Şövalye
+| TURmeaning = 
+| ZHSname    = 机甲骑士
+| ZHSromanised = jijiaqishi
+| ZHSmeaning = 
+| CODEname    = MECHA_KNIGHT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Mechaknight: now also deals 8(12) damage on it's Flamethrower turn}}
+{{Update History Table/row|V0.92.0|* Buffed Mecha Knight: HP increased from 300(314) -> 300(320)}}
+{{Update History Table/row|V0.89.0|* Added SFX for Mecha Knight}}
+{{Update History Table/row|V0.80.0|* Buffed Mechaknight: HP increased from 250(270) -> 300(314)}}
+{{Update History Table/row|V0.77.0|* Fixed an issue where Mecha Knight monster could cause a softlock when dying to Doom power}}
+{{Update History Table/row|V0.57.0|* Buffed Mecha Knight: Windup move Block gain increased from 10 -> 15}}
+{{Update History Table/row|V0.54.0|* Mecha Knight no longer gives dead players Burn status cards}}
+{{Update History Table/row|V0.43.0|* Made orbs on Chomper and Mecha Knight brighter/shinier
+* Adjusted Mecha Knight fire textures}}
+{{Update History Table/row|V0.42.0|* Changed Mecha Knight: moveset tweaked}}
+{{Update History Table/row|V0.35.0|* Fixed mistakes on Orb Plant and Mecha Knight enemy animations}}
+{{Update History Table/row|V0.33.0|* Added VFX shield assets for Mecha Knight}}
+{{Update History Table/row|V0.29.0|* Added fire VFX For Spectral Knight and revised VFX for Mecha Knight}}
+{{Update History Table/row|2023-06-02|* Added Mecha Knight elite encounter to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

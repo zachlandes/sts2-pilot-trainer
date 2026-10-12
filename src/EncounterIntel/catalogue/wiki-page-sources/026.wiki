@@ -1,0 +1,135 @@
+{{Beta content}}
+{{Enemy Infobox
+|Name   = Exoskeleton
+|Image  = StS2_Exoskeleton.png
+|HP     = 24-28
+|AscHP  = 26-30
+|Powers = {{BD2|Hard to Kill}} 9
+|Debut  = Hive
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Hard to Kill
+|Image        = StS2 Icon HardToKill.png
+|Description  = Reduce all damage taken and HP lost by it to 9.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Exoskeleton''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Exoskeleton}}
+{{Intents Table/row
+|Name   = Skitter
+|Intent = Attack1
+|Effect = Deals 1 damage (×3;{{Asc2|9|×4}}).
+}}
+{{Intents Table/row
+|Name   = Mandibles
+|Intent = Attack2
+|Effect = Deals (8;{{Asc2|9|9}}) damage.
+}}
+{{Intents Table/row
+|Name   = Enrage
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Exoskeletons appear in groups of 3 or 4. Each one's opening move depends on its position in the group: 
+* The first uses {{Int2|Exoskeleton|Skitter}}
+* The second uses {{Int2|Exoskeleton|Mandibles}}
+* The third uses {{Int2|Exoskeleton|Enrage}}
+* The fourth (if present) randomly picks {{Int2|Exoskeleton|Skitter}} or {{Int2|Exoskeleton|Mandibles}}.
+
+
+* After {{Int2|Exoskeleton|Skitter}}, the next move is randomly {{Int2|Exoskeleton|Skitter}} or {{Int2|Exoskeleton|Mandibles}} (cannot repeat the same move twice in a row). 
+* After {{Int2|Exoskeleton|Mandibles}}, it always uses {{Int2|Exoskeleton|Enrage}}. 
+* After {{Int2|Exoskeleton|Enrage}}, the next move is randomly {{Int2|Exoskeleton|Skitter}} or {{Int2|Exoskeleton|Mandibles}}.
+
+== Useful Cards ==
+* Large amounts of {{BD2|Strength}} or expensive, high-damage cards like {{C2|Bludgeon}} are less effective than usual against the '''Exoskeletons''', as each hit is capped at 9 damage no matter how much it would normally deal.
+* Multihitting attacks like {{C2|Sword Boomerang}} can benefit more than other cards from '''Strength''' because each hit can individually deal up to 9 damage.
+* Attacks like {{C2|Breakthrough}} or {{C2|Crush Under}} can hit all enemies at once.
+* Any source of {{BD2|Doom}} can bypass the damage cap, as it simply kills enemies at end of turn rather than damaging them. The "Kill enemies" effect on {{C2|End of Days}} will similarly ignore '''Hard to Kill'''.
+* {{BD2|Thorns}} from cards like {{C2|Abrasive}} will deal damage each time any of the '''Exoskeletons''' attack, and multiple times when they use '''Skitter'''.
+
+== Animations ==
+{{Bestiary|Exoskeleton}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Exoskelett
+| DEUmeaning = 
+| ESPname    = Exoesquebicho
+| ESPmeaning = 
+| FRAname    = Exosquelette
+| FRAmeaning = 
+| ITAname    = Esoscheletro
+| ITAmeaning = 
+| JPNname    = 外骨格蟲
+| JPNromanised = Soto kokkaku mushi
+| JPNmeaning = 
+| INDname    = Eksoskeleton
+| INDmeaning = 
+| KORname    = 갑각충
+| KORromanised = gabgagchung
+| KORmeaning = 
+| POLname    = Egzoszkielet
+| POLmeaning = 
+| PTBname    = Exoesqueleto
+| PTBmeaning = 
+| RUSname    = Экзоскелет
+| RUSromanised = Ekzoskelet
+| RUSmeaning = 
+| SPAname    = Placóptero
+| SPAmeaning = 
+| TURname    = Zırhkabuk
+| TURmeaning = 
+| ZHSname    = 外骨骼虫
+| ZHSromanised = waigugechong
+| ZHSmeaning = 
+| CODEname    = EXOSKELETON
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Exoskeleton: HP at A8 increased from 24-28(25-29) → 24-28(26-30)}}
+{{Update History Table/row|V0.87.0|* Buffed Exoskeletons: minor HP buff}}
+{{Update History Table/row|V0.82.0|* Added new Hive Weak encounter - Exoskeletons}}
+{{Update History Table/row|V0.80.0|* Buffed Exoskeletons: HP increased from 21(23)-27(28) -> 23(24)-28(29)}}
+{{Update History Table/row|V0.76.0|* Exoskeleton's Hard to Kill power now calculates the correct damage preview on attacks when the Exoskeleton also has Vulnerable}}
+{{Update History Table/row|V0.74.0|* Hovering over Exoskeleton enemy with an attack that deals more than 9 damage now properly reduces the amount of damage displayed on the card}}
+{{Update History Table/row|V0.72.0|* Buffed Exoskeletons: Hard to Kill power's HP loss per-turn cap decreased from 15 -> 9}}
+{{Update History Table/row|V0.71.0|* Changed Exoskeleton: can no longer randomly roll the Enrage move}}
+{{Update History Table/row|V0.70.0|* Reworked Exoskeletons' Hard To Kill power
+* Changed Exoskeletons:
+** Enrage move Strength gain increased from 1 -> 2
+** Mandibles move damage decreased from 9(11) -> 8(9)
+** Skitter move damage changed from 1(2)x3 -> 1x3(4)
+** Exoskeletons will now always use Enrage after using Mandibles}}
+{{Update History Table/row|V0.50.0|* Exoskeleton power has been renamed to Hard to Kill
+* Roach monster has been renamed to Exoskeleton}}
+{{Update History Table/row|V0.21.0|* Added clarification for Exoskeleton: the roach does not die (does not trigger Gremlin Horn)}}
+{{Update History Table/row|V0.16.0|* You now kill Roaches immediately when using the win command}}
+{{Update History Table/row|V0.15.0|* Reworked Roach encounter into Exoskeletons}}
+{{Update History Table/row|V0.10.0|* In Roach combat, now only one Roach attacks on turn 1 instead of both}}
+{{Update History Table/row|V0.9.0|* Roaches normal combat no longer gives you a relic reward}}
+{{Update History Table/row|V0.8.0|* Roach changes
+** Encounter type changed from elite -> normal
+** Exoskeleton now revives enemy for 15 instead of decreasing damage
+** HP lowered from 75-85 -> 70-75
+** Goop move changed from giving 3 -> 2 Slime cards}}
+{{Update History Table/row|2023-09-15|* Exoskeleton power is affected by non-card damage}}
+{{Update History Table/row|2023-04-21|* implement roach idle
+* Import roach rig & idle}}
+{{Update History Table/row|2023-02-09|* BALANCE: Changes to Roaches encounter}}
+{{Update History Table/row|?|* Added Roach to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

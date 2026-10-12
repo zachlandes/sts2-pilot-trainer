@@ -156,5 +156,80 @@ public sealed partial class EncounterIntelTests
         Assert.Null(ChoiceEntryPoints.ConstantSingleReturn(method));
     }
 
+    [GameFact]
+    public void CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun()
+    {
+        EngineHost.Start();
+        try
+        {
+            Assert.False(RunManager.Instance.IsInProgress);
+            var files = ProfileReceipt();
+            var atlas = PatternAtlas.Read();
+            var pages = WikiPatternPages.Read();
+            Assert.NotEmpty(pages.Pages);
+            WikiPatternPage? SourceFor(EnemyPattern enemy) => pages.Pages.FirstOrDefault(page => enemy.Variants.SelectMany(variant => variant.Nodes)
+                .SelectMany(node => node.WikiMoveNames).Any(name => name.StartsWith(page.Name + ".", StringComparison.OrdinalIgnoreCase)));
+            var rows = Enumerable.Range(0, atlas.MaximumAscension + 1).SelectMany(ascension =>
+                atlas.Columns.Last(column => column.Ascension <= ascension).Enemies.Select(enemy =>
+                {
+                    var source = SourceFor(enemy);
+                    return new { enemy.Id, Ascension = ascension, Comparison = source is null ? WikiPatternComparison.Unavailable with { Reason = "No cached source bound by an inspected move alias; see the unbound-page list." } : WikiPatternComparison.Compare(source, enemy, ascension) };
+                })).ToArray();
+            Assert.Equal(atlas.Columns[0].Enemies.Count * (atlas.MaximumAscension + 1), rows.Length);
+            Assert.All(rows.SelectMany(row => row.Comparison.Checks), check => Assert.Contains(check.Standing, new[] { "matched", "mismatch", "unresolved" }));
+            var axebot = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.AXEBOT");
+            var source = pages.Pages.Single(page => page.Name == "Axebot");
+            Assert.Contains(WikiPatternComparison.Compare(source, axebot, 0).Checks, check => check.Claim.Kind == "fixed-cycle" && check.Standing == "matched");
+            var edited = source with { Claims = source.Claims.Select(claim => claim.Kind == "damage" ? claim with { Amount = new(999) } : claim).ToArray() };
+            Assert.True(WikiPatternComparison.Compare(edited, axebot, 0).Mismatch);
+            Assert.Equal(files, ProfileReceipt());
+            Assert.False(RunManager.Instance.IsInProgress);
+            Evidence("wiki-pattern-crosscheck", new
+            {
+                atlas.Build,
+                pages.Acquisition,
+                pages.UnavailablePages,
+                Rows = rows,
+                UnboundPages = pages.Pages.Where(page => !atlas.Columns[0].Enemies.Any(enemy => SourceFor(enemy)?.Name == page.Name)).Select(page => page.Name).ToArray(),
+            });
+        }
+        finally { HeadlessEngine.Forget(); }
+    }
+
+    [Fact]
+    public void WikiClaimComparisonKeepsPartialAgreementMismatchAndUnresolvedSeparate()
+    {
+        var a = new PatternNode("A", "move", [new("B")], [], [new(5, 1, null)], false, true, 0, []) { WikiMoveNames = ["Test.Attack"] };
+        var b = new PatternNode("B", "move", [new("A")], [], [], false, true, 0, []) { WikiMoveNames = ["Test.Buff"] };
+        var enemy = new EnemyPattern("MONSTER.TEST", true, [new("Definition", [], null, "A", "A", [a, b], [], [])], [], []);
+        var source = new WikiSource("synthetic", "https://example.invalid", 1, "test", new string('a', 64));
+        var cycle = new WikiPatternClaim("fixed-cycle", ["Test.Attack", "Test.Buff"], 1, "Synthetic cycle claim", null);
+        var damage = new WikiPatternClaim("damage", ["Test.Attack"], 2, "Synthetic numeric claim", new(5));
+        var page = new WikiPatternPage("Test", source, "Synthetic source, not wiki evidence", "Synthetic pattern") { Claims = [cycle, damage] };
+        var agreement = WikiPatternComparison.Compare(page, enemy, 0);
+        Assert.Equal("partial-agreement", agreement.Standing);
+        var rand = new PatternNode("RAND", "random", [new("A", Weight: 1, Repeat: "CannotRepeat"), new("B", Weight: 1, Repeat: "CannotRepeat")], [], [], false, true, 0, []);
+        var alternating = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] }, rand] }] };
+        Assert.Equal("partial-agreement", WikiPatternComparison.Compare(page with { Claims = [cycle] }, alternating, 0).Standing);
+        var conditional = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] }, rand with { Kind = "conditional" }] }] };
+        Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, conditional, 0).Checks).Standing);
+        Assert.All(agreement.Checks, check => Assert.Equal("matched", check.Standing));
+        Assert.Equal(source, agreement.Source);
+        var mismatch = WikiPatternComparison.Compare(page with { Claims = [cycle, damage with { Amount = new(999) }] }, enemy, 0);
+        Assert.True(mismatch.Mismatch);
+        Assert.Equal(999, mismatch.Checks[1].WikiValue);
+        Assert.Equal(5, mismatch.Checks[1].GameValue);
+        Assert.Equal("mismatch", WikiPatternComparison.Compare(page with { Claims = [cycle with { Kind = "self-loop", Moves = ["Test.Attack"] }] }, enemy, 0).Standing);
+        var renamed = WikiPatternComparison.Compare(page with { Claims = [cycle with { Moves = ["Test.Unbound", "Test.Buff"] }] }, enemy, 0);
+        Assert.Equal("unchecked", renamed.Standing);
+        Assert.Equal("unresolved", Assert.Single(renamed.Checks).Standing);
+        var noGraph = WikiPatternComparison.Compare(page, null, 0);
+        Assert.Equal("unchecked", noGraph.Standing);
+        Assert.Equal(page.PatternText, noGraph.SourceText);
+        Assert.Equal("unavailable", WikiPatternComparison.Compare(page with { SourceText = "#REDIRECT [[sts2:Missing]]" }, enemy, 0).Standing);
+        var dynamic = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a with { Attacks = [a.Attacks[0] with { ReferenceRule = "Context dependent" }] }, b] }] };
+        Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [damage] }, dynamic, 0).Checks).Standing);
+    }
+
     private static float WeightThatMustNotExecute() => throw new InvalidOperationException("A context-dependent weight must not execute.");
 }

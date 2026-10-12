@@ -1,0 +1,107 @@
+{{Enemy Infobox
+|Name   = Myte
+|Image  = StS2_Myte.png
+|HP     = 61-67
+|AscHP  = 64-69
+|Debut  = Hive
+|Type   = Normal
+}}
+'''Myte''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Myte}}
+{{Intents Table/row
+|Name   = Toxic Cornucopia
+|Intent = StatusCard
+|Effect = Adds 2 {{C2|Toxic}} to your hand.
+}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/row
+|Name   = Suck
+|Intent = Attack1, Buff
+|Effect = Deals (4;{{Asc2|9|6}}) damage. Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Mytes always appear in pairs. One opens with {{Int2|Myte|Toxic Cornucopia}} and the other opens with {{Int2|Myte|Suck}}.
+
+Afterward, Mytes follow a fixed pattern:
+# {{Int2|Myte|Toxic Cornucopia}}
+# {{Int2|Myte|Bite}}
+# {{Int2|Myte|Suck}}
+
+== Useful Cards ==
+* Cards like {{C2|Fiend Fire}}, {{C2|Compact}} and {{C2|GUARDS!!!}} can get rid of all copies of {{C2|Toxic}} in hand without needing to pay their {{KW2|Energy}} cost, and also gain an additional benefit from doing so.
+* Cards like {{C2|Calculated Gamble}} or {{C2|Storm of Steel}} can also get rid of {{C2|Toxic}} and gain a benefit for doing so, although this means that {{C2|Toxic}} will be drawn again once the deck is reshuffled.
+
+== Animations ==
+{{Bestiary|Myte}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Mylbe
+| DEUmeaning = 
+| ESPname    = Ácaro
+| ESPmeaning = 
+| FRAname    = Sarcopte
+| FRAmeaning = 
+| ITAname    = Acaro
+| ITAmeaning = 
+| JPNname    = マイト
+| JPNromanised = Maito
+| JPNmeaning = 
+| INDname    = Toengau
+| INDmeaning = 
+| KORname    = 진듸기
+| KORromanised = jinduigi
+| KORmeaning = 
+| POLname    = Roztycz
+| POLmeaning = 
+| PTBname    = Acarino
+| PTBmeaning = 
+| RUSname    = Кровожор
+| RUSromanised = Krovozhor
+| RUSmeaning = 
+| SPAname    = Asaltante acárido
+| SPAmeaning = 
+| TURname    = Mayt
+| TURmeaning = 
+| ZHSname    = 异螨
+| ZHSromanised = yiman
+| ZHSmeaning = 
+| CODEname    = MYTE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Buffed Myte: HP increased from 61(63)-67(69) -> 61(64)-67(69)}}
+{{Update History Table/row|V0.90.0|* Nerfed Mytes:
+** Suck move damage decreased
+** Moveset is no longer random}}
+{{Update History Table/row|V0.84.0|* Changed Mytes: all Status cards are now added to your Hand}}
+{{Update History Table/row|V0.77.0|* Fixed missing Myte SFX}}
+{{Update History Table/row|V0.66.0|* Fixed enemy spacing on the Mytes combat encounter}}
+{{Update History Table/row|V0.62.0|* Changed Mytes combat: now has 2 Mytes instead of 3}}
+{{Update History Table/row|V0.56.0|* Buffed Mytes: HP increased from 36(37)-41(42) -> 40(41)-45(45)}}
+{{Update History Table/row|V0.55.0|* Buffed Mytes: Bite damage increased from 8(10) -> 9(12)}}
+{{Update History Table/row|V0.46.0|* Changed Mytes encounter:
+** Changed moveset
+** HP decreased from 51(53)-57(59) -> 36(37)-41(42)}}
+{{Update History Table/row|V0.44.0|* Changed Myte:
+** Changed moveset
+** Strength gain decreased from 5 -> 3(4)
+* Added projectile to Myte’s toxic attack}}
+{{Update History Table/row|V0.27.0|* Changed Burrowing Buddies encounter: now has a Workbug paired with a Burrowing Bug instead of a Myte (which makes one less status-giving fight in Act 2)}}
+{{Update History Table/row|V0.18.0|* Nerfed Myte: HP decreased from 60-66 -> 51-57}}
+{{Update History Table/row|V0.15.0|* Nerfed Mytes: Toxic move now adds less toxic cards, decreased from 3 -> 2}}
+{{Update History Table/row|?|* Added Myte to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

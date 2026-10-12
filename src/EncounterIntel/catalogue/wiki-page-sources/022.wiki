@@ -1,0 +1,151 @@
+{{Enemy Infobox
+|Name   = Decimillipede
+|HP     = 40-46
+|AscHP  = 46-52
+|Powers = {{BD2|Reattach}} 25
+|Debut  = Hive
+|Type   = Elite
+|Tab1   = Front
+|Image  = StS2 Decimillipede Left.png
+|Tab2   = Middle
+|Tab2Image = StS2 Decimillipede.png
+|Tab3   = Back
+|Tab3Image = StS2 Decimillipede Right.png
+}}
+{{Power Infobox
+|Name         = Reattach
+|Image        = StS2 Icon Reattach.png
+|Description  = If other segments are still alive, revives in 2 turns with X HP.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Decimillipede''' is an {{2|Elites|Elite Enemy}} found in the {{2|Hive}}. It appears as three identical segments that fight together.
+
+== Pattern ==
+{{Intents Table/start|Decimillipede}}
+{{Intents Table/row
+|Name   = Bulk
+|Intent = Attack2, Buff
+|Effect = Deals (6;{{Asc2|9|7}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Writhe
+|Intent = Attack2
+|Effect = Deals (5x2;{{Asc2|9|6x2}}) damage.
+}}
+{{Intents Table/row
+|Name   = Outgas
+|Intent = Attack2, Debuff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Applies 1 {{BD2|Weak}}.
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Reattach
+|Intent = Heal
+|Effect = Revives with 25 HP (if other segments are alive).
+}}
+{{Intents Table/end}}
+Each segment cycles through the following pattern:
+# {{Int2|Decimillipede|Bulk}}
+# {{Int2|Decimillipede|Writhe}}
+# {{Int2|Decimillipede|Outgas}}
+Each segment starts on a different move, which will remain the case until one or more of them is killed.
+* When a segment is killed, it uses {{Int2|Decimillipede|Reattach}} to revive with 25 HP provided at least one other segment is still alive. After reviving, it resumes with a random move. which may disrupt their prior synchrony.
+
+== Interactions ==
+=== Anti-Synergies ===
+* Because {{BD2|Doom}} triggers ''after'' '''Decimillipede''' segments will have regenerated via {{Int2|Decimillipede|Reattach}}, it can sometimes lead to scenarios wherein one or more segments are actively dying via Doom, but not until after the other(s) have respawned. Which can reoccur the following turn, depending on the player's Doom sources.
+** {{BD2|Poison}} triggers ''before'' enemy moves, and does not suffer from this same issue.
+
+== Trivia ==
+* This fight is functionally similar to the {{M|Darkling|Darklings}} from Slay the Spire 1, with the same dynamic of 3 enemies that will revive if any of the others are alive.
+* Using a {{P2|Beetle Juice}} potion on a segment doesn't shrink it visually, however the potion effect remains unchanged.
+* Reducing the HP of one of them to 0 does not count as a '''{{2|Fatal}}''' kill unless it was the final enemy.
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Zigtausendfüßer
+| DEUmeaning = 
+| ESPname    = Decimilpiés
+| ESPmeaning = 
+| FRAname    = Dix-Mille-Pattes
+| FRAmeaning = 
+| ITAname    = Diecimilapiedi
+| ITAmeaning = 
+| JPNname    = 万足ムカデ
+| JPNromanised = Man soku mukade
+| JPNmeaning = 
+| INDname    = Kaki Sepuluhribu
+| INDmeaning = 
+| KORname    = 만각지네
+| KORromanised = mangagjine
+| KORmeaning = 
+| POLname    = Wielonoga
+| POLmeaning = 
+| PTBname    = Decimilípede
+| PTBmeaning = 
+| RUSname    = Скольконожка
+| RUSromanised = Skol'konozhka
+| RUSmeaning = 
+| SPAname    = Diezmilpiés
+| SPAmeaning = 
+| TURname    = Ondabirayak
+| TURmeaning = 
+| ZHSname    = 残杀千足虫
+| ZHSromanised = canshaqianzuchong
+| ZHSmeaning = 
+| CODEname    = DECIMILLIPEDE_SEGMENT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.110.0|* Decimillipede now correctly displays stats in the Bestiary}}
+{{Update History Table/row|V0.106.0|* Added Decimillipede to the Bestiary}}
+{{Update History Table/row|V0.100.0|* Nerfed Decimillipede: HP decreased from 42(48)-48(56) to 40(46) - 46(52)}}
+{{Update History Table/row|V0.90.0|* Buffed Decimillipede: Writhe move damage increased from 3x3 -> 5x2
+* Fixed the timing of the Decimillipede SFX}}
+{{Update History Table/row|V0.89.0|* Added SFX for Decimillipede}}
+{{Update History Table/row|V0.82.0|* Fixed Make It So VFX causing weird visuals in the Decimillipede fight}}
+{{Update History Table/row|V0.77.0|* Fixed softlock when you kill multiple Decimillipede segments at once}}
+{{Update History Table/row|V0.76.0|* Decimillipede segment VFX no longer render above map screen}}
+{{Update History Table/row|V0.69.0|* Fatal effects like Hand of Greed card no longer trigger on infinitely-reviving enemies like Decimillipede unless they've been killed for the final time}}
+{{Update History Table/row|V0.62.0|* Nerfed Decimillipede: damage decreased}}
+{{Update History Table/row|V0.56.0|* Decimillipede now fades out after it dies}}
+{{Update History Table/row|V0.47.0|* Decimillipede's intents now properly disappear when combat ends}}
+{{Update History Table/row|V0.42.0|* Decimillipede no longer breaks visually when dying to Doom}}
+{{Update History Table/row|V0.41.0|* Knockout Blow card now properly triggers after killing a Decimillipede Segment}}
+{{Update History Table/row|V0.40.0|* Changed Decemillipede:
+** Renamed to Decimillipede
+** Changed values and moveset
+** Now always revives with 25 HP}}
+{{Update History Table/row|V0.38.0|* Taunt card can no longer target dead Decemillipede segment}}
+{{Update History Table/row|V0.36.0|* Decemillipede shows now correct intent for Constrict move}}
+{{Update History Table/row|V0.35.0|* Nerfed Decemillipede: revives after 2 turns instead of 1}}
+{{Update History Table/row|V0.34.0|* Changed Decemillipede: segments do less damage and have less health
+* Decemillipede animations no longer get stuck
+* Decemillipede segment health is always even and unique}}
+{{Update History Table/row|V0.33.0|* Reintroduced Decemillipede as an Act 2 elite}}
+{{Update History Table/row|V0.15.0|* Replaced Decemillipede with Antlion, a new Act 2 boss}}
+{{Update History Table/row|V0.13.0|* Corrected the description of the Decemillipede's reattach power
+* Decemillipede should now never be able to act while it's untargetable}}
+{{Update History Table/row|V0.10.0|* Fixed softlock between Decemillipede segments dying from poison}}
+{{Update History Table/row|V0.9.0|* Decemillipede segments now immediately go to Heal intent when they die
+* Darkness orbs can no longer attack parts of the Decemillipede that are regenerating}}
+{{Update History Table/row|2023-09-15|* Fixed Decimillipede background layering}}
+{{Update History Table/row|2023-07-07|* Decemillipede healthbar reappears when he regrows}}
+{{Update History Table/row|2023-06-30|* Changes to Decemillipede boss (no spoilers)}}
+{{Update History Table/row|2023-05-12|* Fixed Doom permanently disabling Decemillipede
+}}
+{{Update History Table/row|2023-05-05|* New Decimillipede animations
+* Tweaked hitbox and positioning of decemillipede segments}}
+{{Update History Table/row|2023-04-21|* implemented new decemillipede healthbar}}
+{{Update History Table/row|?|* Added Decemillipede  to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

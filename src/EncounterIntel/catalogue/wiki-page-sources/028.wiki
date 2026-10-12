@@ -1,0 +1,371 @@
+'''Fabricator''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}. It summons bots to fight alongside it.
+{{TOC limit|2}}
+
+== Fabricator ==
+{{Enemy Infobox
+|Name   = Fabricator
+|Image  = StS2_Fabricator.png
+|HP     = 150
+|AscHP  = 155
+|Debut  = Glory
+|Type   = Normal
+}}
+=== Pattern ===
+{{Intents Table/start|Fabricator}}
+{{Intents Table/row
+|Name   = Fabricate
+|Intent = Summon
+|Effect = Summons 1 defensive bot ({{M2|Guardbot}} or {{M2|Noisebot}}) and 1 aggressive bot ({{M2|Zapbot}} or {{M2|Stabbot}}).
+}}
+{{Intents Table/row
+|Name   = Fabricating Strike
+|Intent = Attack3, Summon
+|Effect = Deals (18;{{Asc2|9|21}}) damage. Summons 1 aggressive bot ({{M2|Zapbot}} or {{M2|Stabbot}}).
+}}
+{{Intents Table/row
+|Name   = Disintegrate
+|Intent = Attack3
+|Effect = Deals (11;{{Asc2|9|13}}) damage.
+}}
+{{Intents Table/end}}
+Each turn, the Fabricator checks if it has fewer than 4 living allies. If so, it randomly uses either {{Int2|Fabricator|Fabricate}} or {{Int2|Fabricator|Fabricating Strike}} (equal weight). If it already has 4 or more allies, it uses {{Int2|Fabricator|Disintegrate}} instead.
+
+The Fabricator avoids summoning the same bot consecutively.
+
+{{Clear}}
+
+== Zapbot ==
+{{Enemy Infobox
+|Name   = Zapbot
+|Link   = Slay The Spire 2:Fabricator#Zapbot
+|Image  = StS2_Zapbot.png
+|HP     = 18-23
+|AscHP  = 19-24
+|Powers = {{BD2|High Voltage}} 2
+|Debut  = Glory
+|Type   = Minion
+|EncounterAliases = Fabricator Bots
+}}
+{{Power Infobox
+|Name         = High Voltage
+|Image        = StS2 Icon HighVoltage.png
+|Description  = At the start of its turn, it gains X {{BD2|Strength}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Strength
+}}
+=== Pattern ===
+{{Intents Table/start|Zapbot}}
+{{Intents Table/row
+|Name   = Zap
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Zapbot|Zap}} every turn.
+
+{{Clear}}
+
+== Stabbot ==
+{{Enemy Infobox
+|Name   = Stabbot
+|Link   = Slay The Spire 2:Fabricator#Stabbot
+|Image  = StS2_Stabbot.png
+|HP     = 18-23
+|AscHP  = 19-24
+|Debut  = Glory
+|Type   = Minion
+|EncounterAliases = Fabricator Bots
+}}
+=== Pattern ===
+{{Intents Table/start|Stabbot}}
+{{Intents Table/row
+|Name   = Stab
+|Intent = Attack2, Debuff
+|Effect = Deals (11;{{Asc2|9|12}}) damage. Applies 1 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/end}}
+Uses {{Int2|Stabbot|Stab}} every turn.
+
+{{Clear}}
+
+== Guardbot ==
+{{Enemy Infobox
+|Name   = Guardbot
+|Link   = Slay The Spire 2:Fabricator#Guardbot
+|Image  = StS2_Guardbot.png
+|HP     = 16-20
+|AscHP  = 17-21
+|Debut  = Glory
+|Type   = Minion
+|EncounterAliases = Fabricator Bots
+}}
+=== Pattern ===
+{{Intents Table/start|Guardbot}}
+{{Intents Table/row
+|Name   = Guard
+|Intent = Defend
+|Effect = Gives the Fabricator 15 {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/end}}
+Uses {{Int2|Guardbot|Guard}} every turn.
+
+{{Clear}}
+
+== Noisebot ==
+{{Enemy Infobox
+|Name   = Noisebot
+|Link   = Slay The Spire 2:Fabricator#Noisebot
+|Image  = StS2_Noisebot.png
+|HP     = 18-23
+|AscHP  = 19-24
+|Debut  = Glory
+|Type   = Minion
+|EncounterAliases = Fabricator Bots
+}}
+=== Pattern ===
+{{Intents Table/start|Noisebot}}
+{{Intents Table/row
+|Name   = Noise
+|Intent = StatusCard
+|Effect = Shuffles 2 {{C2|Dazed}} into the player's draw and discard piles.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Noisebot|Noise}} every turn.
+
+{{Clear}}
+== Animations ==
+<tabber>
+|-|Fabricator=
+{{Bestiary|Fabricator}}
+|-|Zapbot=
+{{Bestiary|Zapbot}}
+|-|Stabbot=
+{{Bestiary|Stabbot}}
+|-|Guardbot=
+{{Bestiary|Guardbot}}
+|-|Noisebot=
+{{Bestiary|Noisebot}}
+
+</tabber>
+
+== Trivia ==
+* Noisebot and Guardbot are two of only 4 enemies in the game to be incapable of causing damage, the other two being the {{M2|Fat Gremlin}} and {{M2|Eye With Teeth}}.
+
+== Names in Other Languages ==
+{{Localization
+| Title = Fabricator
+| DEUname    = Fabrikateur
+| DEUmeaning = 
+| ESPname    = Mecafabricante
+| ESPmeaning = 
+| FRAname    = Machiniste
+| FRAmeaning = 
+| ITAname    = Mechacostruttore
+| ITAmeaning = 
+| JPNname    = ファブリケーター
+| JPNromanised = Faburikeetaa
+| JPNmeaning = 
+| INDname    = Fabrikator
+| INDmeaning = 
+| KORname    = 조립 전문가
+| KORromanised = jolib jeonmunga
+| KORmeaning = 
+| POLname    = Mechanik
+| POLmeaning = 
+| PTBname    = Engenheiro
+| PTBmeaning = 
+| RUSname    = Сборщик
+| RUSromanised = Sborschik
+| RUSmeaning = 
+| SPAname    = Constructor
+| SPAmeaning = 
+| TURname    = İmalatçı
+| TURmeaning = 
+| ZHSname    = 组装师
+| ZHSromanised = zuzhuangshi
+| ZHSmeaning = 
+| CODEname    = FABRICATOR
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Zapbot
+| DEUname    = Blitzbot
+| DEUmeaning = 
+| ESPname    = Chispabot
+| ESPmeaning = 
+| FRAname    = Déchargebot
+| FRAmeaning = 
+| ITAname    = Elettrobot
+| ITAmeaning = 
+| JPNname    = ザップボット
+| JPNromanised = Zappu bot
+| JPNmeaning = 
+| INDname    = Mesin Setrum
+| INDmeaning = 
+| KORname    = 파지직봇
+| KORromanised = pajijigbos
+| KORmeaning = 
+| POLname    = Bzzynator
+| POLmeaning = 
+| PTBname    = Eletro-Robô
+| PTBmeaning = 
+| RUSname    = Шоковый бот
+| RUSromanised = Shokovyj bot
+| RUSmeaning = 
+| SPAname    = Chispatrón
+| SPAmeaning = 
+| TURname    = Çarpbot
+| TURmeaning = 
+| ZHSname    = 电击机器人
+| ZHSromanised = dianjijiqiren
+| ZHSmeaning = 
+| CODEname    = ZAPBOT
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Stabbot
+| DEUname    = Abstechbot
+| DEUmeaning = 
+| ESPname    = Puñalbot
+| ESPmeaning = 
+| FRAname    = Poignard-bot
+| FRAmeaning = 
+| ITAname    = Pugnalebot
+| ITAmeaning = 
+| JPNname    = スタブボット
+| JPNromanised = Stub bot
+| JPNmeaning = 
+| INDname    = Mesin Penikam
+| INDmeaning = 
+| KORname    = 찔러봇
+| KORromanised = jjilleobos
+| KORmeaning = 
+| POLname    = Dźgacz
+| POLmeaning = 
+| PTBname    = Perfura-Robô
+| PTBmeaning = 
+| RUSname    = Колкий бот
+| RUSromanised = Kolkij bot
+| RUSmeaning = 
+| SPAname    = Puñalatrón
+| SPAmeaning = 
+| TURname    = Saplabot
+| TURmeaning = 
+| ZHSname    = 戳刺机器人
+| ZHSromanised = chuocijiqiren
+| ZHSmeaning = 
+| CODEname    = STABBOT
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Guardbot
+| DEUname    = Schutzbot
+| DEUmeaning = 
+| ESPname    = Guardiabot
+| ESPmeaning = 
+| FRAname    = Gardebot
+| FRAmeaning = 
+| ITAname    = Guardiabot
+| ITAmeaning = 
+| JPNname    = ガードボット
+| JPNromanised = Guard bot
+| JPNmeaning = 
+| INDname    = Mesin Penjaga
+| INDmeaning = 
+| KORname    = 막아봇
+| KORromanised = mag-abos
+| KORmeaning = 
+| POLname    = Strażnik
+| POLmeaning = 
+| PTBname    = Guarda-Robô
+| PTBmeaning = 
+| RUSname    = Охранный бот
+| RUSromanised = Ohrannyj bot
+| RUSmeaning = 
+| SPAname    = Escudotrón
+| SPAmeaning = 
+| TURname    = Korubot
+| TURmeaning = 
+| ZHSname    = 守护机器人
+| ZHSromanised = shouhujiqiren
+| ZHSmeaning = 
+| CODEname    = GUARDBOT
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Noisebot
+| DEUname    = Lärmbot
+| DEUmeaning = 
+| ESPname    = Sonibot
+| ESPmeaning = 
+| FRAname    = Sonobot
+| FRAmeaning = 
+| ITAname    = Suonobot
+| ITAmeaning = 
+| JPNname    = ノイズボット
+| JPNromanised = Noise bot
+| JPNmeaning = 
+| INDname    = Mesin Bising
+| INDmeaning = 
+| KORname    = 소음봇
+| KORromanised = so-eumbos
+| KORmeaning = 
+| POLname    = Hałaśnik
+| POLmeaning = 
+| PTBname    = Ruído-Robô
+| PTBmeaning = 
+| RUSname    = Шумовой бот
+| RUSromanised = Shumovoj bot
+| RUSmeaning = 
+| SPAname    = Ruidotrón
+| SPAmeaning = 
+| TURname    = Gürültübot
+| TURmeaning = 
+| ZHSname    = 噪音机器人
+| ZHSromanised = zaoyinjiqiren
+| ZHSmeaning = 
+| CODEname    = NOISEBOT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.109.0|* Fixed Fabricator animations that weren't playing right}}
+{{Update History Table/row|V0.106.0|* Zapbot's High Voltage power's hovertip now properly mentions that it gains Strength at the end of its turn instead of the start}}
+{{Update History Table/row|V0.103.3|* Fixed the Zapbot's High Voltage power hovertip to correctly state it gains Strength at the end of its turn instead of the start}}
+{{Update History Table/row|V0.100.0|* Nerfed Fabricator: HP value of all bots decreased by 5}}
+{{Update History Table/row|V0.96.0|* Killing the last non-minion enemy with Thorns while it's attacking and summoning a minion in the same move (such as Fabricator) now properly ends combat}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Fabricator (hurt)}}
+{{Update History Table/row|V0.87.0|* Fabricator now correctly only summons aggressive bots when doing his attack + single bot summon move}}
+{{Update History Table/row|V0.82.0|* Nered Stabbot:
+** Damage decreased from 14(15) -> 11(12)
+** Debuff applied changed from Weak -> Frail
+* Nerfed Guardbot: Block decreased from 20 -> 15}}
+{{Update History Table/row|V0.80.0|* Changed Fabricator: reworked moveset}}
+{{Update History Table/row|V0.77.0|* Nerfed Stabbot: damage decreased from 16(18) -> 14(15)
+* Nerfed Guardbot: HP decreased from 23(24)-28(29) -> 21(22)-25(26)}}
+{{Update History Table/row|V0.65.0|* Nerfed Fabricator: big attack damage decreased from 25(28) -> 18(21)}}
+{{Update History Table/row|V0.62.0|* Fabricator flying minions now fall all the way to the ground in their death animation}}
+{{Update History Table/row|V0.48.0|* Added sfx for Zapbot, Guardbot, and Noisebot}}
+{{Update History Table/row|V0.41.0|* Reworked Fabricator}}
+{{Update History Table/row|V0.38.0|* Nerfed Fabricator:
+** All bots' health decreased by 5 HP
+** Guardbot now gives Block only to its allies, not itself}}
+{{Update History Table/row|V0.34.0|* Changed Stabbot: now applies Weak instead of Frail
+* Changed Noisebot: now also adds a Dazed to discard pile at the same time it adds one to top of draw pile}}
+{{Update History Table/row|V0.18.0|* Reworked Fabricator encounter:
+** Changed HP values for Fabricator and bots
+** Now summons two bots at a time and stops summoning earlier}}
+{{Update History Table/row|2023-08-04|* Fabricator enemy no longer softlocks at the start of combat}}
+{{Update History Table/row|2023-06-16|* Fabricator Battle HP Value changes: Fabricator 140->123. Guardbot 40->45. Noisebot 30->40. Stabbot 30->35. Zapbot 22->30.}}
+{{Update History Table/row|2023-06-02|* Added Fabricator enemy encounter}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

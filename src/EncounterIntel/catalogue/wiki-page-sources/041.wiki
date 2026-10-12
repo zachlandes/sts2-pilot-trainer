@@ -1,0 +1,124 @@
+{{Enemy Infobox
+|Name   = Hunter Killer
+|Image  = StS2_Hunter Killer.png
+|HP     = 121
+|AscHP  = 126
+|Debut  = Hive
+|Type   = Normal
+}}
+{{Power Infobox
+|Name         = Tender
+|Image        = StS2 Icon Tender.png
+|Description  = Whenever you play a card, lose X {{BD2|Strength}} and X {{BD2|Dexterity}} this turn.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToPlayer = Strength (Negative), Dexterity (Negative)
+}}
+'''Hunter Killer''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Hunter Killer}}
+{{Intents Table/row
+|Name   = Tenderizing Goop
+|Intent = Debuff
+|Effect = Applies 1 {{BD2|Tender}}.
+|GivesToPlayer = Tender
+}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack3
+|Effect = Deals (17;{{Asc2|9|19}}) damage.
+}}
+{{Intents Table/row
+|Name   = Puncture
+|Intent = Attack4
+|Effect = Deals (7;{{Asc2|9|8}}) damage ×3.
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Hunter Killer|Tenderizing Goop}}. After that, randomly uses {{Int2|Hunter Killer|Bite}} or {{Int2|Hunter Killer|Puncture}}, with {{Int2|Hunter Killer|Puncture}} being twice as likely. {{Int2|Hunter Killer|Bite}} cannot be used twice in a row.
+
+== Notes ==
+* The {{BD2|Tender}} debuff reduces {{BD2|Strength}} and {{BD2|Dexterity}} after all of a played card's effects are resolved, so that the damage and {{KW2|Block}} values displayed on cards are accurate.
+* Whenever a card's effect plays another card(s) as part of its resolution (such as {{C2|Cascade}} or {{C2|Catastrophe}}) or when a {{KW2|Sly}} card is discarded by a card's effect, that initial card does not resolve until the card(s) it plays have resolved. Thus, {{BD2|Tender}} does not reduce {{BD2|Strength}} and {{BD2|Dexterity}} for that card play until after the other cards are played.
+** The player still loses {{BD2|Strength}} and {{BD2|Dexterity}} equal to the total number of cards played in the combo.
+** For instance, when playing {{C2|Knife Trap}} to play 2 {{KW|Exhaust|Exhausted|2}} {{C2|Shiv|Shivs}}, {{BD2|Tender}} does not reduce {{BD2|Strength}} and {{BD2|Dexterity}} for {{C2|Knife Trap}} itself until all the played {{C2|Shiv|Shivs}} are played (at which point {{C2|Knife Trap}} resolves). The first {{C2|Shiv}} will deal full damage and trigger {{BD2|Tender}}, and then the second {{C2|Shiv}} will deal 1 less damage and trigger {{BD2|Tender}} again. Afterwards, {{C2|Knife Trap}} resolves and triggers {{BD2|Tender}} for a third time.
+
+== Animations ==
+{{Bestiary|Hunter Killer}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Mörder der Jäger
+| DEUmeaning = 
+| ESPname    = Mortívoro
+| ESPmeaning = 
+| FRAname    = Chasseur-tueur
+| FRAmeaning = 
+| ITAname    = Predatore di cacciatori
+| ITAmeaning = 
+| JPNname    = ハンターキラー
+| JPNromanised = Hunter killer
+| JPNmeaning = 
+| INDname    = Pembunuh Pemburu
+| INDmeaning = 
+| KORname    = 사냥꾼 살해자
+| KORromanised = sanyangkkun salhaeja
+| KORmeaning = 
+| POLname    = Zabójczy Łowca
+| POLmeaning = 
+| PTBname    = Predador de Predadores
+| PTBmeaning = 
+| RUSname    = Убийца охотников
+| RUSromanised = Ubijtsa ohotnikov
+| RUSmeaning = 
+| SPAname    = Cazador de cazadores
+| SPAmeaning = 
+| TURname    = Avcı Katili
+| TURmeaning = 
+| ZHSname    = 猎人杀手
+| ZHSromanised = lierenshashou
+| ZHSmeaning = 
+| CODEname    = HUNTER_KILLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Hunter Killer enemy}}
+{{Update History Table/row|V0.85.0|* Fixed Hunter Killer spray VFX never stopping if its animation gets interrupted}}
+{{Update History Table/row|V0.38.0|* Changed Hunter Killer:
+** Now applies 1 Tender instead of 4 Weak
+** Tender: “Whenever you play a card, lose 1 Strength and 1 Dexterity that turn.”
+* Fixed Hunter Killer animation transitions}}
+{{Update History Table/row|V0.37.0|* Nerfed Hunter Killer:
+** Puncture damage decreased from 6(7)x4 -> 7(8)x3
+** Bite damage decreased from 19(22) -> 17(19)}}
+{{Update History Table/row|V0.34.0|* Changed Hunter Killer: now applies Weak instead of Frail}}
+{{Update History Table/row|V0.29.0|* Buffed Hunter Killer: Bite move damage from 15 -> 19}}
+{{Update History Table/row|V0.27.0|* Changed Hunter Killer:
+** No longer gives Wounds
+** Bite damage decreased from 22 -> 15
+** Puncture damage increased from 3x5 -> 4x6}}
+{{Update History Table/row|V0.19.0|* Buffed Hunter Killer:
+** Damage on both moves increased
+** Moveset AI slightly altered}}
+{{Update History Table/row|V0.12.0|* Hunter Killer Bite damage lowered from 20 -> 17.
+* Hunter Killer Puncture damage lowered from 4x3 -> 3x3.
+* Hunter Killer Tenderizing Goop now applies Frail instead of Vulnerable.}}
+{{Update History Table/row|V0.9.0|* Hunter Killer reworked
+** HP increased from 110 -> 121
+** Bite Damage increased from 18 -> 20
+** Puncture -> now adds 3 Wounds in addition to damage
+** Tenderizing Goop Vulnerable debuff increased from 2 -> 4
+** Bravery power removed}}
+{{Update History Table/row|2023-09-08|* Added new Hunter Killer animations}}
+{{Update History Table/row|2023-04-21|* implemented hunter killer idle
+* import Hunter Killer rig with idle animation}}
+{{Update History Table/row|?|* Added Hunter Killer to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

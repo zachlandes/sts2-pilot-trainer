@@ -1,0 +1,141 @@
+{{Enemy Infobox
+|Name   = Infested Prism
+|Image  = StS2_Infested Prism.png
+|HP     = 161
+|AscHP  = 171
+|Powers = {{BD2|Vital Spark}} 2({{Asc2|9|3}})
+|Debut  = Hive
+|Type   = Elite
+}}
+{{Power Infobox
+|Name         = Vital Spark
+|Image        = StS2 Icon VitalSpark.png
+|Description  = All Skills are {{KW2|Tainted}} X.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToPlayer = Tainted
+}} 
+{{Power Infobox
+|Name         = Tainted
+|Image        = StS2 Icon Tainted.png
+|Description  = Take X additional damage from Attacks this turn.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Removed
+|Cap          = 
+}}
+'''Infested Prism''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in {{2|Hive}}. 
+
+== Pattern ==
+{{Intents Table/start|Infested Prism}}
+{{Intents Table/row
+|Name   = Jab
+|Intent = Attack4
+|Effect = Deals (15;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/row
+|Name   = Radiate
+|Intent = Attack3, Defend
+|Effect = Deals (11;{{Asc2|9|13}}) damage. Gains (16;{{Asc2|9|18}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Whirlwind
+|Intent = Attack4
+|Effect = Deals (5;{{Asc2|9|6}}) damage ×3.
+}}
+{{Intents Table/row
+|Name   = Pulsate
+|Intent = Attack3, Buff, Defend
+|Effect = Deal (8;{{Asc2|9|10}}) damage. Gains (20;{{Asc2|8|22}}) {{KW2|Block}} and {{BD2|Vital Spark}} (2;{{Asc2|9|3}}).
+|GivesToEnemy = Block, Vital Spark
+}}
+{{Intents Table/end}}
+The Infested Prism repeats a fixed four-move cycle:
+# {{Int2|Infested Prism|Jab}}
+# {{Int2|Infested Prism|Radiate}}
+# {{Int2|Infested Prism|Whirlwind}}
+# {{Int2|Infested Prism|Pulsate}}
+
+== Useful Cards ==
+* Cards which are not Skills but still provide {{KW2|Block}}, such as {{C2|Iron Wave}} or {{C2|Afterimage}}, can prevent damage without gaining {{BD2|Tainted}}.
+* Expensive skills like {{C2|Reanimate}} or {{C2|Impervious}}, which provide significant benefits while only gaining {{KW2|Tainted}} once, tend to be more effective than cheaper skills like {{C2|Deflect}} or {{C2|Prepared}}.
+* Decks which rely on skills like {{C2|Deadly Poison}} or {{C2|No Escape}} to kill enemies are generally not effective against this enemy, as it will be difficult to deal damage to the '''Infested Prism''' without taking additional damage yourself.
+
+== Trivia ==
+* Many players often refer to the '''Infested Prism''' as "[https://en.wikipedia.org/wiki/Doritos Dorito]" due to its shape and color. 
+
+== Animations ==
+{{Bestiary|Infested Prism}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Befallenes Prisma
+| DEUmeaning = 
+| ESPname    = Prisma infestado
+| ESPmeaning = 
+| FRAname    = Prisme infesté
+| FRAmeaning = 
+| ITAname    = Prisma infestato
+| ITAmeaning = 
+| JPNname    = 寄生されたプリズム
+| JPNromanised = Kisei sareta prism
+| JPNmeaning = 
+| INDname    = Prisma Terinfeksi
+| INDmeaning = 
+| KORname    = 감염된 프리즘
+| KORromanised = gam-yeomdoen peulijeum
+| KORmeaning = 
+| POLname    = Zainfekowany Pryzmat
+| POLmeaning = 
+| PTBname    = Prisma Contaminado
+| PTBmeaning = 
+| RUSname    = Зараженная призма
+| RUSromanised = Zarazhennaja prizma
+| RUSmeaning = 
+| SPAname    = Prisma infestado
+| SPAmeaning = 
+| TURname    = İstila Edilmiş Prizma
+| TURmeaning = 
+| ZHSname    = 感染棱柱
+| ZHSromanised = ganranlengzhu
+| ZHSmeaning = 
+| CODEname    = INFESTED_PRISM
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|v0.106.0|* Vital Spark changed The first time it takes Attack damage each turn, the attacker gains Energy -> All Skills are Tainted 2(3).
+* Health reduced 200(215) -> 161(171)
+* Jab reduced 22(24) -> 15(17)
+* Radiate reduced 16(18) -> 11(13)
+* Whirlwind reduced 9(10) -> 5(6)
+* Pulsate Changed Gains 20(22) Block and 4(5) Strength -> Deal 8(10) Damage. Gain 20(22) Block and Vital Spark 2(3)
+* Fixed softlock after defeating Infested Prism}}
+{{Update History Table/row|V0.94.0|* Buffed Wasp Prism:
+** Jab move damage increased from 20(21) -> 22(24)
+** Pulsate Block increased from 12** > 18(20)
+** Radiate move damage and block increased from 14(16) -> 16(18)}}
+{{Update History Table/row|V0.91.0|* Buffed Infested Prism:
+** Now also gains 12 Block on its Strength gain turn
+** Radiate move damage and Block gain increased from 12(13) -> 14(16)}}
+{{Update History Table/row|V0.90.0|* Reworked Infested Prism + is now a single-enemy elite}}
+{{Update History Table/row|V0.76.0|* Fossil Stalker and Infested Prism monsters' Suck power no longer double-dips on Strength gain when a hit kills Osty and "tramples" over to also hit the player}}
+{{Update History Table/row|V0.75.0|* Renamed Wasp Prism -> Infested Prism}}
+{{Update History Table/row|V0.72.0|* Added animations for Wasp Prism}}
+{{Update History Table/row|V0.71.0|* Fixed softlock when you kill Wasp Prism while it's stunned by Tanx's Whistle}}
+{{Update History Table/row|V0.63.0|* Fixed issue where powers would become unhoverable when Wasp Prism prevented its own death before exploding}}
+{{Update History Table/row|V0.57.0|* Doom no longer prevents Wasp Prism enemy from exploding}}
+{{Update History Table/row|V0.56.0|* Changed Wasp Prism: Volatile power now waits a turn before it explodes}}
+{{Update History Table/row|V0.55.0|* Buffed Wasp Prisms:
+** Radiate damage increased from 5(6)x2 -> 6(7)x2
+** Volatile damage increased from 11 -> 15}}
+{{Update History Table/row|V0.54.0|* Added Infested Prisms Elite enemy to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

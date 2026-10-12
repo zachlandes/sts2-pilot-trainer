@@ -1,0 +1,95 @@
+{{Enemy Infobox
+|Name   = Two-Tailed Rat
+|Image  = StS2_Two-Tailed Rat.png
+|HP     = 17-21
+|AscHP  = 18-22
+|Debut  = Underdocks
+|Type   = Normal
+}}
+'''Two-Tailed Rat''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}. Three appear together in the encounter.
+
+== Pattern ==
+{{Intents Table/start|Two-Tailed Rat}}
+{{Intents Table/row
+|Name   = Scratch
+|Intent = Attack2
+|Effect = Deals (8;{{Asc2|9|9}}) damage.
+}}
+{{Intents Table/row
+|Name   = Disease Bite
+|Intent = Attack2
+|Effect = Deals (6;{{Asc2|9|7}}) damage.
+}}
+{{Intents Table/row
+|Name   = Screech
+|Intent = Debuff
+|Effect = Applies 1 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Call for Backup
+|Intent = Summon
+|Effect = Summons a new {{M2|Two-Tailed Rat}}.
+}}
+{{Intents Table/end}}
+Each rat starts with a different move: one uses {{Int2|Two-Tailed Rat|Scratch}}, one uses {{Int2|Two-Tailed Rat|Disease Bite}}, and one uses {{Int2|Two-Tailed Rat|Screech}}. After the first turn, each rat randomly picks from {{Int2|Two-Tailed Rat|Scratch}}, {{Int2|Two-Tailed Rat|Disease Bite}}, or {{Int2|Two-Tailed Rat|Screech}} each turn. Cannot use the same move twice in a row.
+
+After at least two turns, a rat may use {{Int2|Two-Tailed Rat|Call for Backup}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total.
+
+== Notes ==
+* Despite its name, the Two-Tailed Rat doesn't visually have two tails and instead has one tail that is forked at the end.
+* The {{M|Fungi Beast|Fungi Beasts}} from Slay the Spire 1 appear to be Two-Tailed Rats corpses with a fungal infection controlling them.
+
+== Animations ==
+{{Bestiary|Two Tailed Rat}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Zweischwänzige Ratte
+| DEUmeaning = 
+| ESPname    = Rata bicola
+| ESPmeaning = 
+| FRAname    = Rat bicaudé
+| FRAmeaning = 
+| ITAname    = Topo bicoda
+| ITAmeaning = 
+| JPNname    = 双尾のネズミ
+| JPNromanised = Souo no nezumi
+| JPNmeaning = 
+| INDname    = Tikus Berekor Dua
+| INDmeaning = 
+| KORname    = 두꼬리쥐
+| KORromanised = du-kkolijwi
+| KORmeaning = 
+| POLname    = Zmutowany Szczur
+| POLmeaning = 
+| PTBname    = Rato Duas-Caudas
+| PTBmeaning = 
+| RUSname    = Двухвостая крыса
+| RUSromanised = Dvuhvostaja krysa
+| RUSmeaning = 
+| SPAname    = Rata de cola bífida
+| SPAmeaning = 
+| TURname    = İki Kuyruklu Fare
+| TURmeaning = 
+| ZHSname    = 双尾鼠
+| ZHSromanised = shuangweishu
+| ZHSmeaning = 
+| CODEname    = TWO_TAILED_RAT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Two-Tailed Rat enemy}}
+{{Update History Table/row|V0.75.0|* Changed Two Tailed Rat: can no longer constantly repeat Scratch move}}
+{{Update History Table/row|V0.57.0|* Nerfed Two-Tailed Rat:
+** Screech move can only be done at most once every three turns
+** Screech move no longer gains Block
+* Added animations for Two-Tailed Rat enemy}}
+{{Update History Table/row|?|* Added Two-Tailed Rat to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

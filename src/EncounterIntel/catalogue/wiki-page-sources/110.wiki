@@ -1,0 +1,309 @@
+{{Sequel Disambiguation}}
+'''Slimes''' are normal {{2|Monsters|Enemies}} found in the {{2|Overgrowth}}. They come in four varieties: two Leaf Slimes and two Twig Slimes, each in a small (S) and medium (M) size. They appear together in the Slimes encounter and as companions in other Overgrowth encounters.
+== Encounters ==
+* Easy Slimes: 1 of each (S) Slime, and a Random (M) Slime.
+* Hard Slimes: 1 of each Slime variety.
+* {{M2|Flyconid}} and a Random (M) Slime.
+* {{M2|Slithering Strangler}} and 1 of each (S) Slime.
+* {{M2|Slithering Strangler}} and a Random (M) Slime.
+== Leaf Slime (S) ==
+{{Enemy Infobox
+|Name   = Leaf Slime (S)
+|Link   = Slay The Spire 2:Slimes#Leaf Slime (S)
+|Image  = StS2_Leaf Slime (S).png
+|HP     = 11-15
+|AscHP  = 12-16
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+
+=== Pattern ===
+{{Intents Table/start|Leaf Slime (S)}}
+{{Intents Table/row
+|Name   = Tackle
+|Intent = Attack1
+|Effect = Deals (3;{{Asc2|9|4}}) damage.
+}}
+{{Intents Table/row
+|Name   = Goop
+|Intent = StatusCard
+|Effect = Shuffles 1 {{C2|Slimed}} into your discard pile.
+}}
+{{Intents Table/end}}
+Randomly picks {{Int2|Leaf Slime (S)|Tackle}} or {{Int2|Leaf Slime (S)|Goop}} each turn. Cannot use the same move twice in a row.
+
+{{Clear}}
+
+== Leaf Slime (M) ==
+{{Enemy Infobox
+|Name   = Leaf Slime (M)
+|Link   = Slay The Spire 2:Slimes#Leaf Slime (M)
+|Image  = StS2_Leaf Slime (M).png
+|HP     = 32-35
+|AscHP  = 33-36
+|Debut  = Overgrowth
+|Type   = Normal
+|EncounterAliases = Slimes (M)
+}}
+
+=== Pattern ===
+{{Intents Table/start|Leaf Slime (M)}}
+{{Intents Table/row
+|Name   = Clump Shot
+|Intent = Attack2
+|Effect = Deals (8;{{Asc2|9|9}}) damage.
+}}
+{{Intents Table/row
+|Name   = Sticky Shot
+|Intent = StatusCard
+|Effect = Shuffles 2 {{C2|Slimed}} into your discard pile.
+}}
+{{Intents Table/end}}
+Always starts with {{Int2|Leaf Slime (M)|Sticky Shot}}, then alternates between {{Int2|Leaf Slime (M)|Clump Shot}} and {{Int2|Leaf Slime (M)|Sticky Shot}}.
+
+{{Clear}}
+
+== Twig Slime (S) ==
+{{Enemy Infobox
+|Name   = Twig Slime (S)
+|Link   = Slay The Spire 2:Slimes#Twig Slime (S)
+|Image  = StS2_Twig Slime (S).png
+|HP     = 7-11
+|AscHP  = 8-12
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+
+=== Pattern ===
+{{Intents Table/start|Twig Slime (S)}}
+{{Intents Table/row
+|Name   = Tackle
+|Intent = Attack1
+|Effect = Deals (4;{{Asc2|9|5}}) damage.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Twig Slime (S)|Tackle}} every turn.
+
+{{Clear}}
+
+== Twig Slime (M) ==
+{{Enemy Infobox
+|Name   = Twig Slime (M)
+|Link   = Slay The Spire 2:Slimes#Twig Slime (M)
+|Image  = StS2_Twig Slime (M).png
+|HP     = 26-28
+|AscHP  = 27-29
+|Debut  = Overgrowth
+|Type   = Normal
+|EncounterAliases = Slimes (M)
+}}
+
+=== Pattern ===
+{{Intents Table/start|Twig Slime (M)}}
+{{Intents Table/row
+|Name   = Chomp
+|Intent = Attack3
+|Effect = Deals (11;{{Asc2|9|12}}) damage.
+}}
+{{Intents Table/row
+|Name   = Sticky Shot
+|Intent = StatusCard
+|Effect = Shuffles 1 {{C2|Slimed}} into your discard pile.
+}}
+{{Intents Table/end}}
+Always starts with {{Int2|Twig Slime (M)|Sticky Shot}}. After that, each turn it randomly picks {{Int2|Twig Slime (M)|Chomp}} (67%) or {{Int2|Twig Slime (M)|Sticky Shot}} (33%). Cannot use {{Int2|Twig Slime (M)|Sticky Shot}} twice in a row.
+
+{{Clear}}
+
+== Animations ==
+<tabber>
+|-|Leaf Slime (S)=
+{{Bestiary|Leaf Slime S}}
+|-|Leaf Slime (M)=
+{{Bestiary|Leaf Slime M}}
+|-|Twig Slime (S)=
+{{Bestiary|Twig Slime S}}
+|-|Twig Slime (M)=
+{{Bestiary|Twig Slime M}}
+|-|Twig Slime (M) Phobia Mode=
+{{Bestiary|Phobia Twig Slime M}}
+</tabber>
+== Names in Other Languages ==
+{{Localization
+| Title = Leaf Slime (S)
+| DEUname    = Blattschleim (kl.)
+| DEUmeaning = 
+| ESPname    = Musgobaba (pequeña)
+| ESPmeaning = 
+| FRAname    = Limon feuillu (S)
+| FRAmeaning = 
+| ITAname    = Melmerba (piccola)
+| ITAmeaning = 
+| JPNname    = リーフスライム (小)
+| JPNromanised = Leaf suraimu (shou)
+| JPNmeaning = 
+| INDname    = Slime Daun (S)
+| INDmeaning = 
+| KORname    = 나뭇잎 슬라임 (소)
+| KORromanised = namus-ip seulla-im (so)
+| KORmeaning = 
+| POLname    = Śluzątko
+| POLmeaning = 
+| PTBname    = Gosma de Folhas (P)
+| PTBmeaning = 
+| RUSname    = Лиственный слизень (маленький)
+| RUSromanised = Listvennyj slizen' (malen'kij)
+| RUSmeaning = 
+| SPAname    = Herbolimo pequeño
+| SPAmeaning = 
+| TURname    = Yaprak Balçık (K)
+| TURmeaning = 
+| ZHSname    = 树叶史莱姆（小）
+| ZHSromanised = shuyeshilaimu（xiao）
+| ZHSmeaning = 
+| CODEname    = LEAF_SLIME_S
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Leaf Slime (M)
+| DEUname    = Blattschleim (mi.)
+| DEUmeaning = 
+| ESPname    = Musgobaba (grande)
+| ESPmeaning = 
+| FRAname    = Limon feuillu (M)
+| FRAmeaning = 
+| ITAname    = Melmerba (media)
+| ITAmeaning = 
+| JPNname    = リーフスライム (中)
+| JPNromanised = Leaf suraimu (chuu)
+| JPNmeaning = 
+| INDname    = Slime Daun (M)
+| INDmeaning = 
+| KORname    = 나뭇잎 슬라임 (중)
+| KORromanised = namus-ip seulla-im (jung)
+| KORmeaning = 
+| POLname    = Śluzak
+| POLmeaning = 
+| PTBname    = Gosma de Folhas (M)
+| PTBmeaning = 
+| RUSname    = Лиственный слизень (средний)
+| RUSromanised = Listvennyj slizen' (srednij)
+| RUSmeaning = 
+| SPAname    = Herbolimo grande
+| SPAmeaning = 
+| TURname    = Yaprak Balçık (O)
+| TURmeaning = 
+| ZHSname    = 树叶史莱姆（中）
+| ZHSromanised = shuyeshilaimu（zhong）
+| ZHSmeaning = 
+| CODEname    = LEAF_SLIME_M
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Twig Slime (S)
+| DEUname    = Zweigschleim (kl.)
+| DEUmeaning = 
+| ESPname    = Ramababa (pequeña)
+| ESPmeaning = 
+| FRAname    = Limon brindille (S)
+| FRAmeaning = 
+| ITAname    = Ramomelma (piccola)
+| ITAmeaning = 
+| JPNname    = 細枝スライム (小)
+| JPNromanised = Hosoeda suraimu (shou)
+| JPNmeaning = 
+| INDname    = Slime Ranting (S)
+| INDmeaning = 
+| KORname    = 가지 슬라임 (소)
+| KORromanised = gaji seulla-im (so)
+| KORmeaning = 
+| POLname    = Śluzątko
+| POLmeaning = 
+| PTBname    = Gosma de Gravetos (P)
+| PTBmeaning = 
+| RUSname    = Сучковый слизень (маленький)
+| RUSromanised = Suchkovyj slizen' (malen'kij)
+| RUSmeaning = 
+| SPAname    = Ramalimo pequeño
+| SPAmeaning = 
+| TURname    = Dal Balçığı (K)
+| TURmeaning = 
+| ZHSname    = 树枝史莱姆（小）
+| ZHSromanised = shuzhishilaimu（xiao）
+| ZHSmeaning = 
+| CODEname    = TWIG_SLIME_S
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Twig Slime (M)
+| DEUname    = Zweigschleim (mi.)
+| DEUmeaning = 
+| ESPname    = Ramababa (grande)
+| ESPmeaning = 
+| FRAname    = Limon brindille (M)
+| FRAmeaning = 
+| ITAname    = Ramomelma (media)
+| ITAmeaning = 
+| JPNname    = 細枝スライム (中)
+| JPNromanised = Hosoeda suraimu (chuu)
+| JPNmeaning = 
+| INDname    = Slime Ranting (M)
+| INDmeaning = 
+| KORname    = 가지 슬라임 (중)
+| KORromanised = gaji seulla-im (jung)
+| KORmeaning = 
+| POLname    = Śluzak
+| POLmeaning = 
+| PTBname    = Gosma de Gravetos (M)
+| PTBmeaning = 
+| RUSname    = Сучковый слизень (средний)
+| RUSromanised = Suchkovyj slizen' (srednij)
+| RUSmeaning = 
+| SPAname    = Ramalimo grande
+| SPAmeaning = 
+| TURname    = Dal Balçığı (O)
+| TURmeaning = 
+| ZHSname    = 树枝史莱姆（中）
+| ZHSromanised = shuzhishilaimu（zhong）
+| ZHSmeaning = 
+| CODEname    = TWIG_SLIME_M
+| CODEmeaning = 
+}}
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* It is no longer possible to get two encounters in a row that contain Slime monsters}}
+{{Update History Table/row|V0.106.0|* Added alternate phobia mode art for Twig Slime M}}
+{{Update History Table/row|V0.95.0|* Changed Leaf Slime: now attacks more often}}
+{{Update History Table/row|V0.94.0|* Buffed Leaf Slime: HP increased from 30(31)-34(35) -> 32(33)-35(36)
+* Nerfed Twig Slime: HP decreased from 27(28)-29(30) -> 26(27)-28(29)}}
+{{Update History Table/row|V0.74.0|* Nerfed Small Twig Slime: Tackle move damage decreased from 5(6) -> 4(5)
+* Added Slime VFX for Twig Slime}}
+{{Update History Table/row|V0.68.0|* Can no longer get duplicate Slimes in Slimes' weak fight}}
+{{Update History Table/row|V0.44.0|* Changed Swarm of Slimes encounter: now has one less small Slime}}
+{{Update History Table/row|V0.42.0|* Updated Slime spit animations
+* Added Leaf Slime cast animations}}
+{{Update History Table/row|V0.40.0|* Nerfed Slimes: HP and damage values decreased}}
+{{Update History Table/row|V0.39.0|* Added new normal encounter to Act 1: Shroom and Slime}}
+{{Update History Table/row|V0.38.0|* Changed Swarm of Slimes encounter: now always has one M twig slime, one M leaf slime, two of the same small slime, and one other small slime}}
+{{Update History Table/row|V0.37.0|* Nerfed Medium Leaf Slime: Slime cards given decreased from 3 -> 2}}
+{{Update History Table/row|V0.16.0|* Chnaged Leaf Slime: Slimed cards given increased from 2 -> 3 once again}}
+{{Update History Table/row|V0.15.0|* Nerfed Medium Slimes: now give 1 less Slimed card (i.e. Twig gives 1, Leaf gives 2)}}
+{{Update History Table/row|V0.10.0|* Medium slimes always apply status cards on turn 1 instead of attacking
+* Fixed swarm of Slimes combat from 6 -> 5 slimes}}
+{{Update History Table/row|2023-09-15|* Twig Slime no longer applies Slimed}}
+{{Update History Table/row|2023-07-21|* Deprecated normal room encounter that was a combination of Slimes + Fogmog}}
+{{Update History Table/row|2023-06-30|* Animations for Twig Slime enemy}}
+{{Update History Table/row|2023-04-21|* added twig slime idle
+* implement twig slime small idle animation
+* Twig Slimes now give the correct amount of slimes. Medium sized slimes always start by sliming to make the less swingy.
+* Fixed guids on twig slime
+* Bug Fix: leaf slimes not lunging
+* Bug Fix: twig slime m death fade out taking too long
+* Bug Fix: twig slime material broken}}
+{{Update History Table/row|2023-02-09|* BUGFIX: Fix Slime card max upgrade set incorrectly}}
+{{Update History Table/row|?|* Added Slimes to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

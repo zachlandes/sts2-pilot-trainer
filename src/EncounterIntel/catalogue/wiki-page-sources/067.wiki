@@ -1,0 +1,295 @@
+{{Beta content}}
+'''Queen''' is a {{2|Bosses|Boss}} found in {{2|Glory}}. She fights alongside the {{M2|Torch Head Amalgam}}.
+
+== Queen ==
+{{Enemy Infobox
+|Name   = Queen
+|Image  = StS2_Queen.png
+|Icon   = StS2 Icon QueenBoss.png
+|HP     = 400
+|AscHP  = 419
+|Debut  = Glory
+|Type   = Boss
+}}
+{{Power Infobox
+|Name         = Chains of Binding
+|Image        = StS2 Icon ChainsOfBinding.png
+|Description  = The first X cards drawn each turn are Afflicted with {{KW2|Bound}}.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Conserved
+|Cap          = 
+|GivesToPlayer = Bound
+}}
+{{Keyword Infobox|Bound|2}}
+=== Pattern ===
+{{Intents Table/start|Queen}}
+{{Intents Table/row
+|Name   = Puppet Strings
+|Intent = CardDebuff
+|Effect = Applies 3 {{BD2|Chains of Binding}} to all players.
+|GivesToPlayer = Chains of Binding
+}}
+{{Intents Table/row
+|Name   = You're Mine
+|Intent = Debuff
+|Effect = Applies 99 {{BD2|Frail}}, 99 {{BD2|Weak}}, and 99 {{BD2|Vulnerable}} to all players.
+|GivesToPlayer = Frail, Weak, Vulnerable
+}}
+{{Intents Table/row
+|Name   = Burn Bright for Me
+|Intent = Buff, Defend
+|Effect = Gives 1 {{BD2|Strength}} to {{M2|Torch Head Amalgam}}. Gains 20 {{KW2|Block}}.
+|GivesToEnemy = Strength, Block
+}}
+{{Intents Table/row
+|Name   = Off with Your Head
+|Intent = Attack3
+|Effect = Deals (3;{{Asc2|9|4}}) damage x5.
+}}
+{{Intents Table/row
+|Name   = Execution
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|18}}) damage.
+}}
+{{Intents Table/row
+|Name   = Enrage
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+The Queen's pattern depends on whether the {{M2|Torch Head Amalgam}} is alive:
+
+'''Opening (always):'''
+# {{Int2|Queen|Puppet Strings}}
+# {{Int2|Queen|You're Mine}}
+
+'''While the Amalgam is alive:'''
+: Repeats {{Int2|Queen|Burn Bright for Me}}.
+
+'''After the Amalgam dies:'''
+: If the Queen is currently using {{Int2|Queen|Burn Bright for Me}}, she immediately switches to {{Int2|Queen|Enrage}}, then enters the enraged loop:
+# {{Int2|Queen|Off with Your Head}}
+# {{Int2|Queen|Execution}}
+# {{Int2|Queen|Enrage}}
+# Back to {{Int2|Queen|Off with Your Head}}
+* Keep in mind that Queen will have gained 2 {{BD2|Strength}} and that the player will likely be permanently {{BD2|Vulnerable}} from {{Int2|Queen|You're Mine}}, making these the actual damage amounts:
+** {{Int2|Queen|Off with Your Head}}: 7x5 / {{Asc|9|9x5||2}}
+** {{Int2|Queen|Execution}}: 25 / {{Asc|9|30||2}}
+
+=== Dialogue ===
+When using {{Int2|Queen|You're Mine}}.
+<blockquote><i>
+{{TS||shake|You are mine!}}
+</i></blockquote>
+
+When {{M2|Torch Head Amalgam}} is defeated.
+<blockquote><i>
+{{TS|||...}}
+</i></blockquote>
+
+
+{{Clear}}
+
+== Torch Head Amalgam ==
+{{Enemy Infobox
+|Name   = Torch Head Amalgam
+|Link   = Slay the Spire 2:Queen#Torch Head Amalgam
+|Image  = StS2_Torch Head Amalgam.png
+|Icon   = StS2 Icon QueenBoss.png
+|HP     = 199
+|AscHP  = 211
+|Powers = {{BD2|Minion}}
+|Debut  = Glory
+|Type   = Minion
+}}
+=== Pattern ===
+{{Intents Table/start|Torch Head Amalgam}}
+{{Intents Table/row
+|Name   = Strong Tackle
+|Intent = Attack3
+|Effect = Deals (26;{{Asc2|9|32}}) damage.
+}}
+{{Intents Table/row
+|Name   = Tackle
+|Intent = Attack3
+|Effect = Deals (18;{{Asc2|9|22}}) damage.
+}}
+{{Intents Table/row
+|Name   = Beam
+|Intent = Attack3
+|Effect = Deals 8 damage x3.
+}}
+{{Intents Table/row
+|Name   = Weak Tackle
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/end}}
+The Torch Head Amalgam follows a fixed sequence:
+# {{Int2|Torch Head Amalgam|Strong Tackle}}
+# {{Int2|Torch Head Amalgam|Tackle}}
+# {{Int2|Torch Head Amalgam|Beam}}
+# {{Int2|Torch Head Amalgam|Weak Tackle}}
+# {{Int2|Torch Head Amalgam|Weak Tackle}}
+# Back to {{Int2|Torch Head Amalgam|Beam}} (repeats steps 3-5)
+
+{{Clear}}
+
+== Animations ==
+<tabber>
+|-|Queen=
+{{Bestiary|Queen}}
+|-|Torch Head Amalgam=
+{{Bestiary|Torch Head Amalgam}}
+</tabber>
+
+== Notes ==
+* After a {{KW2|Bound}} card is played, other Bound cards cannot be played that turn even with effects like {{KW2|Sly}} or a {{P2|Duplicator}}.
+** Similarly, playing a {{KW2|Sly}} card that has {{KW2|Bound}} will prevent other Bound cards from being played.
+* Bound cards duplicated by effects like {{R2|Music Box}} or {{C2|Dual Wield}} will also be bound.
+* {{KW|Transform|Transforming|2}} a Bound card during battle will remove Bound from it, allowing it to be played freely.
+* Bound cards are still unbound at the end of your turn even when {{KW2|Retain|Retained}}, allowing you to use cards such as {{C2|Well-Laid Plans}} to play other bound cards on a later turn.
+* If a Bound card is played once, then returned to your hand in some way (ex. being redrawn), it still won't able to be played until end of turn.
+* If the Torch Head Amalgam dies after its turn to an effect like {{BD2|Doom}}, the Queen will immediately switch intents to {{Int2|Queen|Off with Your Head}}, skipping the usual {{Int2|Queen|Enrage}} .
+* If the Torch Head Amalgam is killed on Turn 2 or earlier, the Queen will not use {{Int2|Queen|Enrage}} on her first cycle.
+
+== Trivia ==
+* The Queen is based on {{M|The Collector}}, an Act 2 boss in the original Slay the Spire.
+
+== Names in Other Languages ==
+{{Localization
+| Title = Queen
+| DEUname    = Königin
+| DEUmeaning = 
+| ESPname    = Reina funesta
+| ESPmeaning = 
+| FRAname    = Reine
+| FRAmeaning = 
+| ITAname    = Regina
+| ITAmeaning = 
+| JPNname    = クイーン
+| JPNromanised = Queen
+| JPNmeaning = 
+| INDname    = Ratu
+| INDmeaning = 
+| KORname    = 여왕
+| KORromanised = yeo-wang
+| KORmeaning = 
+| POLname    = Królowa
+| POLmeaning = 
+| PTBname    = Rainha
+| PTBmeaning = 
+| RUSname    = Королева
+| RUSromanised = Koroleva
+| RUSmeaning = 
+| SPAname    = La Reina
+| SPAmeaning = 
+| TURname    = Kraliçe
+| TURmeaning = 
+| ZHSname    = 女王
+| ZHSromanised = nvwang
+| ZHSmeaning = 
+| CODEname    = QUEEN
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Torch Head Amalgam
+| DEUname    = Fackelkopf-Amalgam
+| DEUmeaning = 
+| ESPname    = Piroamalgama
+| ESPmeaning = 
+| FRAname    = Amalgame Torchetête
+| FRAmeaning = 
+| ITAname    = Torciamostro
+| ITAmeaning = 
+| JPNname    = トーチヘッド・アマルガム
+| JPNromanised = Toochi head/amalgam
+| JPNmeaning = 
+| INDname    = Makhluk Kepala Obor
+| INDmeaning = 
+| KORname    = 횃불머리 융합체
+| KORromanised = hwaesbulmeoli yunghabche
+| KORmeaning = 
+| POLname    = Amalgamat
+| POLmeaning = 
+| PTBname    = Amálgama Lamparínea
+| PTBmeaning = 
+| RUSname    = Огненная фаланга
+| RUSromanised = Ognennaja falanga
+| RUSmeaning = 
+| SPAname    = Amalgama de antorchas
+| SPAmeaning = 
+| TURname    = Meşale Kafalı Bileşim
+| TURmeaning = 
+| ZHSname    = 火炬头聚合体
+| ZHSromanised = huojutoujuheti
+| ZHSmeaning = 
+| CODEname    = TORCH_HEAD_AMALGAM
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.109.0|* Buffed Torch Head Amalgam: now starts with a new Strong Tackle move on turn 1 to increase front-loaded damage from 18(22) -> 26(32)}}
+{{Update History Table/row|V0.108.0|* Buffed Torch Head Amalgam: increased damage at Ascension 9
+** Weak Tackle damage increased from 14(15) → 14(16)
+** Tackle damage increased from 18(19) → 18(22)
+* Fixed Torch Head Amalgam's laser attack VFX not reaching the player when it was shrunk}}
+{{Update History Table/row|V0.103.0|* Fixed Queen background music not ending if you kill her before the Amalgam}}
+{{Update History Table/row|V0.93.0|* When playing Hellraiser card against the Queen boss, Strikes are now auto-played before Chains of Binding power afflicts them with Bound, meaning they no longer count as the Bound card played this turn}}
+{{Update History Table/row|V0.92.0|* Buffed Queen: HP increased from 386(399) -> 400(419)}}
+{{Update History Table/row|V0.90.0|* Changed Queen: Chains of Binding power can now also afflict Curses and Statuses with Bound}}
+{{Update History Table/row|V0.89.0|* Buffed Queen: Burn Bright For Me move now also gains 20 Block for herself}}
+{{Update History Table/row|V0.88.0|* Improved hitboxes for Phantasmal Gardeners, Queen, and Amalgam enemies
+* Fixed Torch Head Amalgam dealing more damage than shown in intent}}
+{{Update History Table/row|V0.87.0|* Reworked the Queen}}
+{{Update History Table/row|V0.81.0|* Nerfed Queen combat:
+** Torchhead Amalgam no longer has the Protector power
+** Torchhead Amalgam HP decreased from 213(231) -> 199(211)
+** Added new move for Queen's enraged state: Execution - "Deal 35 damage. Next move is Enrage."
+** Cards afflicted with Bound can no longer be autoplayed (via Sly or other means) after another Bound card has been played that turn}}
+{{Update History Table/row|V0.73.0|* Buffed Queen: Strength applied to Torchhead increased from 3 -> 4}}
+{{Update History Table/row|V0.71.0|* Changed Queen: no longer has Intangible, but starts with Block from the Torch Head Amalgam
+* Torch Head Amalgam no longer has strange black boxes appear when the Doom death animation plays}}
+{{Update History Table/row|V0.70.0|* Buffed Queen: now starts with Torchhead minion instead of spending turn 1 summoning it
+* Updated the Queen boss dialogue}}
+{{Update History Table/row|V0.62.0|* Buffed Queen: Intangible power now active on turn 1 regardless of Ascension level}}
+{{Update History Table/row|V0.59.0|* Queen boss's Chains of Binding power no longer triggers during the enemy turn}}
+{{Update History Table/row|V0.56.0|* Added background music and SFX for Queen and Torch Head Amalgam}}
+{{Update History Table/row|V0.40.0|* Changed Queen:
+** Reworked Bound effect
+** Burn Bright for Me move Strength decreased from 5 -> 3
+** Staff Strike move damage decreased from 20(23) -> 11(13)
+** Reworked moveset
+* Nerfed Torch Head Amalgam:
+** Tackle move damage decreased from 18(21) -> 15(16)
+** Soul Beam damage nerfed from 33(37) -> 30(34)}}
+{{Update History Table/row|V0.39.0|* Majorly reworked Queen}}
+{{Update History Table/row|V0.37.0|* Updated False Queen combat background art
+* Adjusted scale of False Queen
+* Moved Queen and Amalgam's position on screen slightly}}
+{{Update History Table/row|V0.36.0|* Fixed softlock that occurred when killing Queen}}
+{{Update History Table/row|V0.29.0|* Added art for The Insatiable and The Queen map nodes
+* Amalgam now properly plays its death animation when Queen dies first}}
+{{Update History Table/row|V0.25.0|* Added Queen and Torchead Amalgam Animations}}
+{{Update History Table/row|V0.17.0|* Added Queen run history icon}}
+{{Update History Table/row|V0.13.0|* Fixed softlock if Queen kills the Torchead Amalgam}}
+{{Update History Table/row|V0.9.0|* Queen completely reworked
+** New moves
+** You're Mine: Applies 5 Weak, Vulnerable, and Frail
+** Puppet Strings: Applies Bound to 4 cards in your draw pile
+** Revised move order
+* Torch Head Amalgam reworked
+** HP decreased 400 -> 375
+** New moves
+** Tackle: Deals 7x3 damage
+** Protected: Gives the Queen 35 block
+** Hug: Makes enemy lose 3 Dexterity and Strength this turn}}
+{{Update History Table/row|V0.8.0|* Fixed softlock on Queen moveset}}
+{{Update History Table/row|?|* Added Queen and Torch Head Amalgam to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

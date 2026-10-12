@@ -1,0 +1,108 @@
+{{Enemy Infobox
+|Name   = Spiny Toad
+|Image  = StS2_Spiny Toad.png
+|HP     = 116-119
+|AscHP  = 121-124
+|Debut  = Hive
+|Type   = Normal
+}}
+'''Spiny Toad''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Spiny Toad}}
+{{Intents Table/row
+|Name   = Protruding Spikes
+|Intent = Buff
+|Effect = Gains 5 {{BD2|Thorns}}.
+|GivesToEnemy = Thorns
+}}
+{{Intents Table/row
+|Name   = Spike Explosion
+|Intent = Attack4
+|Effect = Deals (23;{{Asc2|9|25}}) damage. Loses 5 {{BD2|Thorns}}.
+|GivesToEnemy = Thorns
+}}
+{{Intents Table/row
+|Name   = Tongue Lash
+|Intent = Attack3
+|Effect = Deals (17;{{Asc2|9|19}}) damage.
+}}
+{{Intents Table/end}}
+Cycles through {{Int2|Spiny Toad|Protruding Spikes}}, {{Int2|Spiny Toad|Spike Explosion}}, {{Int2|Spiny Toad|Tongue Lash}} in order, repeating.
+
+== Animations ==
+{{Bestiary|Spiny Toad}}
+
+== Trivia ==
+* The '''Spiny Toad''' appears to be the adult form of a {{M2|Toadpole}}, as they share very similar mechanics and near identical color palettes.
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Stachlige Kröte
+| DEUmeaning = 
+| ESPname    = Sapo espinoso
+| ESPmeaning = 
+| FRAname    = Crapineux
+| FRAmeaning = 
+| ITAname    = Rospo spinoso
+| ITAmeaning = 
+| JPNname    = トゲヒキガエル
+| JPNromanised = Toge hikigaeru
+| JPNmeaning = 
+| INDname    = Kodok Berduri
+| INDmeaning = 
+| KORname    = 가시두꺼비
+| KORromanised = gasidu-kkeobi
+| KORmeaning = 
+| POLname    = Kolczasta Ropucha
+| POLmeaning = 
+| PTBname    = Sapo Espinhoso
+| PTBmeaning = 
+| RUSname    = Ежовая жаба
+| RUSromanised = Ezhovaja zhaba
+| RUSmeaning = 
+| SPAname    = Sapo espinoso
+| SPAmeaning = 
+| TURname    = Dikenli Kurbağa
+| TURmeaning = 
+| ZHSname    = 棘刺蟾蜍
+| ZHSromanised = jicichanchu
+| ZHSmeaning = 
+| CODEname    = SPINY_TOAD
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.90.0|* Changed Spiny Toad:
+** Explosion move damage changed from 4(5)x5 -> 23(25)
+** Second Tongue Lash move removed}}
+{{Update History Table/row|V0.87.0|* Tweaked Spiny Toad moveset}}
+{{Update History Table/row|V0.70.0|* Removed dialogues from Spiny Toad and Two Tailed Rats}}
+{{Update History Table/row|V0.62.0|* Spiny Toad's spike out animation no longer plays once per hit of the multihit}}
+{{Update History Table/row|V0.60.0|* Made Spiny Toad's explosion animation bigger and slicier}}
+{{Update History Table/row|V0.44.0|* Cleaned up Spiny Toad’s lick animation}}
+{{Update History Table/row|V0.38.0|* Changed Spiny Toad:
+** Explosion move damage decreased from 5(6)x5 -> 4(5)x5
+** Lash move now applies -1 Dexterity instead of Weak}}
+{{Update History Table/row|V0.37.0|* Updated Spiny Toad lick animation}}
+{{Update History Table/row|V0.35.0|* Updated art for Spiny Toad enemy}}
+{{Update History Table/row|V0.33.0|* Demoted Spiny Toad from an elite to a regular encounter}}
+{{Update History Table/row|V0.16.0|* Changed Spiny Toad: no longer gives status cards but applies Weak with its tongue}}
+{{Update History Table/row|V0.15.0|* Spiny Toad reworked.
+** Spike Explosion damage reduced from 5x6 to 5x5 and now adds 5 Spiked cards to the Discard Pile
+** Tongue Lash damage increased from 15 -> 18 and Slimed cards given decreased from 3 -> 1
+** Moveset is now always Protrude Spikes -> Spike Explosion -> Tongue Lash -> Tongue Lash -> Protrude Spikes
+* Fixed Spiny Toad being incorrectly spiny after 4th turn}}
+{{Update History Table/row|V0.12.0|* Spiny Toad HP lowered from 154-166 -> 138-144.}}
+{{Update History Table/row|V0.9.0|* Spiny Toad elite now gives you relic rewards}}
+{{Update History Table/row|V0.8.0|* Spiny Toad is now an Elite and its moveset has been tweaked}}
+{{Update History Table/row|2023-05-19|* Added animations for Spiny Toad}}
+{{Update History Table/row|2023-04-21|* Import SpinyToad rig and idle anims
+* Spiney Toad animation}}
+{{Update History Table/row|?|* Added Spiny Toad to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

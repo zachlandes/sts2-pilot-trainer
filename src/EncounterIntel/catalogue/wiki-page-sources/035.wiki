@@ -1,0 +1,96 @@
+{{Enemy Infobox
+|Name   = Fuzzy Wurm Crawler
+|Image  = StS2_Fuzzy Wurm Crawler.png
+|HP     = 55-57
+|AscHP  = 58-59
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Fuzzy Wurm Crawler''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Fuzzy Wurm Crawler}}
+{{Intents Table/row
+|Name   = Acid Goop
+|Intent = Attack1
+|Effect = Deals (4;{{Asc2|9|6}}) damage.
+}}
+{{Intents Table/row
+|Name   = Inhale
+|Intent = Buff
+|Effect = Gains 7 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Repeats a fixed three-turn cycle:
+# {{Int2|Fuzzy Wurm Crawler|Acid Goop}}
+# {{Int2|Fuzzy Wurm Crawler|Inhale}}
+# {{Int2|Fuzzy Wurm Crawler|Acid Goop}}
+
+Then the cycle starts over.
+
+== Notes ==
+* {{Int2|Fuzzy Wurm Crawler|Inhale}} grants 7 {{BD2|Strength}}, which greatly increases the damage of the following {{Int2|Fuzzy Wurm Crawler|Acid Goop}}. However, this {{BD2|Strength}} also carries over to future cycles, so each {{Int2|Fuzzy Wurm Crawler|Acid Goop}} hits harder than the last.
+* The base damage of {{Int2|Fuzzy Wurm Crawler|Acid Goop}} is low (4), but after the first {{Int2|Fuzzy Wurm Crawler|Inhale}} it deals 11 damage, and it continues to scale with each cycle.
+
+== Animations ==
+{{Bestiary|Fuzzy Wurm Crawler}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Flaumiger Wurmkrabbler
+| DEUmeaning = 
+| ESPname    = Pelubosa
+| ESPmeaning = 
+| FRAname    = Rampeluche
+| FRAmeaning = 
+| ITAname    = Peloverme
+| ITAmeaning = 
+| JPNname    = 剛毛のワーム
+| JPNromanised = Goumou no worm
+| JPNmeaning = 
+| INDname    = Ulat Perayap Berbulu
+| INDmeaning = 
+| KORname    = 복슬지렁이
+| KORromanised = bogseuljileong-i
+| KORmeaning = 
+| POLname    = Kędzierzawy Robok
+| POLmeaning = 
+| PTBname    = Vorme Peluginoso
+| PTBmeaning = 
+| RUSname    = Пышный червогрив
+| RUSromanised = Pyshnyj chervogriv
+| RUSmeaning = 
+| SPAname    = Reptador peludo
+| SPAmeaning = 
+| TURname    = Tüylü Müylü Sürüngen
+| TURmeaning = 
+| ZHSname    = 毛绒伏地虫
+| ZHSromanised = maorongfudichong
+| ZHSmeaning = 
+| CODEname    = FUZZY_WURM_CRAWLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Buffed Fuzzy Wurm Crawler: HP increased from 55(57)-57(59) -> 55(58)-57(59)}}
+{{Update History Table/row|V0.80.0|* Changed Fuzzy Wurm Crawler: reworked moveset}}
+{{Update History Table/row|V0.45.0|* Added SFX for Fuzzy Wurm Crawler}}
+{{Update History Table/row|V0.44.0|* Changed Fuzzy Wurm Crawler: HP ascension modifier lowered from +5 -> +2}}
+{{Update History Table/row|V0.39.0|* Changed Fuzzy Wurm Crawler: can no longer repeat its multiattack two turns in a row}}
+{{Update History Table/row|V0.38.0|* Updated Fuzzy Wurm Crawler art}}
+{{Update History Table/row|V0.37.0|* Changed Fuzzy Wurm Crawler: added new Chomp move}}
+{{Update History Table/row|V0.34.0|* VFX for Fuzzy Wurm Crawler and Flyconid no longer can get stuck}}
+{{Update History Table/row|V0.26.0|* Changed Furry Worm Crawler:
+** Damage decreased from 5 -> 4
+** Strength gain increased from 5 -> 7}}
+{{Update History Table/row|V0.19.0|* Furry Worm Crawler now correctly always attacks on turn 1}}
+{{Update History Table/row|V0.14.0|* Renamed enemies: Flying Mushroom, Furry Worm Crawler, Mite, Orb Plant, Egg Layer, Giant Louse, Burrowing Bug, and Workbug}}
+{{Update History Table/row|V0.12.0|* Furry Worm Crawler Inhale strength gain increased from 3 -> 5.}}
+{{Update History Table/row|V0.10.0|* Furry Worm Crawler strength gain when inhaling increased from 1 -> 3}}
+{{Update History Table/row|2023-09-15|* Added new Act 1 enemy Furry Worm Crawler to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]
