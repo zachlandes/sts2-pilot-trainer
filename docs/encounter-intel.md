@@ -46,6 +46,57 @@ Unknown model or intent implementations, unrecognized damage delegates and Harmo
 This is a conservative base-build adapter, not a compatibility claim about arbitrary mods, untracked runtime edits or every possible hook.
 A process without a current run has no lookup.
 
+## Core lookup entry points
+
+The phase-3 fit decision is to extend this same adapter and catalogue owner.
+There is no second model reader, run cache, playback path or configuration surface.
+The initializer still reads no game data, installs no patches and draws nothing.
+UI entry gestures, layout and automatic refresh remain a separate phase.
+
+Call these entry points synchronously on the game's thread when a lookup is requested:
+
+- `EncounterIntelMod.CurrentAct()` joins the actual current act's elite pool, boss pool and public selected boss or bosses to `CatalogueEncounter` and each possible member's `CatalogueMonster`.
+  These are definition references, not the hidden next elite, a generated party or a future act's selected boss.
+  The existing schedule, wiki disagreement, unsupported standing and gap fields are preserved, not promoted into verified effects.
+  Each lookup carrying references retains the wiki attribution, pinned module receipts and atlas-wide gaps through `CatalogueProvenance`; page-specific comparison receipts stay on the monster.
+- `EncounterIntelMod.CurrentBoard()` joins every enemy already in the current combat or event-layout roster to the same reference records.
+  A room with no board returns a ready, empty `BoardKind.None` reading.
+- `EncounterIntelMod.Enemy(creature)` looks up one existing enemy instance by reference identity, never by monster id, slot, seed or an invented instance.
+  A creature removed from that board, replaced by another of the same type and slot, or left behind by a previous run is refused as `NotOnBoard`.
+  A retained scene's creature can therefore never silently select its replacement.
+
+Every call returns `LookupResult<T>` with exactly one ready value or one unavailable reason.
+`NotReady` names an empty model database, an act whose public bosses have not been generated, an unavailable current act, an unfinished combat room whose board is not open, or a Combat-layout event whose board has not been initialized.
+A non-combat event never exposes a retained layout board, and a pre-finished event has no current board.
+`NoRun` means the run was torn down or none exists.
+`Refused` names compatibility or semantics the adapter cannot establish; it never returns an old reading alongside the reason.
+The registry and Harmony guards run again on each request, so unsupported builds and changed getters cannot become an empty successful lookup.
+An expected startup absence is retried by the next request rather than latched for the process.
+Unexpected faults are not swallowed as readiness.
+
+The adapter retains no run, room, creature, scene or lookup reading and subscribes to nothing.
+Sampling again is the lifecycle mechanism: act/run changes, event-to-combat handover, spawn additions, room replacement and teardown all ask the engine for the current state again.
+A later UI must request fresh readings after changes; these records are point-in-time readings, not a continuously updated overlay.
+An event layout has reference rules and actual HP before fighting, but its native `UNSET_MOVE` sentinel is no announced move and is represented as absent.
+The same already-created creature acquires an announced move when the engine opens that event's fight.
+A finished combat yields `BoardKind.None`, not the last enemy roster presented as current.
+
+`EnemyLookup.Static` contains canonical definition rules; `Instance` contains current HP, block, powers, slot and announced intents.
+Mutable instance values never feed reference getters or select a hypothetical graph opening.
+`CurrentNative` separately retains the live model's contextual name, while the reference keeps its canonical name.
+Names are native localization table/key references with detached numeric substitutions, including Test Subject's native `Count`, not copied English wiki labels.
+Move names follow the native bestiary's name accessor without its filtered move enumeration or graph factory.
+A key can lack a native translation; resolving resource existence and rendering remain presentation responsibilities, not a guessed English fallback.
+Monster visuals and encounter map assets are native `res://` references only.
+Lookup neither loads scenes/textures nor calls the monster's broader `AssetPaths` accessor, which constructs intent graphs.
+No game resource is bundled.
+
+The headless harness exercises startup before model initialization in a fresh process, recovery, incomplete act setup, both act-one variants, current-act/run changes, single/double public bosses on a one-act progression, distinct Nibbit instances, changed live Strength, event layout-to-fight handover, replacement by another event board, Phrog's death-spawned roster and an ended fight.
+It holds selective reference rows to the full catalogue and samples complete gameplay/profile receipts around requests under the command/RNG/deal guard, with a refused RNG draw as a positive control.
+This proves the data entry points against the inspected beta engine, not scene-tree or input integration in a retail client.
+Native resource loading, translated-name rendering, scene-node attachment, user input and automatic UI refresh require a later authorized isolated client check.
+No retail client, captain screen or regular save was used for this phase.
+
 ## Wiki import and licensing
 
 The saved sources are `src/EncounterIntel/catalogue/wiki-sources/`.

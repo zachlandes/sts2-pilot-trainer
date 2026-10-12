@@ -27,12 +27,8 @@ public static partial class RuntimeAdapter
     public static CatalogueReading ReadCatalogue(WikiCatalogue? catalogue = null)
     {
         var run = CurrentRun() ?? throw new IntelRefusal("There is no run for ascension-sensitive catalogue quantities.");
-        var wiki = catalogue ?? WikiCatalogue.Read();
-        var patterns = ReadPatterns();
-        var pages = WikiPatternPages.Read();
-        var hasLegacyReview = patterns.Build.AssemblySha256 == SupportedBuild.AssemblySha256;
-        var reviewed = hasLegacyReview ? ReviewedExamples.Monsters(wiki).ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, MonsterRule>();
-        var encountersReviewed = hasLegacyReview ? ReviewedExamples.Encounters().ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, EncounterRule>();
+        var inputs = ReferenceInputs.Read(catalogue);
+        var wiki = inputs.Wiki;
         var monsters = new List<CatalogueMonster>();
         var encounters = new List<CatalogueEncounter>();
         var coverage = new List<CatalogueCoverage>();
@@ -74,10 +70,8 @@ public static partial class RuntimeAdapter
             {
                 var model = ModelDb.GetById<MonsterModel>(id);
                 RequireNative(model);
-                var names = WikiAliases.TryGetValue(name, out var aliases) ? aliases : [name];
-                var entries = wiki.Enemies.Where(enemy => names.Any(alias => Identity(alias) == Identity(enemy.Name))).ToArray();
-                foreach (var entry in entries) usedWiki.Add(entry.Name);
-                var row = WithPattern(CheckCatalogueMonster(model, entries, reviewed.GetValueOrDefault(id.ToString()), run.AscensionLevel), patterns, pages, run.AscensionLevel);
+                var row = CatalogueMonsterFor(model, inputs, run.AscensionLevel);
+                foreach (var entry in row.Wiki) usedWiki.Add(entry.Name);
                 monsters.Add(row);
                 coverage.Add(new(kind, row.Id, row.Standing, MonsterReasons(row)));
             }
@@ -85,34 +79,12 @@ public static partial class RuntimeAdapter
             {
                 var model = ModelDb.GetById<EncounterModel>(id);
                 RequireNative(model);
-                var possible = model.AllPossibleMonsters.Select(monster =>
-                {
-                    RequireNative(monster);
-                    return monster.Id.ToString();
-                }).Distinct(StringComparer.Ordinal).ToArray();
-                encounters.Add(new(id.ToString(), possible, [], encountersReviewed.GetValueOrDefault(id.ToString()), []));
+                encounters.Add(CatalogueEncounterFor(model, inputs));
             }
         }
 
-        // Editorial links can describe later spawns or groups; never turn them into opening rosters
-        encounters = encounters.Select(row =>
-        {
-            var names = monsters.Where(monster => row.PossibleMonsterIds.Contains(monster.Id, StringComparer.Ordinal))
-                .SelectMany(monster => monster.Wiki).Select(enemy => enemy.Name).ToHashSet(StringComparer.Ordinal);
-            var references = wiki.Encounters.Where(entry => entry.References.Any(reference => names.Contains(reference.EnemyName))).ToArray();
-            var gaps = new List<string>();
-            if (row.ReviewedRule is null)
-            {
-                gaps.Add("Opening counts, slots, alternatives and later phases are editorial, not game-verified on this build.");
-                if (references.Length > 0)
-                    gaps.Add("Related wiki compositions share a monster; they may describe another encounter or a later spawn, not this opening.");
-                else gaps.Add("No encounter composition in the pinned bundle for these monsters.");
-            }
-            if (row.PossibleMonsterIds.Count == 0) gaps.Add("This definition has no possible monsters.");
-            var result = row with { RelatedWikiCompositions = references, Gaps = gaps, DamageSchedules = SchedulesFor(row, patterns) };
-            coverage.Add(new("encounter", result.Id, result.Standing, result.Gaps));
-            return result;
-        }).ToList();
+        foreach (var row in encounters)
+            coverage.Add(new("encounter", row.Id, row.Standing, row.Gaps));
         foreach (var model in ModelDb.All.Where(model => model is MonsterModel or EncounterModel))
         {
             if (coverage.Any(row => row.Id == model.Id.ToString())) continue;
@@ -129,8 +101,65 @@ public static partial class RuntimeAdapter
             encounters.OrderBy(row => row.Id, StringComparer.Ordinal).ToArray(),
             coverage.OrderBy(row => row.Kind, StringComparer.Ordinal).ThenBy(row => row.Id, StringComparer.Ordinal).ToArray())
         {
-            PatternGaps = [.. patterns.Gaps, "Enemy-page source receipt: " + pages.Acquisition],
+            PatternGaps = inputs.Provenance.Gaps,
         };
+    }
+
+    private sealed record ReferenceInputs(WikiCatalogue Wiki, PatternAtlas Patterns, WikiPatternPages Pages,
+        IReadOnlyDictionary<string, MonsterRule> Monsters, IReadOnlyDictionary<string, EncounterRule> Encounters)
+    {
+        internal CatalogueProvenance Provenance => new(Wiki.Attribution, Wiki.Sources,
+            [.. Patterns.Gaps, "Enemy-page source receipt: " + Pages.Acquisition]);
+
+        internal static ReferenceInputs Read(WikiCatalogue? catalogue = null)
+        {
+            var wiki = catalogue ?? WikiCatalogue.Read();
+            var patterns = ReadPatterns();
+            var legacy = patterns.Build.AssemblySha256 == SupportedBuild.AssemblySha256;
+            return new(wiki, patterns, WikiPatternPages.Read(),
+                legacy ? ReviewedExamples.Monsters(wiki).ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, MonsterRule>(),
+                legacy ? ReviewedExamples.Encounters().ToDictionary(rule => rule.Id, StringComparer.Ordinal) : new Dictionary<string, EncounterRule>());
+        }
+    }
+
+    private static CatalogueMonster CatalogueMonsterFor(MonsterModel model, ReferenceInputs inputs, int ascension)
+    {
+        RequireNative(model);
+        return WithPattern(CheckCatalogueMonster(model, WikiEntriesFor(model, inputs), inputs.Monsters.GetValueOrDefault(model.Id.ToString()), ascension),
+            inputs.Patterns, inputs.Pages, ascension);
+    }
+
+    private static IReadOnlyList<WikiEnemy> WikiEntriesFor(MonsterModel model, ReferenceInputs inputs)
+    {
+        var name = model.GetType().Name;
+        var names = WikiAliases.TryGetValue(name, out var aliases) ? aliases : [name];
+        return inputs.Wiki.Enemies.Where(enemy => names.Any(alias => Identity(alias) == Identity(enemy.Name))).ToArray();
+    }
+
+    private static CatalogueEncounter CatalogueEncounterFor(EncounterModel model, ReferenceInputs inputs)
+    {
+        RequireNative(model);
+        var possible = model.AllPossibleMonsters.Select(monster =>
+        {
+            RequireNative(monster);
+            return monster.Id.ToString();
+        }).Distinct(StringComparer.Ordinal).ToArray();
+        // Shared types relate editorial compositions, never establish an opening roster
+        var names = model.AllPossibleMonsters.SelectMany(monster => WikiEntriesFor(monster, inputs))
+            .Select(enemy => enemy.Name).ToHashSet(StringComparer.Ordinal);
+        var references = inputs.Wiki.Encounters.Where(entry => entry.References.Any(reference => names.Contains(reference.EnemyName))).ToArray();
+        var reviewed = inputs.Encounters.GetValueOrDefault(model.Id.ToString());
+        var gaps = new List<string>();
+        if (reviewed is null)
+        {
+            gaps.Add("Opening counts, slots, alternatives and later phases are editorial, not game-verified on this build.");
+            gaps.Add(references.Length > 0
+                ? "Related wiki compositions share a monster; they may describe another encounter or a later spawn, not this opening."
+                : "No encounter composition in the pinned bundle for these monsters.");
+        }
+        if (possible.Length == 0) gaps.Add("This definition has no possible monsters.");
+        var row = new CatalogueEncounter(model.Id.ToString(), possible, references, reviewed, gaps);
+        return row with { DamageSchedules = SchedulesFor(row, inputs.Patterns) };
     }
 
     private static IReadOnlyList<string> MonsterReasons(CatalogueMonster row) =>

@@ -37,7 +37,7 @@ public sealed record WikiCatalogue(int Schema, WikiAttribution Attribution, IRea
         ?? throw new IntelRefusal($"The pinned wiki catalogue has no enemy named {name}.");
 }
 
-public sealed class IntelRefusal(string message) : InvalidOperationException(message);
+public class IntelRefusal(string message) : InvalidOperationException(message);
 public sealed record BuildIdentity(string Version, string BuildDate, string Commit, string AssemblySha256);
 public sealed record EncounterDefinition(string Id, IReadOnlyList<string> PossibleMonsterIds);
 public sealed record ActIntel(string Id, int Index, IReadOnlyList<EncounterDefinition> Weak,
