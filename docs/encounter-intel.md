@@ -211,10 +211,14 @@ The session saved 96 pinned source revisions, including six redirect targets, an
 The 17 requested pages without a source receipt remain named gaps rather than a successful empty cache.
 The first three were left without a receipt while correcting an edit-page revision reader; the others did not supply a public source textarea and revision together under their requested titles.
 
+The check is deliberately narrow, as the captain approved: it covers fixed move sequences, opening alternatives, damage and hit numbers, odds or weights, and repeat limits, including once per fight and once every N turns.
+Everything else on a page - other prose, predicates, reactive triggers and group caps such as summon totals - stays unchecked fallback text and never counts as agreement.
+
 `import_wiki_pages.py` preserves source text and extracts bounded literal assertions from explicit pattern sections: fixed cycles or paths, opening alternatives, self-loops, unambiguous reference damage or hit counts, stated branch odds and stated repetition rules.
 It reads every pattern section the enemy owns, each kept as a region with its source line: every phase of a tabbed boss, and an anchored enemy's same-level sibling `Pattern` section as well as its own.
 A section under another enemy's heading and infobox belongs to that enemy's page, never the host's, and a table row's move takes its owner from the table it is in.
 Each assertion carries its exact source passage and line number.
+An intent-table row runs from its opener to the brace that closes it, whether that closes on the effect line or on a line of its own, so nested templates never merge two rows.
 Odds are read only where a sentence writes them literally: a fraction, a percentage or a weight beside every move of a random pick, an equal-chance qualifier, "twice as likely", or a bulleted list of percentages.
 Repetition is read only from "cannot be used twice in a row" or "no restriction on repeating", bound to the moves it names or to the random pick it follows.
 A use limit is read only from "can only be used once per fight" or "once every N turns", bound to the one move before it in that sentence or, where the sentence names none, the one move the sentence before it names.
@@ -225,6 +229,7 @@ Complex formulas and conditional sequence wording are not partially interpreted.
 `WikiPatternComparison.Compare` holds those assertions to explicit move aliases in the constructed graph without running game code.
 Stated odds are compared with the declared per-roll weights of the one random branch that offers exactly those aliased moves - the initial state for an opening, a branch a move leads to otherwise - within half a percentage point for rounding.
 Repeat exclusions and long-run frequencies are not computed, so odds a page derived from a repeat rule disagree with the declared weights and are shown as such.
+A fixed sequence that passes through a random branch whose weights and repeat rules are all known is held to that branch: it agrees only where the repeat rules leave exactly the stated next move, and a branch that can also offer another move is a mismatch; a predicate or context-dependent weight stays unresolved, and no roll is made.
 A stated repetition rule is compared with the repeat rule on every branch edge into that move: once per fight with `UseOnlyOnce`, once every N turns with a cooldown of N.
 Its dispositions are partial agreement, mismatch and unchecked; each claim separately names matched, mismatch or unresolved.
 A missing graph still gets the cached editorial fallback, never an invented game pattern.
@@ -234,12 +239,13 @@ Remaining effect prose, conditional predicates and reactive triggers are not mad
 `CatalogueMonster.MayBeOutdated` also flags page-claim disagreements and retains both quantities.
 The current-run catalogue compares its ascension, and `CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun` checks every supported ascension, including wiki thresholds between compressed graph columns.
 `PatternComparison.SourceText` is the source fallback and `PatternGaps` retains the acquisition receipt.
-At A0, the beta's 126 registered graph rows have 80 partial agreements, five mismatches, five unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
-The compared A0 claims are 234 matches, eight mismatches and 47 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
+At A0, the beta's 126 registered graph rows have 79 partial agreements, six mismatches, five unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
+The compared A0 claims are 236 matches, nine mismatches and 46 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
 Vantom's cached Dismember row says 27 damage below A9, while this beta's constructor supplies 26, and both say 30 at A9.
 The page's own V0.104.0 update history records the reduction to 26, but its intent row was not updated.
 Flyconid's page gives its opening 2/3 Frail Spores and 1/3 Smash, and Hunter Killer's makes Puncture twice as likely as Bite, where both branches declare equal weights.
 Fossil Stalker's page says nothing restricts repeating a move, and Mysterious Knight's that no move is used twice in a row, where Fossil Stalker's three moves and Mysterious Knight's Flail and Ram may each repeat twice.
+Spectral Knight's page says it alternates Soul Slash and Soul Flame, where its branch lets Soul Slash follow itself.
 Each source passage and both sides of the disagreement remain visible rather than rewriting the wiki page.
 
 ```bash

@@ -92,7 +92,10 @@ def claims_of(text, name, found):
                        "source_text": excerpt, "amount": number, **stated})
     for pattern, pattern_offset in found:
         # Tables describe move effects, not transition order
-        prose = re.sub(r"(?ms)^\{\{Intents Table/row\s*\n.*?^\}\}\s*$", lambda match: ''.join('\n' if char == '\n' else ' ' for char in match[0]), pattern)
+        spans = table_rows(pattern)
+        prose = pattern
+        for start, end in spans:
+            prose = prose[:start] + re.sub(r"[^\n]", " ", prose[start:end]) + prose[end:]
         for match in re.finditer(r"(?m)^[^\n]*\b(?:cycles|alternates?)\b[^\n]*", prose, re.I):
             line = match[0]
             tail = re.split(r"\b(?:cycles|alternates?)\b", line, maxsplit=1, flags=re.I)[1]
@@ -129,20 +132,39 @@ def claims_of(text, name, found):
                 add('self-loop', [key(links[0])], pattern_offset + match.start(), match[0])
         branch_claims(prose, pattern_offset, add)
         # Retain exact table rows as provenance; complex formulas are not partially parsed
-        for row in re.finditer(r"(?ms)^\{\{Intents Table/row\s*\n(.*?)^\}\}", pattern):
-            move = re.search(r"(?m)^\|\s*Name\s*=\s*([^\n]+)", row[1])
-            effect = re.search(r"(?m)^\|\s*Effect\s*=\s*([^\n]+)", row[1])
+        for start, end in spans:
+            row = pattern[start:end]
+            move = re.search(r"(?m)^\|\s*Name\s*=\s*([^\n]+)", row)
+            effect = re.search(r"(?m)^\|\s*Effect\s*=\s*([^\n]+)", row[:-2])
             if not move or not effect or '{' in move[1]:
                 continue
-            tables = [table for table in TABLE.finditer(pattern, 0, row.start())]
+            tables = [table for table in TABLE.finditer(pattern, 0, start)]
             target = (tables[-1][1].strip() if tables else name) + '.' + move[1].strip()
             damage = list(re.finditer(r"\bDeals (" + AMOUNT + r") damage\b", effect[1]))
             if len(damage) == 1:
-                add('damage', [target], pattern_offset + row.start(), row[0], amount(damage[0][1]))
+                add('damage', [target], pattern_offset + start, row, amount(damage[0][1]))
             hits = re.search(r"\bdamage (" + AMOUNT + r") times\b", effect[1])
             if hits:
-                add('hits', [target], pattern_offset + row.start(), row[0], amount(hits[1]))
+                add('hits', [target], pattern_offset + start, row, amount(hits[1]))
     return sorted(claims, key=lambda claim: claim['source_line'])
+
+
+def table_rows(pattern):
+    """Each intent row from its opener to the brace that closes it, whether that closes inline or on a line of its own."""
+    spans = []
+    for opener in re.finditer(r"(?m)^\{\{Intents Table/row\b", pattern):
+        depth, index = 0, opener.start()
+        while index < len(pattern):
+            if pattern.startswith('{{', index):
+                depth, index = depth + 1, index + 2
+            elif pattern.startswith('}}', index):
+                depth, index = depth - 1, index + 2
+                if depth == 0:
+                    spans.append((opener.start(), index))
+                    break
+            else:
+                index += 1
+    return spans
 
 
 def key(link):

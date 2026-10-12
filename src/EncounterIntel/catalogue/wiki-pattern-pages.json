@@ -3620,6 +3620,32 @@
       "redirect_sources": [],
       "claims": [
         {
+          "kind": "damage",
+          "moves": [
+            "Slimed Berserker.Furious Pummeling"
+          ],
+          "source_line": 17,
+          "source_text": "{{Intents Table/row\n|Name   = Furious Pummeling\n|Intent = Attack3\n|Effect = Deals (4;{{Asc2|9|5}}) damage x4.}}",
+          "amount": {
+            "base": 4,
+            "threshold": 9,
+            "higher": 5
+          }
+        },
+        {
+          "kind": "damage",
+          "moves": [
+            "Slimed Berserker.Smother"
+          ],
+          "source_line": 28,
+          "source_text": "{{Intents Table/row\n|Name   = Smother\n|Intent = Attack4\n|Effect = Deals (30;{{Asc2|9|33}}) damage.}}",
+          "amount": {
+            "base": 30,
+            "threshold": 9,
+            "higher": 33
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Slimed Berserker.Vomit Ichor",

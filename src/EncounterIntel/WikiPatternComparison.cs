@@ -142,23 +142,24 @@ public sealed record WikiPatternComparison(string Standing, string Reason, strin
             if (matches.All(nodes => nodes.Length == 1)) mapped.Add((variant, matches.Select(nodes => nodes[0]).ToArray()));
         }
         if (mapped.Count == 0) return Unresolved("No unique inspected alias for every move in the quoted sequence.");
-        bool TwoWayNonrepeat(PatternNode from, PatternNode branch) => branch.Kind == "random" && branch.Edges.Count == 2 &&
-            branch.Edges.All(edge => edge.Repeat == "CannotRepeat" && edge.Cooldown == 0 && edge.Weight > 0 && edge.WeightRule is null) &&
-            branch.Edges.Select(edge => edge.To).Distinct().Count() == 2 && branch.Edges.Any(edge => edge.To == from.Id);
-        bool Follows(PatternNode from, PatternNode to, IReadOnlyList<PatternNode> all)
+        IReadOnlyList<string>? Next(PatternNode from, IReadOnlyList<PatternNode> all)
         {
-            if (from.Kind != "move" || from.Edges.Count != 1 || from.Edges[0].Condition is not null || from.Edges[0].Repeat is not null) return false;
-            if (from.Edges[0].To == to.Id) return true;
-            var branch = all.Single(node => node.Id == from.Edges[0].To);
-            // With two positive candidates, CannotRepeat leaves exactly the other one
-            return TwoWayNonrepeat(from, branch) && branch.Edges.Single(edge => edge.To != from.Id).To == to.Id;
+            if (from.Kind != "move" || from.Edges.Count != 1 || from.Edges[0].Condition is not null || from.Edges[0].Repeat is not null) return null;
+            var target = all.Single(node => node.Id == from.Edges[0].To);
+            if (target.Kind == "move") return [target.Id];
+            if (target.Kind != "random" || target.Edges.Any(edge => edge.Weight is null || edge.WeightRule is not null || edge.Condition is not null ||
+                all.Single(node => node.Id == edge.To).Kind != "move")) return null;
+            // A repeat rule only removes a return to the move just used; every other positive-weight move stays possible
+            var possible = target.Edges.Where(edge => edge.Weight > 0 &&
+                !(edge.To == from.Id && (edge.Repeat is "CannotRepeat" or "UseOnlyOnce" || edge.Cooldown > 0))).Select(edge => edge.To).Distinct().ToArray();
+            return possible.Length == 0 ? null : possible;
         }
+        bool Follows(PatternNode from, PatternNode to, IReadOnlyList<PatternNode> all) => Next(from, all) is [var only] && only == to.Id;
         foreach (var row in mapped)
         {
             var froms = claim.Kind == "fixed-path" ? row.Nodes.SkipLast(1) : row.Nodes;
-            if (froms.Any(from => from.Edges.Count == 0 || from.Edges.Any(edge => row.Variant.Nodes.Single(node => node.Id == edge.To) is { } target &&
-                target.Kind != "move" && !TwoWayNonrepeat(from, target))))
-                return Unresolved("The quoted sequence reaches a predicate, unresolved random branch or reactive follow-up; no decision was evaluated.");
+            if (froms.Any(from => Next(from, row.Variant.Nodes) is null))
+                return Unresolved("The quoted sequence reaches a predicate, a context-dependent branch or reactive follow-up; no decision was evaluated.");
         }
         bool Matches(PatternVariant variant, PatternNode[] nodes)
         {
@@ -172,7 +173,7 @@ public sealed record WikiPatternComparison(string Standing, string Reason, strin
             "Quoted fixed edges agree in the listed graph contexts; trigger and predicate qualifiers remain unverified.");
         if (matching.Length > 0) return Unresolved("Context variants disagree about these fixed edges; no context was guessed.");
         return new(claim, "mismatch", mapped.Select(row => row.Variant.Context).ToArray(),
-            "The quoted fixed sequence differs from the constructed edges or crosses a branch the wiki sequence omits.");
+            "The quoted fixed sequence differs from the constructed edges, or a fully known branch on the way also offers another move.");
     }
 
     private static string Identity(string value) => string.Concat(value.Where(char.IsLetterOrDigit)).ToUpperInvariant();

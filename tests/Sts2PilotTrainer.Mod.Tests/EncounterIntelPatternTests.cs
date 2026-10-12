@@ -213,6 +213,12 @@ public sealed partial class EncounterIntelTests
         Assert.Equal("partial-agreement", WikiPatternComparison.Compare(page with { Claims = [cycle] }, alternating, 0).Standing);
         var conditional = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] }, rand with { Kind = "conditional" }] }] };
         Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, conditional, 0).Checks).Standing);
+        var repeatable = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
+            rand with { Edges = [new("A", Weight: 1, Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }] };
+        Assert.Equal("mismatch", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, repeatable, 0).Checks).Standing);
+        var symbolic = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
+            rand with { Edges = [new("A", WeightRule: "Context", Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }] };
+        Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, symbolic, 0).Checks).Standing);
         Assert.All(agreement.Checks, check => Assert.Equal("matched", check.Standing));
         Assert.Equal(source, agreement.Source);
         var mismatch = WikiPatternComparison.Compare(page with { Claims = [cycle, damage with { Amount = new(999) }] }, enemy, 0);
@@ -302,6 +308,8 @@ public sealed partial class EncounterIntelTests
         Assert.DoesNotContain(pages.Pages.Single(page => page.Name == "Tough Egg").Claims, claim => claim.Kind == "opening-alternative");
         var axebots = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.AXEBOT").Variants.Where(variant => variant.EncounterIds.Contains("ENCOUNTER.AXEBOTS_NORMAL"));
         Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebots.Select(variant => variant.OpeningMove));
+        Assert.Equal("mismatch", Checks("Spectral Knight", "MONSTER.SPECTRAL_KNIGHT").Single(check => check.Claim.Kind == "fixed-cycle").Standing);
+        Assert.Equal(2, pages.Pages.Single(page => page.Name == "Slimed Berserker").Claims.Count(claim => claim.Kind == "damage"));
         var wriggler = Checks("Wriggler", "MONSTER.WRIGGLER");
         Assert.Equal("matched", wriggler.Single(check => check.Claim.Kind == "fixed-cycle").Standing);
         var subject = pages.Pages.Single(page => page.Name == "Test Subject");

@@ -147,6 +147,19 @@ class PageImportTests(unittest.TestCase):
             "It randomly picks either {{Int2|Test|A}} (cannot repeat) or {{Int2|Test|B}} (weight 2).")])
         self.assertEqual([], self.branch("Deals damage equal to its Strength, making you take 50% more damage."))
 
+    def test_intent_rows_closing_inline_or_holding_templates_keep_their_own_boundaries(self):
+        from import_wiki_pages import claims_of, regions
+        text = ("== Pattern ==\n{{Intents Table/start|Test}}\n{{Intents Table/row\n|Name = Spit\n|Effect = Shuffles 10 {{C2|Slimed}} into the discard pile.}}\n"
+                "{{Intents Table/row\n|Name = Pummel\n|Effect = Deals (4;{{Asc2|9|5}}) damage x4.}}\n"
+                "{{Intents Table/row\n|Name = Hug\n|Effect = Applies 3 {{BD2|Weak}}.\n|GivesToPlayer = Weak\n}}\n"
+                "{{Intents Table/row\n|Name = Smother\n|Effect = Deals 30 damage.}}\n{{Intents Table/end}}\nCycles {{Int2|Test|Spit}} then {{Int2|Test|Pummel}}.\n")
+        claims = claims_of(text, 'Test', regions(text, 'Test'))
+        self.assertEqual([('damage', 'Test.Pummel', 6, 4), ('damage', 'Test.Smother', 14, 30), ('fixed-cycle', 'Test.Spit', 18, None)],
+                         [(claim['kind'], claim['moves'][0], claim['source_line'], claim['amount'] and claim['amount']['base']) for claim in claims])
+        for claim in claims:
+            self.assertIn(claim['source_text'], text)
+            self.assertNotIn('{{Intents Table/row', claim['source_text'][1:])
+
     def test_literal_use_limits_bind_to_their_move_and_caps_stay_unparsed(self):
         def limits(line):
             return [(claim['kind'], claim['moves'], claim['repeat'], claim.get('limit')) for claim in self.branch_full(line)]
@@ -188,6 +201,7 @@ class PageImportTests(unittest.TestCase):
         self.assertIn((["The Merchant???.Enrage"], "Cooldown", None), stated("The Merchant???", "repeat"))
         self.assertIn((["Two-Tailed Rat.Call for Backup"], "UseOnlyOnce", None), stated("Two-Tailed Rat", "repeat"))
         self.assertEqual([], stated("Tough Egg", "opening-alternative"))
+        self.assertEqual(["Slimed Berserker.Furious Pummeling", "Slimed Berserker.Smother"], [moves[0] for moves, _, _ in stated("Slimed Berserker", "damage")][-2:])
         for page in pages.values():
             lines = page["source_text"].splitlines()
             for region in page["pattern_regions"]:
