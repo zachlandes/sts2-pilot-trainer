@@ -52,10 +52,22 @@ public static partial class RuntimeAdapter
     {
         SupportedBuild.Require();
         RefuseChangedReadMethods();
+        if (!ModelDb.All.Any())
+            throw new IntelUnavailable(LookupState.NotReady, "The game's model database is not ready for lookup.");
         var manager = RunManager.Instance;
         if (!manager.IsInProgress) return null;
-        return typeof(RunManager).GetProperty("State", InstanceMembers)?.GetValue(manager) as RunState
+        var run = typeof(RunManager).GetProperty("State", InstanceMembers)?.GetValue(manager) as RunState
             ?? throw new IntelRefusal("RunManager.State could not be read on this build.");
+        if (run.CurrentActIndex < 0 || run.CurrentActIndex >= run.Acts.Count)
+            throw new IntelUnavailable(LookupState.NotReady, "The current act is not available yet.");
+        RequireNative(run.Act);
+        // RoomSet.Boss refuses until GenerateRooms has completed; never generate it for lookup
+        try { _ = run.Act.BossEncounter; }
+        catch (InvalidOperationException error) when (error.Message == "RoomSet.Boss not set! You must call GenerateRooms")
+        {
+            throw new IntelUnavailable(LookupState.NotReady, "The current act's public bosses are not ready yet.");
+        }
+        return run;
     }
 
     public static IntelReading ReadCurrent() =>
@@ -67,25 +79,28 @@ public static partial class RuntimeAdapter
         var act = run.Act;
         RequireNative(act);
 
-        // The map shows these identities, unlike the normal and elite deal queues
-        var selected = new List<string> { act.BossEncounter.Id.ToString() };
-        if (act.HasSecondBoss)
-        {
-            selected.Add((act.SecondBossEncounter ?? throw new IntelRefusal("The current act's second boss is missing.")).Id.ToString());
-        }
+        var selected = SelectedBossesFor(act).Select(boss => boss.Id.ToString()).ToArray();
 
         var actReading = new ActIntel(act.Id.ToString(), run.CurrentActIndex,
             Definitions(act.AllWeakEncounters), Definitions(act.AllRegularEncounters),
-            Definitions(act.AllEliteEncounters), Definitions(act.AllBossEncounters), selected.ToArray());
+            Definitions(act.AllEliteEncounters), Definitions(act.AllBossEncounters), selected);
         var board = VisibleBoard(run);
         if (board.State is not { } state)
             return new IntelReading(build, run.AscensionLevel, actReading, new BoardReading(BoardKind.None, null, []));
-        if (run.IterateHookListeners(state).Any(model => model.GetType().Assembly != typeof(ActModel).Assembly))
-            throw new IntelRefusal("An unrecognized model can change intent values; this board is unsupported.");
+        RequireBoardSemantics(run, state);
         var targets = state.PlayerCreatures.ToArray();
         var enemies = state.Enemies.Select(enemy => ReadEnemy(enemy, targets)).ToArray();
         return new IntelReading(build, run.AscensionLevel, actReading,
             new BoardReading(board.Kind, state.Encounter?.Id.ToString(), enemies));
+    }
+
+    private static IReadOnlyList<EncounterModel> SelectedBossesFor(ActModel act)
+    {
+        // The map shows these identities, unlike the normal and elite deal queues
+        var selected = new List<EncounterModel> { act.BossEncounter };
+        if (act.HasSecondBoss)
+            selected.Add(act.SecondBossEncounter ?? throw new IntelRefusal("The current act's second boss is missing."));
+        return selected;
     }
 
     private static IReadOnlyList<EncounterDefinition> Definitions(IEnumerable<EncounterModel> pool) =>
@@ -103,16 +118,28 @@ public static partial class RuntimeAdapter
     {
         if (CombatManager.Instance.IsInProgress && run.CurrentRoom is CombatRoom room)
             return (BoardKind.Combat, room.CombatState);
-        if (run.CurrentRoom is not EventRoom) return (BoardKind.None, null);
+        if (run.CurrentRoom is not EventRoom eventRoom || eventRoom.IsPreFinished) return (BoardKind.None, null);
+        RequireNative(eventRoom.CanonicalEvent);
+        if (eventRoom.CanonicalEvent.LayoutType != MegaCrit.Sts2.Core.Events.EventLayoutType.Combat)
+            return (BoardKind.None, null);
         var events = RunManager.Instance.EventSynchronizer;
         if (events is null) return (BoardKind.None, null);
         // This is the already-drawn event board, not a hypothetical encounter factory
         var field = typeof(EventSynchronizer).GetField("_combatSynchronizer", InstanceMembers)
             ?? throw new IntelRefusal("The event combat-layout accessor is absent on this build.");
-        var synchronizer = field.GetValue(events) as EventCombatSynchronizer
+        var value = field.GetValue(events);
+        if (value is null) return (BoardKind.None, null);
+        var synchronizer = value as EventCombatSynchronizer
             ?? throw new IntelRefusal("The current event's combat-layout synchronizer could not be read.");
         return synchronizer.CombatStateForLayout is { } layout
             ? (BoardKind.EventLayout, layout) : (BoardKind.None, null);
+    }
+
+    private static void RequireBoardSemantics(RunState run, ICombatState state)
+    {
+        if (state.Encounter is { } encounter) RequireNative(encounter);
+        if (run.IterateHookListeners(state).Any(model => model.GetType().Assembly != typeof(ActModel).Assembly))
+            throw new IntelRefusal("An unrecognized model can change intent values; this board is unsupported.");
     }
 
     private static EnemyReading ReadEnemy(Creature enemy, IReadOnlyList<Creature> targets)
@@ -132,8 +159,12 @@ public static partial class RuntimeAdapter
         }).ToArray();
         return new EnemyReading(monster.Id.ToString(), enemy.SlotName, enemy.CurrentHp, enemy.MaxHp,
             enemy.Block, enemy.Powers.Select(power => new PowerReading(power.Id.ToString(), power.Amount)).ToArray(),
-            string.IsNullOrEmpty(move.StateId) ? null : move.StateId, intents);
+            AnnouncedMoveId(monster), intents);
     }
+
+    private static string? AnnouncedMoveId(MonsterModel model) =>
+        // The event layout's default MoveState is a sentinel, not an assigned intent
+        string.IsNullOrEmpty(model.NextMove.StateId) || model.NextMove.StateId == "UNSET_MOVE" ? null : model.NextMove.StateId;
 
     internal static void RequireNative(AbstractModel model)
     {
@@ -150,7 +181,7 @@ public static partial class RuntimeAdapter
             (((method.DeclaringType == typeof(RunManager) || method.DeclaringType == typeof(RunState) ||
                method.DeclaringType == typeof(Creature) || method.DeclaringType == typeof(CombatState) ||
                method.DeclaringType == typeof(CombatManager) || method.DeclaringType == typeof(CombatRoom) ||
-               method.DeclaringType == typeof(EventCombatSynchronizer)) && method.Name.StartsWith("get_", StringComparison.Ordinal)) ||
+               method.DeclaringType == typeof(EventCombatSynchronizer) || method.DeclaringType == typeof(ModelDb)) && method.Name.StartsWith("get_", StringComparison.Ordinal)) ||
              (method.DeclaringType == typeof(RoomSet) && method.Name is "get_Boss" or "get_SecondBoss" or "get_HasSecondBoss") ||
              method.DeclaringType.FullName is "MegaCrit.Sts2.Core.Models.Monsters.Nibbit" or
                 "MegaCrit.Sts2.Core.Models.Monsters.PhrogParasite" or "MegaCrit.Sts2.Core.Models.Monsters.Wriggler" or
@@ -158,7 +189,7 @@ public static partial class RuntimeAdapter
              method.DeclaringType.Namespace?.StartsWith("MegaCrit.Sts2.Core.MonsterMoves", StringComparison.Ordinal) == true ||
              (method.DeclaringType.Namespace?.StartsWith("MegaCrit.Sts2.Core.Models", StringComparison.Ordinal) == true &&
               (method.Name.StartsWith("get_", StringComparison.Ordinal) || method.Name == "GenerateAllEncounters" ||
-               method.Name.Contains("ModifyDamage", StringComparison.Ordinal) || method.Name == "GenerateMoveStateMachine")) ||
+               method.Name.Contains("ModifyDamage", StringComparison.Ordinal) || method.Name is "GenerateMoveStateMachine" or "GetBestiaryMoveName")) ||
              method.DeclaringType.Namespace == "MegaCrit.Sts2.Core.Hooks" ||
              method.DeclaringType.FullName == "MegaCrit.Sts2.Core.Helpers.AscensionHelper"));
         if (patched is not null)

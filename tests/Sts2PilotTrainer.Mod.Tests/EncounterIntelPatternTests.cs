@@ -17,7 +17,7 @@ public sealed partial class EncounterIntelTests
     {
         if (Environment.GetEnvironmentVariable("ENCOUNTER_INTEL_PATTERN_CHILD") != "1")
         {
-            CheckPatternsInFreshProcess();
+            CheckIntelInFreshProcess(nameof(EveryMonsterGraphIsDerivedWithoutRunFightCommandsOrRandomness), "ENCOUNTER_INTEL_PATTERN_CHILD");
             return;
         }
         EngineHost.Start();
@@ -25,11 +25,11 @@ public sealed partial class EncounterIntelTests
         finally { HeadlessEngine.Forget(); }
     }
 
-    private static void CheckPatternsInFreshProcess()
+    private static void CheckIntelInFreshProcess(string test, string marker)
     {
         // Earlier tests can inline ascension reads before the scoped probe is installed
         var root = WorktreeLocator.Find();
-        var sandbox = Path.Combine(root, "build", "test-scratch", "encounter-patterns-" + Guid.NewGuid().ToString("N"));
+        var sandbox = Path.Combine(root, "build", "test-scratch", "encounter-intel-" + Guid.NewGuid().ToString("N"));
         var configuration = Directory.GetParent(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))!.Name;
         var start = new ProcessStartInfo(Path.Combine(root, "scripts", "test-session.sh"))
         {
@@ -38,10 +38,10 @@ public sealed partial class EncounterIntelTests
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        foreach (var argument in new[] { "tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj", "-c", configuration, "--no-build", "--nologo", "--filter", "FullyQualifiedName~EveryMonsterGraphIsDerivedWithoutRunFightCommandsOrRandomness" }) start.ArgumentList.Add(argument);
-        start.Environment["ENCOUNTER_INTEL_PATTERN_CHILD"] = "1";
+        foreach (var argument in new[] { "tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj", "-c", configuration, "--no-build", "--nologo", "--filter", "FullyQualifiedName~" + test }) start.ArgumentList.Add(argument);
+        start.Environment[marker] = "1";
         start.Environment["STS2_PILOT_TRAINER_SANDBOX"] = sandbox;
-        using var child = Process.Start(start) ?? throw new InvalidOperationException("Pattern probe process did not start.");
+        using var child = Process.Start(start) ?? throw new InvalidOperationException("Encounter Intel probe process did not start.");
         try
         {
             var output = child.StandardOutput.ReadToEndAsync();
@@ -50,7 +50,7 @@ public sealed partial class EncounterIntelTests
             {
                 child.Kill(entireProcessTree: true);
                 child.WaitForExit();
-                throw new TimeoutException("Fresh pattern probe exceeded ninety seconds.");
+                throw new TimeoutException("Fresh Encounter Intel probe exceeded ninety seconds.");
             }
             var combined = output.GetAwaiter().GetResult() + error.GetAwaiter().GetResult();
             Assert.True(child.ExitCode == 0, combined);
