@@ -141,6 +141,7 @@ Nested event combats remain separate catalogue definitions rather than ordinary 
 The engine tests compare the projection with real `UnknownMapPointOdds.Roll` calls on isolated odds objects with controlled draws at, below and above cumulative boundaries.
 They cover fresh and saturated odds, disabled and zero values, Juzu, contradictory raw Event odds, both shop-blacklist causes, the first-run ordering, Deadly Events, native act reset and a fallback with Event removed.
 The live run's RNG and counters are not used for that oracle.
+The first-run script is held to the encounters the engine itself deals: entering normal and elite rooms in a fresh first run, each scripted forecast names the single encounter dealt, through both elites and past the end of both scripts, where the forecast falls back to the phase definitions.
 Other probes enter a direct question-mark combat and a real nested Lantern Key fight, verify both act-one variants and the later-act phase counts, and restore an engine-produced save through the existing headless Continue path.
 Repeated lookup under the command/RNG/deal guard preserves complete gameplay digests and sandbox file receipts; a forbidden RNG call proves the guard can refuse one.
 No retail client, regular save, captain screen or UI was used.
