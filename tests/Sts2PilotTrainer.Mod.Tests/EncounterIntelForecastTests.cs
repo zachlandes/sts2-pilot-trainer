@@ -173,21 +173,23 @@ public sealed partial class EncounterIntelTests
             var harmony = new Harmony("encounter-intel-test.adaptive-draw");
             try
             {
-                InstallFixedDraw(harmony);
                 var clone = CloneOdds(ReadOdds(session.RunState.Odds.UnknownMapPoint));
                 clone.SetBaseOdds(RoomType.Elite, .1f);
                 foreach (var draw in new[] { .9f, .9f, .01f, .99f, .99f, .5f })
                 {
                     SetOdds(session.RunState.Odds.UnknownMapPoint, ReadOdds(clone));
                     var before = StateReceipt(session);
+                    // Forecast before the draw is fixed, because a patched Roll is refused
                     var forecast = Ready(EncounterIntelMod.NextUnknownRoom(candidate));
+                    InstallFixedDraw(harmony);
                     ForecastDraw = draw;
                     var actual = clone.Roll([], session.RunState);
+                    ForecastDraw = null;
+                    harmony.UnpatchAll(harmony.Id);
                     Assert.Equal(actual.ToString(), forecast.Projection.OutcomeAt(draw).ToString());
                     Assert.Equal(before, StateReceipt(session));
                     if (draw == .9f) Assert.True(clone.TreasureOdds >= .06f);
                 }
-                ForecastDraw = null;
                 RunManager.Instance.SetActInternal(1).GetAwaiter().GetResult();
                 Assert.Equal(1, session.RunState.CurrentActIndex);
                 Assert.Empty(session.RunState.VisitedMapCoords);
@@ -441,18 +443,29 @@ public sealed partial class EncounterIntelTests
 
     private static void RejectForecastHook() => throw new InvalidOperationException("An unknown forecast hook must not execute");
     private static float? ForecastDraw;
-    private static bool FixedForecastDraw(ref float __result)
+    private static float FixedForecastDraw(Rng rng, float max) => ForecastDraw ?? rng.NextFloat(max);
+    // Replace the draw at Roll's own call site rather than patching Rng.NextFloat: once an
+    // earlier test has rolled enough rooms for Roll to be tier-1 compiled, NextFloat is
+    // inlined into it and a patch on NextFloat is never reached
+    private static IEnumerable<CodeInstruction> FixRollDraw(IEnumerable<CodeInstruction> instructions)
     {
-        if (ForecastDraw is not { } draw) return true;
-        __result = draw;
-        return false;
+        var draw = typeof(Rng).GetMethod(nameof(Rng.NextFloat), [typeof(float)])!;
+        var replaced = 0;
+        foreach (var instruction in instructions)
+        {
+            if (instruction.Calls(draw))
+            {
+                replaced++;
+                yield return new CodeInstruction(System.Reflection.Emit.OpCodes.Call,
+                    typeof(EncounterIntelTests).GetMethod(nameof(FixedForecastDraw), BindingFlags.NonPublic | BindingFlags.Static)!).WithLabels(instruction.labels).WithBlocks(instruction.blocks);
+            }
+            else yield return instruction;
+        }
+        if (replaced != 1) throw new InvalidOperationException($"UnknownMapPointOdds.Roll draws {replaced} times on this build, not once");
     }
-    private static void InstallFixedDraw(Harmony harmony)
-    {
-        var prefix = new HarmonyMethod(typeof(EncounterIntelTests).GetMethod(nameof(FixedForecastDraw), BindingFlags.NonPublic | BindingFlags.Static)!);
-        foreach (var method in typeof(Rng).GetMethods().Where(method => method.Name == nameof(Rng.NextFloat)))
-            harmony.Patch(method, prefix: prefix);
-    }
+    private static void InstallFixedDraw(Harmony harmony) =>
+        harmony.Patch(typeof(UnknownMapPointOdds).GetMethod(nameof(UnknownMapPointOdds.Roll))!,
+            transpiler: new HarmonyMethod(typeof(EncounterIntelTests).GetMethod(nameof(FixRollDraw), BindingFlags.NonPublic | BindingFlags.Static)!));
 
     private static void MatchRoll(RunState run, UnknownRoomForecast forecast, IEnumerable<RoomType> blacklist)
     {
