@@ -259,21 +259,37 @@ public sealed partial class EncounterIntelTests
     }
 
     [GameFact]
-    public void PublicFirstRunScriptNarrowsThePoolWithoutLookingAtTheGeneratedSequence()
+    public void FirstRunScriptForecastsMatchTheEncountersTheEngineDealsThroughExhaustion()
     {
         WithForecastRun(true, false, session =>
         {
-            string[] script = ["NIBBITS_WEAK", "SLIMES_WEAK", "SHRINKER_BEETLE_WEAK", "INKLETS_NORMAL", "MAWLER_NORMAL", "RUBY_RAIDERS_NORMAL", "NIBBITS_NORMAL"];
-            foreach (var id in script)
+            RoomType[] visits = [RoomType.Monster, RoomType.Elite, RoomType.Monster, RoomType.Monster, RoomType.Elite, RoomType.Monster,
+                RoomType.Monster, RoomType.Monster, RoomType.Monster, RoomType.Elite, RoomType.Monster];
+            var scripted = new Dictionary<RoomType, int> { [RoomType.Monster] = 0, [RoomType.Elite] = 0 };
+            foreach (var type in visits)
             {
-                var pool = Ready(EncounterIntelMod.NextEncounterPools());
-                Assert.Equal(PoolBasis.FirstRunScript, pool.NormalBasis);
-                Assert.Equal("ENCOUNTER." + id, Assert.Single(pool.NormalPool).Reference.Id);
-                Assert.Equal("ENCOUNTER.BYRDONIS_ELITE", Assert.Single(pool.ElitePool).Reference.Id);
-                session.RunState.AppendToMapPointHistory(MapPointType.Unknown, RoomType.Monster, null);
-                session.RunState.Act.MarkRoomVisited(RoomType.Monster);
+                var before = StateReceipt(session);
+                var pools = Ready(EncounterIntelMod.NextEncounterPools());
+                Assert.Equal(before, StateReceipt(session));
+                var (basis, pool) = type == RoomType.Monster ? (pools.NormalBasis, pools.NormalPool) : (pools.EliteBasis, pools.ElitePool);
+                RunManager.Instance.EnterRoomDebug(type, type == RoomType.Monster ? MapPointType.Monster : MapPointType.Elite, null, false).GetAwaiter().GetResult();
+                Pump.Drain();
+                var dealt = HeadlessRuns.Field(session, "combat.encounter");
+                if (basis == PoolBasis.FirstRunScript)
+                {
+                    scripted[type]++;
+                    Assert.Equal(dealt, Assert.Single(pool).Reference.Id);
+                }
+                else Assert.Contains(dealt, pool.Select(row => row.Reference.Id));
+                foreach (var enemy in CombatManager.Instance.DebugOnlyGetState()!.Enemies.ToArray()) CreatureCmd.Kill(enemy).GetAwaiter().GetResult();
+                CombatManager.Instance.CheckWinCondition().GetAwaiter().GetResult();
+                Pump.Drain();
             }
-            Assert.Equal(PoolBasis.PhaseDefinitions, Ready(EncounterIntelMod.NextEncounterPools()).NormalBasis);
+            Assert.Equal(7, scripted[RoomType.Monster]);
+            Assert.Equal(2, scripted[RoomType.Elite]);
+            var exhausted = Ready(EncounterIntelMod.NextEncounterPools());
+            Assert.Equal(PoolBasis.PhaseDefinitions, exhausted.NormalBasis);
+            Assert.Equal(PoolBasis.PhaseDefinitions, exhausted.EliteBasis);
         });
     }
 
