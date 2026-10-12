@@ -9,6 +9,8 @@ public static class EncounterIntelMod
     // Initialization precedes the model database; lookup is explicitly on demand
     public static void Initialize() => Log.Info("Encounter Intel data prototype loaded; no UI or gameplay patches installed.");
 
+    public static LookupResult<UnknownRoomForecast> NextUnknownRoom(MegaCrit.Sts2.Core.Map.MapPoint candidate) => RuntimeAdapter.ReadUnknownRoomForecast(candidate);
+    public static LookupResult<EncounterPoolForecast> NextEncounterPools() => RuntimeAdapter.ReadEncounterPoolForecast();
     public static LookupResult<ActLookup> CurrentAct() => RuntimeAdapter.ReadActLookup();
     public static LookupResult<BoardLookup> CurrentBoard() => RuntimeAdapter.ReadBoardLookup();
     public static LookupResult<EnemyLookup> Enemy(MegaCrit.Sts2.Core.Entities.Creatures.Creature enemy) => RuntimeAdapter.ReadEnemyLookup(enemy);

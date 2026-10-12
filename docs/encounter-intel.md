@@ -38,6 +38,7 @@ It returns detached records, not game models or a resumable snapshot.
   A missing announced move is absent, not predicted.
 
 The adapter never reads a seed, an RNG position, an encounter counter, an ordered deal queue or `RoomSet.Next*`.
+Forecasts derive visit counts from visible map history instead.
 It never calls `Roll`, `GenerateRooms`, `PullNextEncounter`, `GenerateMonstersWithSlots`, `RollMove` or `FindNextMove`.
 The game's public pool properties may memoize definition enumerations; no gameplay state, RNG position, visit counter or profile file changes during lookup in the tested scenarios.
 The tests use the arbiter's complete projection, which can see the private queues and RNG streams, as an independent before/after witness; the adapter does not depend on that projection.
@@ -96,6 +97,55 @@ It holds selective reference rows to the full catalogue and samples complete gam
 This proves the data entry points against the inspected beta engine, not scene-tree or input integration in a retail client.
 Native resource loading, translated-name rendering, scene-node attachment, user input and automatic UI refresh require a later authorized isolated client check.
 No retail client, captain screen or regular save was used for this phase.
+
+## Next-visit room types and encounter pools
+
+Phase 4 extends the same adapter with a pure room-roll projection and on-demand pool readings.
+It adds no observer, cache, UI or gameplay patches.
+The beta rules are explicitly bound to the inspected assembly hash; another registered build still needs its own forecast rules and proof.
+
+`EncounterIntelMod.NextUnknownRoom(candidate)` accepts an existing question-mark node offered as the next visit by the native map travel rule.
+A stale node, a non-question-mark node or a distant node requiring intervening decisions is refused.
+An uninitialized map is `NotReady`.
+The reading carries the act and node coordinates, current raw odds, visible prior question-mark count, first-run state, shop blacklist and recognized hooks.
+It reads no future room or encounter identity.
+Call it synchronously on the game thread and request another reading after any decision.
+
+`UnknownRoomRules.Project` is pure.
+It models the first-run return before filters, then the native Monster, Elite, Treasure and Shop iteration order and float accumulation.
+Negative odds are disabled, filtered mass is not proportionally redistributed, and cumulative intervals saturate at one.
+Event receives the residual while it is allowed; otherwise the lowest allowed native room type receives the fallback mass.
+The detached projection retains inclusive draw thresholds as well as interval masses, including the engine's zero-draw endpoint behavior.
+These are room-type probabilities under the inspected uniform-draw algorithm, not the hidden seed's predetermined next room or a discrete PRNG-state posterior.
+`EventOdds` is not used: it can report zero when the filtered projection gives Event almost all the mass.
+
+The blacklist comes from the native `BuildRoomTypeBlacklist` using the previous visited node's complete room history and the candidate's children.
+A previous shop, including one nested inside an event, or a nonempty all-shop child set excludes Shop.
+The candidate's empty child set does not.
+Juzu removes only direct Monster rooms after the first-run exception; it does not exclude fights offered by events.
+Deadly Events' current Elite odds and adaptive Treasure increases are sampled from the live odds, rather than reset or simulated by lookup.
+Act changes and Continue are sampled afresh through the same entry point.
+An unknown model, odds hook, run-hook subscription delegate or Harmony change to the inspected forecast members returns `Refused` before executing an unknown hook.
+There is no vanilla fallback under an unavailable forecast.
+
+`EncounterIntelMod.NextEncounterPools()` derives the current act's upcoming weak or regular phase from visible base-room history and the act's native weak-encounter count.
+A direct Monster room on a question mark counts once at entry, not at victory.
+A later Monster room inside an Event history entry, an elite and a boss do not count.
+Continue reuses the restored history without incrementing a counter or remembering a prior reading.
+The current act's normal and elite definition candidates are joined to the existing catalogue and native references, preserving their attribution, semantic standings and gaps.
+The public Overgrowth first-run script narrows its known prefix without inspecting the generated sequence.
+`PoolBasis` distinguishes that script from the broader phase definition pool.
+A phase definition pool is not a claim about the remaining bag, tag exclusions, refill history or exact per-encounter percentages; those require the separately deferred posterior work.
+Nested event combats remain separate catalogue definitions rather than ordinary weak encounters.
+
+The engine tests compare the projection with real `UnknownMapPointOdds.Roll` calls on isolated odds objects with controlled draws at, below and above cumulative boundaries.
+They cover fresh and saturated odds, disabled and zero values, Juzu, contradictory raw Event odds, both shop-blacklist causes, the first-run ordering, Deadly Events, native act reset and a fallback with Event removed.
+The live run's RNG and counters are not used for that oracle.
+The first-run script is held to the encounters the engine itself deals: entering normal and elite rooms in a fresh first run, each scripted forecast names the single encounter dealt, through both elites and past the end of both scripts, where the forecast falls back to the phase definitions.
+Other probes enter a direct question-mark combat and a real nested Lantern Key fight, verify both act-one variants and the later-act phase counts, and restore an engine-produced save through the existing headless Continue path.
+Repeated lookup under the command/RNG/deal guard preserves complete gameplay digests and sandbox file receipts; a forbidden RNG call proves the guard can refuse one.
+No retail client, regular save, captain screen or UI was used.
+These tests establish the beta data contract, not an in-client rendering demonstration.
 
 ## Wiki import and licensing
 
