@@ -9520,7 +9520,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Slimed Berserker Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Slimed Berserker]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Slimed Berserker",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -9771,7 +9776,12 @@
       "location": "{{2|Glory}} Easy Encounter",
       "text": "[[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Scroll of Biting",
+          "count": 3
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -9835,7 +9845,16 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:The Lost Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Lost]][[File:The Forgotten Icon.png|class=monster-icon|48px|link=Slay the Spire 2:The Forgotten]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "The Lost",
+          "count": 1
+        },
+        {
+          "wiki_link": "The Forgotten",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10071,7 +10090,12 @@
       "location": "{{2|Glory}} Easy Encounter",
       "text": "[[File:Devoted Sculptor Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Devoted Sculptor]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Devoted Sculptor",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10105,7 +10129,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Fabricator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]][[File:Summon Divider Icon.png]][[File:Fabricator Bots Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Fabricator]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Fabricator",
+          "count": 2
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10160,7 +10189,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Owl Magistrate Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Owl Magistrate]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Owl Magistrate",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10238,7 +10272,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Axebot Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Axebot]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Axebot",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10633,7 +10672,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Globe Head Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Globe Head]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Globe Head",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -10836,7 +10880,16 @@
       "location": "{{2|Glory}} Easy Encounter",
       "text": "[[File:Living Shield Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Living Shield]][[File:Turret Operator Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Turret Operator]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Living Shield",
+          "count": 1
+        },
+        {
+          "wiki_link": "Turret Operator",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -11017,7 +11070,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Frog Knight Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Frog Knight]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Frog Knight",
+          "count": 1
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."
@@ -11533,7 +11591,12 @@
       "location": "{{2|Glory}} Normal Encounter",
       "text": "[[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]][[File:Scroll of Biting Icon.png|class=monster-icon|48px|link=Slay the Spire 2:Scroll of Biting]]",
       "evidence_kind": "icon-row",
-      "members": [],
+      "members": [
+        {
+          "wiki_link": "Scroll of Biting",
+          "count": 4
+        }
+      ],
       "is_event": false,
       "gaps": [
         "Icon links are editorial composition references, not verified opening rosters."

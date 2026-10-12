@@ -135,7 +135,10 @@ def composition(location, text):
     if not isinstance(location, str) or not isinstance(text, str):
         raise ValueError('Encounter location and composition must be text')
     # Repeated icons retain multiplicity, but a group link is not a monster identity
-    links = re.findall(r'\[\[File:[^\]]*\|link=StS2:([^\]]+)\]\]', text)
+    targets = re.findall(r'\[\[File:[^\]]*\|link=([^\]]+)\]\]', text)
+    links = [re.sub(r'^(?:StS2|Slay the Spire 2):', '', target) for target in targets]
+    if not links or any(link == target for link, target in zip(links, targets)):
+        raise ValueError(f'Unrecognized icon links in encounter composition: {location}')
     return dict(location=location, text=text, evidence_kind='icon-row', members=[dict(wiki_link=link, count=links.count(link))
                 for link in dict.fromkeys(links)], is_event=bool(re.search(r'\bEvent\b', location)),
                 gaps=['Icon links are editorial composition references, not verified opening rosters.'])

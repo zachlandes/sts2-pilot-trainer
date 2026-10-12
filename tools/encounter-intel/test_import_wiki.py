@@ -46,6 +46,25 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(dict(base=3, threshold=9, higher=4),
                          enemies['Exoskeleton']['moves'][0]['quantities'][1]['amount'])
 
+    def test_both_wiki_namespace_spellings_keep_scroll_multiplicity(self):
+        result = IMPORTER.load_bundle(BUNDLE)
+        scrolls = sorted(member['count'] for entry in result['encounters'] if entry['evidence_kind'] == 'icon-row'
+                         for member in entry['members'] if member['wiki_link'] == 'Scroll of Biting'
+                         and len(entry['members']) == 1)
+        self.assertEqual([3, 4], scrolls)
+        for entry in result['encounters']:
+            if entry['evidence_kind'] == 'icon-row':
+                with self.subTest(location=entry['location'], text=entry['text']):
+                    self.assertTrue(entry['members'])
+                    self.assertTrue(entry['gaps'])
+        self.assertEqual([dict(wiki_link='Scroll of Biting', count=2)], IMPORTER.composition(
+            'Normal Encounter', '[[File:A.png|link=StS2:Scroll of Biting]][[File:A.png|link=Slay the Spire 2:Scroll of Biting]]')['members'])
+
+    def test_icon_rows_with_unrecognized_or_missing_links_refuse(self):
+        for text in ['[[File:A.png|link=Other Game:Scroll of Biting]]', '[[File:Summon Divider Icon.png]]', 'Scroll of Biting']:
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'icon links'):
+                IMPORTER.composition('Normal Encounter', text)
+
     def test_complex_or_unknown_quantities_are_not_partially_claimed_as_constants(self):
         self.assertEqual([], IMPORTER.move_quantities('Deals 5x2 ({{Asc2|9|6x2}}) damage.'))
         self.assertEqual([], IMPORTER.move_quantities('Deals 3/6({{Asc2|9|4/8}}) damage.'))
