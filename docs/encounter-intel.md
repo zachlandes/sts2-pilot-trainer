@@ -184,6 +184,7 @@ The old reviewed examples remain bound to their original assembly hash even afte
 
 `CatalogueEncounter.DamageSchedules` lists possible members and every inspected opening alternative by ascension column.
 A schedule follows fixed edges for nine turns, accumulating only inspected self-Strength gains, and stops at a conditional or random branch.
+It also ends after a move carrying the game's own `EscapeIntent`, because that move removes the enemy; the structural self-loop after it stays in the graph and is not read as further turns.
 It is reference damage before initial powers, allies or player interference, not announced damage or a next-turn forecast.
 An unknown prior buff leaves later damage absent rather than showing a plausible zero.
 Dynamic first-use values carry their rule, such as Multi Claw's increasing hit count or Pressure Gun's increasing damage; later dynamic values are not simulated.

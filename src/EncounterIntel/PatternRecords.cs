@@ -99,6 +99,9 @@ public static class PatternJson
 
 public static class PatternSchedules
 {
+    // The game's own escape intent; its move removes the enemy, so a structural self-loop after it is no turn
+    private const string EscapeIntent = "EscapeIntent";
+
     // A reference line follows only fixed edges, never a predicate or a random roll
     public static IReadOnlyList<PatternScheduleRow> ReferenceLine(string? opening, IReadOnlyList<PatternNode> nodes, int turns = 9)
     {
@@ -120,7 +123,8 @@ public static class PatternSchedules
                     : strength is null ? "Prior effects can change damage; no verified cumulative reference quantity." : attack.Gap,
             }).ToArray();
             var edge = node.Edges.Count == 1 && node.Edges[0].Condition is null && node.Edges[0].Repeat is null ? node.Edges[0] : null;
-            var stop = edge is null ? "No fixed follow-up; read the branch or reactive rule." : byId[edge.To].Kind != "move"
+            var stop = node.Intents.Contains(EscapeIntent, StringComparer.Ordinal) ? "Escapes the fight; the enemy takes no further turns."
+                : edge is null ? "No fixed follow-up; read the branch or reactive rule." : byId[edge.To].Kind != "move"
                 ? "Next decision is a branch; no roll or predicate was evaluated." : null;
             rows.Add(new(turn, node.Id, attacks, strength, stop));
             if (stop is not null) break;

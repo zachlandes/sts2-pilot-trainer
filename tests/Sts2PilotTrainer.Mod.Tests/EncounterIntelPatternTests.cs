@@ -120,6 +120,20 @@ public sealed partial class EncounterIntelTests
             Assert.Contains("CanSummon", cap.Authority);
             Assert.Contains("CallForBackup", cap.Authority);
         });
+        foreach (var (enemy, escape) in new[] { ("MONSTER.FAT_GREMLIN", "FLEE_MOVE"), ("MONSTER.THIEVING_HOPPER", "ESCAPE_MOVE") })
+        {
+            var variants = atlas.Columns.SelectMany(column => column.Enemies).Where(row => row.Id == enemy).SelectMany(row => row.Variants).ToArray();
+            Assert.NotEmpty(variants);
+            Assert.All(variants, variant =>
+            {
+                Assert.Contains("EscapeIntent", variant.Nodes.Single(node => node.Id == escape).Intents);
+                Assert.Contains(variant.Nodes.Single(node => node.Id == escape).Edges, edge => edge.To == escape);
+                var last = variant.Schedule[^1];
+                Assert.Equal(escape, last.Move);
+                Assert.Single(variant.Schedule, row => row.Move == escape);
+                Assert.Contains("Escapes", last.StopsAfter);
+            });
+        }
         var phrog = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.PHROG_PARASITE").Variants[0];
         Assert.Contains(phrog.Nodes, node => node.Kind == "random" && !node.ReachableFromOpening);
     }
@@ -165,6 +179,23 @@ public sealed partial class EncounterIntelTests
         Assert.Equal(3, repeated[0].Attacks[0].Hits);
         Assert.Null(repeated[1].Attacks[0].Hits);
         Assert.Null(repeated[1].Attacks[0].Damage);
+    }
+
+    [Fact]
+    public void ReferenceScheduleEndsAtAnEscapeAndKeepsFixedCyclesRunning()
+    {
+        var hit = new PatternNode("HIT", "move", [new("FLEE")], ["SingleAttackIntent"], [new(4, 1, null)], false, true, 0, []);
+        var flee = new PatternNode("FLEE", "move", [new("FLEE")], ["EscapeIntent"], [], false, true, 0, []);
+        var escaping = PatternSchedules.ReferenceLine("HIT", [hit, flee]);
+        Assert.Equal(["HIT", "FLEE"], escaping.Select(row => row.Move));
+        Assert.Null(escaping[0].StopsAfter);
+        Assert.Contains("Escapes", escaping[1].StopsAfter);
+        Assert.Equal([new PatternEdge("FLEE")], flee.Edges);
+        var cycle = new PatternNode("A", "move", [new("B")], ["SingleAttackIntent"], [new(5, 1, null)], false, true, 0, []);
+        var back = new PatternNode("B", "move", [new("A")], ["DefendIntent"], [], false, true, 0, []);
+        var cycling = PatternSchedules.ReferenceLine("A", [cycle, back]);
+        Assert.Equal(9, cycling.Count);
+        Assert.All(cycling, row => Assert.Null(row.StopsAfter));
     }
 
     [Fact]
