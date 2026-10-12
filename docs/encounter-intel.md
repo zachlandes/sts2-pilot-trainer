@@ -31,7 +31,7 @@ It returns detached records, not game models or a resumable snapshot.
   `PossibleMonsterIds` is a type set, not an opening roster or a generated composition.
 - `SelectedBosses` reads the current act's `BossEncounter` and, when `HasSecondBoss` is true, `SecondBossEncounter`.
   It does not inspect future acts' selected bosses or hardcode the second-boss rule to index two.
-- `BoardReading` samples an existing combat room, or the already-created `EventCombatSynchronizer.CombatStateForLayout` while an event room is visible.
+- `BoardReading` samples an existing combat room, or the already-created `EventCombatSynchronizer.CombatStateForLayout` while an unfinished Combat-layout event room is visible.
   It does not materialize a hypothetical board.
 - Each enemy retains its slot, current health, block, powers and assigned `NextMove`.
   Attack intents use the game's `GetTotalDamage` over that board's player creatures, including its own local-player damage-modification context.
