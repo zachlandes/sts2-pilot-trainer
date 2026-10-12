@@ -19,8 +19,11 @@ Each per-module source is available under the root URL followed by /<module>.
 A pinned rendered revision is available with ?oldid=<revision>.
 Full URLs, SHA-256 hashes and fetch times accompany the embedded catalogue.
 
-Changes: parsed literal Lua tables into JSON, normalized field names, omitted
-art filenames, and retained the wiki's wikitext without executing or rendering it.
+Changes: parsed literal Lua tables into JSON, normalized field names and numeric
+claims, grouped encounter icon rows and party descriptions with source references,
+retained spawn statements, and named missing patterns and movesets.
+Standalone art fields were omitted; composition wikitext retains its original
+File links without executing or rendering them.
 Typed worked-example rules add independently reviewed encounter phases, openings
 and transitions for the inspected v0.111.0 game build.
 They do not make the rest of the imported wiki data build-verified.
