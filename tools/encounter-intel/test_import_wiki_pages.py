@@ -68,10 +68,35 @@ class PageImportTests(unittest.TestCase):
         self.assertEqual(['Test.Attack', 'Test.Buff'], claims[0]['moves'])
         self.assertEqual(['Test.Attack', 'Test.Buff', 'Test.Attack'], claims[1]['moves'])
 
-    def test_random_qualified_cycles_and_complex_amounts_are_not_guessed(self):
+    def test_random_qualified_cycles_and_dynamic_amounts_are_not_guessed(self):
         from import_wiki_pages import claims_of, regions
-        text = "== Pattern ==\nCycles {{Int2|Test|Attack}} then {{Int2|Test|Buff}} if healthy.\n{{Intents Table/row\n| Name = Attack\n| Effect = Deals (3x3;{{Asc2|9|4x3}}) damage.\n}}\n"
+        text = "== Pattern ==\nCycles {{Int2|Test|Attack}} then {{Int2|Test|Buff}} if healthy.\n{{Intents Table/row\n| Name = Attack\n| Effect = Deals X damage, where X is its Strength.\n}}\n"
         self.assertEqual([], claims_of(text, 'Test', regions(text, 'Test')))
+        conditional = "== Pattern ==\nFollows a repeating cycle: {{Int2|Test|Attack}}, {{Int2|Test|Buff}}, then a conditional check.\nThen the cycle continues with {{Int2|Test|Attack}} and {{Int2|Test|Buff}}.\n"
+        self.assertEqual([], claims_of(conditional, 'Test', regions(conditional, 'Test')))
+
+    def test_literal_multiplied_attacks_become_damage_and_hit_claims(self):
+        from import_wiki_pages import claims_of, regions
+        def quantities(effect):
+            text = "== Pattern ==\n{{Intents Table/row\n|Name = Attack\n|Effect = " + effect + "\n}}\n"
+            return [(claim['kind'], claim['amount']) for claim in claims_of(text, 'Test', regions(text, 'Test'))]
+        def at(base, threshold=None, higher=None):
+            return {'base': base, 'threshold': threshold, 'higher': higher}
+        self.assertEqual([('damage', at(3, 9, 4)), ('hits', at(3, 9, 3))], quantities("Deals (3x3;{{Asc2|9|4x3}}) damage."))
+        self.assertEqual([('damage', at(4, 9, 5)), ('hits', at(4))], quantities("Deals (4;{{Asc2|9|5}}) damage x4.}}"))
+        self.assertEqual([('damage', at(7, 9, 8)), ('hits', at(3))], quantities("Deals (7;{{Asc2|9|8}}) damage ×3."))
+        self.assertEqual([('damage', at(3)), ('hits', at(7, 9, 8))], quantities("Deals 3 damage (×7;{{Asc2|9|×8}})."))
+        self.assertEqual([('damage', at(10, 9, 11)), ('hits', at(3))], quantities("Deals (10;{{Asc2|9|11}}) damage x3 (increases by 1 hit each use)."))
+
+    def test_singular_cycles_and_bulleted_sequences_are_literal_sequences(self):
+        from import_wiki_pages import claims_of, regions
+        def sequences(body):
+            text = "== Pattern ==\n" + body + "\n"
+            return [(claim['kind'], claim['moves']) for claim in claims_of(text, 'Test', regions(text, 'Test')) if claim['kind'].startswith('fixed')]
+        self.assertEqual([('fixed-cycle', ['Test.A', 'Test.B', 'Test.C'])], sequences("Follows a fixed cycle: {{Int2|Test|A}}, {{Int2|Test|B}}, {{Int2|Test|C}}, then repeats."))
+        self.assertEqual([('fixed-cycle', ['Test.A', 'Test.B'])], sequences("Starts with {{Int2|Test|C}} and then repeats this cycle for the rest of combat:\n* {{Int2|Test|A}}\n* {{Int2|Test|B}}"))
+        self.assertEqual([('fixed-path', ['Test.A', 'Test.B', 'Test.C'])], sequences("Follows a fixed sequence:\n* {{Int2|Test|A}} (stealing a card)\n* {{Int2|Test|B}}\n* {{Int2|Test|C}} (fleeing)"))
+        self.assertEqual([], sequences("Follows a pattern:\n* {{Int2|Test|A}} or {{Int2|Test|B}}\n* {{Int2|Test|C}}"))
 
     def test_cached_redirect_resolves_to_section_with_both_provenance_receipts(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -154,7 +179,7 @@ class PageImportTests(unittest.TestCase):
                 "{{Intents Table/row\n|Name = Hug\n|Effect = Applies 3 {{BD2|Weak}}.\n|GivesToPlayer = Weak\n}}\n"
                 "{{Intents Table/row\n|Name = Smother\n|Effect = Deals 30 damage.}}\n{{Intents Table/end}}\nCycles {{Int2|Test|Spit}} then {{Int2|Test|Pummel}}.\n")
         claims = claims_of(text, 'Test', regions(text, 'Test'))
-        self.assertEqual([('damage', 'Test.Pummel', 6, 4), ('damage', 'Test.Smother', 14, 30), ('fixed-cycle', 'Test.Spit', 18, None)],
+        self.assertEqual([('damage', 'Test.Pummel', 6, 4), ('hits', 'Test.Pummel', 6, 4), ('damage', 'Test.Smother', 14, 30), ('fixed-cycle', 'Test.Spit', 18, None)],
                          [(claim['kind'], claim['moves'][0], claim['source_line'], claim['amount'] and claim['amount']['base']) for claim in claims])
         for claim in claims:
             self.assertIn(claim['source_text'], text)
@@ -201,6 +226,14 @@ class PageImportTests(unittest.TestCase):
         self.assertIn((["The Merchant???.Enrage"], "Cooldown", None), stated("The Merchant???", "repeat"))
         self.assertIn((["Two-Tailed Rat.Call for Backup"], "UseOnlyOnce", None), stated("Two-Tailed Rat", "repeat"))
         self.assertEqual([], stated("Tough Egg", "opening-alternative"))
+        for page, moves in (("Globe Head", ["Globe Head.Shocking Slap", "Globe Head.Thunder Strike", "Globe Head.Galvanic Burst"]),
+                            ("Entomancer", ["Entomancer.Beeeees!", "Entomancer.Spear!", "Entomancer.Pheromone Spit"]),
+                            ("Louse Progenitor", ["Louse Progenitor.Web Cannon", "Louse Progenitor.Curl and Grow", "Louse Progenitor.Pounce"]),
+                            ("Mecha Knight", ["Mecha Knight.Flamethrower", "Mecha Knight.Windup", "Mecha Knight.Heavy Cleave"])):
+            self.assertIn((moves, None, None), stated(page, "fixed-cycle"))
+        self.assertEqual(4, len(stated("Owl Magistrate", "fixed-cycle")[0][0]))
+        self.assertEqual(5, len(stated("Thieving Hopper", "fixed-path")[0][0]))
+        self.assertIn((["Slimed Berserker.Furious Pummeling"], None, None), stated("Slimed Berserker", "hits"))
         self.assertEqual(["Slimed Berserker.Furious Pummeling", "Slimed Berserker.Smother"], [moves[0] for moves, _, _ in stated("Slimed Berserker", "damage")][-2:])
         for page in pages.values():
             lines = page["source_text"].splitlines()

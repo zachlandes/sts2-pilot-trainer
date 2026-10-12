@@ -245,6 +245,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Bowlbug (Silk).Thrash"
+          ],
+          "source_line": 90,
+          "source_text": "{{Intents Table/row\n|Name   = Thrash\n|Intent = Attack2\n|Effect = Deals (4;{{Asc2|9|5}}) damage x2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Bowlbug (Silk).Spin Web",
@@ -353,6 +366,32 @@
             "base": 17,
             "threshold": 9,
             "higher": 19
+          }
+        },
+        {
+          "kind": "damage",
+          "moves": [
+            "Byrdonis.Peck"
+          ],
+          "source_line": 29,
+          "source_text": "{{Intents Table/row\n|Name   = Peck\n|Intent = Attack2\n|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": 9,
+            "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Byrdonis.Peck"
+          ],
+          "source_line": 29,
+          "source_text": "{{Intents Table/row\n|Name   = Peck\n|Intent = Attack2\n|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": 9,
+            "higher": 3
           }
         },
         {
@@ -537,6 +576,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Chomper.Clamp"
+          ],
+          "source_line": 14,
+          "source_text": "{{Intents Table/row\n|Name   = Clamp\n|Intent = Attack3\n|Effect = Deals (8;{{Asc2|9|9}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Chomper.Clamp",
@@ -578,6 +630,19 @@
           "source_text": "{{Intents Table/row\n|Name   = Whip Slap\n|Intent = Attack2\n|Effect = Deals 3 damage ×2.\n}}",
           "amount": {
             "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Corpse Slug.Whip Slap"
+          ],
+          "source_line": 24,
+          "source_text": "{{Intents Table/row\n|Name   = Whip Slap\n|Intent = Attack2\n|Effect = Deals 3 damage ×2.\n}}",
+          "amount": {
+            "base": 2,
             "threshold": null,
             "higher": null
           }
@@ -654,6 +719,30 @@
             "threshold": 9,
             "higher": 6
           }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Cubex Construct.Expel Blast"
+          ],
+          "source_line": 27,
+          "source_text": "{{Intents Table/row\n|Name   = Expel Blast\n|Intent = Attack3\n|Effect = Deals (5;{{Asc2|9|6}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Cubex Construct.Repeater Blast",
+            "Cubex Construct.Repeater Blast",
+            "Cubex Construct.Expel Blast"
+          ],
+          "source_line": 34,
+          "source_text": "After it {{Int|Cubex Construct|Charge Up|Charges Up|2}} it repeats this pattern for the remainder of fight:\n* {{Int2|Cubex Construct|Repeater Blast}}\n* {{Int2|Cubex Construct|Repeater Blast}}\n* {{Int2|Cubex Construct|Expel Blast}}",
+          "amount": null
         }
       ],
       "gaps": [
@@ -733,6 +822,32 @@
             "base": 6,
             "threshold": 9,
             "higher": 7
+          }
+        },
+        {
+          "kind": "damage",
+          "moves": [
+            "Decimillipede.Writhe"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Writhe\n|Intent = Attack2\n|Effect = Deals (5x2;{{Asc2|9|6x2}}) damage.\n}}",
+          "amount": {
+            "base": 5,
+            "threshold": 9,
+            "higher": 6
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Decimillipede.Writhe"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Writhe\n|Intent = Attack2\n|Effect = Deals (5x2;{{Asc2|9|6x2}}) damage.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": 9,
+            "higher": 2
           }
         },
         {
@@ -845,6 +960,32 @@
           }
         },
         {
+          "kind": "damage",
+          "moves": [
+            "Doormaker.Grasp"
+          ],
+          "source_line": 72,
+          "source_text": "{{Intents Table/row\n|Name   = Grasp\n|Intent = Attack4, Buff\n|Effect = Deals (10x2;{{Asc2|9|11x2}}) damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}.\n|GivesToEnemy = Strength, Hunger\n|NoStore = yes\n}}",
+          "amount": {
+            "base": 10,
+            "threshold": 9,
+            "higher": 11
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Doormaker.Grasp"
+          ],
+          "source_line": 72,
+          "source_text": "{{Intents Table/row\n|Name   = Grasp\n|Intent = Attack4, Buff\n|Effect = Deals (10x2;{{Asc2|9|11x2}}) damage. Gains 3 {{BD2|Strength}}. Swaps current buff to {{BD2|Hunger}}.\n|GivesToEnemy = Strength, Hunger\n|NoStore = yes\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": 9,
+            "higher": 2
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Doormaker.Hunger",
@@ -901,6 +1042,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Entomancer.Beeeees!"
+          ],
+          "source_line": 23,
+          "source_text": "{{Intents Table/row\n|Name   = Beeeees!\n|Intent = Attack4\n|Effect = Deals 3 damage (×7;{{Asc2|9|×8}}).\n}}",
+          "amount": {
+            "base": 7,
+            "threshold": 9,
+            "higher": 8
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Entomancer.Spear!"
@@ -912,6 +1066,17 @@
             "threshold": 9,
             "higher": 20
           }
+        },
+        {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Entomancer.Beeeees!",
+            "Entomancer.Spear!",
+            "Entomancer.Pheromone Spit"
+          ],
+          "source_line": 41,
+          "source_text": "The Entomancer repeats a fixed three-move cycle: {{Int2|Entomancer|Beeeees!}}, then {{Int2|Entomancer|Spear!}}, then {{Int2|Entomancer|Pheromone Spit}}, and back to the start.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -947,6 +1112,19 @@
             "base": 1,
             "threshold": null,
             "higher": null
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Exoskeleton.Skitter"
+          ],
+          "source_line": 24,
+          "source_text": "{{Intents Table/row\n|Name   = Skitter\n|Intent = Attack1\n|Effect = Deals 1 damage (×3;{{Asc2|9|×4}}).\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": 9,
+            "higher": 4
           }
         },
         {
@@ -1381,6 +1559,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Fossil Stalker.Lash"
+          ],
+          "source_line": 36,
+          "source_text": "{{Intents Table/row\n|Name   = Lash\n|Intent = Attack2\n|Effect = Deals (3;{{Asc2|9|4}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "opening-alternative",
           "moves": [
             "Fossil Stalker.Latch"
@@ -1663,6 +1854,17 @@
             "threshold": 9,
             "higher": 17
           }
+        },
+        {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Globe Head.Shocking Slap",
+            "Globe Head.Thunder Strike",
+            "Globe Head.Galvanic Burst"
+          ],
+          "source_line": 43,
+          "source_text": "Follows a fixed cycle: {{Int2|Globe Head|Shocking Slap}}, {{Int2|Globe Head|Thunder Strike}}, {{Int2|Globe Head|Galvanic Burst}}, then repeats.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -1687,6 +1889,58 @@
       ],
       "redirect_sources": [],
       "claims": [
+        {
+          "kind": "damage",
+          "moves": [
+            "Gremlin Merc.Gimme"
+          ],
+          "source_line": 32,
+          "source_text": "{{Intents Table/row\n|Name   = Gimme\n|Intent = Attack3\n|Effect = Deals (7x2;{{Asc2|8|8x2}}) damage.\n}}",
+          "amount": {
+            "base": 7,
+            "threshold": 8,
+            "higher": 8
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Gremlin Merc.Gimme"
+          ],
+          "source_line": 32,
+          "source_text": "{{Intents Table/row\n|Name   = Gimme\n|Intent = Attack3\n|Effect = Deals (7x2;{{Asc2|8|8x2}}) damage.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": 8,
+            "higher": 2
+          }
+        },
+        {
+          "kind": "damage",
+          "moves": [
+            "Gremlin Merc.Double Smash"
+          ],
+          "source_line": 37,
+          "source_text": "{{Intents Table/row\n|Name   = Double Smash\n|Intent = Attack3, Debuff\n|Effect = Deals (6x2;{{Asc2|8|7x2}}) damage. Applies 2 {{BD2|Weak}}.\n|GivesToPlayer = Weak\n}}",
+          "amount": {
+            "base": 6,
+            "threshold": 8,
+            "higher": 7
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Gremlin Merc.Double Smash"
+          ],
+          "source_line": 37,
+          "source_text": "{{Intents Table/row\n|Name   = Double Smash\n|Intent = Attack3, Debuff\n|Effect = Deals (6x2;{{Asc2|8|7x2}}) damage. Applies 2 {{BD2|Weak}}.\n|GivesToPlayer = Weak\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": 8,
+            "higher": 2
+          }
+        },
         {
           "kind": "damage",
           "moves": [
@@ -1761,6 +2015,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Haunted Ship.Stomp"
+          ],
+          "source_line": 24,
+          "source_text": "{{Intents Table/row\n|Name   = Stomp\n|Intent = Attack3\n|Effect = Deals (4;{{Asc2|9|5}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Haunted Ship.Swipe",
@@ -1817,6 +2084,19 @@
             "base": 7,
             "threshold": 9,
             "higher": 8
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Hunter Killer.Puncture"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Puncture\n|Intent = Attack4\n|Effect = Deals (7;{{Asc2|9|8}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -1916,6 +2196,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Infested Prism.Whirlwind"
+          ],
+          "source_line": 44,
+          "source_text": "{{Intents Table/row\n|Name   = Whirlwind\n|Intent = Attack4\n|Effect = Deals (5;{{Asc2|9|6}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Infested Prism.Jab",
@@ -1974,6 +2267,19 @@
             "base": 2,
             "threshold": 9,
             "higher": 3
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Inklet.Whirlwind"
+          ],
+          "source_line": 20,
+          "source_text": "{{Intents Table/row\n|Name   = Whirlwind\n|Intent = Attack2\n|Effect = Deals (2;{{Asc2|9|3}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -2090,6 +2396,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Knowledge Demon.Knowledge Overwhelming"
+          ],
+          "source_line": 29,
+          "source_text": "{{Intents Table/row\n|Name   = Knowledge Overwhelming\n|Intent = Attack4\n|Effect = Deals (8;{{Asc2|9|9}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Knowledge Demon.Ponder"
@@ -2161,6 +2480,19 @@
             "base": 9,
             "threshold": 9,
             "higher": 10
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Lagavulin Matriarch.Disembowel"
+          ],
+          "source_line": 35,
+          "source_text": "{{Intents Table/row\n|Name   = Disembowel\n|Intent = Attack3\n|Effect = Deals (9;{{Asc2|9|10}}) damage x2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -2492,6 +2824,17 @@
             "threshold": 9,
             "higher": 16
           }
+        },
+        {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Louse Progenitor.Web Cannon",
+            "Louse Progenitor.Curl and Grow",
+            "Louse Progenitor.Pounce"
+          ],
+          "source_line": 42,
+          "source_text": "The Louse Progenitor repeats a fixed three-move cycle: {{Int2|Louse Progenitor|Web Cannon}}, then {{Int2|Louse Progenitor|Curl and Grow}}, then {{Int2|Louse Progenitor|Pounce}}, and back to the start.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -2540,6 +2883,19 @@
             "base": 4,
             "threshold": 9,
             "higher": 5
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Mawler.Claw"
+          ],
+          "source_line": 24,
+          "source_text": "{{Intents Table/row\n|Name   = Claw\n|Intent = Attack2\n|Effect = Deals (4;{{Asc2|9|5}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -2671,6 +3027,17 @@
           }
         },
         {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Mecha Knight.Flamethrower",
+            "Mecha Knight.Windup",
+            "Mecha Knight.Heavy Cleave"
+          ],
+          "source_line": 37,
+          "source_text": "Starts with {{Int2|Mecha Knight|Charge}} and then repeats this cycle for the rest of combat:\n* {{Int2|Mecha Knight|Flamethrower}}\n* {{Int2|Mecha Knight|Windup}}\n* {{Int2|Mecha Knight|Heavy Cleave}}",
+          "amount": null
+        },
+        {
           "kind": "opening-alternative",
           "moves": [
             "Mecha Knight.Charge"
@@ -2721,6 +3088,19 @@
             "base": 9,
             "threshold": 9,
             "higher": 10
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Mysterious Knight.Flail"
+          ],
+          "source_line": 56,
+          "source_text": "{{Intents Table/row\n|Name   = Flail\n|Intent = Attack3\n|Effect = Deals (9;{{Asc2|9|10}}) damage x2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -2994,6 +3374,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Owl Magistrate.Peck Assault"
+          ],
+          "source_line": 26,
+          "source_text": "{{Intents Table/row\n|Name   = Peck Assault\n|Intent = Attack3\n|Effect = Deals 4 damage x6.\n}}",
+          "amount": {
+            "base": 6,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Owl Magistrate.Verdict"
@@ -3005,6 +3398,18 @@
             "threshold": 9,
             "higher": 36
           }
+        },
+        {
+          "kind": "fixed-cycle",
+          "moves": [
+            "Owl Magistrate.Magistrate Scrutiny",
+            "Owl Magistrate.Peck Assault",
+            "Owl Magistrate.Judicial Flight",
+            "Owl Magistrate.Verdict"
+          ],
+          "source_line": 45,
+          "source_text": "Follows a fixed 4-move cycle: {{Int2|Owl Magistrate|Magistrate Scrutiny}}, {{Int2|Owl Magistrate|Peck Assault}}, {{Int2|Owl Magistrate|Judicial Flight}}, {{Int2|Owl Magistrate|Verdict}}, then repeats.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -3122,6 +3527,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Phantasmal Gardener.Flail"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Flail\n|Intent = Attack1\n|Effect = Deals 1 damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Phantasmal Gardener.Bite",
@@ -3170,6 +3588,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Phrog Parasite.Lash"
+          ],
+          "source_line": 19,
+          "source_text": "{{Intents Table/row\n|Name   = Lash\n|Intent = Attack3\n|Effect = Deals (4;{{Asc2|9|5}}) damage ×4.\n}}",
+          "amount": {
+            "base": 4,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Phrog Parasite.Infect",
@@ -3213,6 +3644,19 @@
             "base": 5,
             "threshold": 9,
             "higher": 6
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Punch Construct.Fast Punch"
+          ],
+          "source_line": 20,
+          "source_text": "{{Intents Table/row\n|Name   = Fast Punch\n|Intent = Attack3, Debuff\n|Effect = Deals (5;{{Asc2|9|6}}) damage ×2. Applies 1 {{BD2|Frail}}.\n|GivesToPlayer = Frail\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -3273,6 +3717,19 @@
             "base": 3,
             "threshold": 9,
             "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Queen.Off with Your Head"
+          ],
+          "source_line": 45,
+          "source_text": "{{Intents Table/row\n|Name   = Off with Your Head\n|Intent = Attack3\n|Effect = Deals (3;{{Asc2|9|4}}) damage x5.\n}}",
+          "amount": {
+            "base": 5,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -3415,6 +3872,19 @@
           "source_text": "{{Intents Table/row\n|Name   = Spinning Kick\n|Intent = Attack2\n|Effect = Deals 2 damage ×4\n.\n}}",
           "amount": {
             "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Seapunk.Spinning Kick"
+          ],
+          "source_line": 18,
+          "source_text": "{{Intents Table/row\n|Name   = Spinning Kick\n|Intent = Attack2\n|Effect = Deals 2 damage ×4\n.\n}}",
+          "amount": {
+            "base": 4,
             "threshold": null,
             "higher": null
           }
@@ -3585,6 +4055,32 @@
           }
         },
         {
+          "kind": "damage",
+          "moves": [
+            "Skulking Colony.Piercing Stabs"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Piercing Stabs\n|Intent = Attack3\n|Effect = Deals (7x2;{{Asc2|9|8x2}}) damage.\n}}",
+          "amount": {
+            "base": 7,
+            "threshold": 9,
+            "higher": 8
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Skulking Colony.Piercing Stabs"
+          ],
+          "source_line": 34,
+          "source_text": "{{Intents Table/row\n|Name   = Piercing Stabs\n|Intent = Attack3\n|Effect = Deals (7x2;{{Asc2|9|8x2}}) damage.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": 9,
+            "higher": 2
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Skulking Colony.Zoom",
@@ -3630,6 +4126,19 @@
             "base": 4,
             "threshold": 9,
             "higher": 5
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Slimed Berserker.Furious Pummeling"
+          ],
+          "source_line": 17,
+          "source_text": "{{Intents Table/row\n|Name   = Furious Pummeling\n|Intent = Attack3\n|Effect = Deals (4;{{Asc2|9|5}}) damage x4.}}",
+          "amount": {
+            "base": 4,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -4089,6 +4598,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Soul Nexus.Maelstrom"
+          ],
+          "source_line": 18,
+          "source_text": "{{Intents Table/row\n|Name   = Maelstrom\n|Intent = Attack4\n|Effect = Deals (6;{{Asc2|9|7}}) damage ×4.\n}}",
+          "amount": {
+            "base": 4,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Soul Nexus.Drain Life"
@@ -4203,6 +4725,19 @@
             "base": 3,
             "threshold": 9,
             "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Spectral Knight.Soul Flame"
+          ],
+          "source_line": 68,
+          "source_text": "{{Intents Table/row\n|Name   = Soul Flame\n|Intent = Attack2\n|Effect = Deals (3;{{Asc2|9|4}}) damage ×3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -4321,6 +4856,32 @@
           }
         },
         {
+          "kind": "damage",
+          "moves": [
+            "Terror Eel.Thrash"
+          ],
+          "source_line": 28,
+          "source_text": "{{Intents Table/row\n|Name   = Thrash\n|Intent = Attack2, Buff\n|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage. Gains 6 {{BD2|Vigor}}.\n|GivesToEnemy = Vigor\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": 9,
+            "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Terror Eel.Thrash"
+          ],
+          "source_line": 28,
+          "source_text": "{{Intents Table/row\n|Name   = Thrash\n|Intent = Attack2, Buff\n|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage. Gains 6 {{BD2|Vigor}}.\n|GivesToEnemy = Vigor\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": 9,
+            "higher": 3
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "Terror Eel.Crash",
@@ -4411,6 +4972,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Test Subject (Phase 2).Multi-Claw"
+          ],
+          "source_line": 85,
+          "source_text": "{{Intents Table/row\n|Name   = Multi-Claw\n|Intent = Attack4\n|Effect = Deals (10;{{Asc2|9|11}}) damage x3 (increases by 1 hit each use).\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Test Subject (Phase 3).Lacerate"
@@ -4421,6 +4995,19 @@
             "base": 10,
             "threshold": 9,
             "higher": 11
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Test Subject (Phase 3).Lacerate"
+          ],
+          "source_line": 121,
+          "source_text": "{{Intents Table/row\n|Name   = Lacerate\n|Intent = Attack4\n|Effect = Deals (10;{{Asc2|9|11}}) damage x3.\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -4538,6 +5125,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "The Insatiable.Thrash"
+          ],
+          "source_line": 29,
+          "source_text": "{{Intents Table/row\n|Name   = Thrash\n|Intent = Attack3\n|Effect = Deals (8;{{Asc2|9|9}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "The Insatiable.Lunging Bite"
@@ -4604,6 +5204,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "The Lost.Eye Lasers"
+          ],
+          "source_line": 33,
+          "source_text": "{{Intents Table/row\n|Name   = Eye Lasers\n|Intent = Attack2\n|Effect = Deals (4;{{Asc2|9|5}}) damage x2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "fixed-cycle",
           "moves": [
             "The Lost.Debilitating Smog",
@@ -4658,6 +5271,19 @@
           "source_text": "{{Intents Table/row\n|Name   = Spew Coins\n|Intent = Attack3\n|Effect = Deals 2 damage ×8.\n}}",
           "amount": {
             "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "The Merchant???.Spew Coins"
+          ],
+          "source_line": 43,
+          "source_text": "{{Intents Table/row\n|Name   = Spew Coins\n|Intent = Attack3\n|Effect = Deals 2 damage ×8.\n}}",
+          "amount": {
+            "base": 8,
             "threshold": null,
             "higher": null
           }
@@ -4842,6 +5468,19 @@
             "threshold": 9,
             "higher": 16
           }
+        },
+        {
+          "kind": "fixed-path",
+          "moves": [
+            "Thieving Hopper.Thievery",
+            "Thieving Hopper.Flutter",
+            "Thieving Hopper.Hat Trick",
+            "Thieving Hopper.Nab",
+            "Thieving Hopper.Escape"
+          ],
+          "source_line": 71,
+          "source_text": "The Thieving Hopper follows a fixed sequence:\n* {{Int2|Thieving Hopper|Thievery}} (stealing a card and dealing damage)\n* {{Int2|Thieving Hopper|Flutter}} (gaining damage reduction)\n* {{Int2|Thieving Hopper|Hat Trick}}\n* {{Int2|Thieving Hopper|Nab}}\n* {{Int2|Thieving Hopper|Escape}} (fleeing the fight permanently)",
+          "amount": null
         }
       ],
       "gaps": [
@@ -4877,6 +5516,19 @@
             "base": 3,
             "threshold": 9,
             "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Toadpole.Spike Spit"
+          ],
+          "source_line": 13,
+          "source_text": "{{Intents Table/row\n|Name   = Spike Spit\n|Intent = Attack2\n|Effect = Deals (3;{{Asc2|9|4}}) damage ×3. Removes 2 {{BD2|Thorns}} from self.\n|GivesToEnemy = Thorns\n}}",
+          "amount": {
+            "base": 3,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -4978,6 +5630,19 @@
           "source_text": "{{Intents Table/row\n|Name   = Beam\n|Intent = Attack3\n|Effect = Deals 8 damage x3.\n}}",
           "amount": {
             "base": 8,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Torch Head Amalgam.Beam"
+          ],
+          "source_line": 119,
+          "source_text": "{{Intents Table/row\n|Name   = Beam\n|Intent = Attack3\n|Effect = Deals 8 damage x3.\n}}",
+          "amount": {
+            "base": 3,
             "threshold": null,
             "higher": null
           }
@@ -5122,6 +5787,19 @@
             "base": 3,
             "threshold": 9,
             "higher": 4
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Turret Operator.Unload!"
+          ],
+          "source_line": 14,
+          "source_text": "{{Intents Table/row\n|Name   = Unload!\n|Intent = Attack3\n|Effect = Deals (3;{{Asc2|9|4}}) damage x5.\n}}",
+          "amount": {
+            "base": 5,
+            "threshold": null,
+            "higher": null
           }
         },
         {
@@ -5412,6 +6090,19 @@
           }
         },
         {
+          "kind": "hits",
+          "moves": [
+            "Vantom.Inky Lance"
+          ],
+          "source_line": 29,
+          "source_text": "{{Intents Table/row\n|Name   = Inky Lance\n|Intent = Attack3\n|Effect = Deals (6;{{Asc2|9|7}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
+          }
+        },
+        {
           "kind": "damage",
           "moves": [
             "Vantom.Dismember"
@@ -5470,6 +6161,19 @@
             "base": 6,
             "threshold": 9,
             "higher": 7
+          }
+        },
+        {
+          "kind": "hits",
+          "moves": [
+            "Vine Shambler.Swipe"
+          ],
+          "source_line": 13,
+          "source_text": "{{Intents Table/row\n|Name   = Swipe\n|Intent = Attack3\n|Effect = Deals (6;{{Asc2|9|7}}) damage ×2.\n}}",
+          "amount": {
+            "base": 2,
+            "threshold": null,
+            "higher": null
           }
         },
         {

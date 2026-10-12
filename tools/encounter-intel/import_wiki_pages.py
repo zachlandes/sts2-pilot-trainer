@@ -96,14 +96,14 @@ def claims_of(text, name, found):
         prose = pattern
         for start, end in spans:
             prose = prose[:start] + re.sub(r"[^\n]", " ", prose[start:end]) + prose[end:]
-        for match in re.finditer(r"(?m)^[^\n]*\b(?:cycles|alternates?)\b[^\n]*", prose, re.I):
+        for match in re.finditer(r"(?m)^[^\n]*(?:\b(?:cycles|alternates?)\b|\bcycle:)[^\n]*", prose, re.I):
             line = match[0]
-            tail = re.split(r"\b(?:cycles|alternates?)\b", line, maxsplit=1, flags=re.I)[1]
+            tail = re.split(r"\b(?:cycles|alternates?)\b|\bcycle:", line, maxsplit=1, flags=re.I)[1]
             tail = re.split(r"\.\s+|\.$|,\s*(?:always\s+)?starting\s+(?:with|on)", tail, maxsplit=1, flags=re.I)[0]
             links = [key(link) for link in LINK.finditer(tail)]
-            if len(links) >= 2 and not re.search(r"\b(?:or|either|random|chance|if|unless|until|times|twice)\b|%", LINK.sub('@', tail), re.I):
+            if len(links) >= 2 and not re.search(r"\b(?:or|either|random|chance|if|unless|until|times|twice|conditional|check)\b|%", LINK.sub('@', tail), re.I):
                 add('fixed-cycle', links, pattern_offset + match.start(), line)
-        for match in re.finditer(r"(?m)^([^\n]*)\n((?:\#[^\n]*(?:\n|$))+)", prose):
+        for match in re.finditer(r"(?m)^([^\n]*)\n((?:[#*][^\n]*(?:\n|$))+)", prose):
             prefix, rows = match[1], match[2]
             links = []
             for row in rows.splitlines():
@@ -140,12 +140,23 @@ def claims_of(text, name, found):
                 continue
             tables = [table for table in TABLE.finditer(pattern, 0, start)]
             target = (tables[-1][1].strip() if tables else name) + '.' + move[1].strip()
+            packed = list(re.finditer(r"\bDeals \((\d+)[x×](\d+);\{\{Asc2\|(\d+)\|(\d+)[x×](\d+)\}\}\) damage\b", effect[1]))
             damage = list(re.finditer(r"\bDeals (" + AMOUNT + r") damage\b", effect[1]))
-            if len(damage) == 1:
-                add('damage', [target], pattern_offset + start, row, amount(damage[0][1]))
-            hits = re.search(r"\bdamage (" + AMOUNT + r") times\b", effect[1])
-            if hits:
+            if len(damage) + len(packed) != 1:
+                continue
+            if packed:
+                low, count, threshold, high, higher = map(int, packed[0].groups())
+                add('damage', [target], pattern_offset + start, row, {"base": low, "threshold": threshold, "higher": high})
+                add('hits', [target], pattern_offset + start, row, {"base": count, "threshold": threshold, "higher": higher})
+                continue
+            add('damage', [target], pattern_offset + start, row, amount(damage[0][1]))
+            hits = re.search(r"\bdamage (?:(" + AMOUNT + r") times|[x×](\d+)\b|\([x×](\d+);\{\{Asc2\|(\d+)\|[x×](\d+)\}\}\))", effect[1][damage[0].start():])
+            if hits and hits[1]:
                 add('hits', [target], pattern_offset + start, row, amount(hits[1]))
+            elif hits and hits[2]:
+                add('hits', [target], pattern_offset + start, row, amount(hits[2]))
+            elif hits:
+                add('hits', [target], pattern_offset + start, row, {"base": int(hits[3]), "threshold": int(hits[4]), "higher": int(hits[5])})
     return sorted(claims, key=lambda claim: claim['source_line'])
 
 
