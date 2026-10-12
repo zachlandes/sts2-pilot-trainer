@@ -40,15 +40,21 @@ public sealed partial class EncounterIntelTests
         Assert.Empty(ModelDb.All);
         AssertUnavailable(EncounterIntelMod.CurrentAct(), LookupState.NotReady);
         AssertUnavailable(EncounterIntelMod.CurrentBoard(), LookupState.NotReady);
+        AssertUnavailable(EncounterIntelMod.NextEncounterPools(), LookupState.NotReady);
+        AssertUnavailable(EncounterIntelMod.NextUnknownRoom(new MapPoint(0, 0) { PointType = MapPointType.Unknown }), LookupState.NotReady);
         Assert.Empty(ModelDb.All);
         Assert.False(RunManager.Instance.IsInProgress);
         EngineHost.Start();
         AssertUnavailable(EncounterIntelMod.CurrentAct(), LookupState.NoRun);
         AssertUnavailable(EncounterIntelMod.CurrentBoard(), LookupState.NoRun);
+        AssertUnavailable(EncounterIntelMod.NextEncounterPools(), LookupState.NoRun);
+        AssertUnavailable(EncounterIntelMod.NextUnknownRoom(new MapPoint(0, 0) { PointType = MapPointType.Unknown }), LookupState.NoRun);
         WithRun(0, ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"], session =>
         {
             Assert.Equal("ACT.OVERGROWTH", Ready(EncounterIntelMod.CurrentAct()).Id);
             Assert.Equal(BoardKind.None, Ready(EncounterIntelMod.CurrentBoard()).Kind);
+            AssertUnavailable(EncounterIntelMod.NextUnknownRoom(new MapPoint(0, 0) { PointType = MapPointType.Unknown }), LookupState.NotReady);
+            Assert.NotEmpty(Ready(EncounterIntelMod.NextEncounterPools()).NormalPool);
             var rooms = typeof(ActModel).GetField("_rooms", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(session.RunState.Act)!;
             var bossField = typeof(RoomSet).GetField("_boss", BindingFlags.NonPublic | BindingFlags.Instance)!;
             var boss = bossField.GetValue(rooms);
