@@ -2,10 +2,17 @@ using System.Text.Json;
 
 namespace EncounterIntel;
 
-public sealed record WikiPatternClaim(string Kind, IReadOnlyList<string> Moves, int SourceLine, string SourceText, AscendingValue? Amount);
-public sealed record WikiPageGap(string Name, string Reason);
-public sealed record WikiPatternPage(string Name, WikiSource Source, string SourceText, string? PatternText)
+public sealed record WikiPatternClaim(string Kind, IReadOnlyList<string> Moves, int SourceLine, string SourceText, AscendingValue? Amount)
 {
+    public IReadOnlyList<decimal>? Weights { get; init; }
+    public string? Scope { get; init; }
+    public string? Repeat { get; init; }
+}
+public sealed record WikiPageGap(string Name, string Reason);
+public sealed record WikiPatternRegion(int SourceLine, string Text);
+public sealed record WikiPatternPage(string Name, WikiSource Source, string SourceText)
+{
+    public IReadOnlyList<WikiPatternRegion> PatternRegions { get; init; } = [];
     public IReadOnlyList<WikiPatternClaim> Claims { get; init; } = [];
     public IReadOnlyList<string> Gaps { get; init; } = [];
     public IReadOnlyList<WikiSource> RedirectSources { get; init; } = [];

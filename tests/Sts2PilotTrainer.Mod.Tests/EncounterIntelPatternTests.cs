@@ -205,7 +205,7 @@ public sealed partial class EncounterIntelTests
         var source = new WikiSource("synthetic", "https://example.invalid", 1, "test", new string('a', 64));
         var cycle = new WikiPatternClaim("fixed-cycle", ["Test.Attack", "Test.Buff"], 1, "Synthetic cycle claim", null);
         var damage = new WikiPatternClaim("damage", ["Test.Attack"], 2, "Synthetic numeric claim", new(5));
-        var page = new WikiPatternPage("Test", source, "Synthetic source, not wiki evidence", "Synthetic pattern") { Claims = [cycle, damage] };
+        var page = new WikiPatternPage("Test", source, "Synthetic source, not wiki evidence") { PatternRegions = [new(1, "Synthetic pattern")], Claims = [cycle, damage] };
         var agreement = WikiPatternComparison.Compare(page, enemy, 0);
         Assert.Equal("partial-agreement", agreement.Standing);
         var rand = new PatternNode("RAND", "random", [new("A", Weight: 1, Repeat: "CannotRepeat"), new("B", Weight: 1, Repeat: "CannotRepeat")], [], [], false, true, 0, []);
@@ -225,10 +225,75 @@ public sealed partial class EncounterIntelTests
         Assert.Equal("unresolved", Assert.Single(renamed.Checks).Standing);
         var noGraph = WikiPatternComparison.Compare(page, null, 0);
         Assert.Equal("unchecked", noGraph.Standing);
-        Assert.Equal(page.PatternText, noGraph.SourceText);
+        Assert.Equal("Synthetic pattern", noGraph.SourceText);
         Assert.Equal("unavailable", WikiPatternComparison.Compare(page with { SourceText = "#REDIRECT [[sts2:Missing]]" }, enemy, 0).Standing);
         var dynamic = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a with { Attacks = [a.Attacks[0] with { ReferenceRule = "Context dependent" }] }, b] }] };
         Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [damage] }, dynamic, 0).Checks).Standing);
+    }
+
+    [Fact]
+    public void StatedOddsAndRepeatRulesAreHeldToDeclaredBranchWeights()
+    {
+        var a = new PatternNode("A", "move", [new("RAND")], [], [], false, true, 0, []) { WikiMoveNames = ["Test.Attack"] };
+        var b = new PatternNode("B", "move", [new("RAND")], [], [], false, true, 0, []) { WikiMoveNames = ["Test.Buff"] };
+        var opening = new PatternNode("INITIAL", "random", [new("A", Weight: 2), new("B", Weight: 1)], [], [], false, true, 0, []);
+        var rand = new PatternNode("RAND", "random", [new("A", Weight: 1, Repeat: "CannotRepeat"), new("B", Weight: 1, Repeat: "CanRepeatXTimes", MaxRepeats: 2)], [], [], false, true, 0, []);
+        var enemy = new EnemyPattern("MONSTER.TEST", true, [new("Definition", [], null, "INITIAL", null, [a, b, opening, rand], [], [])], [], []);
+        var source = new WikiSource("synthetic", "https://example.invalid", 1, "test", new string('a', 64));
+        var page = new WikiPatternPage("Test", source, "Synthetic source, not wiki evidence");
+        WikiPatternClaim Odds(string scope, params decimal[] weights) =>
+            new("weights", ["Test.Attack", "Test.Buff"], 1, "Synthetic odds claim", null) { Weights = weights, Scope = scope };
+        WikiPatternClaim Repeat(string move, string rule) => new("repeat", [move], 1, "Synthetic repetition claim", null) { Repeat = rule };
+        string Standing(WikiPatternClaim claim, EnemyPattern? graph = null) =>
+            Assert.Single(WikiPatternComparison.Compare(page with { Claims = [claim] }, graph ?? enemy, 0).Checks).Standing;
+        Assert.Equal("matched", Standing(Odds("opening", 67, 33)));
+        Assert.Equal("mismatch", Standing(Odds("opening", 1, 1)));
+        Assert.Equal("matched", Standing(Odds("branch", 1, 1)));
+        Assert.Equal("mismatch", Standing(Odds("branch", 1, 2)));
+        var reversed = Odds("opening", 1, 2) with { Moves = ["Test.Buff", "Test.Attack"] };
+        Assert.Equal("matched", Standing(reversed));
+        var withoutOpening = enemy with { Variants = [enemy.Variants[0] with { InitialState = "A", Nodes = [a, b, rand] }] };
+        Assert.Equal("unresolved", Standing(Odds("opening", 1, 1), withoutOpening));
+        var dynamic = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, opening, rand with { Edges = [rand.Edges[0] with { Weight = null, WeightRule = "Context" }, rand.Edges[1]] }] }] };
+        Assert.Equal("unresolved", Standing(Odds("branch", 1, 1), dynamic));
+        Assert.Equal("unresolved", Standing(Odds("branch", 1, 1) with { Moves = ["Test.Attack", "Test.Unbound"] }));
+        Assert.Equal("matched", Standing(Repeat("Test.Attack", "CannotRepeat"), enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, rand] }] }));
+        Assert.Equal("mismatch", Standing(Repeat("Test.Buff", "CannotRepeat"), enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, rand] }] }));
+        Assert.Equal("mismatch", Standing(Repeat("Test.Buff", "Unrestricted"), enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, rand] }] }));
+        var once = rand with { Edges = [rand.Edges[0] with { Repeat = "UseOnlyOnce" }, rand.Edges[1] with { Repeat = "CanRepeatForever", MaxRepeats = 0 }] };
+        var lasting = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, once] }] };
+        Assert.Equal("matched", Standing(Repeat("Test.Attack", "CannotRepeat"), lasting));
+        Assert.Equal("matched", Standing(Repeat("Test.Buff", "Unrestricted"), lasting));
+        Assert.Equal("unresolved", Standing(Repeat("Test.Attack", "CannotRepeat")));
+        Assert.Equal("unresolved", Standing(new WikiPatternClaim("unparsed", ["Test.Attack"], 1, "Synthetic unparsed odds", null)));
+    }
+
+    [Fact]
+    public void CachedPagesFlagStatedOddsAndRepeatRulesTheBetaGraphContradicts()
+    {
+        var root = WorktreeLocator.Find() ?? throw new InvalidOperationException("The committed atlas requires its source worktree.");
+        var atlas = JsonSerializer.Deserialize<PatternAtlas>(File.ReadAllText(Path.Combine(root, "src", "EncounterIntel", "catalogue", "builds",
+            SupportedBuild.AssemblySha256, "patterns.json")), PatternJson.Options)!;
+        var pages = WikiPatternPages.Read();
+        IReadOnlyList<PatternClaimCheck> Checks(string page, string id) => WikiPatternComparison.Compare(pages.Pages.Single(row => row.Name == page),
+            atlas.Columns[0].Enemies.Single(enemy => enemy.Id == id), 0).Checks;
+        var flyconid = Checks("Flyconid", "MONSTER.FLYCONID");
+        Assert.Equal("mismatch", flyconid.Single(check => check.Claim.Kind == "weights" && check.Claim.Scope == "opening").Standing);
+        var hunter = Checks("Hunter Killer", "MONSTER.HUNTER_KILLER");
+        Assert.Equal("mismatch", hunter.Single(check => check.Claim.Kind == "weights").Standing);
+        Assert.Equal("matched", hunter.Single(check => check.Claim.Kind == "repeat").Standing);
+        var stalker = Checks("Fossil Stalker", "MONSTER.FOSSIL_STALKER");
+        Assert.Equal("matched", stalker.Single(check => check.Claim.Kind == "weights").Standing);
+        Assert.All(stalker.Where(check => check.Claim.Kind == "repeat"), check => Assert.Equal("mismatch", check.Standing));
+        Assert.Equal(3, stalker.Count(check => check.Claim.Kind == "repeat"));
+        Assert.All(Checks("Mysterious Knight", "MONSTER.MYSTERIOUS_KNIGHT").Where(check => check.Claim.Kind == "unparsed"),
+            check => Assert.Equal("unresolved", check.Standing));
+        var wriggler = Checks("Wriggler", "MONSTER.WRIGGLER");
+        Assert.Equal("matched", wriggler.Single(check => check.Claim.Kind == "fixed-cycle").Standing);
+        var subject = pages.Pages.Single(page => page.Name == "Test Subject");
+        Assert.Equal(3, subject.PatternRegions.Count);
+        Assert.Contains(subject.Claims, claim => claim.Moves.SequenceEqual(new[] { "Test Subject (Phase 2).Multi-Claw" }));
+        Assert.Contains(subject.Claims, claim => claim.Kind == "fixed-cycle" && claim.Moves[0] == "Test Subject (Phase 3).Lacerate");
     }
 
     private static float WeightThatMustNotExecute() => throw new InvalidOperationException("A context-dependent weight must not execute.");
