@@ -1,0 +1,127 @@
+{{Beta content}}{{Enemy Infobox
+|Name   = Entomancer
+|Image  = StS2_Entomancer.png
+|HP     = 145
+|AscHP  = 165
+|Powers = {{BD2|Personal Hive}} 1
+|Debut  = Hive
+|Type   = Elite
+}} 
+{{Power Infobox
+|Name         = Personal Hive
+|Image        = StS2 Icon PersonalHive.png
+|Description  = Whenever this enemy is hit by an Attack, add X {{C2|Dazed}} into your Draw Pile.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Entomancer''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Entomancer}}
+{{Intents Table/row
+|Name   = Beeeees!
+|Intent = Attack4
+|Effect = Deals 3 damage (×7;{{Asc2|9|×8}}).
+}}
+{{Intents Table/row
+|Name   = Spear!
+|Intent = Attack3
+|Effect = Deals (18;{{Asc2|9|20}}) damage.
+}}
+{{Intents Table/row
+|Name   = Pheromone Spit
+|Intent = Buff
+|Effect = Gains 1 {{BD2|Personal Hive}} and 1 {{BD2|Strength}}. If {{BD2|Personal Hive}} is already at 3, gains 2 {{BD2|Strength}} instead.
+|GivesToEnemy = Personal Hive, Strength
+}}
+{{Intents Table/end}}
+
+The Entomancer repeats a fixed three-move cycle: {{Int2|Entomancer|Beeeees!}}, then {{Int2|Entomancer|Spear!}}, then {{Int2|Entomancer|Pheromone Spit}}, and back to the start.
+
+== Notes ==
+
+* '''Personal Hive''' triggers whever the '''Entomancer''' takes attack damage, rather than whenever an attack is played. This means that it will trigger multiple times against cards like {{C2|Sword Boomerang}} or {{C2|Ricochet}}.
+
+== Useful Cards ==
+* {{BD2|Thorns}} from cards like {{C2|Abrasive}} will damage the '''Entomancer''' 7 (or {{Asc2|9|8}}) times whenever it uses {{Int2|Entomancer|Beeeees!}}
+* Indirect sources of damage from cards like {{C2|Snakebite}}, {{C2|Inferno}} or {{C2|No Escape}} can damage the '''Entomancer''' without adding {{C2|Dazed}} to your draw pile.
+* Strong single-hit attacks like {{C2|Bludgeon}} or {{C2|Bury}} can deal a significant amount of damage while only triggering {{BD2|Personal Hive}}  once.
+* {{BD2|Strength}} reduction from cards like {{C2|Malaise}} can greatly lower the damage from {{Int2|Entomancer|Beeeees!}}.
+* Cards like {{C2|Feel No Pain}} or {{C2|Compact}} can turn the {{C2|Dazed}} cards into a benefit.
+
+== Animations ==
+{{Bestiary|Entomancer}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Entomant
+| DEUmeaning = 
+| ESPname    = Entomante
+| ESPmeaning = 
+| FRAname    = Entomancien
+| FRAmeaning = 
+| ITAname    = Coleomago
+| ITAmeaning = 
+| JPNname    = エントマンサー
+| JPNromanised = Entomansaa
+| JPNmeaning = 
+| INDname    = Pawang Serangga
+| INDmeaning = 
+| KORname    = 곤충술사
+| KORromanised = gonchungsulsa
+| KORmeaning = 
+| POLname    = Pszczelarz
+| POLmeaning = 
+| PTBname    = Entomante
+| PTBmeaning = 
+| RUSname    = Энтомант
+| RUSromanised = Entomant
+| RUSmeaning = 
+| SPAname    = Entomomante
+| SPAmeaning = 
+| TURname    = Böcek Büyücüsü
+| TURmeaning = 
+| ZHSname    = 蜂群术士
+| ZHSromanised = fengqunshushi
+| ZHSmeaning = 
+| CODEname    = ENTOMANCER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Entomancer: HP at A8 increased from 145(155) → 145(165)}}
+{{Update History Table/row|V0.104.0|* Updated art for Entomancer
+* Updated animation for Entomancer}}
+{{Update History Table/row|V0.100.0|* Added alternate Phobia Mode visuals for Entomancer}}
+{{Update History Table/row|V0.86.0|* Buffed Entomancer: spear move damage increased from 13(15) -> 16(18)}}
+{{Update History Table/row|V0.80.0|* Buffed Entomancer: Spear damage increased from 11(13) -> 13(15)}}
+{{Update History Table/row|V0.54.0|* Fixed Entomancer's animation interrupting itself}}
+{{Update History Table/row|V0.38.0|* Changed Entomancer:
+** Now starts with 1 Personal Hive
+** Pheremone Spit move now adds 1 Personal Hive, up to a max of 3
+** Pheremone Spit move now adds 1 strength until Personal Hive is at 3; afterwards, it adds 2 Strength}}
+{{Update History Table/row|V0.35.0|* Nerfed Entomancer: Spear move decreased from 16(18) -> 11(13)}}
+{{Update History Table/row|V0.32.0|* Added Entomancer bug swarm VFX assets}}
+{{Update History Table/row|V0.29.0|* Buffed Entomancer: HP increased from 136 -> 155}}
+{{Update History Table/row|V0.27.0|* Buffed Entomancer:
+** HP increased from 99 -> 136
+** Now an Elite combat}}
+{{Update History Table/row|V0.19.0|* Reworked Entomancer}}
+{{Update History Table/row|2023-09-15|* Updated Entomancer's animations}}
+{{Update History Table/row|2023-07-14|* Entomancer enemy is now bigger}}
+{{Update History Table/row|2023-06-30|* Entomancer tooltip no longer renders offscreen}}
+{{Update History Table/row|2023-06-09|* Personal Hive no longer procs when you kill Entomancer}}
+{{Update History Table/row|2023-04-21|* implemented entomancer idle
+* Import Entomancer tweak
+* Import Entomancer with idle animation
+* Entomancer now sits in the back of combat making the Vulnerable debuff more sensible.}}
+{{Update History Table/row|2023-02-09|* GAMEPLAY: Entomancer is significantly nerfed. Damage, Health, and Power Amount all lowered.}}
+{{Update History Table/row|?|* Added Entomancer to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

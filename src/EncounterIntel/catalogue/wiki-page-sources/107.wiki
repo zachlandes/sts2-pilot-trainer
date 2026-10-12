@@ -1,0 +1,51 @@
+{{Enemy Infobox
+|Name   = Battle Friend
+|Debut  = Glory
+|Powers = {{BD2|Time Limit}} 3
+|Type   = Event
+|Tab1   = V1.0
+|HP     = 75
+|Image  = StS2_BattleFriendV1.png
+|Tab2   = V2.0
+|Tab2Image = StS2_BattleFriendV2.png
+|Tab2HP = 150
+|Tab3   = V3.0
+|Tab3Image = StS2_BattleFriendV3.png
+|Tab3HP = 300
+}}
+{{Power Infobox
+|Name         = Time Limit
+|Image        = StS2 Icon TimeLimit.png
+|Description  = You have X more turns to defeat the Battleworn Dummy.
+|Type         = Buff
+|Stacks       = Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+The Battle Friend is an enemy only encountered through the {{E2|Battleworn Dummy}} event in [[StS2:Glory|Glory]]. Each option in this event has you fight a different version of the Battle Friend, from V1.0 to V3.0. Each subsequent version has double the HP of the last.
+
+== Pattern ==
+{{Intents Table/start|Battle Friend}}
+{{Intents Table/row
+|Name = Nothing
+|Effect = Does Nothing.
+}}
+{{Intents Table/end}}
+Always does nothing.
+
+== Animations ==
+<tabber>
+|-|V1.0=
+{{Bestiary|Battle Friend V1}}
+|-|V2.0=
+{{Bestiary|Battle Friend V2}}
+|-|V3.0=
+{{Bestiary|Battle Friend V3}}
+</tabber>
+
+== Update History ==
+{{Main|StS2:Battleworn Dummy}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

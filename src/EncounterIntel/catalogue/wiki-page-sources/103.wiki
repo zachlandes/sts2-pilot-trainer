@@ -1,0 +1,101 @@
+{{Enemy Infobox
+|Name   = Vine Shambler
+|Image  = StS2_Vine Shambler.png
+|HP     = 61
+|AscHP  = 64
+|Debut  = Overgrowth
+|Type   = Normal
+}} {{Keyword Infobox|Entangled|2}}
+'''Vine Shambler''' is a normal [[Monsters|Enemy]] found in the [[Overgrowth]].
+
+== Pattern ==
+{{Intents Table/start|Vine Shambler}}
+{{Intents Table/row
+|Name   = Swipe
+|Intent = Attack3
+|Effect = Deals (6;{{Asc2|9|7}}) damage ×2.
+}}
+{{Intents Table/row
+|Name   = Grasping Vines
+|Intent = Attack2, CardDebuff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Applies 1 {{BD2|Tangled}}.
+|GivesToPlayer = Tangled
+}}
+{{Intents Table/row
+|Name   = Chomp
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|18}}) damage.
+}}
+{{Intents Table/end}}
+Follows a fixed repeating cycle:
+# {{Int2|Vine Shambler|Swipe}}
+# {{Int2|Vine Shambler|Grasping Vines}}
+# {{Int2|Vine Shambler|Chomp}}
+# Back to {{Int2|Vine Shambler|Swipe}}
+
+== Useful Cards ==
+
+* Damaging non-attack cards like {{C2|Deadly Poison}} or {{C2|Inferno}} are not affected by '''Tangled''' and can be played for their normal price.
+
+== Animations ==
+{{Bestiary|Vine Shambler}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Ranken-Schlurfer
+| DEUmeaning = 
+| ESPname    = Enredabestia
+| ESPmeaning = 
+| FRAname    = Bourbelianes
+| FRAmeaning = 
+| ITAname    = Groviglio di rampicanti
+| ITAmeaning = 
+| JPNname    = ヴァインシャンブラー
+| JPNromanised = Vainshanburaa
+| JPNmeaning = 
+| INDname    = Makhluk Rerambatan
+| INDmeaning = 
+| KORname    = 휘청거리는 덩굴
+| KORromanised = hwicheonggeolineun deonggul
+| KORmeaning = 
+| POLname    = Pnączowór
+| POLmeaning = 
+| PTBname    = Videira Trôpega
+| PTBmeaning = 
+| RUSname    = Заросший скиталец
+| RUSromanised = Zarosshij skitalets
+| RUSmeaning = 
+| SPAname    = Engendro de lianas
+| SPAmeaning = 
+| TURname    = Sarmaşık Yığını
+| TURmeaning = 
+| ZHSname    = 藤蔓蹒跚者
+| ZHSromanised = tengwanpanshanzhe
+| ZHSmeaning = 
+| CODEname    = VINE_SHAMBLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Buffed Vine Shambler: HP changed from 60(63) -> 61(64)}}
+{{Update History Table/row|V0.90.0|* Changed Vine Shambler:
+** Swipe move damage decreased
+** Chomp move damage increased
+** Moveset is no longer random
+* Renamed Vine Shambler Thrashing Vines move -> Swipe}}
+{{Update History Table/row|V0.74.0|* Vine Shambler VFX position is now positioned correctly at the player's feet}}
+{{Update History Table/row|V0.72.0|* Nerfed Vine Shambler: Chomp damage decreased from 17(18) -> 16(17)}}
+{{Update History Table/row|V0.49.0|* Added SFX for Vine Shambler enemy}}
+{{Update History Table/row|V0.45.0|* Implemented new Vine Shambler vine attack VFX}}
+{{Update History Table/row|V0.44.0|* Added Entangled affliction for Vine Shambler}}
+{{Update History Table/row|V0.43.0|* Nerfed Vine Shambler: damage values slightly decreased}}
+{{Update History Table/row|V0.41.0|* Reworked Vine Shambler}}
+{{Update History Table/row|V0.38.0|* Fixed some blending issues with Vine Shambler}}
+{{Update History Table/row|V0.37.0|* Changed Vine Shambler: Defensive Swipe damage changed from 9(10) -> 9(11)}}
+{{Update History Table/row|V0.15.0|* Changed Vine Shambler: now applies Vulnerable instead of Weak}}
+{{Update History Table/row|2023-09-15|* Added new Act 1 enemy Vine Shambler to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

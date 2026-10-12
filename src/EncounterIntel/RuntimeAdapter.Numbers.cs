@@ -8,6 +8,8 @@ public static partial class RuntimeAdapter
 {
     public static IReadOnlyList<CheckedMonster> ReadWorkedExamples(WikiCatalogue? catalogue = null)
     {
+        if (SupportedBuild.Require().AssemblySha256 != SupportedBuild.AssemblySha256)
+            throw new IntelRefusal("Worked-example semantics have not been inspected on this build.");
         var run = CurrentRun() ?? throw new IntelRefusal("There is no run for ascension-sensitive numbers.");
         var models = new Dictionary<string, MonsterModel>(StringComparer.Ordinal)
         {

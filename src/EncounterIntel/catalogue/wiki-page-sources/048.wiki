@@ -1,0 +1,129 @@
+{{Enemy Infobox
+|Name   = Lagavulin Matriarch
+|Image  = StS2_Lagavulin Matriarch.png
+|Icon   = StS2 Icon LagavulinMatriarchBoss.png
+|HP     = 222
+|AscHP  = 233
+|Powers = {{BD2|Plating}} 12<br>{{BD2|Asleep}} 3
+|Debut  = Underdocks
+|Type   = Boss
+}}
+{{Power Infobox|Plating|2}}
+{{Power Infobox
+|Name         = Asleep
+|Image        = StS2 Icon Asleep.png
+|Description  = Awakens upon losing HP or after X turns.
+|Type         = Buff
+|Stacks       = Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+{{M2|Lagavulin Matriarch}} is a {{2|Bosses|Boss}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Lagavulin Matriarch}}
+{{Intents Table/row
+|Name   = Sleep
+|Intent = Sleep
+|Effect = Asleep. Does nothing.
+}}
+{{Intents Table/row
+|Name   = Slash
+|Intent = Attack3
+|Effect = Deals (19;{{Asc2|9|21}}) damage.
+}}
+{{Intents Table/row
+|Name   = Disembowel
+|Intent = Attack3
+|Effect = Deals (9;{{Asc2|9|10}}) damage x2.
+}}
+{{Intents Table/row
+|Name   = Slash2
+|Intent = Attack3, Defend
+|Effect = Deals (12;{{Asc2|9|14}}) damage. Gains (12;{{Asc2|8|14}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Soul Siphon
+|Intent = Debuff, Buff
+|Effect = Removes 2 {{BD2|Strength}} and 2 {{BD2|Dexterity}} from the player. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+|GivesToPlayer = Strength (Negative), Dexterity (Negative)
+}}
+{{Intents Table/end}}
+The {{M2|Lagavulin Matriarch}} starts {{BD2|Asleep}} with 12 {{BD2|Plating}}. It sleeps for 3 turns or until it takes unblocked damage, whichever comes first. When it wakes up, it loses its {{BD2|Plating}}.
+
+After waking, it repeats this four-move cycle:
+# {{Int2|Lagavulin Matriarch|Slash}}
+# {{Int2|Lagavulin Matriarch|Disembowel}}
+# {{Int2|Lagavulin Matriarch|Slash2}}
+# {{Int2|Lagavulin Matriarch|Soul Siphon}}
+
+== Useful Cards ==
+* '''Lagavulin Matriarch''' gives the player three free turns to set up, making it easy to play expensive powers like {{C2|Demon Form}} or {{C2|Reaper Form}}.
+* {{Int2|Lagavulin Matriarch|Soul Siphon}} permanently reduces the player's {{BD2|Strength}} and {{BD2|Dexterity}} by 2 each time it is used. Cards like {{C2|Conflagration}} or {{C2|Death's Door}} will be much weaker because this debuff affects each individual instance of damage or {{KW|Block}}, while cards like {{C2|Bury}} or {{C2|Impervious}} will barely be affected.
+
+== Trivia ==
+{{M2|Lagavulin Matriarch}}'s appearance, abilities, and name are a reference to the {{M|Lagavulin||1}} Elite from Slay the Spire 1.
+
+== Animations ==
+{{Bestiary|Lagavulin Matriarch}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Lagavulin-Matriarchin
+| DEUmeaning = 
+| ESPname    = Matriarca lagavulín
+| ESPmeaning = 
+| FRAname    = Matriarche Lagavulin
+| FRAmeaning = 
+| ITAname    = Matriarca Lagavulin
+| ITAmeaning = 
+| JPNname    = ラガヴーリン・メイトリアーク
+| JPNromanised = Ragavuurin/meitoriaaku
+| JPNmeaning = 
+| INDname    = Pemimpin Lagavulin
+| INDmeaning = 
+| KORname    = 라가불린 대모
+| KORromanised = lagabullin daemo
+| KORmeaning = 
+| POLname    = Matka Lagavulinów
+| POLmeaning = 
+| PTBname    = Matriarca Lagavulin
+| PTBmeaning = 
+| RUSname    = Праматерь лагавулинов
+| RUSromanised = Pramater' lagavulinov
+| RUSmeaning = 
+| SPAname    = Matriarca lagavulin
+| SPAmeaning = 
+| THAname    = นางพญาลากาวูลิน
+| THAromanised = nangpyalakawulin
+| THAmeaning = 
+| TURname    = Anne Lagavulin
+| TURmeaning = 
+| ZHSname    = 乐加维林族母
+| ZHSromanised = lejiaweilinzumu
+| ZHSmeaning = 
+| CODEname    = LAGAVULIN_MATRIARCH
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.103.3|* Fixed Lagavulin Matriarch's "zzz" sleep particles not going away in the bestiary when she is no longer sleeping}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Lagavulin Matriarch}}
+{{Update History Table/row|V0.87.0|* Fixed broken Lagavulin Matriarch outline}}
+{{Update History Table/row|V0.80.0|* Changed Lagavulin Matriarch: Soul Siphon debuff increased to -2 to each stat}}
+{{Update History Table/row|V0.69.0|* Starter Flare relic no longer wakes Lagavulin Matriarch up before she can gain block from her Plating power}}
+{{Update History Table/row|V0.67.0|* Added Lagavulin Matriarch animations}}
+{{Update History Table/row|V0.62.0|* Changed Lagavulin Matriarch: reworked moveset}}
+{{Update History Table/row|V0.61.0|* Changed Lagavulin Matriarch: now loses her Plating when she wakes up (like the Lagavulin in StS1)}}
+{{Update History Table/row|V0.60.0|* Changed Lagavulin Matriarch: tweaked moveset}}
+{{Update History Table/row|V0.58.0|* Lagavulin Matriarch no longer wakes up if its Block gets broken but no damage is taken
+* Poison now wakes up Lagavulin Matriarch (like with Lagavulin in StS1)}}
+{{Update History Table/row|V0.57.0|* Added new Underdocks boss, The Lagavulin Matriarch, to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

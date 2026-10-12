@@ -1,0 +1,207 @@
+{{Enemy Infobox
+|Name   = Ceremonial Beast
+|Image  = StS2_Ceremonial Beast.png
+|Icon   = StS2 Icon CeremonialBeastBoss.png
+|HP     = 252
+|AscHP  = 262
+|Debut  = Overgrowth
+|Type   = Boss
+}} 
+{{Power Infobox
+|Name         = Plow
+|Image        = StS2 Icon Plow.png
+|Description  = The first time this enemy's HP reaches X or below, it becomes {{KW2|Stunned}} and loses all its {{BD2|Strength}}.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Conserved
+|Cap          = 
+|GivesToEnemy = Stunned, Strength (Negative)
+}}
+{{Power Infobox
+|Name         = Ringing
+|Image        = StS2 Icon Ringing.png
+|Description  = You can only play 1 card this turn.
+|Type         = Debuff
+|Stacks       = Removed
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Ceremonial Beast''' is a {{2|Bosses|Boss}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Ceremonial Beast}}
+{{Intents Table/row
+|Name   = Stamp
+|Intent = Buff
+|Effect = Gains {{BD2|Plow}} (150;{{Asc2|9|160}}). When its HP drops to that amount, it becomes {{KW2|Stunned}} and loses all {{BD2|Strength}}.
+|PowerGives = Strength (Negative), Stunned
+|GivesToEnemy = Plow
+}}
+{{Intents Table/row
+|Name   = Plow
+|Intent = Attack3, Buff
+|Effect = Deals (18;{{Asc2|9|20}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Stun
+|Intent = Stun
+|Effect = Stunned. Does nothing.
+}}
+{{Intents Table/row
+|Name   = Beast Cry
+|Intent = Debuff
+|Effect = Applies 1 {{BD2|Ringing}}.
+|GivesToPlayer = Ringing
+}}
+{{Intents Table/row
+|Name   = Stomp
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/row
+|Name   = Crush
+|Intent = Attack3, Buff
+|Effect = Deals (17;{{Asc2|9|19}}) damage. Gains (3;{{Asc2|9|4}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+The Ceremonial Beast has two distinct phases.
+
+'''Phase 1:'''
+* Uses {{Int2|Ceremonial Beast|Stamp}} on the first turn, gaining {{BD2|Plow}}.
+* Then uses {{Int2|Ceremonial Beast|Plow}} every turn.
+When its HP drops to the {{BD2|Plow}} threshold (150, or {{Asc2|9|160}}), it immediately becomes {{KW2|Stunned}} and loses all {{BD2|Strength}}.
+
+'''Phase 2:''' After being stunned, repeats this three-move cycle:
+# {{Int2|Ceremonial Beast|Beast Cry}}
+# {{Int2|Ceremonial Beast|Stomp}}
+# {{Int2|Ceremonial Beast|Crush}}
+
+== Notes ==
+* {{BD2|Plow}} acts as a HP threshold: when the Ceremonial Beast's HP drops to the {{BD2|Plow}} amount or below, it is {{KW2|Stunned}} and loses all accumulated {{BD2|Strength}}. This effectively gives the player a free turn.
+** If the Ceremonial Beast's HP is already below the {{BD2|Plow}} threshold on the first turn (before it gains {{BD2|Plow}}), it will not become {{KW2|Stunned}} when it gains {{BD2|Plow}}. Instead, it acts normally until it loses any amount of HP, which will trigger the {{BD2|Plow}} effect like normal.
+* {{BD2|Ringing}} from {{Int2|Ceremonial Beast|Beast Cry}} limits the player to playing only 1 card on that turn.
+* During Phase 1, each {{Int2|Ceremonial Beast|Plow}} gains 2 {{BD2|Strength}}, but all of it is lost when the Ceremonial Beast's HP drops to the {{BD2|Plow||}} threshold. In Phase 2, each {{Int2|Ceremonial Beast|Crush}} gains 3 ({{Asc|9|4}}) {{BD2|Strength}} that accumulates for the rest of the battle.
+
+== Useful Cards ==
+=== Synergies ===
+* {{BD2|Block Next Turn}} ({{C2|Dodge and Roll}}, {{C2|Glitterstream}}, and {{C2|Prolong}}) can mitigate {{BD|Ringing|Ringing's|2}} card play limit.
+** {{BD2|Barricade}} and {{R2|Sturdy Clamp}} can provide a similar benefit.
+* Cards which can apply multiple stacks of {{BD2|Weak}}, such as {{C2|Leg Sweep}} or {{C2|Uppercut|Uppercut+}}, can be played on the turn that '''Ceremonial Beast''' uses  {{Int2|Ceremonial Beast|Beast Cry}}. This will lower its damage on the next turn while still allowing another card to be played.
+
+=== Anti-Synergies ===
+* Effects that automatically play cards (such as {{C2|Hellraiser}}, {{C2|Mayhem}}, or {{C2|Bombardment}}) can consume the singular card play permitted by {{BD2|Ringing}}. 
+** Similarly, {{C2|Stampede|Stampede's}} triggered {{QueryLink2|Cards|type:Attack|Attack}} will not be played if the player already played another card this turn.
+* {{BD2|Ringing}} makes cards that ''generate other cards'' to be played (such as {{C2|Infernal Blade}}, {{C2|Quasar}}, and {{C2|Discovery}}) effectively useless.
+* {{BD2|Ringing}} prevents {{BD2|Echo Form}} from copying the first card played.
+* {{BD2|Ringing}} prevents {{KW2|Sly}} cards from playing if they were discarded by another card's effect.
+** If the {{KW2|Sly}} card is discarded by an effect on the player (e.g. {{BD2|Tools of the Trade}}) or by {{P2|Gambler's Brew}}, it will be played as normal. However, it will count towards {{BD|Ringing|Ringing's|2}} limit this turn.
+
+== Trivia ==
+* {{R2|Blessed Antler}} is likely an antler from a Ceremonial Beast. In the battle with the Ceremonial Beast, multiple other ghostly skulls are present, some with missing antlers.
+** {{R|Blessed Antler|Blessed Antler's|2}} creation of {{C2|Dazed}} cards likely references the {{BD2|Ringing}} status: both of these effects limit how many cards can be played ({{BD2|Ringing}} imposes a hard limit, while {{C2|Dazed}} cards are {{KW2|Unplayable}}).
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Zeremonienbiest
+| DEUmeaning = 
+| ESPname    = Bestia solemne
+| ESPmeaning = 
+| FRAname    = Cerf Auguste
+| FRAmeaning = 
+| ITAname    = Bestia solenne
+| ITAmeaning = 
+| JPNname    = 儀式の獣
+| JPNromanised = Gishiki no kemono
+| JPNmeaning = 
+| INDname    = Binatang Seremonial
+| INDmeaning = 
+| KORname    = 의식의 신수
+| KORromanised = uisig-ui sinsu
+| KORmeaning = 
+| POLname    = Leśny Stróż
+| POLmeaning =Guardian of the Forest 
+| PTBname    = Besta Cerimonial
+| PTBmeaning = 
+| RUSname    = Хранитель обряда
+| RUSromanised = Hranitel' obrjada
+| RUSmeaning = 
+| SPAname    = Bestia ceremonial
+| SPAmeaning = 
+| TURname    = Mukaddes Yaratık
+| TURmeaning = 
+| ZHSname    = 仪式兽
+| ZHSromanised = yishishou
+| ZHSmeaning = 
+| CODEname    = CEREMONIAL_BEAST
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.103.3|* Fixed the Ceremonial Beast's music transition not lining up with when it gets stunned
+* Fixed the Enfeebling Touch power causing the Ceremonial Beast to gain Strength after you stun it}}
+{{Update History Table/row|V0.106.0|* Fixed Ceremonial Beast background music transition not lining up with when it gets stunned}}
+{{Update History Table/row|V0.105.1|* Fixed Ceremonial Beast background music transition not lining up with when it gets stunned}}
+{{Update History Table/row|V0.105.0|* Fixed Enfeebling Touch power causing Ceremonial Beast to gain Strength after you stun it}}
+{{Update History Table/row|V0.104.0|* Updated animation for Ceremonial Beast}}
+{{Update History Table/row|V0.95.0|* Fixed a minor z-sorting issue in Ceremonial Beast's background with beads and skulls}}
+{{Update History Table/row|V0.90.0|* Ceremonial Beast's Ringing power now only visually afflicts cards after your first card has been played
+* Ceremonial Beast now has a full list of moves and SFX in the Bestiary
+* Ceremonial Beast's Ringing affliction now properly applies to all card types}}
+{{Update History Table/row|V0.86.0|* Buffed Ceremonial Beast:
+** Crush damage increased from 11(12) -> 13(14)
+** HP increased from 234(245) -> 244(256)}}
+{{Update History Table/row|V0.85.0|* Reworked and nerfed Ceremonial Beast}}
+{{Update History Table/row|V0.84.0|* Reworked Ceremonial Beast}}
+{{Update History Table/row|V0.76.0|* Reworked Ceremonial Beast. Again.}}
+{{Update History Table/row|V0.75.0|* Reworked Ceremonial Beast}}
+{{Update History Table/row|V0.74.0|* Fixed Ceremonial Beast BGM win transition}}
+{{Update History Table/row|V0.70.0|* Nerfed Ceremonial Beast: no longer has Regeneration power
+* Changed Ceremonial Beast: changed how Plow power scales in multiplayer
+* Removed unused speech line for Ceremonial Beast}}
+{{Update History Table/row|V0.62.0|* Ceremonial Beast Regeneration now active regardless of ascension}}
+{{Update History Table/row|V0.53.0|* Ceremonial Beast's Plow power now properly displays its hovertip}}
+{{Update History Table/row|V0.50.0|* Added new transitions for Ceremonial Beast's background music}}
+{{Update History Table/row|V0.49.0|* Added special BGM for the Ceremonial Beast encounter
+* Ceremonial Beast now plays normal death animation when dying to Doom}}
+{{Update History Table/row|V0.45.0|* Changed Ceremonial Beast: Plow move's Dexterity decrease decreased from -1 -> -2}}
+{{Update History Table/row|V0.42.0|* Changed Ceremonial Beast: now applies -1 Dexterity instead of Frail
+* Ceremonial Beast Plow now resolves slightly faster}}
+{{Update History Table/row|V0.41.0|* Changed Ceremonial BeastL A1 Regen buffed from 8 -> 9
+* Gravity no longer affected by Ceremonial Beast’s Plow damage}}
+{{Update History Table/row|V0.40.0|* Changed Ceremonial Beast:
+** Plow move now applies Frail instead of Dazed
+** Stomp attack damage decreased from 13(16) -> 11(12)}}
+{{Update History Table/row|V0.39.0|* Nerfed Ceremonial Beast: Dazed cards given by Plow move decreased from 4 -> 3}}
+{{Update History Table/row|V0.38.0|* Changed Ceremonial Beast:
+** Number of Dazed cards given by Plow increased from 3 -> 4
+** Butt no longer gives Frail}}
+{{Update History Table/row|V0.35.0|* Added radial blur VFX when player gets struck by Ceremonial Beast enemy
+* Created ground spike VFX to Ceremonial Beast enemy’s stomp attack
+* Added hitstop to Ceremonial Beast's Plow attack}}
+{{Update History Table/row|V0.32.0|* Added Ceremonial Beast custom BG animations
+* Added new line burst VFX for Ceremonial Beast’s Plow move}}
+{{Update History Table/row|V0.27.0|* Made an almost imperceptible refinement of Ceremonial Beast’s hurt animation
+* Added unique animation for Ceremonial Beast dying while charging}}
+{{Update History Table/row|V0.24.0|* Ceremonial Beast has a new unique background}}
+{{Update History Table/row|V0.19.0|* Ceremonial Beast animations should no longer get interrupted
+* Ceremonial Beast no longer disappears after plowing in some circumstances}}
+{{Update History Table/row|V0.16.0|* Ceremonial Beast’s Plow is now affected by negative Strength}}
+{{Update History Table/row|V0.14.0|* Fixed Binding Chains card:
+** Now has a Stunned hovertip
+** No longer softlocks Ceremonial Beast if you apply it right before the Plow turn
+** Now glows red if playing it will kill the player}}
+{{Update History Table/row|V0.11.0|* Nerfed Ceremonial Beast: Frail application decreased from 2 -> 1}}
+{{Update History Table/row|V0.10.0|* Ceremonial Beast will now also inflict 3 Dazed on its Plow turn if not stunned!}}
+{{Update History Table/row|2023-09-01|* Impelemtend ceremonial beast animations}}
+{{Update History Table/row|2023-06-30|* Lower Ceremonial Beast's health bar (its position, not hp lol)}}
+{{Update History Table/row|2023-06-16|* Ceremonial Beast changes. HP from 220 -> 234. Butt attack changed from 6x2 -> 13 damage.}}
+{{Update History Table/row|2023-05-26|* Make Weak properly lower Ceremonial Beast's Plow move damage}}
+{{Update History Table/row|2023-04-21|* Fixed Ceremonial Beast's attack pattern
+* Fixed more Ceremonial Beast issues}}
+{{Update History Table/row|?|* Added Ceremonial Beast to the game}}
+{{Update History Table/end}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

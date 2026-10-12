@@ -1,0 +1,122 @@
+{{Enemy Infobox
+|Name   = Slumbering Beetle
+|Image  = StS2_Slumbering Beetle.png
+|HP     = 86
+|AscHP  = 89
+|Powers = {{BD2|Plating}} 15 ({{Asc2|8|18}})<br>{{BD2|Slumber}} 3
+|Debut  = Hive
+|Type   = Normal
+}} 
+{{Power Infobox|Plating|2}}
+{{Power Infobox
+|Name         = Slumber
+|Image        = StS2 Icon Slumber.png
+|Description  = Awakens upon taking turns or losing HP X times.
+|Type         = Buff
+|Stacks       = Counter and Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+'''Slumbering Beetle''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Slumbering Beetle}}
+{{Intents Table/row
+|Name   = Snore
+|Intent = Sleep
+|Effect = Does nothing. Asleep.
+}}
+{{Intents Table/row
+|Name   = Roll Out
+|Intent = Attack3, Buff
+|Effect = Deals (16;{{Asc2|9|18}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+The Slumbering Beetle starts asleep and uses {{Int2|Slumbering Beetle|Snore}} each turn while it has {{BD2|Slumber}}. Once {{BD2|Slumber}} wears off (after taking turns or losing HP 3 times), it wakes up, loses its {{BD2|Plating}}, and uses {{Int2|Slumbering Beetle|Roll Out}} every turn.
+
+== Trivia ==
+* The {{M2|Frog Knight}} rides on a smaller version of the '''Slumbering Beetle'''.
+* The '''Slumbering Beetle''' makes a quiet ambient snoring sound while sleeping.
+
+== Gallery ==
+{| class="wikitable"
+!Sound
+!Description
+|-
+|[[File:SFX_SlumberingBeetle_Snore.wav]]
+|Snoring (has multiple variants)
+|-
+|[[File:SFX_SlumberingBeetle_WakeUp.wav]]
+|Waking up
+|}
+
+== Animations ==
+{{Bestiary|Slumbering Beetle}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schlummernder Käfer
+| DEUmeaning = 
+| ESPname    = Escaramorfeo
+| ESPmeaning = 
+| FRAname    = Scarabée dormeur
+| FRAmeaning = 
+| ITAname    = Scarabeo dormiente
+| ITAmeaning = 
+| JPNname    = 眠れるビートル
+| JPNromanised = Nemureru Beatles
+| JPNmeaning = 
+| INDname    = Kumbang Tidur
+| INDmeaning = 
+| KORname    = 잠자는 딱정벌레
+| KORromanised = jamjaneun ttagjeongbeolle
+| KORmeaning = 
+| POLname    = Śpiący Żuk
+| POLmeaning = 
+| PTBname    = Besouro Sonolento
+| PTBmeaning = 
+| RUSname    = Дремучий жук
+| RUSromanised = Dremuchij zhuk
+| RUSmeaning = 
+| SPAname    = Escarabajo durmiente
+| SPAmeaning = 
+| TURname    = Uyuyan Böcek
+| TURmeaning = 
+| ZHSname    = 熟睡甲虫
+| ZHSromanised = shushuijiachong
+| ZHSmeaning = 
+| CODEname    = SLUMBERING_BEETLE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Changed Slumbering Beetle:
+** HP changed from 83(86)-88(92) -> 86(89)
+** Plating now scales with Ascension from 15 -> 18}}
+{{Update History Table/row|V0.89.0|* Added SFX for Slumbering Beetle (snoring)}}
+{{Update History Table/row|V0.80.0|* Nerfed Slumbering Beetle: now loses all Plating when he wakes up}}
+{{Update History Table/row|V0.79.0|* Buffed Slumbering Beetle: Plating increased from 10 -> 15}}
+{{Update History Table/row|V0.44.0|* Enemies with Plating like Frog Knight now start with Block equal to their plating, similar to Slumbering Beetle
+* Starter Flare relic no longer triggers before Slumbering Beetle gains block}}
+{{Update History Table/row|V0.39.0|* Nerfed Slumbering Beetle: Slumber amount increased from 2 -> 3}}
+{{Update History Table/row|V0.38.0|* Buffed Slumbering Beetle: starting Slumber decreased from 3 -> 2}}
+{{Update History Table/row|V0.37.0|* Slumbering Beetle now properly gains 10 Block at combat start}}
+{{Update History Table/row|V0.22.0|* Simplified Slumbering Beetle encounter:
+** No longer gives status cards (so one less status fight in act 2)
+** HP lowered from 86-92 -> 83-88
+** Now gains strength when it rolls out
+** Moveset is no longer randomized}}
+{{Update History Table/row|V0.21.0|* Changed Toxic Goop Bowlbug: can no longer spawn with the Slumbering Beetle}}
+{{Update History Table/row|V0.15.0|* Slumber Party encounter now has the Slumbering Beetle in the back of the fight instead of the front and the type of Bowlbugs that can be encountered in this fight has been adjusted}}
+{{Update History Table/row|V0.12.0|* Slumbering beetle no longer gives player Plating instead of itself.}}
+{{Update History Table/row|V0.10.0|* Fixed Slumbering Beetle’s slumber: now properly procs on Lightning orb and doesn’t proc on blocked damage}}
+{{Update History Table/row|2023-09-15|* Fixed Slumbering Beetle being too big}}
+{{Update History Table/row|2023-06-09|* New Slumbering Beetle animations}}
+{{Update History Table/row|?|* Added Slumbering Beetle to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

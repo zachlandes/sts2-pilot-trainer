@@ -1,0 +1,113 @@
+{{Enemy Infobox
+|Name   = Terror Eel
+|Image  = StS2_Terror Eel.png
+|HP     = 140
+|AscHP  = 150
+|Powers = {{BD2|Shriek}} 70 ({{Asc2|8|75}})
+|Debut  = Underdocks
+|Type   = Elite
+}}
+{{Power Infobox
+|Name         = Shriek
+|Image        = StS2 Icon Shriek.png
+|Description  = The first time this enemy's HP reaches X or below, it becomes {{KW2|Stunned}}.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Conserved
+|Cap          = 
+}}
+'''Terror Eel''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Terror Eel}}
+{{Intents Table/row
+|Name   = Crash
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|18}}) damage.
+}}
+{{Intents Table/row
+|Name   = Thrash
+|Intent = Attack2, Buff
+|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage. Gains 6 {{BD2|Vigor}}.
+|GivesToEnemy = Vigor
+}}
+{{Intents Table/row
+|Name   = Stun
+|Intent = Stun
+|Effect = Stunned. Does nothing.
+}}
+{{Intents Table/row
+|Name   = Terror
+|Intent = Debuff
+|Effect = Applies 99 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/end}}
+The Terror Eel alternates between {{Int2|Terror Eel|Crash}} and {{Int2|Terror Eel|Thrash}}, starting with {{Int2|Terror Eel|Crash}}. Because {{Int2|Terror Eel|Thrash}} gives the Terror Eel 6 {{BD2|Vigor}}, {{Int2|Terror Eel|Crash}} always deals 22({{Asc2|9|24}}) damage from turn 3 onwards.
+
+When its HP drops to its {{BD2|Shriek}} threshold (70, or {{Asc2|8|75}}), it becomes {{KW2|Stunned}} and then uses {{Int2|Terror Eel|Terror}} before resuming the Crash/Thrash cycle.
+
+* {{Int2|Terror Eel|Terror}} applies 99 {{BD2|Vulnerable}}, which effectively makes the player take 50% more damage from attacks for the rest of the fight.
+
+== Trivia ==
+* Terror Eel's name and {{Int2|Terror Eel|Terror}} skill are a reference to the card {{C|Terror||1}} from Slay the Spire.
+
+== Animations ==
+{{Bestiary|Terror Eel}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Furcht-Aal
+| DEUmeaning = 
+| ESPname    = Anguila ominosa
+| ESPmeaning = 
+| FRAname    = Murène de l'effroi
+| FRAmeaning = 
+| ITAname    = Anguilla nefasta
+| ITAmeaning = 
+| JPNname    = テラーウツボ
+| JPNromanised = Teraa utsubo
+| JPNmeaning = 
+| INDname    = Belut Teror
+| INDmeaning = 
+| KORname    = 공포 장어
+| KORromanised = gongpo jang-eo
+| KORmeaning = 
+| POLname    = Węgorzor
+| POLmeaning = Eelor (Combination of Eel and Terror)
+| PTBname    = Enguia Abissal
+| PTBmeaning = 
+| RUSname    = Испугорь
+| RUSromanised = Ispugor'
+| RUSmeaning = 
+| SPAname    = Aberración abisal
+| SPAmeaning = 
+| TURname    = Korkunç Yılan Balığı
+| TURmeaning = 
+| ZHSname    = 骇鳗
+| ZHSromanised = haiman
+| ZHSmeaning = 
+| CODEname    = TERROR_EEL
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|v0.100.0|* Nerfed Terror Eel:
+** Crash damage now scales from 17(19) -> 16(18)
+** Thrash Vigor now scales from 7 -> 6}}
+{{Update History Table/row|V0.94.0|* Terror Eel enemy's Shriek power now displays a counter indicating its HP threshold for being stunned.}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Terror Eel}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Terror Eel}}
+{{Update History Table/row|V0.75.0|* Buffed Terror Eel: now gets thrash damage increased on Ascension}}
+{{Update History Table/row|V0.73.0|* Buffed Terror Eel: HP increased from 131(133) -> 140(150)}}
+{{Update History Table/row|V0.69.0|* Added Slithering Strangler and Terror Eel animations}}
+{{Update History Table/row|V0.67.0|* Terror Eel's Shriek power now rounds down to match description}}
+{{Update History Table/row|V0.57.0|* Nerfed Terror Eel: Crash move damage decreased from 18(21) -> 17(19)}}
+{{Update History Table/row|V0.48.1|* Terror Eel reworked and buffed}}
+{{Update History Table/row|?|* Added Terror Eel to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

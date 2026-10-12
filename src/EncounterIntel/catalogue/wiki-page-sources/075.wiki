@@ -1,0 +1,100 @@
+{{Enemy Infobox
+|Name   = Slithering Strangler
+|Image  = StS2_Slithering Strangler.png
+|HP     = 53-55
+|AscHP  = 54-56
+|Debut  = Overgrowth
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Constrict
+|Image        = StS2 Icon Constrict.png
+|Description  = While the Slithering Strangler is alive, at the end of your turn, take X damage.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Conserved
+|Cap          = 
+}}
+'''Slithering Strangler''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Slithering Strangler}}
+{{Intents Table/row
+|Name   = Constrict
+|Intent = Debuff
+|Effect = Applies 3 {{BD2|Constrict}}.
+|GivesToPlayer = Constrict
+}}
+{{Intents Table/row
+|Name   = Thwack
+|Intent = Attack2, Defend
+|Effect = Deals (7;{{Asc2|9|8}}) damage. Gains 5 {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Lash
+|Intent = Attack3
+|Effect = Deals (12;{{Asc2|9|13}}) damage.
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Slithering Strangler|Constrict}}. After that, it randomly picks {{Int2|Slithering Strangler|Thwack}} or {{Int2|Slithering Strangler|Lash}} (equal chance, can repeat). After either attack, it always uses {{Int2|Slithering Strangler|Constrict}} again, then returns to the random pick.
+
+The pattern is: 
+* {{Int2|Slithering Strangler|Constrict}}
+* 50/50 chance to use {{Int2|Slithering Strangler|Lash}} or {{Int2|Slithering Strangler|Thwack}}
+* {{Int2|Slithering Strangler|Constrict}}
+* 50/50 chance to use {{Int2|Slithering Strangler|Lash}} or {{Int2|Slithering Strangler|Thwack}}
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Slither Strangler}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Kriechwürger
+| DEUmeaning = 
+| ESPname    = Estrangulador reptante
+| ESPmeaning = 
+| FRAname    = Étrangleur
+| FRAmeaning = 
+| ITAname    = Strangolatore strisciante
+| ITAmeaning = 
+| JPNname    = 絞蛇
+| JPNromanised = Shibori hebi
+| JPNmeaning = 
+| INDname    = Perayap Pencekik
+| INDmeaning = 
+| KORname    = 미끈거리는 교살마
+| KORromanised = mi-kkeungeolineun gyosalma
+| KORmeaning = 
+| POLname    = Ślizgi Dusiciel
+| POLmeaning = 
+| PTBname    = Estrangulador Rastejante
+| PTBmeaning = 
+| RUSname    = Ползучий горлодав
+| RUSromanised = Polzuchij gorlodav
+| RUSmeaning = 
+| SPAname    = Estrangulador reptante
+| SPAmeaning = 
+| TURname    = Dikenli Boğucu
+| TURmeaning = 
+| ZHSname    = 蛇行扼杀者
+| ZHSromanised = shexingeshazhe
+| ZHSmeaning = 
+| CODEname    = SLITHERING_STRANGLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Fixed Slithering Strangler playing its hurt animation for its Thwack move}}
+{{Update History Table/row|V0.82.0|* Added SFX for Slithering Strangler}}
+{{Update History Table/row|V0.69.0|* Added Slithering Strangler and Terror Eel animations}}
+{{Update History Table/row|V0.61.0|* Slithering Strangler's Constrict power now triggers after Frost Orb so that the damage is blocked}}
+{{Update History Table/row|V0.48.0|* Plating power now gives you block before Slithering Strangler enemy's Constrict power deals you damage}}
+{{Update History Table/row|V0.45.0|* Buffed Slithering Strangler: HP increased from 44(44)-46(46) -> 53(54)-55(56)}}
+{{Update History Table/row|V0.44.0|* Added new Act 1 enemy, the Slithering Strangler}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

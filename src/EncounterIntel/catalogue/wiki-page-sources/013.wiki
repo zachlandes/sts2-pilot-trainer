@@ -1,0 +1,121 @@
+{{Enemy Infobox
+|Name   = Byrdonis
+|Image  = StS2_Byrdonis.png
+|HP     = 81-84
+|AscHP  = 90
+|Powers = {{BD2|Territorial}} 1
+|Debut  = Overgrowth
+|Type   = Elite
+}} 
+{{Power Infobox
+|Name         = Territorial
+|Image        = StS2 Icon Territorial.png
+|Description  = At the end of its turn, gains X {{BD2|Strength}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Strength
+}}
+'''Byrdonis''' is an {{2|Elites|Elite}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Byrdonis}}
+{{Intents Table/row
+|Name   = Swoop
+|Intent = Attack3
+|Effect = Deals (17;{{Asc2|9|19}}) damage.
+}}
+{{Intents Table/row
+|Name   = Peck
+|Intent = Attack2
+|Effect = Deals (3x3;{{Asc2|9|4x3}}) damage.
+}}
+{{Intents Table/end}}
+Byrdonis alternates between its two moves in a fixed pattern:
+# {{Int2|Byrdonis|Swoop}}.
+# {{Int2|Byrdonis|Peck}}.
+# Back to {{Int2|Byrdonis|Swoop}}, and so on.
+
+== Notes ==
+* {{Int2|Byrdonis|Peck}} hits 3 times, so each point of {{BD2|Strength}} adds 3 extra damage total on Peck turns.
+
+== Trivia ==
+* Both of '''Byrdonis's''' attacks are represented in Attack cards ({{C2|Byrd Swoop}} deals high damage in one hit, and {{C2|Peck}} hits three times for lower damage).
+* '''Byrdonis''' strongly resembles a terror bird (''Phorusrhacos'') in appearance and behaviour.
+
+== Animations ==
+{{Bestiary|Byrdonis}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Foglonis
+| DEUmeaning = 
+| ESPname    = Japaronis
+| ESPmeaning = 
+| FRAname    = Oizodon
+| FRAmeaning = 
+| ITAname    = Gryfone
+| ITAmeaning = 
+| JPNname    = ビャードニス
+| JPNromanised = Byaadonisu
+| JPNmeaning = 
+| INDname    = Byurungis
+| INDmeaning = 
+| KORname    = 섀도니스
+| KORromanised = syaedoniseu
+| KORmeaning = 
+| POLname    = Ptaszor
+| POLmeaning = 
+| PTBname    = Avestriz Alfa
+| PTBmeaning = 
+| RUSname    = Птахоклюй
+| RUSromanised = Ptahokljuj
+| RUSmeaning = 
+| SPAname    = Japarónix
+| SPAmeaning = 
+| THAname    = ณกยักษ์
+| THAromanised = nokyak
+| THAmeaning = 
+| TURname    = Guşdeniz
+| TURmeaning = 
+| ZHSname    = 多尼斯异鸟
+| ZHSromanised = duonisiyiniao
+| ZHSmeaning = 
+| CODEname    = BYRDONIS
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.106.0|* Improved Byrdonis's UX
+** Territorial power's hovertip now mentions Byrdonis by name
+** Hovering over Byrdonis now also shows the Strength hovertip}}
+{{Update History Table/row|v0.103.0|* Nerfed Byrdonis: HP decreased from 91(99)-94(99) -> 81(90)-84(90)}}
+{{Update History Table/row|v0.100.0|* Buffed Byrdonis: Swoop attack damage increased from 16(18) -> 17(19)}}
+{{Update History Table/row|V0.92.0|* Nerfed Byrdonis: HP decreased from 93(99)-98(99) -> 91(99)-94(99)}}
+{{Update History Table/row|V0.40.0|* Reworked Byrdonis}}
+{{Update History Table/row|V0.38.0|* Tweaked Byrdonis’ buff asset}}
+{{Update History Table/row|V0.36.0|* Changed Byrdonis:
+** Weak applied increased from 2 -> 3, no longer gives you Vulnerable
+** Peck damage at higher ascension increased from 1x5 -> 2x4}}
+{{Update History Table/row|V0.32.0|* Cleaned up Byrdonis animations}}
+{{Update History Table/row|V0.29.0|* Buffed Byrdonis: Territorial power strength gain increased from 1 -> 2}}
+{{Update History Table/row|V0.22.0|* Reworked Byrdonis
+** Territorial power Strength gain decreased from 2 -> 1
+** Peck now hits an additional time
+** Screech no longer gives Frail and instead gives Weak and Vulnerable
+** Moveset reworked, no longer random}}
+{{Update History Table/row|V0.12.0|* Byrdonis HP lowered from 101-103 -> 93-98.}}
+{{Update History Table/row|V0.11.0|* Completely reworked Byrdonis.}}
+{{Update History Table/row|2023-09-15|* Major Byrdonis rework: no longer has Byrdonis nest
+* Resized Byrdonis}}
+{{Update History Table/row|2023-08-25|* Added Byrdonis angry animations}}
+{{Update History Table/row|2023-05-12|* Byrdonis Nest no longer wiggles at start of combat}}
+{{Update History Table/row|2023-04-21|* implemented byrdonis idle animation}}
+{{Update History Table/row|?|* Added Byrdonis to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

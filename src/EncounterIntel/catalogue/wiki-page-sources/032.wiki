@@ -1,0 +1,135 @@
+'''Fogmog''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}. It summons an {{M2|Eye With Teeth}} at the start of the fight.
+
+== Fogmog ==
+{{Enemy Infobox
+|Name   = Fogmog
+|Image  = StS2_Fogmog.png
+|HP     = 74
+|AscHP  = 78
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+
+=== Pattern ===
+{{Intents Table/start|Fogmog}}
+{{Intents Table/row
+|Name   = Illusory Spores
+|Intent = Summon
+|Effect = Summons an {{M2|Eye With Teeth}}.
+}}
+{{Intents Table/row
+|Name   = Thwack
+|Intent = Attack2, Buff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Gains 1 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Headbutt
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/end}}
+Fogmog always opens with {{Int2|Fogmog|Illusory Spores}} to summon an {{M2|Eye With Teeth}}, then uses {{Int2|Fogmog|Thwack}}.
+
+After that, it randomly picks {{Int2|Fogmog|Thwack}} (40%) or {{Int2|Fogmog|Headbutt}} (60%), and cannot pick the same one twice in a row. After a random {{Int2|Fogmog|Thwack}}, it always follows up with {{Int2|Fogmog|Headbutt}}. After {{Int2|Fogmog|Headbutt}}, it always follows up with {{Int2|Fogmog|Thwack}}, then returns to the random pick.
+
+{{Clear}}
+
+== Eye With Teeth ==
+{{Enemy Infobox
+|Name   = Eye With Teeth
+|Link   = Slay The Spire 2:Fogmog#Eye With Teeth
+|Image  = StS2_Eye With Teeth.png
+|HP     = 6
+|Powers = {{BD2|Illusion}}
+|Debut  = Overgrowth
+|Type   = Minion
+}} 
+{{Power Infobox|Illusion|2}}
+{{Power Infobox|Minion|2}}
+The Eye With Teeth is a minion summoned by Fogmog via {{Int2|Fogmog|Illusory Spores}}.
+
+=== Pattern ===
+{{Intents Table/start|Eye With Teeth}}
+{{Intents Table/row
+|Name   = Distract
+|Intent = StatusCard
+|Effect = Shuffles 3 {{C2|Dazed}} into your discard pile.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Eye With Teeth|Distract}} every turn.
+
+
+== Trivia ==
+* Eye With Teeth is one of only 4 enemies in the game to be incapable of causing damage, the other three being the {{M2|Noisebot}}, {{M2|Guardbot}} and {{M2|Fat Gremlin}}.
+
+{{Clear}}
+== Animations ==
+<tabber>
+|-|Fogmog=
+{{Bestiary|Fogmog}}
+|-|Eye With Teeth=
+{{Bestiary|Eye With Teeth}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schwummschwamm
+| DEUmeaning = 
+| ESPname    = Micobruma
+| ESPmeaning = 
+| FRAname    = Fongibrume
+| FRAmeaning = 
+| ITAname    = Fungonebbia
+| ITAmeaning = 
+| JPNname    = フォグモグ
+| JPNromanised = Fogumogu
+| JPNmeaning = 
+| INDname    = Jamur Kabut
+| INDmeaning = 
+| KORname    = 현혹버섯
+| KORromanised = hyeonhogbeoseos
+| KORmeaning = 
+| POLname    = Grzybol
+| POLmeaning = 
+| PTBname    = Brumesporo
+| PTBmeaning = 
+| RUSname    = Грибодуй
+| RUSromanised = Griboduj
+| RUSmeaning = 
+| SPAname    = Esporino
+| SPAmeaning = 
+| TURname    = Gaztar
+| TURmeaning = 
+| ZHSname    = 雾菇
+| ZHSromanised = wugu
+| ZHSmeaning = 
+| CODEname    = FOGMOG
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.74.0|* Changed Fogmog:
+** Damage decreased
+** HP increased from 71(73) -> 74(78)
+* Reworked Illusions:
+** Instead of healing to full HP and becoming stunned, Illusions now revive next turn at full HP, similar to Decimillipede
+** No longer keep their debuffs after dying, preventing them from being trivialized by Doom or Poison
+** All Illusions are now also Minions
+** Thanks to Vex'd for the suggestions!}}
+{{Update History Table/row|V0.73.0|* Reworked Illusion monsters like Eye With Teeth and Parafright: no longer have infinite HP, and they no longer have both the Illusion and Disrupt power. Instead, when an Illusion is "killed", it immediately revives to full HP and is stunned.}}
+{{Update History Table/row|V0.44.0|* Buffed Fogmog: increased HP}}
+{{Update History Table/row|V0.38.0|* Changed Fogmog:
+** Swipe move now also grants itself 1 Strength
+** Fogmog can now randomly decide to Swipe twice in a row before Headbutting}}
+{{Update History Table/row|V0.22.0|* Buffed Fogmog: damage increased from 7/13 -> 9/15}}
+{{Update History Table/row|2023-09-15|* Fogmog is now a strong enemy, HP increased from 58 -> 66, and its illusion no longer applies Weak}}
+{{Update History Table/row|2023-07-21|* Deprecated normal room encounter that was a combination of Slimes + Fogmog}}
+{{Update History Table/row|2023-04-21|* fogmog applying illusion to the wrong target}}
+{{Update History Table/row|?|* Added Fogmog to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,143 @@
+{{Enemy Infobox
+|Name   = The Insatiable
+|Image  = StS2_The Insatiable.png
+|Icon   = StS2 Icon TheInsatiableBoss.png
+|HP     = 321
+|AscHP  = 341
+|Debut  = Hive
+|Type   = Boss
+}}
+{{Power Infobox
+|Name         = Sandpit
+|Image        = StS2 Icon Sandpit.png
+|Description  = In X turns, you will be eaten and die.
+|Type         = Buff
+|Stacks       = Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+'''The Insatiable''' is a {{2|Bosses|Boss}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|The Insatiable}}
+{{Intents Table/row
+|Name   = Liquify Ground
+|Intent = Buff, StatusCard
+|Effect = Gains 4 {{BD2|Sandpit}} (counted separately for each player). Shuffles 6 {{C2|Frantic Escape}} into each player's deck (3 into draw pile, 3 into discard pile).
+|GivesToEnemy = Sandpit
+}}
+{{Intents Table/row
+|Name   = Thrash
+|Intent = Attack3
+|Effect = Deals (8;{{Asc2|9|9}}) damage ×2.
+}}
+{{Intents Table/row
+|Name   = Lunging Bite
+|Intent = Attack4
+|Effect = Deals (28;{{Asc2|9|31}}) damage.
+}}
+{{Intents Table/row
+|Name   = Salivate
+|Intent = Buff
+|Effect = Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+The Insatiable always opens with {{Int2|The Insatiable|Liquify Ground}}, then repeats the following cycle:
+# {{Int2|The Insatiable|Thrash}}
+# {{Int2|The Insatiable|Lunging Bite}}
+# {{Int2|The Insatiable|Salivate}}
+# {{Int2|The Insatiable|Thrash}}
+# Back to the first {{Int|The Insatiable|Thrash||2|Enemy Name=|Move Name=}}
+
+== Notes ==
+* {{BD2|Sandpit}} acts like a {{2|Debuffs|Debuff}} on each player, it was likely placed on '''The Insatiable''' to improve visibility of the debuff
+* {{P2|Fairy in a Bottle}} will not prevent the death stemming from {{BD2|Sandpit}}
+
+== Useful Cards ==
+* {{C2|Iteration}} will trigger consistently during this battle because the player's deck starts with six copies of {{C2|Frantic Escape}} shuffled in.
+* {{C2|Flak Cannon}} will hit an additional six times the first time it is played, but using it can be very risky because you will be left with no way to gain more {{BD2|Sandpit}} through {{C2|Frantic Escape|Frantic Escapes}}.
+
+== Animations ==
+{{Bestiary|The Insatiable}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Der Nimmersatt
+| DEUmeaning = 
+| ESPname    = El Insaciable
+| ESPmeaning = 
+| FRAname    = L'Insatiable
+| FRAmeaning = 
+| ITAname    = L'Insaziabile
+| ITAmeaning = 
+| JPNname    = 貪りの獣
+| JPNromanised = Musabori no kemono
+| JPNmeaning = 
+| INDname    = Yang Tak Terpuaskan
+| INDmeaning = 
+| KORname    = 탐
+| KORromanised = tam
+| KORmeaning = 
+| POLname    = Nienasycony
+| POLmeaning = 
+| PTBname    = O Insaciável
+| PTBmeaning = 
+| RUSname    = Проглот
+| RUSromanised = Proglot
+| RUSmeaning = 
+| SPAname    = El Insaciable
+| SPAmeaning = 
+| TURname    = Doyumsuz
+| TURmeaning = 
+| ZHSname    = 无厌沙虫
+| ZHSromanised = wuyanshachong
+| ZHSmeaning = 
+| CODEname    = THE_INSATIABLE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.103.2|* Most of the writing-related changes have come in the form of slight rewording to make it clearer what certain cards, relics, potions, and powers actually do. For instance, those who have been confused as to why their Fairy in a Bottle potions haven't saved them from The Insatiable can now understand that the potion only triggers if your HP reaches 0, not if you die by any other means.}}
+{{Update History Table/row|V0.103.0|* Poison now always procs before The Insatiable tries to eat you}}
+{{Update History Table/row|V0.100.0|* Added alternate Phobia Mode visuals for The Insatiable
+* The Insatiable boss's Sandpit power is now worded more clearly on the turn that it will eat you}}
+{{Update History Table/row|V0.95.0|* Fixed Sand Waterfall VFX in the Insatiable boss fight}}
+{{Update History Table/row|V0.93.0|* Interrupting Insatiable's Salivate move no longer makes sand VFX continuously play}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for The Insatiable}}
+{{Update History Table/row|V0.82.0|* Fixed issue with The Insatiable sometimes not playing its roar animation}}
+{{Update History Table/row|V0.74.0|* Fixed Insatiable BGM win transition}}
+{{Update History Table/row|V0.73.0|* You can no longer use Lizard Tail relic to survive The Insatiable eating you}}
+{{Update History Table/row|V0.65.0|* Fixed various visual issues with Osty and Sandpit}}
+{{Update History Table/row|V0.62.0|* Changed The Insatiable:
+** No longer gains Block
+** Damage on big hit decreased from 30(35) -> 28(31)}}
+{{Update History Table/row|V0.53.0|* Changed The Insatiable:
+** Moveset reordered to spike damage 1 turn earlier
+** Now scales its Strength gain up from 2 -> 3 on higher ascension}}
+{{Update History Table/row|V0.52.0|* Added new SFX and background music for The Insatiable}}
+{{Update History Table/row|V0.46.0|* Changed Sandpit power: now count down separately for different players}}
+{{Update History Table/row|V0.38.0|* Changed The Insatiable: Thrash move damage changed from 6(7)x3 -> 8(9)x2}}
+{{Update History Table/row|V0.36.0|* Osty and Necrobinder are now both properly pulled towards The Insatiable}}
+{{Update History Table/row|V0.31.0|* CPU to GPU VFX conversion for Insatiable and Tezcatara}}
+{{Update History Table/row|V0.30.0|* The Insatiable and Regent particles no longer render on top of Game Over screen}}
+{{Update History Table/row|V0.29.0|* Added art for The Insatiable and The Queen map nodes
+* Added a player-eating animation for The Insatiable
+* Fixed Curl Up and Sandpit power descriptions}}
+{{Update History Table/row|V0.28.0|* The Insatiable combat background now has various tree stumps and some extra sandy VFX}}
+{{Update History Table/row|V0.24.0|* Renamed Antlion to The Insatiable
+* Nerfed The Insatiable:
+** Bite move damage decreased from 35 -> 30
+** HP decreased from 333 -> 321
+* Added animations for The Insatiable
+* Sandpit death goes through Fairy in a Bottle and Lizard Tail relics}}
+{{Update History Table/row|V0.23.0|* Antlion now has a unique background!}}
+{{Update History Table/row|V0.17.0|* Added placeholder Antlion run history icon}}
+{{Update History Table/row|V0.16.0|* Nerfed Antlion: HP decreased from 380 -> 333
+* Antlion and Giant Louse now correctly factor strength and strength loss into their attack strength}}
+{{Update History Table/row|V0.15.0|* Replaced Decemillipede with Antlion, a new Act 2 boss}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

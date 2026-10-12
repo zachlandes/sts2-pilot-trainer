@@ -1,0 +1,115 @@
+{{Enemy Infobox
+|Name   = Scroll of Biting
+|Image  = StS2_Scroll of Biting.png
+|HP     = 31-38
+|AscHP  = 32-39
+|Powers = {{BD2|Paper Cuts}} 2
+|Debut  = Glory
+|Type   = Normal
+}}
+{{Power Infobox
+|Name         = Paper Cuts
+|Image        = StS2 Icon PaperCuts.png
+|Description  = Whenever it deals unblocked attack damage to you, you lose X Max HP.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Scroll of Biting''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}. It appears in groups of 3 (weak) or 4 (normal), each starting on a different move.
+
+== Pattern ==
+{{Intents Table/start|Scroll of Biting}}
+{{Intents Table/row
+|Name   = Chomp
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/row
+|Name   = More Teeth
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Chew
+|Intent = Attack2
+|Effect = Deals (5;{{Asc2|9|6}}) damage 2 times.
+}}
+{{Intents Table/end}}
+Each Scroll of Biting starts on a different move in the cycle. The pattern is: {{Int2|Scroll of Biting|Chomp}}, then {{Int2|Scroll of Biting|More Teeth}}, then {{Int2|Scroll of Biting|Chew}}.
+
+After {{Int2|Scroll of Biting|Chew}}, it randomly picks either {{Int2|Scroll of Biting|Chomp}} (cannot repeat) or {{Int2|Scroll of Biting|Chew}} (weight 2), then continues the cycle from that point.
+
+== Notes ==
+* If the Scroll of Biting deals unblocked damage to {{KW2|Osty}}, neither he nor the player loses any max HP from {{BD2|Paper Cuts}}.
+* If {{R2|Tungsten Rod}} reduces the unblocked damage taken from 1 to 0 (for example, if a '''Scroll of Biting''' deals 14 damage to a player with 13 {{KW2|Block}}) then the player will not lose max HP.
+* If the Scroll of Biting dies from reflected damage such as {{BD2|Thorns}} or {{BD2|Flame Barrier}} while dealing unblocked damage to the player, the player will not lose any max HP from {{BD2|Paper Cuts}}.
+
+{{Clear}}
+== Animations ==
+<tabber>
+|-|Orange=
+{{Bestiary|Scroll of Biting Orange}}
+|-|Blue=
+{{Bestiary|Scroll of Biting Blue}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Pergament des Beißens
+| DEUmeaning = 
+| ESPname    = Pergamino dentado
+| ESPmeaning = 
+| FRAname    = Parchemord
+| FRAmeaning = 
+| ITAname    = Pergamena mordente
+| ITAmeaning = 
+| JPNname    = 噛みつきの巻物
+| JPNromanised = Kamitsuki no makimono
+| JPNmeaning = 
+| INDname    = Gulungan Penggigit
+| INDmeaning = 
+| KORname    = 물어뜯는 두루마리
+| KORromanised = mul-eo-tteudneun dulumali
+| KORmeaning = 
+| POLname    = Zgryźliwy Zwój
+| POLmeaning = 
+| PTBname    = Pergaminho Mordaz
+| PTBmeaning = 
+| RUSname    = Зубастый свиток
+| RUSromanised = Zubastyj svitok
+| RUSmeaning = 
+| SPAname    = Pergamino mordedor
+| SPAmeaning = 
+| TURname    = Isırma Parşömeni
+| TURmeaning = 
+| ZHSname    = 咬人卷轴
+| ZHSromanised = yaorenjuanzhou
+| ZHSmeaning = 
+| CODEname    = SCROLL_OF_BITING
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.104.0|* Changed Scrolls of Biting: have slightly less HP at low Ascension but slightly higher HP at high Ascension, changed from 31(32) - 38(39) -> 30(33)-37(39)}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Scroll of Biting}}
+{{Update History Table/row|V0.77.0|* Nerfed Scroll of Biting: Chew move damage from 6(7) -> 5(6)}}
+{{Update History Table/row|V0.76.0|* Added SFX for Scroll of Biting}}
+{{Update History Table/row|V0.72.0|* Changed Scroll of Biting: moveset is less randomized}}
+{{Update History Table/row|V0.60.0|* Added animations for Scroll of Biting enemy}}
+{{Update History Table/row|V0.47.0|* Nerfed Scroll of Biting: HP values decreased from 38(39)-45(46) -> 31(32)-38(39)}}
+{{Update History Table/row|V0.46.0|* Nerfed Scrolls of Biting:
+** Chomp move damage decreased from 16(18) -> 14(16)
+** Ascension HP bonus decreased from +3 HP -> +1 HP}}
+{{Update History Table/row|V0.45.0|* Scroll of Biting power wording improvements}}
+{{Update History Table/row|V0.43.0|* Buffed Scrolls of Biting:
+** HP and damage values increased
+** Strength gain from 1 -> 2}}
+{{Update History Table/row|V0.42.0|* Added new Act 3 enemy encounter The Scrolls of Biting}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

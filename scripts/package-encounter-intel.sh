@@ -5,6 +5,7 @@ root="$(cd "$(dirname "$0")/.." && pwd -P)"
 cd "$root"
 ./scripts/bootstrap.sh
 python3 tools/encounter-intel/import_wiki.py src/EncounterIntel/catalogue/wiki-sources src/EncounterIntel/catalogue/wiki-enemies.json --check
+python3 tools/encounter-intel/import_wiki_pages.py src/EncounterIntel/catalogue/wiki-page-sources src/EncounterIntel/catalogue/wiki-pattern-pages.json --check
 dotnet build src/EncounterIntel/EncounterIntel.csproj -c Release --nologo -m:1
 stage="$(mktemp -d "${TMPDIR:-/tmp}/encounter-intel-package.XXXXXX")"
 trap 'rm -rf "$stage"' EXIT

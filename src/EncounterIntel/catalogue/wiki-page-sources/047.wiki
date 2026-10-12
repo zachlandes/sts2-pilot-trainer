@@ -1,0 +1,182 @@
+{{Enemy Infobox
+|Name   = Knowledge Demon
+|Image  = StS2_Knowledge Demon.png
+|Icon   = StS2 Icon KnowledgeDemonBoss.png
+|HP     = 379
+|AscHP  = 399
+|Debut  = Hive
+|Type   = Boss
+}} 
+{{Power Infobox|Disintegration|2}} 
+{{Power Infobox|Mind Rot|2}} 
+{{Power Infobox|Sloth|2}} 
+{{Power Infobox|Waste Away|2}}
+'''Knowledge Demon''' is a {{2|Bosses|Boss}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Knowledge Demon}}
+{{Intents Table/row
+|Name   = Curse of Knowledge
+|Intent = Debuff
+|Effect = Each player chooses one of two debuffs to receive. The options change each time this move is used.
+|GivesToPlayer = Disintegration, Mind Rot, Sloth, Waste Away
+}}
+{{Intents Table/row
+|Name   = Slap
+|Intent = Attack3
+|Effect = Deals (17;{{Asc2|9|18}}) damage.
+}}
+{{Intents Table/row
+|Name   = Knowledge Overwhelming
+|Intent = Attack4
+|Effect = Deals (8;{{Asc2|9|9}}) damage ×3.
+}}
+{{Intents Table/row
+|Name   = Ponder
+|Intent = Attack3, Heal, Buff
+|Effect = Deals (11;{{Asc2|9|13}}) damage. Heals 30 HP per player. Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength, Heal
+}}
+{{Intents Table/end}}
+Knowledge Demon repeats a fixed four-move cycle:
+# {{Int2|Knowledge Demon|Curse of Knowledge}}
+# {{Int2|Knowledge Demon|Slap}}
+# {{Int2|Knowledge Demon|Knowledge Overwhelming}}
+# {{Int2|Knowledge Demon|Ponder}}
+
+After the third {{Int2|Knowledge Demon|Curse of Knowledge}} (once all three status sets have been offered), the cycle changes: {{Int2|Knowledge Demon|Curse of Knowledge}} is skipped, and the remaining three moves repeat in order.
+
+=== Dialogue ===
+When using {{Int2|Knowledge Demon|Curse of Knowledge}}.
+<blockquote><i>
+{{TS|||Make your choice.}}
+</i></blockquote>
+After a debuff has been chosen.
+<blockquote><i>
+{{TS|||It is done.}}
+</i></blockquote>
+
+== Notes ==
+* {{Int2|Knowledge Demon|Curse of Knowledge}} status sets:
+** Set 1: {{BD2|Disintegration}} (6 damage/turn) or {{BD2|Mind Rot}} (draw 1 fewer card/turn)
+** Set 2: {{BD2|Disintegration}} (7 damage/turn) or {{BD2|Sloth}} (max 3 cards/turn)
+** Set 3: {{BD2|Disintegration}} (8 damage/turn) or {{BD2|Waste Away}} (1 less {{KW2|Energy}}/turn)
+* The debuffs from {{Int2|Knowledge Demon|Curse of Knowledge}} are shown as cards, but are never added to the player's hand or deck. Once chosen, they are instantly played and removed from the game.
+
+== Useful Cards ==
+* In order to deal with the extra damage from {{BD2|Disintegration}}, you can either use strong defensive cards like {{C2|Footwork}} or {{C2|Feel No Pain}}, or simply enter the battle with a significant HP pool and finish off the '''Knowledge Demon''' before it can kill you. If you cannot afford to take this extra damage, it may be a good idea to take cards which make the other options less harmful.
+* Strength reduction from cards like {{C2|Piercing Wail}} or {{C2|Monarch's Gaze}} can make multihitting attacks much less deadly.
+* Strong draw from cards like {{C2|Acrobatics}} or {{C2|Machine Learning}} can make {{BD2|Mind Rot}} less impactful.
+* {{R2|Runic Pyramid}} makes {{BD2|Mind Rot}} significantly less of a problem by saving cards from previous turns.
+* {{C2|Pyre}} can make up for the energy loss from {{BD2|Waste Away}}.
+* Strong, expensive cards like {{C2|Impervious}} and {{C2|Ice Lance}} are an effective way to use your limited card plays after taking {{BD2|Sloth}}.
+* The {{R2|Pocketwatch}} can help make up for the limited draw from {{BD2|Mind Rot}}, and as long as you are already playing only 3 cards per turn to activate it, {{BD2|Sloth}} is essentially harmless.
+
+== Animations ==
+{{Bestiary|Knowledge Demon}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Wissensdämon
+| DEUmeaning = 
+| ESPname    = Demonio del saber
+| ESPmeaning = 
+| FRAname    = Démon de la Connaissance
+| FRAmeaning = 
+| ITAname    = Demone onnisciente
+| ITAmeaning = 
+| JPNname    = 知識の悪魔
+| JPNromanised = Chishiki no Akuma
+| JPNmeaning = 
+| INDname    = Iblis Pengetahuan
+| INDmeaning = 
+| KORname    = 지식의 악마
+| KORromanised = jisig-ui agma
+| KORmeaning = 
+| POLname    = Demon Wiedzy
+| POLmeaning = 
+| PTBname    = Demônio do Conhecimento
+| PTBmeaning = 
+| RUSname    = Всезнающий демон
+| RUSromanised = Vseznajuschij demon
+| RUSmeaning = 
+| SPAname    = Demonio del saber
+| SPAmeaning = 
+| TURname    = Bilgi Şeytanı
+| TURmeaning = 
+| ZHSname    = 知识恶魔
+| ZHSromanised = zhishiemo
+| ZHSmeaning = 
+| CODEname    = KNOWLEDGE_DEMON
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Repeatedly clicking Knowledge Demon's Curse of Knowledge move in the Bestiary no longer causes its animation to stop playing}}
+{{Update History Table/row|V0.103.0|* Fixed Knowledge Demon background music not playing finale when you defeat him}}
+{{Update History Table/row|V0.93.0|* Nerfed Knowledge Demon: Ponder move Strength gain decreased from 3(4) -> 2(3)}}
+{{Update History Table/row|V0.92.0|* Nerfed Knowledge Demon: HP changed from 387(399) -> 379(399)}}
+{{Update History Table/row|V0.89.0|* Changed Knowledge Demon: no longer has his Have a Taste move; it is now skipped in his turn order}}
+{{Update History Table/row|V0.85.0|* Nerfed Knowledge Demon: Disintegration now triggers after effects like Frost Orbs and Orichalcum}}
+{{Update History Table/row|V0.87.0|* Reworked Knowledge Demon banes with variable Disintegration damage
+* Buffed Knowledge Demon: Disintegration damage increased from 5 -> 6, minor damage buff}}
+{{Update History Table/row|V0.83.0|* Knowledge Demon's Sloth power now properly refreshes its displayed card counter at the beginning of your turn}}
+{{Update History Table/row|V0.81.0|* Buffed Knowledge Demon:
+** Have A Taste move damage increased from 7(8)x2 -> 8(9)x2
+** Now also hits for 11(13) on the turn it buffs and heals
+** Slap moved damage from 13(15) -> 17(19)
+** Gluttony bane reworked -> "At the start of your turn, Exhaust the top 3 cards of your Draw Pile."
+** Inevitability bane reworked -> "Whenever you play a card, lose 1 HP."
+** Waste Away bane reworked -> "Gain 1 less {{Icon|CE|2}} a turn."}}
+{{Update History Table/row|V0.80.0|* Players can no longer transform statuses into knowledge demon statuses
+* Fixed state divergence related to Knowledge Demon's Ponder move}}
+{{Update History Table/row|V0.78.0|* Reworked Knowledge Demon's banes
+* Knowledge Demon's Have a Taste move no longer incorrectly applies Weak}}
+{{Update History Table/row|V0.76.0|* Add missing slap SFX to Knowledge Demon's slap attack
+* Knowledge Demon status cards no longer let "show upgrade" in inspection preview}}
+{{Update History Table/row|V0.74.0|* Added SFX and BGM for Knowledge Demon}}
+{{Update History Table/row|V0.73.0|* Reworked Knowledge Demon}}
+{{Update History Table/row|V0.70.0|* Removed Knowledge Demon's dialogue for now}}
+{{Update History Table/row|V0.67.0|* Fixed an issue where Vigor power only applied to the first hit of Knowledge Demon's multi-hit attack move}}
+{{Update History Table/row|V0.65.0|* Knowledge Demon's intent no longer overlaps with the relic bar}}
+{{Update History Table/row|V0.63.0|* Buffed Knowledge Demon:
+** Heal move's healing increased from 25 -> 30
+** HP increased from 357(379) -> 387(399)}}
+{{Update History Table/row|V0.62.0|* Buffed Knowledge Demon:
+** Heal increased from 21 -> 25
+** Mind Rot affliction Vigor gain increased from 3 -> 4.
+** Strength gain increased from 2(3) -> 3(4)}}
+{{Update History Table/row|V0.60.0|* Changed Knowledge Demon's Mind Rot affliction: now gives Knowledge Demon Vigor}}
+{{Update History Table/row|V0.54.0|* Reworked Knowledge Demon:
+** Mind Rot now deals damage on play instead of giving Knowledge Demon Strength
+** Strength gain move now scales for one additional strength at high ascension}}
+{{Update History Table/row|V0.53.0|* Changed Knowledge Demon:
+** Moveset reordered to spike damage on turn 5
+** Knowledge Overwhelming move damage increased from 7(8)x3 -> 8(9)x3
+* Added Knowledge Demon animations}}
+{{Update History Table/row|V0.47.0|* Changed Knowledge Demon: reordered moveset}}
+{{Update History Table/row|V0.43.0|* Changed Knowledge Demon:
+** Damage values tweaked
+** Now only gains 1 Strength from Mind Rot
+* Knowledge Demon’s Curse of Knowledge power description now correctly reads “every third card” instead of “every other card”}}
+{{Update History Table/row|V0.42.0|* Reworked Knowledge 
+* Curse of Knowledge power is now properly categorized as a debuff instead of a buff}}
+{{Update History Table/row|V0.41.0|* Fixed softlock when defeating Knowledge Demon with Doom
+* Fixed softlock when you kill the Knowledge Demon as he is trying to say something}}
+{{Update History Table/row|V0.40.0|* Changed Knowledge Demon:
+** Now back to only tracking draws during the turn and not the 5 cards at the start of each turn
+** Reworked moveset
+** Reworked Info Hazard
+* Knowledge Demon now tracks how many cards you need to play visually in his power}}
+{{Update History Table/row|V0.39.0|* Majorly reworked Knowledge Demon}}
+{{Update History Table/row|V0.38.0|* Reworked Knowledge Demon}}
+{{Update History Table/row|V0.28.0|* Knowledge Demon affliction no longer affects Exhaust pile}}
+{{Update History Table/row|V0.24.0|* Knowledge Demon no longer tries to afflict cards in limbo}}
+{{Update History Table/row|V0.23.0|* Added new Act 2 bosses: Insect Repulsor and Knowledge Demon}}
+
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Bosses]]
+[[Category:Slay the Spire 2 Content]]

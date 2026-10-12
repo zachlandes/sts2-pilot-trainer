@@ -1,0 +1,88 @@
+{{Enemy Infobox
+|Name   = Devoted Sculptor
+|Image  = StS2_Devoted Sculptor.png
+|HP     = 162
+|AscHP  = 172
+|Debut  = Glory
+|Type   = Normal
+}} {{Power Infobox|Ritual|2}}
+'''Devoted Sculptor''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Devoted Sculptor}}
+{{Intents Table/row
+|Name   = Forbidden Incantation
+|Intent = Buff
+|Effect = Gains 9 {{BD2|Ritual}}.
+|GivesToEnemy = Ritual
+}}
+{{Intents Table/row
+|Name   = Savage
+|Intent = Attack2
+|Effect = Deals (12;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Devoted Sculptor|Forbidden Incantation}}, then uses {{Int2|Devoted Sculptor|Savage}} every turn afterward.
+
+=== Dialogue ===
+When using {{Int2|Devoted Sculptor|Forbidden Incantation}}.
+<blockquote><i>
+{{TS||shake|CAAAAW!!}}
+</i></blockquote>
+
+== Useful Cards ==
+
+* Due to the '''Devoted Sculptor''''s fast damage scaling every turn, it becomes increasingly difficult to consistently block him as the battle goes on. This makes frontloaded damage cards like {{C2|Assassinate}} or {{C2|Dramatic Entrance}} very useful, as they can help finish him off quickly before his {{BD2|Strength}} gets out of hand.
+
+
+== Animations ==
+{{Bestiary|Devoted Sculptor}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Eifriger Bildhauer
+| DEUmeaning = 
+| ESPname    = Escultor devoto
+| ESPmeaning = 
+| FRAname    = Sculpteur dévoué
+| FRAmeaning = 
+| ITAname    = Scultore devoto
+| ITAmeaning = 
+| JPNname    = 狂信の彫刻家
+| JPNromanised = Kyoushin no choukokuka
+| JPNmeaning = 
+| INDname    = Pemahat Beriman
+| INDmeaning = 
+| KORname    = 열정적인 조각가
+| KORromanised = yeoljeongjeog-in jogagga
+| KORmeaning = 
+| POLname    = Zagorzały Rzeźbiarz
+| POLmeaning = 
+| PTBname    = Escultor Devoto
+| PTBmeaning = 
+| RUSname    = Одержимый скульптор
+| RUSromanised = Oderzhimyj skul'ptor
+| RUSmeaning = 
+| SPAname    = Escultor devoto
+| SPAmeaning = 
+| TURname    = Kendini Adamış Heykeltıraş
+| TURmeaning = 
+| ZHSname    = 虔诚雕刻师
+| ZHSromanised = qianchengdiaokeshi
+| ZHSmeaning = 
+| CODEname    = DEVOTED_SCULPTOR
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Buffed Devoted Sculptor: HP increased from 144(151)-162(164) -> 162(172)}}
+{{Update History Table/row|V0.87.0|* Swapped Construct Menagerie with Devoted Sculptor in enemy pools: Menagerie is no longer a Weak fight, Sculptor is now a Weak fight}}
+{{Update History Table/row|V0.48.0|* Added sfx for Devoted Sculptor}}
+{{Update History Table/row|V0.28.0|* Devoted Sculptor now has animations}}
+{{Update History Table/row|V0.14.0|* Added Devoted Sculptor to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,108 @@
+{{Enemy Infobox
+|Name   = Soul Nexus
+|Image  = StS2_Soul Nexus.png
+|HP     = 234
+|AscHP  = 254
+|Debut  = Glory
+|Type   = Elite
+}}
+'''Soul Nexus''' is an {{2|Elites|Elite}} {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Soul Nexus}}
+{{Intents Table/row
+|Name   = Soul Burn
+|Intent = Attack4
+|Effect = Deals (29;{{Asc2|9|31}}) damage.
+}}
+{{Intents Table/row
+|Name   = Maelstrom
+|Intent = Attack4
+|Effect = Deals (6;{{Asc2|9|7}}) damage ×4.
+}}
+{{Intents Table/row
+|Name   = Drain Life
+|Intent = Attack3, Debuff
+|Effect = Deals (18;{{Asc2|9|19}}) damage. Applies 2 {{BD2|Vulnerable}} and 2 {{BD2|Weak}}.
+|GivesToPlayer = Vulnerable, Weak
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Soul Nexus|Soul Burn}}, then randomly uses {{Int2|Soul Nexus|Soul Burn}}, {{Int2|Soul Nexus|Maelstrom}}, or {{Int2|Soul Nexus|Drain Life}} each turn. No move can be used two turns in a row. All three moves are equally weighted.
+
+== Notes ==
+
+== Trivia ==
+* Soul Nexus appears in {{C2|Maul}}'s card art, being bitten by snakes.
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Seelennexus
+| DEUmeaning = 
+| ESPname    = Nexo anímico
+| ESPmeaning = 
+| FRAname    = Amalg'âmes
+| FRAmeaning = 
+| ITAname    = Nesso dell'anima
+| ITAmeaning = 
+| JPNname    = ソウルネクサス
+| JPNromanised = Souru nexus
+| JPNmeaning = 
+| INDname    = Sekumpulan Jiwa
+| INDmeaning = 
+| KORname    = 영혼 결합체
+| KORromanised = yeonghon gyeolhabche
+| KORmeaning = 
+| POLname    = Spojenie Dusz
+| POLmeaning = 
+| PTBname    = Nexo de Almas
+| PTBmeaning = 
+| RUSname    = Чистилище душ
+| RUSromanised = Chistilische dush
+| RUSmeaning = 
+| SPAname    = Nexo de almas
+| SPAmeaning = 
+| TURname    = Ruh Bileşiği
+| TURmeaning = 
+| ZHSname    = 灵魂枢纽
+| ZHSromanised = linghunshuniu
+| ZHSmeaning = 
+| CODEname    = SOUL_NEXUS
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.0|* Added new Soul Nexus VFX}}
+{{Update History Table/row|V0.102.0|* Fixed Soul Nexus animation not playing correctly}}
+{{Update History Table/row|V0.92.0|* Buffed Soul Nexus: HP increased from 234(246) -> 234(254)}}
+{{Update History Table/row|V0.86.0|* Changed Soul Nexus: no longer has Soul Wither power}}
+{{Update History Table/row|V0.77.0|* Soul Nexus' Soul Wither power can no longer break the 20 damage threshold of Beating Remnant relic}}
+{{Update History Table/row|V0.50.0|* Fixed softlock when defeating Soul Nexus with Doom}}
+{{Update History Table/row|V0.46.0|* Buffed Soul Nexus: starting Soul Wither threshold decreased from 9 -> 7
+* Fixed an issue where Soul Nexus's Soul Wither power would decrement when one of its attacks damaged Osty but not the player}}
+{{Update History Table/row|V0.45.0|* Buffed Soul Nexus: now gains additional damage on all three of its moves
+* Added SFX for Soul Nexus enemy}}
+{{Update History Table/row|V0.44.0|* Quitting during the Soul Nexus fight no longer softlocks the next session}}
+{{Update History Table/row|V0.43.0|* Buffed Soul Nexus: damage values increased}}
+{{Update History Table/row|V0.42.0|* Reworked Soul Nexus}}
+{{Update History Table/row|V0.38.0|* Changed Soul Nexus:
+HP increased from 199(209) -> 234(246)
+Soul Burn move now used only 3 times max in a fight
+* Updated to Soul Nexus art}}
+{{Update History Table/row|V0.37.0|* Changed Soul Nexus:
+** Now an elite encounter
+** Maelstrom move damage increased from 1(2)x5 -> 2(3)x5.
+** Drain Life move now has a 3-turn cooldown
+* Killing Soul Nexus with Doom no longer softlocks upon traveling to another room
+* Soul Burn affliction's hovertip now correctly states that it gives Soul Nexus 2 Strength
+* Soul Nexus' Drain Life attack shows correct damage intent in A4}}
+{{Update History Table/row|V0.36.0|* Changed Soul Nexus:
+** Soul Burn’s Strength gain for Soul Nexus increased from 1 -> 2
+** Amount of cards Soul Burn is applied to decreased from 5 -> 4 cards at a time
+** Multiattack damage changed from 1x5(6) -> 1(2)x5}}
+{{Update History Table/row|V0.18.0|* Buffed Soul Nexus: HP increased from 166 -> 199}}
+{{Update History Table/row|2023-09-08|* Fixed softlock when debuffing Soul Nexus}}
+{{Update History Table/row|2023-06-02|* Added Soul Nexus enemy encounter to the game}}
+{{Update History Table/end}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

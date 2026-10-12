@@ -1,0 +1,145 @@
+{{Enemy Infobox
+|Name   = Bygone Effigy
+|Image  = StS2_Bygone Effigy.png
+|HP     = 127
+|AscHP  = 132
+|Powers = {{BD2|Slow}}
+|Debut  = Overgrowth
+|Type   = Elite
+}}
+{{Power Infobox
+|Name         = Slow
+|Image        = StS2 Icon Slow.png
+|Description  = Whenever you play a card, this enemy receives 10% more damage from Attacks this turn.
+|Type         = Debuff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+'''Bygone Effigy''' is an {{2|Elites|Elite}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Bygone Effigy}}
+{{Intents Table/row
+|Name   = Sleep
+|Intent = Sleep
+|Effect = Does nothing. Asleep.
+}}
+{{Intents Table/row
+|Name   = Wake
+|Intent = Buff
+|Effect = Gains 10 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Slashes
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/end}}
+The Bygone Effigy starts asleep and follows this sequence:
+# {{Int2|Bygone Effigy|Sleep}} — does nothing on its first turn.
+# {{Int2|Bygone Effigy|Wake}} — wakes up and gains 10 {{BD2|Strength}}.
+# {{Int2|Bygone Effigy|Slashes}} every turn after.
+
+=== Dialogue ===
+When using {{Int2|Bygone Effigy|Sleep}}.
+<blockquote><i>
+{{TS|red|up|Your journey ends here...}}
+</i></blockquote>
+When using {{Int2|Bygone Effigy|Wake}}.
+<blockquote><i>
+{{TS|||Shall we begin?}}
+</i></blockquote>
+
+== Notes ==
+* '''Bygone Effigy''''s {{Int2|Bygone Effigy|Sleep}} phase does not feature an actual {{2|Debuffs|Debuff}} status, unlike {{M2|Lagavulin Matriarch}}'s {{BD2|Asleep}} or {{M2|Slumbering Beetle}}'s {{BD2|Slumber}}.
+
+* Because it gains 10 {{BD2|Strength}} before it begins attacking, the '''Bygone Effigy''''s attack always deals 23(25) damage, although the attack itself technically deals only 13(15).
+
+* {{BD2|Slow}} only increases damage from {{QueryLink2|Cards|type:Attack|Attack}} cards, which means cards that apply effects to deal damage such as {{2|Poison}}, {{2|Doom}}, or {{QueryLink2|Cards|type:Power|Power}} effects like {{C2|Serpent Form}} are unaffected.
+
+* When calculating damage for {{BD2|Slow}}, rounding always reduces damage down to the nearest whole number. For example, a {{C2|Strike (Ironclad)|Strike}} (base 6 damage) will deal: 
+** 6 damage at 0–1 {{BD2|Slow}}
+** 7 damage at 2–3 {{BD2|Slow}}
+** 8 damage at 4 {{BD2|Slow}}
+** 9 damage at 5–6 {{BD2|Slow}}
+** 10 damage at 7–8 {{BD2|Slow}}
+** 11 damage at 9 {{BD2|Slow}}
+** 12 damage at 10 {{BD2|Slow}}.
+
+* In the case of {{2|Multiplayer}}, each card played by ''any'' player will increase {{BD2|Slow}} for all players for the turn.
+
+== Useful Cards ==
+* Cheap, spammable cards like {{C2|Shiv}} and {{C2|Soul}} can help increase {{BD2|Slow}}.
+* Strong attacks like {{C2|Bludgeon}} can make it easier to take down the '''Bygone Effigy''' before it begins attacking.
+* Defensive scaling cards like {{C2|Footwork}} or {{C2|Fasten}} can make it possible to block most of the '''Bygone Effigy''''s damage once it begins attacking, as unlike most enemies it does not become any stronger over time (outside of its initial buff on the second turn). 
+
+== Trivia ==
+* '''Bygone Effigy''''s appearance and abilities are a reference to the {{M|Giant Head||1}} elite from Slay the Spire 1.
+
+== Animations ==
+{{Bestiary|Bygone Effigy}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Vergessenes Bildnis
+| DEUmeaning = 
+| ESPname    = Efigie olvidada
+| ESPmeaning = 
+| FRAname    = Idole Oubliée
+| FRAmeaning = 
+| ITAname    = Effigie antica
+| ITAmeaning = 
+| JPNname    = 古の偶像
+| JPNromanised = Inishie no guuzou
+| JPNmeaning = 
+| INDname    = Berhala Kuno
+| INDmeaning = 
+| KORname    = 옛 시대의 우상
+| KORromanised = yes sidae-ui usang
+| KORmeaning = 
+| POLname    = Starodawna Figura
+| POLmeaning = 
+| PTBname    = Efígie Antigo
+| PTBmeaning = 
+| RUSname    = Античный истукан
+| RUSromanised = Antichnyj istukan
+| RUSmeaning = 
+| SPAname    = Estatua vetusta
+| SPAmeaning = 
+| TURname    = Mazinin Heykeli
+| TURmeaning = 
+| ZHSname    = 旧日雕像
+| ZHSromanised = jiuridiaoxiang
+| ZHSmeaning = 
+| CODEname    = BYGONE_EFFIGY
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|v0.100.0|* Damage decreased from 15(17) -> 13(15) (still attacks with 10 Strength)}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Bygone Effigy}}
+{{Update History Table/row|V0.85.0|* Nerfed A6 Bygone Effigy: damage increase decreased from +3 -> +2}}
+{{Update History Table/row|V0.82.0|* Nerfed Bygone Effigy: no longer gains Strength when attacking}}
+{{Update History Table/row|V0.80.0|* Changed Bygone Effigy: reworked moveset}}
+{{Update History Table/row|V0.70.0|* Changed up dialogue for Bygone Effigy}}
+{{Update History Table/row|V0.43.0|* Powdered Demise potion no longer interrupts Bygone Effigy’s attack animation}}
+{{Update History Table/row|V0.35.0|* Bygone Effigy enemy’s attack now has radial blur}}
+{{Update History Table/row|V0.29.0|* Buffed Bygone Effigy: strength scaling increased from 5->10; initial damage lowered by 5 to compensate}}
+{{Update History Table/row|V0.22.0|* Changed Bygone Effigy
+** No longer loses Slow
+** Damage now ramps by 5 with every attack}}
+{{Update History Table/row|V0.13.0|* Added dialogue for Bygone Effigy}}
+{{Update History Table/row|V0.12.0|* Bygone Effigy health increased from 90 -> 123.
+* Bygone Effigy now rests for two turns and removes slow before attacking for the first time.}}
+{{Update History Table/row|2023-07-21|* Bygone Effigy moved to an Elite encounter. HP increased from 75->90}}
+{{Update History Table/row|2023-06-02|* Added Bygone Effigy enemy encounter}}
+{{Update History Table/row|2023-05-05|* The namening has begun... BEHOLD... NEW NAMES!!: evil statue -> bygone effigy
+}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Elites]] [[Category:Slay the Spire 2 Content]]

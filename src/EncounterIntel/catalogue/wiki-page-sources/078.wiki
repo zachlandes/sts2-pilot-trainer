@@ -1,0 +1,75 @@
+{{Enemy Infobox
+|Name   = Snapping Jaxfruit
+|Image  = StS2_Snapping Jaxfruit.png
+|HP     = 31-33
+|AscHP  = 34-36
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Snapping Jaxfruit''' is a normal [[Monsters|Enemy]] found in the [[Overgrowth]].
+
+== Pattern ==
+{{Intents Table/start|Snapping Jaxfruit}}
+{{Intents Table/row
+|Name   = Energy Orb
+|Intent = Attack1, Buff
+|Effect = Deals (3;{{Asc2|9|4}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Uses {{Int2|Snapping Jaxfruit|Energy Orb}} every turn.
+
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Snapping Jaxfruit}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schnappende Jaxfrucht
+| DEUmeaning = 
+| ESPname    = Bulbo mordedor
+| ESPmeaning = 
+| FRAname    = Jaxier à clapet
+| FRAmeaning = 
+| ITAname    = Bulbo azzannatore
+| ITAmeaning = 
+| JPNname    = 暴れジャックフルーツ
+| JPNromanised = Abare jack fruit
+| JPNmeaning = 
+| INDname    = Jaxfruit Mengigit
+| INDmeaning = 
+| KORname    = 포식성 잭스프루트
+| KORromanised = posigseong jaegseupeuluteu
+| KORmeaning = 
+| POLname    = Kwiat Energii
+| POLmeaning = 
+| PTBname    = Bulbo Mordiscador
+| PTBmeaning = 
+| RUSname    = Зрелый джаксфрут
+| RUSromanised = Zrelyj dzhaksfrut
+| RUSmeaning = 
+| SPAname    = Energicol mordedora
+| SPAmeaning = 
+| TURname    = Isıran Meyve
+| TURmeaning = 
+| ZHSname    = 闪光贾克斯果
+| ZHSromanised = shanguangjiakesiguo
+| ZHSmeaning = 
+| CODEname    = SNAPPING_JAXFRUIT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* It is no longer possible to get two encounters in a row that contain Snapping Jaxfruit monster}}
+{{Update History Table/row|V0.106.0|* Fixed VFX glitch when Snapping Jaxfruit dies to the Reflect power}}
+{{Update History Table/row|V0.103.3|* Fixed a VFX glitch when Snapping Jaxfruit dies to the Reflect power}}
+{{Update History Table/row|V0.63.0|* Fixed Snapping Jaxfruit attack animation}}
+{{Update History Table/row|V0.37.0|* Nerfed Snapping Jaxfruit: damage decreased from 7(8) -> 3(4)}}
+{{Update History Table/row|V0.24.0|* Changed Snapping Jaxfruit: moveset AI changed; now attacks more aggressively}}
+{{Update History Table/row|?|* Added Snapping Jaxfruit to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

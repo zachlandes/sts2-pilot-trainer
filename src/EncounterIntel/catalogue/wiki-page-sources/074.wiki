@@ -1,0 +1,88 @@
+{{Enemy Infobox
+|Name   = Slimed Berserker
+|Image  = StS2_Slimed Berserker.png
+|HP     = 266
+|AscHP  = 276
+|Debut  = Glory
+|Type   = Normal
+}}
+'''Slimed Berserker''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Slimed Berserker}}
+{{Intents Table/row
+|Name   = Vomit Ichor
+|Intent = StatusCard
+|Effect = Shuffles 10 {{C2|Slimed}} into the discard pile.}}
+{{Intents Table/row
+|Name   = Furious Pummeling
+|Intent = Attack3
+|Effect = Deals (4;{{Asc2|9|5}}) damage x4.}}
+{{Intents Table/row
+|Name   = Leeching Hug
+|Intent = Debuff, Buff
+|Effect = Applies 3 {{BD2|Weak}}. Gains 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Smother
+|Intent = Attack4
+|Effect = Deals (30;{{Asc2|9|33}}) damage.}}
+{{Intents Table/end}}
+Follows a fixed 4-move cycle:
+# {{Int2|Slimed Berserker|Vomit Ichor}}
+# {{Int2|Slimed Berserker|Furious Pummeling}}
+# {{Int2|Slimed Berserker|Leeching Hug}}
+# {{Int2|Slimed Berserker|Smother}}
+
+== Animations ==
+{{Bestiary|Slimed Berserker}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schleimiger Berserker
+| DEUmeaning = 
+| ESPname    = Viscoberseker
+| ESPmeaning = 
+| FRAname    = Berserker de vase
+| FRAmeaning = 
+| ITAname    = Berserkr viscido
+| ITAmeaning = 
+| JPNname    = スライムバーサーカー
+| JPNromanised = Suraimubaasaakaa
+| JPNmeaning = 
+| INDname    = Slime Pengamuk
+| INDmeaning = 
+| KORname    = 슬라임 광전사
+| KORromanised = seulla-im gwangjeonsa
+| KORmeaning = 
+| POLname    = Śluzak Berserker
+| POLmeaning = 
+| PTBname    = Amoque Gosmento
+| PTBmeaning = 
+| RUSname    = Ослизненный берсерк
+| RUSromanised = Osliznennyj berserk
+| RUSmeaning = 
+| SPAname    = Berserker viscoso
+| SPAmeaning = 
+| TURname    = Balçıklanmış Vahşi Savaşçı
+| TURmeaning = 
+| ZHSname    = 史莱姆狂战士
+| ZHSromanised = shilaimukuangzhanshi
+| ZHSmeaning = 
+| CODEname    = SLIMED_BERSERKER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.1|* Adjusted enemy HP at the extremes of the Ascension curve (slightly lower at low Ascension, slightly higher at high Ascension):
+** Scrolls of Biting: 31(32)-38(39) -> 30(33)-37(39)
+** Owl Magistrate: 234(243) -> 231(247)
+** Slimed Berserker: 266(276) -> 261(281)}}
+{{Update History Table/row|V0.94.0|* Buffed Slimed Berserker: Pummeling move damage increased from 2(3)x4 -> 4(5)x4}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Slimed Berserker enemy}}
+{{Update History Table/row|V0.17.0|* Changed Slime Berserker: now a regular combat}}
+{{Update History Table/row|?|* Added Slimed Berserker to the game}}
+{{Update History Table/end}}

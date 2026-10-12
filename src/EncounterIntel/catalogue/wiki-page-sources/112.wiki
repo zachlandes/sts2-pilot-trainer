@@ -1,0 +1,185 @@
+'''The Lost and Forgotten''' are a pair of normal {{2|Monsters|Enemies}} found in {{2|Glory}}. They always appear together.
+
+== The Lost ==
+{{Enemy Infobox
+|Name   = The Lost
+|Image  = StS2_The Lost.png
+|HP     = 93
+|AscHP  = 99
+|Powers = {{BD2|Possess Strength}}
+|Debut  = Glory
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Possess Strength
+|Image        = StS2 Icon PossessStrength.png
+|Description  = When killed, return all stolen {{BD2|Strength}} to the player.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToPlayer = Strength
+}}
+
+=== Pattern ===
+{{Intents Table/start|The Lost}}
+{{Intents Table/row
+|Name   = Debilitating Smog
+|Intent = Debuff, Buff
+|Effect = Removes 2 {{BD2|Strength}} from the player and gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+|GivesToPlayer = Strength (Negative)
+}}
+{{Intents Table/row
+|Name   = Eye Lasers
+|Intent = Attack2
+|Effect = Deals (4;{{Asc2|9|5}}) damage x2.
+}}
+{{Intents Table/end}}
+Alternates between {{Int2|The Lost|Debilitating Smog}} and {{Int2|The Lost|Eye Lasers}}, starting with {{Int2|The Lost|Debilitating Smog}}.
+
+{{Clear}}
+
+== The Forgotten ==
+{{Enemy Infobox
+|Name   = The Forgotten
+|Image  = StS2_The Forgotten.png
+|HP     = 106
+|AscHP  = 111
+|Powers = {{BD2|Possess Speed}}
+|Debut  = Glory
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Possess Speed
+|Image        = StS2 Icon PossessSpeed.png
+|Description  = When killed, return all stolen {{BD2|Dexterity}} to the player.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToPlayer = Dexterity
+}}
+
+=== Pattern ===
+{{Intents Table/start|The Forgotten}}
+{{Intents Table/row
+|Name   = Miasma
+|Intent = Debuff, Defend, Buff
+|Effect = Removes 2 {{BD2|Dexterity}} from the player. Gains 8 {{KW2|Block}} and 2 {{BD2|Dexterity}}.
+|GivesToEnemy = Dexterity, Block
+|GivesToPlayer = Dexterity (Negative)
+}}
+{{Intents Table/row
+|Name   = Dread
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|15}}) damage plus the amount of {{BD2|Dexterity}} the Forgotten has.
+|InteractsWith = Dexterity
+}}
+{{Intents Table/end}}
+Alternates between {{Int2|The Forgotten|Miasma}} and {{Int2|The Forgotten|Dread}}, starting with {{Int2|The Forgotten|Miasma}}.
+
+{{Clear}}
+
+== Animations ==
+<tabber>
+|-|The Lost=
+{{Bestiary|The Lost}}
+|-|The Forgotten=
+{{Bestiary|The Forgotten}}
+</tabber>
+
+== Trivia ==
+* {{M2|The Forgotten}} is the only enemy in the game that can gain {{BD2|Dexterity}}.
+
+== Names in Other Languages ==
+{{Localization
+| Title = The Lost
+| DEUname    = Die Verlassene
+| DEUmeaning = 
+| ESPname    = El Perdido
+| ESPmeaning = 
+| FRAname    = L'Égaré
+| FRAmeaning = 
+| ITAname    = Il Perduto
+| ITAmeaning = 
+| JPNname    = 迷えるもの
+| JPNromanised = Mayoeru mono
+| JPNmeaning = 
+| INDname    = Yang Hilang
+| INDmeaning = 
+| KORname    = 사라진 자
+| KORromanised = salajin ja
+| KORmeaning = 
+| POLname    = Porzucony
+| POLmeaning = 
+| PTBname    = O Perdido
+| PTBmeaning = 
+| RUSname    = Пропащий
+| RUSromanised = Propaschij
+| RUSmeaning = 
+| SPAname    = El Perdido
+| SPAmeaning = 
+| TURname    = Kayıp Olan
+| TURmeaning = 
+| ZHSname    = 失落之物
+| ZHSromanised = shiluozhiwu
+| ZHSmeaning = 
+| CODEname    = THE_LOST
+| CODEmeaning = 
+}}
+{{Localization
+| Title = The Forgotten
+| DEUname    = Die Vergessene
+| DEUmeaning = 
+| ESPname    = El Olvidado
+| ESPmeaning = 
+| FRAname    = L'Oublié
+| FRAmeaning = 
+| ITAname    = Il Dimenticato
+| ITAmeaning = 
+| JPNname    = 忘れられしもの
+| JPNromanised = Wasurerareshi mono
+| JPNmeaning = 
+| INDname    = Yang Terlupakan
+| INDmeaning = 
+| KORname    = 잊힌 자
+| KORromanised = ijhin ja
+| KORmeaning = 
+| POLname    = Zapomniany
+| POLmeaning = 
+| PTBname    = O Esquecido
+| PTBmeaning = 
+| RUSname    = Забытый
+| RUSromanised = Zabytyj
+| RUSmeaning = 
+| SPAname    = El Olvidado
+| SPAmeaning = 
+| TURname    = Unutulmuş Olan
+| TURmeaning = 
+| ZHSname    = 遗忘之物
+| ZHSromanised = yiwangzhiwu
+| ZHSmeaning = 
+| CODEname    = THE_FORGOTTEN
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Fixed the Lost and Forgotten monster's death particles continuing to play the animation is interrupted in the Bestiary}}
+{{Update History Table/row|v0.101.0|* Nerfed '''The Lost and Forgotten''': stat theft no longer scales with Ascension}}
+{{Update History Table/row|v0.100.0|* Buffed The Lost and The Forgotten encounter:
+** Stat stealing now scales with Ascension; increased from 2 -> 3 of their respective stat at A9
+** The Forgotten now deals an additional point of damage for every Dexterity it has}}
+{{Update History Table/row|V0.92.0|* Changed The Forgotten: HP changed from 105(107)-109(111) -> 106(111)
+* Changed The Lost: HP changed from 93(95)-97(99) -> 93(99)}}
+{{Update History Table/row|V0.87.0|* Nerfed The Lost and Forgotten fight: minor HP and damage nerfs}}
+{{Update History Table/row|V0.58.0|* Added the Lost and the Forgotten enemy animations}}
+{{Update History Table/row|V0.43.0|* Buffed Lost and Forgotten: HP values increased
+* The Forgotten now gains the Dexterity that it steals from the player}}
+{{Update History Table/row|V0.42.0|* Added new Act 3 enemy encounter: The Lost and The Forgotten}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}} 
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

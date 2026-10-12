@@ -1,0 +1,1922 @@
+{
+  "build": {
+    "version": "v0.111.0",
+    "build_date": "2026.08.14",
+    "commit": "41cef1ea",
+    "assembly_sha256": "9cb4f1ad8c9f284aa8fec3122ffd6d780bbf543d875c817abdd12ff63fbf12b4"
+  },
+  "conditions": {
+    "BowlbugRock:POST_HEADBUTT": [
+      "Off balance",
+      "Not off balance"
+    ],
+    "Exoskeleton:INIT_MOVE": [
+      "Slot is first",
+      "Slot is second",
+      "Slot is third",
+      "Slot is fourth"
+    ],
+    "Fabricator:fabricateBranch": [
+      "Fewer than four living teammates, including the Fabricator",
+      "At least four living teammates, including the Fabricator"
+    ],
+    "FrogKnight:HALF_HEALTH": [
+      "Already charged, or HP is at least half maximum (integer division)",
+      "Has not charged and HP is below half maximum (integer division)"
+    ],
+    "KnowledgeDemon:CurseOfKnowledgeBranch": [
+      "Fewer than three curses of knowledge performed",
+      "At least three curses of knowledge performed"
+    ],
+    "LagavulinMatriarch:SLEEP_BRANCH": [
+      "Has Asleep",
+      "Does not have Asleep"
+    ],
+    "LivingShield:SHIELD_SLAM_BRANCH": [
+      "At least one living ally",
+      "No living allies"
+    ],
+    "Myte:INIT_MOVE": [
+      "Slot is first",
+      "Slot is second"
+    ],
+    "Nibbit:INIT_MOVE:BUTT_MOVE": [
+      "Alone"
+    ],
+    "Nibbit:INIT_MOVE": [
+      "Not the front Nibbit",
+      "Front Nibbit"
+    ],
+    "Ovicopter:SUMMON_BRANCH_STATE": [
+      "At most three living teammates, including the Ovicopter",
+      "More than three living teammates, including the Ovicopter"
+    ],
+    "PhantasmalGardener:INIT_MOVE": [
+      "Slot is first",
+      "Slot is second",
+      "Slot is third",
+      "Slot is fourth"
+    ],
+    "Queen:YOURE_MINE_NOW_BRANCH": [
+      "Amalgam has not died",
+      "Amalgam has died"
+    ],
+    "Queen:BURN_BRIGHT_FOR_ME_BRANCH": [
+      "Amalgam has not died",
+      "Amalgam has died"
+    ],
+    "SlumberingBeetle:SNORE_NEXT": [
+      "Has Slumber",
+      "Does not have Slumber"
+    ],
+    "TestSubject:REVIVE_BRANCH": [
+      "Fewer than two respawns",
+      "At least two respawns"
+    ],
+    "Toadpole:INIT_MOVE": [
+      "Back Toadpole",
+      "Front Toadpole"
+    ],
+    "Wriggler:INIT_MOVE": [
+      "Slot is wriggler1",
+      "Slot is wriggler2",
+      "Slot is wriggler3",
+      "Slot is wriggler4"
+    ]
+  },
+  "contexts": {
+    "Nibbit": [
+      {
+        "name": "Alone",
+        "encounters": [
+          "ENCOUNTER.NIBBITS_WEAK"
+        ],
+        "slot": null,
+        "opening": "BUTT_MOVE",
+        "set": {
+          "IsAlone": true
+        }
+      },
+      {
+        "name": "Front",
+        "encounters": [
+          "ENCOUNTER.NIBBITS_NORMAL"
+        ],
+        "slot": "front",
+        "opening": "SLICE_MOVE",
+        "set": {
+          "IsFront": true
+        }
+      },
+      {
+        "name": "Back",
+        "encounters": [
+          "ENCOUNTER.NIBBITS_NORMAL"
+        ],
+        "slot": "back",
+        "opening": "HISS_MOVE",
+        "set": {
+          "IsFront": false
+        }
+      }
+    ],
+    "Toadpole": [
+      {
+        "name": "Front",
+        "encounters": [
+          "ENCOUNTER.TOADPOLES_WEAK"
+        ],
+        "slot": null,
+        "opening": "SPIKEN_MOVE",
+        "set": {
+          "IsFront": true
+        }
+      },
+      {
+        "name": "Back",
+        "encounters": [
+          "ENCOUNTER.TOADPOLES_WEAK"
+        ],
+        "slot": null,
+        "opening": "WHIRL_MOVE",
+        "set": {
+          "IsFront": false
+        }
+      }
+    ],
+    "Chomper": [
+      {
+        "name": "Ordinary opening",
+        "encounters": [
+          "ENCOUNTER.CHOMPERS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "ScreamFirst": false
+        }
+      },
+      {
+        "name": "Beside Tunneler",
+        "encounters": [
+          "ENCOUNTER.TUNNELER_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "ScreamFirst": true
+        }
+      }
+    ],
+    "Inklet": [
+      {
+        "name": "Outer",
+        "encounters": [
+          "ENCOUNTER.INKLETS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "MiddleInklet": false
+        }
+      },
+      {
+        "name": "Middle",
+        "encounters": [
+          "ENCOUNTER.INKLETS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "MiddleInklet": true
+        }
+      }
+    ],
+    "KinFollower": [
+      {
+        "name": "First follower",
+        "encounters": [
+          "ENCOUNTER.THE_KIN_BOSS"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StartsWithDance": false
+        }
+      },
+      {
+        "name": "Second follower",
+        "encounters": [
+          "ENCOUNTER.THE_KIN_BOSS"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StartsWithDance": true
+        }
+      }
+    ],
+    "PunchConstruct": [
+      {
+        "name": "Normal",
+        "encounters": [
+          "ENCOUNTER.PUNCH_CONSTRUCT_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StartsWithFastPunch": false
+        }
+      },
+      {
+        "name": "Punch Off first",
+        "encounters": [
+          "ENCOUNTER.PUNCH_OFF_EVENT_ENCOUNTER"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StartsWithFastPunch": true
+        }
+      },
+      {
+        "name": "Punch Off second",
+        "encounters": [
+          "ENCOUNTER.PUNCH_OFF_EVENT_ENCOUNTER"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StartsWithFastPunch": false
+        }
+      }
+    ],
+    "CorpseSlug": [
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.CORPSE_SLUGS_WEAK",
+          "ENCOUNTER.CORPSE_SLUGS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.CORPSE_SLUGS_WEAK",
+          "ENCOUNTER.CORPSE_SLUGS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.CORPSE_SLUGS_WEAK",
+          "ENCOUNTER.CORPSE_SLUGS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 2
+        }
+      }
+    ],
+    "ScrollOfBiting": [
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.SCROLLS_OF_BITING_WEAK",
+          "ENCOUNTER.SCROLLS_OF_BITING_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.SCROLLS_OF_BITING_WEAK",
+          "ENCOUNTER.SCROLLS_OF_BITING_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.SCROLLS_OF_BITING_WEAK",
+          "ENCOUNTER.SCROLLS_OF_BITING_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 2
+        }
+      }
+    ],
+    "TwoTailedRat": [
+      {
+        "name": "Public opening alternative -1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.TWO_TAILED_RATS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIndex": -1
+        }
+      },
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.TWO_TAILED_RATS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIndex": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.TWO_TAILED_RATS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIndex": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.TWO_TAILED_RATS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIndex": 2
+        }
+      }
+    ],
+    "DecimillipedeSegmentFront": [
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 2
+        }
+      }
+    ],
+    "DecimillipedeSegmentMiddle": [
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 2
+        }
+      }
+    ],
+    "DecimillipedeSegmentBack": [
+      {
+        "name": "Public opening alternative 0 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 0
+        }
+      },
+      {
+        "name": "Public opening alternative 1 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 1
+        }
+      },
+      {
+        "name": "Public opening alternative 2 (not a dealt index)",
+        "encounters": [
+          "ENCOUNTER.DECIMILLIPEDE_ELITE"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StarterMoveIdx": 2
+        }
+      }
+    ],
+    "Exoskeleton": [
+      {
+        "name": "Slot first",
+        "encounters": [
+          "ENCOUNTER.EXOSKELETONS_WEAK",
+          "ENCOUNTER.EXOSKELETONS_NORMAL"
+        ],
+        "slot": "first",
+        "opening": "SKITTER_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot second",
+        "encounters": [
+          "ENCOUNTER.EXOSKELETONS_WEAK",
+          "ENCOUNTER.EXOSKELETONS_NORMAL"
+        ],
+        "slot": "second",
+        "opening": "MANDIBLES_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot third",
+        "encounters": [
+          "ENCOUNTER.EXOSKELETONS_WEAK",
+          "ENCOUNTER.EXOSKELETONS_NORMAL"
+        ],
+        "slot": "third",
+        "opening": "ENRAGE_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot fourth",
+        "encounters": [
+          "ENCOUNTER.EXOSKELETONS_WEAK",
+          "ENCOUNTER.EXOSKELETONS_NORMAL"
+        ],
+        "slot": "fourth",
+        "opening": null,
+        "set": {}
+      }
+    ],
+    "Myte": [
+      {
+        "name": "Slot first",
+        "encounters": [
+          "ENCOUNTER.MYTES_NORMAL"
+        ],
+        "slot": "first",
+        "opening": "TOXIC_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot second",
+        "encounters": [
+          "ENCOUNTER.MYTES_NORMAL"
+        ],
+        "slot": "second",
+        "opening": "SUCK_MOVE",
+        "set": {}
+      }
+    ],
+    "PhantasmalGardener": [
+      {
+        "name": "Slot first",
+        "encounters": [
+          "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE"
+        ],
+        "slot": "first",
+        "opening": "FLAIL_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot second",
+        "encounters": [
+          "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE"
+        ],
+        "slot": "second",
+        "opening": "BITE_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot third",
+        "encounters": [
+          "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE"
+        ],
+        "slot": "third",
+        "opening": "LASH_MOVE",
+        "set": {}
+      },
+      {
+        "name": "Slot fourth",
+        "encounters": [
+          "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE"
+        ],
+        "slot": "fourth",
+        "opening": "ENLARGE_MOVE",
+        "set": {}
+      }
+    ],
+    "Wriggler": [
+      {
+        "name": "Spawned from Phrog, wriggler1",
+        "encounters": [
+          "ENCOUNTER.PHROG_PARASITE_ELITE"
+        ],
+        "slot": "wriggler1",
+        "opening": "SPAWNED_MOVE",
+        "set": {
+          "StartStunned": true
+        }
+      },
+      {
+        "name": "Vegetation, wriggler1",
+        "encounters": [
+          "ENCOUNTER.DENSE_VEGETATION_EVENT_ENCOUNTER"
+        ],
+        "slot": "wriggler1",
+        "opening": "NASTY_BITE_MOVE",
+        "set": {
+          "StartStunned": false
+        }
+      },
+      {
+        "name": "Spawned from Phrog, wriggler2",
+        "encounters": [
+          "ENCOUNTER.PHROG_PARASITE_ELITE"
+        ],
+        "slot": "wriggler2",
+        "opening": "SPAWNED_MOVE",
+        "set": {
+          "StartStunned": true
+        }
+      },
+      {
+        "name": "Vegetation, wriggler2",
+        "encounters": [
+          "ENCOUNTER.DENSE_VEGETATION_EVENT_ENCOUNTER"
+        ],
+        "slot": "wriggler2",
+        "opening": "WRIGGLE_MOVE",
+        "set": {
+          "StartStunned": false
+        }
+      },
+      {
+        "name": "Spawned from Phrog, wriggler3",
+        "encounters": [
+          "ENCOUNTER.PHROG_PARASITE_ELITE"
+        ],
+        "slot": "wriggler3",
+        "opening": "SPAWNED_MOVE",
+        "set": {
+          "StartStunned": true
+        }
+      },
+      {
+        "name": "Vegetation, wriggler3",
+        "encounters": [
+          "ENCOUNTER.DENSE_VEGETATION_EVENT_ENCOUNTER"
+        ],
+        "slot": "wriggler3",
+        "opening": "NASTY_BITE_MOVE",
+        "set": {
+          "StartStunned": false
+        }
+      },
+      {
+        "name": "Spawned from Phrog, wriggler4",
+        "encounters": [
+          "ENCOUNTER.PHROG_PARASITE_ELITE"
+        ],
+        "slot": "wriggler4",
+        "opening": "SPAWNED_MOVE",
+        "set": {
+          "StartStunned": true
+        }
+      },
+      {
+        "name": "Vegetation, wriggler4",
+        "encounters": [
+          "ENCOUNTER.DENSE_VEGETATION_EVENT_ENCOUNTER"
+        ],
+        "slot": "wriggler4",
+        "opening": "WRIGGLE_MOVE",
+        "set": {
+          "StartStunned": false
+        }
+      }
+    ],
+    "Axebot": [
+      {
+        "name": "Encounter front slot, Stock 2 without override",
+        "encounters": [
+          "ENCOUNTER.AXEBOTS_NORMAL"
+        ],
+        "slot": "front",
+        "opening": null,
+        "set": {}
+      },
+      {
+        "name": "Respawn with Stock 1",
+        "encounters": [
+          "ENCOUNTER.AXEBOTS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StockAmount": 1
+        }
+      },
+      {
+        "name": "Respawn with Stock 0",
+        "encounters": [
+          "ENCOUNTER.AXEBOTS_NORMAL"
+        ],
+        "slot": null,
+        "opening": null,
+        "set": {
+          "StockAmount": 0
+        }
+      }
+    ]
+  },
+  "strength": {
+    "Nibbit": {
+      "HISS_MOVE": "HissStrengthGain"
+    },
+    "Wriggler": {
+      "WRIGGLE_MOVE": "literal:2"
+    },
+    "SludgeSpinner": {
+      "RAGE_MOVE": "literal:3"
+    },
+    "Axebot": {
+      "BOOT_UP_MOVE": "BootUpStrGain"
+    },
+    "Fogmog": {
+      "SWIPE_MOVE": "literal:1",
+      "SWIPE_RANDOM_MOVE": "literal:1"
+    },
+    "Ovicopter": {
+      "NUTRITIONAL_PASTE_MOVE": "NutritionalPasteStrengthAmount"
+    },
+    "DecimillipedeSegmentFront": {
+      "BULK_MOVE": "BulkStrength"
+    },
+    "DecimillipedeSegmentMiddle": {
+      "BULK_MOVE": "BulkStrength"
+    },
+    "DecimillipedeSegmentBack": {
+      "BULK_MOVE": "BulkStrength"
+    }
+  },
+  "phases": {
+    "BowlbugRock": [
+      {
+        "trigger": "Headbutt is fully blocked",
+        "rule": "Imbalanced calls the Bowlbug's Stun, which announces Dizzy; the conditional follow-up otherwise depends on off-balance state",
+        "monster_ids": [],
+        "authority": "ImbalancedPower.AfterDamageGiven; BowlbugRock.Stun"
+      }
+    ],
+    "LagavulinMatriarch": [
+      {
+        "trigger": "Nonzero unblocked damage while Asleep",
+        "rule": "Removes Plating where present, wakes and stuns with WakeUpMove, then follows to Slash; natural expiry at the end of its third sleeping turn wakes without that stun",
+        "monster_ids": [],
+        "authority": "AsleepPower.AfterDamageReceived / AfterSideTurnEnd"
+      }
+    ],
+    "Tunneler": [
+      {
+        "trigger": "Block breaks while Burrowed",
+        "rule": "Stuns with StillDizzyMove, then follows to Bite and removes Burrowed",
+        "monster_ids": [],
+        "authority": "BurrowedPower.AfterBlockBroken"
+      }
+    ],
+    "ThievingHopper": [
+      {
+        "trigger": "Five nonzero unblocked powered attacks exhaust Flutter",
+        "rule": "Stuns, then uses the native next state from the last logged move; no such transition or RNG call is executed by this reference",
+        "monster_ids": [],
+        "authority": "FlutterPower.AfterDamageReceived"
+      }
+    ],
+    "EyeWithTeeth": [
+      {
+        "trigger": "Death under Illusion, without another removal prevention",
+        "rule": "Creates a mandatory Revive move; follows the configured state or the last logged state and heals to full; the temporary state is not part of the original graph",
+        "monster_ids": [],
+        "authority": "IllusionPower.AfterDeath"
+      }
+    ],
+    "Parafright": [
+      {
+        "trigger": "Death under Illusion, without another removal prevention",
+        "rule": "Creates a mandatory Revive move; follows the configured state or the last logged state and heals to full; the temporary state is not part of the original graph",
+        "monster_ids": [],
+        "authority": "IllusionPower.AfterDeath"
+      }
+    ],
+    "CeremonialBeast": [
+      {
+        "trigger": "Nonzero unblocked damage leaves HP at or below Plow's amount",
+        "rule": "Removes Plow, stuns with the Beast's StunnedMove, then follows to Beast Cry and the second-phase cycle",
+        "monster_ids": [],
+        "authority": "PlowPower.AfterDamageReceived"
+      }
+    ],
+    "TerrorEel": [
+      {
+        "trigger": "Nonzero unblocked damage leaves HP at or below Shriek's amount",
+        "rule": "Stuns with TerrorState as the follow-up; this is a reactive branch outside the original opening path",
+        "monster_ids": [],
+        "authority": "ShriekPower.AfterDamageReceived"
+      }
+    ],
+    "SlumberingBeetle": [
+      {
+        "trigger": "Slumber reaches zero from damage or its own turn countdown",
+        "rule": "Nonzero unblocked damage decrements Slumber; at zero it stuns with WakeUpMove then follows to Roll Out; natural turn-countdown expiry calls WakeUpMove directly without that stun",
+        "monster_ids": [],
+        "authority": "SlumberPower.AfterDamageReceived / AfterSideTurnEnd"
+      }
+    ],
+    "PhrogParasite": [
+      {
+        "trigger": "Death with Infested",
+        "rule": "Produces four stunned Wrigglers in slots wriggler1 through wriggler4; combat end is prevented during the spawn",
+        "monster_ids": [
+          "MONSTER.WRIGGLER"
+        ],
+        "authority": "InfestedPower.AfterDeath / ShouldCombatEnd; PhrogParasite.AfterAddedToRoom"
+      }
+    ],
+    "Axebot": [
+      {
+        "trigger": "Death with Stock remaining",
+        "rule": "Replaces itself in the same slot with an Axebot with one less Stock; replacement opens Boot Up",
+        "monster_ids": [
+          "MONSTER.AXEBOT"
+        ],
+        "authority": "StockPower.AfterDeath"
+      }
+    ],
+    "Fogmog": [
+      {
+        "trigger": "Illusion move",
+        "rule": "Adds Eye With Teeth to the illusion slot in live combat",
+        "monster_ids": [
+          "MONSTER.EYE_WITH_TEETH"
+        ],
+        "authority": "Fogmog.IllusionMove"
+      }
+    ],
+    "TheObscura": [
+      {
+        "trigger": "Illusion move",
+        "rule": "Adds Parafright to the illusion slot in live combat",
+        "monster_ids": [
+          "MONSTER.PARAFRIGHT"
+        ],
+        "authority": "TheObscura.IllusionMove"
+      }
+    ],
+    "LivingFog": [
+      {
+        "trigger": "Bloat move",
+        "rule": "Adds Gas Bombs up to BloatAmount while encounter slots remain available",
+        "monster_ids": [
+          "MONSTER.GAS_BOMB"
+        ],
+        "authority": "LivingFog.BloatMove"
+      }
+    ],
+    "Ovicopter": [
+      {
+        "trigger": "Lay Eggs move",
+        "rule": "Adds up to three Tough Eggs in available slots, searching from the last slot",
+        "monster_ids": [
+          "MONSTER.TOUGH_EGG"
+        ],
+        "authority": "Ovicopter.LayEggsMove"
+      }
+    ],
+    "ToughEgg": [
+      {
+        "trigger": "Hatch move",
+        "rule": "Hatches in place; Nibble is the later move and hatchling HP is a separate range",
+        "monster_ids": [
+          "MONSTER.TOUGH_EGG"
+        ],
+        "authority": "ToughEgg.Hatch; ToughEgg.AfterAddedToRoom; ToughEgg.GenerateMoveStateMachine"
+      }
+    ],
+    "TwoTailedRat": [
+      {
+        "trigger": "Call For Backup",
+        "rule": "Adds another Two-Tailed Rat in the next free encounter slot; eligibility requires no summon countdown, fewer than three prior backups, an available slot and no teammate announcing Call For Backup; the weights stay symbolic",
+        "monster_ids": [
+          "MONSTER.TWO_TAILED_RAT"
+        ],
+        "authority": "TwoTailedRat.CallForBackup / CanSummon"
+      },
+      {
+        "trigger": "Encounter opening",
+        "rule": "Three rats use distinct offsets modulo three; summoned rats use the random branch instead",
+        "monster_ids": [],
+        "authority": "TwoTailedRatsNormal.GenerateMonsters; TwoTailedRat.GenerateMoveStateMachine"
+      }
+    ],
+    "Fabricator": [
+      {
+        "trigger": "Fabricate or Fabricating Strike",
+        "rule": "Deals a bot from its move-specific public pool, excluding the last spawned identity; the dealt identity is never read",
+        "monster_ids": [
+          "MONSTER.ZAPBOT",
+          "MONSTER.STABBOT",
+          "MONSTER.GUARDBOT",
+          "MONSTER.NOISEBOT"
+        ],
+        "authority": "Fabricator.SpawnBot / GetPossibleMonsters"
+      }
+    ],
+    "GremlinMerc": [
+      {
+        "trigger": "Surprise death hook",
+        "rule": "Adds Sneaky Gremlin and Fat Gremlin; Fat Gremlin is stunned on its spawn turn",
+        "monster_ids": [
+          "MONSTER.SNEAKY_GREMLIN",
+          "MONSTER.FAT_GREMLIN"
+        ],
+        "authority": "SurprisePower.AfterDeath"
+      }
+    ],
+    "Queen": [
+      {
+        "trigger": "Amalgam dies",
+        "rule": "If Burn Bright For Me is announced, transition immediately to Enrage; later follow-ups enter the attack cycle",
+        "monster_ids": [],
+        "authority": "Queen.AfterDeath / GenerateMoveStateMachine"
+      }
+    ],
+    "TestSubject": [
+      {
+        "trigger": "Death while Adaptable permits respawn",
+        "rule": "Respawn is a mandatory heal/buff move; phase two repeats Multi Claw, phase three cycles Lacerate, Big Pounce, Burning Growl",
+        "monster_ids": [],
+        "authority": "AdaptablePower.AfterDeath; TestSubject.TriggerDeadState; TestSubject.GenerateMoveStateMachine"
+      }
+    ],
+    "DecimillipedeSegmentFront": [
+      {
+        "trigger": "Death under Reattach",
+        "rule": "Transition to Dead, then mandatory Reattach, then equal-weight CannotRepeat attack alternatives",
+        "monster_ids": [],
+        "authority": "ReattachPower.AfterDeath; ReattachPower.DoReattach; DecimillipedeSegment.GenerateMoveStateMachine"
+      },
+      {
+        "trigger": "Encounter opening",
+        "rule": "The three segments use distinct offsets modulo three; no chosen offset is read",
+        "monster_ids": [],
+        "authority": "DecimillipedeElite.GenerateMonsters"
+      }
+    ],
+    "DecimillipedeSegmentMiddle": [
+      {
+        "trigger": "Death under Reattach",
+        "rule": "Transition to Dead, then mandatory Reattach, then equal-weight CannotRepeat attack alternatives",
+        "monster_ids": [],
+        "authority": "ReattachPower.AfterDeath; ReattachPower.DoReattach; DecimillipedeSegment.GenerateMoveStateMachine"
+      },
+      {
+        "trigger": "Encounter opening",
+        "rule": "The three segments use distinct offsets modulo three; no chosen offset is read",
+        "monster_ids": [],
+        "authority": "DecimillipedeElite.GenerateMonsters"
+      }
+    ],
+    "DecimillipedeSegmentBack": [
+      {
+        "trigger": "Death under Reattach",
+        "rule": "Transition to Dead, then mandatory Reattach, then equal-weight CannotRepeat attack alternatives",
+        "monster_ids": [],
+        "authority": "ReattachPower.AfterDeath; ReattachPower.DoReattach; DecimillipedeSegment.GenerateMoveStateMachine"
+      },
+      {
+        "trigger": "Encounter opening",
+        "rule": "The three segments use distinct offsets modulo three; no chosen offset is read",
+        "monster_ids": [],
+        "authority": "DecimillipedeElite.GenerateMonsters"
+      }
+    ],
+    "WaterfallGiant": [
+      {
+        "trigger": "Death under Steam Eruption",
+        "rule": "Interrupts to About To Blow, then Explode; Pressure Gun belongs to the ordinary move sequence and gains five damage after each use",
+        "monster_ids": [],
+        "authority": "SteamEruptionPower.AfterDeath; WaterfallGiant.TriggerAboutToBlowState / GenerateMoveStateMachine"
+      }
+    ],
+    "CorpseSlug": [
+      {
+        "trigger": "Encounter opening",
+        "rule": "A random cycle offset is assigned; each following slug advances the offset modulo three; only alternatives are published",
+        "monster_ids": [],
+        "authority": "CorpseSlug.EnsureCorpseSlugsStartWithDifferentMoves"
+      },
+      {
+        "trigger": "Another same-side creature dies without removal prevention, while this slug lives",
+        "rule": "Ravenous interrupts with its consuming stun move, marks the slug ravenous and grants Strength equal to Ravenous's amount",
+        "monster_ids": [],
+        "authority": "RavenousPower.AfterDeath"
+      }
+    ],
+    "ScrollOfBiting": [
+      {
+        "trigger": "Encounter opening",
+        "rule": "The first three scrolls use distinct offsets modulo three; a fourth scroll, where present, starts More Teeth; no chosen offset is read",
+        "monster_ids": [],
+        "authority": "ScrollsOfBitingWeak.GenerateMonsters / ScrollsOfBitingNormal.GenerateMonsters"
+      }
+    ]
+  },
+  "wiki_moves": {
+    "Aeonglass:EBB_MOVE": [
+      "Aeonglass.Ebb"
+    ],
+    "Aeonglass:EYE_LASERS_MOVE": [
+      "Aeonglass.Eye Lasers"
+    ],
+    "Aeonglass:INCREASING_INTENSITY_MOVE": [
+      "Aeonglass.Increasing Intensity"
+    ],
+    "AssassinRubyRaider:KILLSHOT_MOVE": [
+      "Assassin Raider.Killshot"
+    ],
+    "Axebot:BOOT_UP_MOVE": [
+      "Axebot.Boot Up"
+    ],
+    "Axebot:HAMMER_UPPERCUT_MOVE": [
+      "Axebot.Hammer Uppercut"
+    ],
+    "Axebot:ONE_TWO_MOVE": [
+      "Axebot.The One-Two"
+    ],
+    "AxeRubyRaider:BIG_SWING": [
+      "Axe Raider.Big Swing"
+    ],
+    "AxeRubyRaider:SWING_1": [
+      "Axe Raider.Swing"
+    ],
+    "AxeRubyRaider:SWING_2": [
+      "Axe Raider.Swing"
+    ],
+    "BattleFriendV1:NOTHING_MOVE": [
+      "Battle Friend V1.0.Nothing"
+    ],
+    "BattleFriendV2:NOTHING_MOVE": [
+      "Battle Friend V2.0.Nothing"
+    ],
+    "BattleFriendV3:NOTHING_MOVE": [
+      "Battle Friend V3.0.Nothing"
+    ],
+    "BowlbugEgg:BITE_MOVE": [
+      "Bowlbug (Egg).Bite"
+    ],
+    "BowlbugNectar:THRASH2_MOVE": [
+      "Bowlbug (Nectar).Thrash"
+    ],
+    "BowlbugNectar:THRASH_MOVE": [
+      "Bowlbug (Nectar).Thrash"
+    ],
+    "BowlbugRock:DIZZY_MOVE": [
+      "Bowlbug (Rock).Dizzy"
+    ],
+    "BowlbugRock:HEADBUTT_MOVE": [
+      "Bowlbug (Rock).Headbutt"
+    ],
+    "BowlbugSilk:THRASH_MOVE": [
+      "Bowlbug (Silk).Thrash"
+    ],
+    "BruteRubyRaider:BEAT_MOVE": [
+      "Brute Raider.Beat"
+    ],
+    "BygoneEffigy:SLASHES_MOVE": [
+      "Bygone Effigy.Slashes"
+    ],
+    "BygoneEffigy:SLEEP_MOVE": [
+      "Bygone Effigy.Sleep"
+    ],
+    "BygoneEffigy:WAKE_MOVE": [
+      "Bygone Effigy.Wake"
+    ],
+    "Byrdonis:PECK_MOVE": [
+      "Byrdonis.Peck"
+    ],
+    "Byrdonis:SWOOP_MOVE": [
+      "Byrdonis.Swoop"
+    ],
+    "CalcifiedCultist:DARK_STRIKE_MOVE": [
+      "Calcified Cultist.Dark Strike"
+    ],
+    "CalcifiedCultist:INCANTATION_MOVE": [
+      "Calcified Cultist.Incantation"
+    ],
+    "CeremonialBeast:BEAST_CRY_MOVE": [
+      "Ceremonial Beast.Beast Cry"
+    ],
+    "CeremonialBeast:CRUSH_MOVE": [
+      "Ceremonial Beast.Crush"
+    ],
+    "CeremonialBeast:PLOW_MOVE": [
+      "Ceremonial Beast.Plow"
+    ],
+    "CeremonialBeast:STAMP_MOVE": [
+      "Ceremonial Beast.Stamp"
+    ],
+    "CeremonialBeast:STOMP_MOVE": [
+      "Ceremonial Beast.Stomp"
+    ],
+    "CeremonialBeast:STUN_MOVE": [
+      "Ceremonial Beast.Stun"
+    ],
+    "Chomper:CLAMP_MOVE": [
+      "Chomper.Clamp"
+    ],
+    "Chomper:SCREECH_MOVE": [
+      "Chomper.Screech"
+    ],
+    "CorpseSlug:GLOMP_MOVE": [
+      "Corpse Slug.Glomp"
+    ],
+    "CorpseSlug:GOOP_MOVE": [
+      "Corpse Slug.Goop"
+    ],
+    "CorpseSlug:WHIP_SLAP_MOVE": [
+      "Corpse Slug.Whip Slap"
+    ],
+    "CrossbowRubyRaider:FIRE_MOVE": [
+      "Crossbow Raider.Fire!"
+    ],
+    "CrossbowRubyRaider:RELOAD_MOVE": [
+      "Crossbow Raider.Reload"
+    ],
+    "Crusher:ADAPT_MOVE": [
+      "Crusher.Adapt"
+    ],
+    "Crusher:BUG_STING_MOVE": [
+      "Crusher.Bug Sting"
+    ],
+    "Crusher:ENLARGING_STRIKE_MOVE": [
+      "Crusher.Enlarging Strike"
+    ],
+    "Crusher:GUARDED_STRIKE_MOVE": [
+      "Crusher.Guarded Strike"
+    ],
+    "Crusher:THRASH_MOVE": [
+      "Crusher.Thrash"
+    ],
+    "CubexConstruct:CHARGE_UP_MOVE": [
+      "Cubex Construct.Charge Up"
+    ],
+    "CubexConstruct:REPEATER_BLAST_MOVE": [
+      "Cubex Construct.Repeater Blast"
+    ],
+    "CubexConstruct:REPEATER_BLAST_MOVE_2": [
+      "Cubex Construct.Repeater Blast"
+    ],
+    "DampCultist:DARK_STRIKE_MOVE": [
+      "Damp Cultist.Dark Strike"
+    ],
+    "DampCultist:INCANTATION_MOVE": [
+      "Damp Cultist.Incantation"
+    ],
+    "DecimillipedeSegmentBack:BULK_MOVE": [
+      "Decimillipede.Bulk"
+    ],
+    "DecimillipedeSegmentBack:REATTACH_MOVE": [
+      "Decimillipede.Reattach"
+    ],
+    "DecimillipedeSegmentBack:WRITHE_MOVE": [
+      "Decimillipede.Writhe"
+    ],
+    "DecimillipedeSegmentFront:BULK_MOVE": [
+      "Decimillipede.Bulk"
+    ],
+    "DecimillipedeSegmentFront:REATTACH_MOVE": [
+      "Decimillipede.Reattach"
+    ],
+    "DecimillipedeSegmentFront:WRITHE_MOVE": [
+      "Decimillipede.Writhe"
+    ],
+    "DecimillipedeSegmentMiddle:BULK_MOVE": [
+      "Decimillipede.Bulk"
+    ],
+    "DecimillipedeSegmentMiddle:REATTACH_MOVE": [
+      "Decimillipede.Reattach"
+    ],
+    "DecimillipedeSegmentMiddle:WRITHE_MOVE": [
+      "Decimillipede.Writhe"
+    ],
+    "DevotedSculptor:FORBIDDEN_INCANTATION_MOVE": [
+      "Devoted Sculptor.Forbidden Incantation"
+    ],
+    "DevotedSculptor:SAVAGE_MOVE": [
+      "Devoted Sculptor.Savage"
+    ],
+    "Entomancer:PHEROMONE_SPIT_MOVE": [
+      "Entomancer.Pheromone Spit"
+    ],
+    "Entomancer:SPEAR_MOVE": [
+      "Entomancer.Spear!"
+    ],
+    "Exoskeleton:ENRAGE_MOVE": [
+      "Exoskeleton.Enrage"
+    ],
+    "Exoskeleton:MANDIBLES_MOVE": [
+      "Exoskeleton.Mandibles"
+    ],
+    "Exoskeleton:SKITTER_MOVE": [
+      "Exoskeleton.Skitter"
+    ],
+    "EyeWithTeeth:DISTRACT_MOVE": [
+      "Eye With Teeth.Distract"
+    ],
+    "Fabricator:DISINTEGRATE_MOVE": [
+      "Fabricator.Disintegrate"
+    ],
+    "Fabricator:FABRICATE_MOVE": [
+      "Fabricator.Fabricate"
+    ],
+    "Fabricator:FABRICATING_STRIKE_MOVE": [
+      "Fabricator.Fabricating Strike"
+    ],
+    "FakeMerchantMonster:ENRAGE_MOVE": [
+      "The Merchant???.Enrage"
+    ],
+    "FakeMerchantMonster:SPEW_COINS_MOVE": [
+      "The Merchant???.Spew Coins"
+    ],
+    "FakeMerchantMonster:SWIPE_MOVE": [
+      "The Merchant???.Swipe"
+    ],
+    "FakeMerchantMonster:THROW_RELIC_MOVE": [
+      "The Merchant???.Throw Relic"
+    ],
+    "FatGremlin:FLEE_MOVE": [
+      "Fat Gremlin.Flee"
+    ],
+    "FatGremlin:SPAWNED_MOVE": [
+      "Fat Gremlin.Spawned"
+    ],
+    "FlailKnight:FLAIL_MOVE": [
+      "Flail Knight.Flail"
+    ],
+    "FlailKnight:RAM_MOVE": [
+      "Flail Knight.Ram"
+    ],
+    "Flyconid:FRAIL_SPORES_MOVE": [
+      "Flyconid.Frail Spores"
+    ],
+    "Flyconid:SMASH_MOVE": [
+      "Flyconid.Smash"
+    ],
+    "Fogmog:HEADBUTT_MOVE": [
+      "Fogmog.Headbutt"
+    ],
+    "FossilStalker:LASH_MOVE": [
+      "Fossil Stalker.Lash"
+    ],
+    "FossilStalker:LATCH_MOVE": [
+      "Fossil Stalker.Latch"
+    ],
+    "FossilStalker:TACKLE_MOVE": [
+      "Fossil Stalker.Tackle"
+    ],
+    "FrogKnight:BEETLE_CHARGE": [
+      "Frog Knight.Beetle Charge"
+    ],
+    "FrogKnight:FOR_THE_QUEEN": [
+      "Frog Knight.For the Queen"
+    ],
+    "FrogKnight:STRIKE_DOWN_EVIL": [
+      "Frog Knight.Strike Down Evil"
+    ],
+    "FrogKnight:TONGUE_LASH": [
+      "Frog Knight.Tongue Lash"
+    ],
+    "FuzzyWurmCrawler:ACID_GOOP": [
+      "Fuzzy Wurm Crawler.Acid Goop"
+    ],
+    "FuzzyWurmCrawler:INHALE": [
+      "Fuzzy Wurm Crawler.Inhale"
+    ],
+    "GasBomb:EXPLODE_MOVE": [
+      "Gas Bomb.Explode"
+    ],
+    "GlobeHead:GALVANIC_BURST": [
+      "Globe Head.Galvanic Burst"
+    ],
+    "GlobeHead:SHOCKING_SLAP": [
+      "Globe Head.Shocking Slap"
+    ],
+    "GlobeHead:THUNDER_STRIKE": [
+      "Globe Head.Thunder Strike"
+    ],
+    "GremlinMerc:DOUBLE_SMASH_MOVE": [
+      "Gremlin Merc.Double Smash"
+    ],
+    "GremlinMerc:GIMME_MOVE": [
+      "Gremlin Merc.Gimme"
+    ],
+    "GremlinMerc:HEHE_MOVE": [
+      "Gremlin Merc.Hehe"
+    ],
+    "Guardbot:GUARD_MOVE": [
+      "Guardbot.Guard"
+    ],
+    "HauntedShip:HAUNT_MOVE": [
+      "Haunted Ship.Haunt"
+    ],
+    "HauntedShip:STOMP_MOVE": [
+      "Haunted Ship.Stomp"
+    ],
+    "HauntedShip:SWIPE_MOVE": [
+      "Haunted Ship.Swipe"
+    ],
+    "HunterKiller:BITE_MOVE": [
+      "Hunter Killer.Bite"
+    ],
+    "HunterKiller:PUNCTURE_MOVE": [
+      "Hunter Killer.Puncture"
+    ],
+    "HunterKiller:TENDERIZING_GOOP_MOVE": [
+      "Hunter Killer.Tenderizing Goop"
+    ],
+    "InfestedPrism:JAB_MOVE": [
+      "Infested Prism.Jab"
+    ],
+    "InfestedPrism:PULSATE_MOVE": [
+      "Infested Prism.Pulsate"
+    ],
+    "InfestedPrism:RADIATE_MOVE": [
+      "Infested Prism.Radiate"
+    ],
+    "InfestedPrism:WHIRLWIND_MOVE": [
+      "Infested Prism.Whirlwind"
+    ],
+    "Inklet:JAB_MOVE": [
+      "Inklet.Jab"
+    ],
+    "Inklet:PIERCING_GAZE_MOVE": [
+      "Inklet.Piercing Gaze"
+    ],
+    "KinFollower:BOOMERANG_MOVE": [
+      "Kin Follower.Boomerang"
+    ],
+    "KinFollower:POWER_DANCE_MOVE": [
+      "Kin Follower.Power Dance"
+    ],
+    "KinFollower:QUICK_SLASH_MOVE": [
+      "Kin Follower.Quick Slash"
+    ],
+    "KinPriest:ORB_OF_FRAILTY_MOVE": [
+      "Kin Priest.Orb of Frailty"
+    ],
+    "KinPriest:ORB_OF_WEAKNESS_MOVE": [
+      "Kin Priest.Orb of Weakness"
+    ],
+    "KnowledgeDemon:CURSE_OF_KNOWLEDGE_MOVE": [
+      "Knowledge Demon.Curse of Knowledge"
+    ],
+    "KnowledgeDemon:KNOWLEDGE_OVERWHELMING_MOVE": [
+      "Knowledge Demon.Knowledge Overwhelming"
+    ],
+    "KnowledgeDemon:PONDER_MOVE": [
+      "Knowledge Demon.Ponder"
+    ],
+    "KnowledgeDemon:SLAP_MOVE": [
+      "Knowledge Demon.Slap"
+    ],
+    "LagavulinMatriarch:DISEMBOWEL_MOVE": [
+      "Lagavulin Matriarch.Disembowel"
+    ],
+    "LagavulinMatriarch:SLASH2_MOVE": [
+      "Lagavulin Matriarch.Slash"
+    ],
+    "LagavulinMatriarch:SLASH_MOVE": [
+      "Lagavulin Matriarch.Slash"
+    ],
+    "LagavulinMatriarch:SLEEP_MOVE": [
+      "Lagavulin Matriarch.Sleep"
+    ],
+    "LagavulinMatriarch:SOUL_SIPHON_MOVE": [
+      "Lagavulin Matriarch.Soul Siphon"
+    ],
+    "LeafSlimeM:CLUMP_SHOT": [
+      "Leaf Slime (M).Clump Shot"
+    ],
+    "LeafSlimeM:STICKY_SHOT": [
+      "Leaf Slime (M).Sticky Shot"
+    ],
+    "LeafSlimeS:GOOP_MOVE": [
+      "Leaf Slime (S).Goop"
+    ],
+    "LeafSlimeS:TACKLE_MOVE": [
+      "Leaf Slime (S).Tackle"
+    ],
+    "LivingFog:ADVANCED_GAS_MOVE": [
+      "Living Fog.Advanced Gas"
+    ],
+    "LivingFog:BLOAT_MOVE": [
+      "Living Fog.Bloat"
+    ],
+    "LivingFog:SUPER_GAS_BLAST_MOVE": [
+      "Living Fog.Super Gas Blast"
+    ],
+    "LivingShield:SHIELD_SLAM_MOVE": [
+      "Living Shield.Shield Slam"
+    ],
+    "LivingShield:SMASH_MOVE": [
+      "Living Shield.Smash"
+    ],
+    "LouseProgenitor:CURL_AND_GROW_MOVE": [
+      "Louse Progenitor.Curl and Grow"
+    ],
+    "LouseProgenitor:POUNCE_MOVE": [
+      "Louse Progenitor.Pounce"
+    ],
+    "LouseProgenitor:WEB_CANNON_MOVE": [
+      "Louse Progenitor.Web Cannon"
+    ],
+    "MagiKnight:DAMPEN_MOVE": [
+      "Magi Knight.Dampen"
+    ],
+    "MagiKnight:MAGIC_BOMB": [
+      "Magi Knight.Magic Bomb"
+    ],
+    "MagiKnight:POWER_SHIELD_MOVE": [
+      "Magi Knight.Power Shield"
+    ],
+    "MagiKnight:PREP_MOVE": [
+      "Magi Knight.Prep"
+    ],
+    "MagiKnight:RAM_MOVE": [
+      "Magi Knight.Ram"
+    ],
+    "Mawler:CLAW_MOVE": [
+      "Mawler.Claw"
+    ],
+    "Mawler:RIP_AND_TEAR_MOVE": [
+      "Mawler.Rip and Tear"
+    ],
+    "Mawler:ROAR_MOVE": [
+      "Mawler.Roar"
+    ],
+    "MechaKnight:CHARGE_MOVE": [
+      "Mecha Knight.Charge"
+    ],
+    "MechaKnight:FLAMETHROWER_MOVE": [
+      "Mecha Knight.Flamethrower"
+    ],
+    "MechaKnight:HEAVY_CLEAVE_MOVE": [
+      "Mecha Knight.Heavy Cleave"
+    ],
+    "MechaKnight:WINDUP_MOVE": [
+      "Mecha Knight.Windup"
+    ],
+    "MysteriousKnight:FLAIL_MOVE": [
+      "Mysterious Knight.Flail"
+    ],
+    "MysteriousKnight:RAM_MOVE": [
+      "Mysterious Knight.Ram"
+    ],
+    "Myte:BITE_MOVE": [
+      "Myte.Bite"
+    ],
+    "Myte:SUCK_MOVE": [
+      "Myte.Suck"
+    ],
+    "Nibbit:BUTT_MOVE": [
+      "Nibbit.Butt"
+    ],
+    "Nibbit:HISS_MOVE": [
+      "Nibbit.Hiss"
+    ],
+    "Nibbit:SLICE_MOVE": [
+      "Nibbit.Hesitant Slice"
+    ],
+    "Noisebot:NOISE_MOVE": [
+      "Noisebot.Noise"
+    ],
+    "Ovicopter:LAY_EGGS_MOVE": [
+      "Ovicopter.Lay Eggs"
+    ],
+    "Ovicopter:NUTRITIONAL_PASTE_MOVE": [
+      "Ovicopter.Nutritional Paste"
+    ],
+    "Ovicopter:SMASH_MOVE": [
+      "Ovicopter.Smash"
+    ],
+    "Ovicopter:TENDERIZER_MOVE": [
+      "Ovicopter.Tenderizer"
+    ],
+    "OwlMagistrate:JUDICIAL_FLIGHT": [
+      "Owl Magistrate.Judicial Flight"
+    ],
+    "OwlMagistrate:MAGISTRATE_SCRUTINY": [
+      "Owl Magistrate.Magistrate Scrutiny"
+    ],
+    "OwlMagistrate:PECK_ASSAULT": [
+      "Owl Magistrate.Peck Assault"
+    ],
+    "OwlMagistrate:VERDICT": [
+      "Owl Magistrate.Verdict"
+    ],
+    "Parafright:SLAM_MOVE": [
+      "Parafright.Slam"
+    ],
+    "PhantasmalGardener:BITE_MOVE": [
+      "Phantasmal Gardener.Bite"
+    ],
+    "PhantasmalGardener:ENLARGE_MOVE": [
+      "Phantasmal Gardener.Enlarge"
+    ],
+    "PhantasmalGardener:FLAIL_MOVE": [
+      "Phantasmal Gardener.Flail"
+    ],
+    "PhantasmalGardener:LASH_MOVE": [
+      "Phantasmal Gardener.Lash"
+    ],
+    "PhrogParasite:INFECT_MOVE": [
+      "Phrog Parasite.Infect"
+    ],
+    "PhrogParasite:LASH_MOVE": [
+      "Phrog Parasite.Lash"
+    ],
+    "PunchConstruct:FAST_PUNCH_MOVE": [
+      "Punch Construct.Fast Punch"
+    ],
+    "PunchConstruct:READY_MOVE": [
+      "Punch Construct.READY"
+    ],
+    "PunchConstruct:STRONG_PUNCH_MOVE": [
+      "Punch Construct.Strong Punch"
+    ],
+    "Queen:BURN_BRIGHT_FOR_ME_MOVE": [
+      "Queen.Burn Bright for Me"
+    ],
+    "Queen:ENRAGE_MOVE": [
+      "Queen.Enrage"
+    ],
+    "Queen:EXECUTION_MOVE": [
+      "Queen.Execution"
+    ],
+    "Queen:OFF_WITH_YOUR_HEAD_MOVE": [
+      "Queen.Off with Your Head"
+    ],
+    "Queen:PUPPET_STRINGS_MOVE": [
+      "Queen.Puppet Strings"
+    ],
+    "Rocket:CHARGE_UP_MOVE": [
+      "Rocket.Charge Up"
+    ],
+    "Rocket:LASER_MOVE": [
+      "Rocket.Laser"
+    ],
+    "Rocket:PRECISION_BEAM_MOVE": [
+      "Rocket.Precision Beam"
+    ],
+    "Rocket:RECHARGE_MOVE": [
+      "Rocket.Recharge"
+    ],
+    "Rocket:TARGETING_RETICLE_MOVE": [
+      "Rocket.Targeting Reticle"
+    ],
+    "ScrollOfBiting:CHEW": [
+      "Scroll of Biting.Chew"
+    ],
+    "ScrollOfBiting:CHOMP": [
+      "Scroll of Biting.Chomp"
+    ],
+    "ScrollOfBiting:MORE_TEETH": [
+      "Scroll of Biting.More Teeth"
+    ],
+    "Seapunk:BUBBLE_BURP_MOVE": [
+      "Seapunk.Bubble Burp"
+    ],
+    "Seapunk:SEA_KICK_MOVE": [
+      "Seapunk.Sea Kick"
+    ],
+    "Seapunk:SPINNING_KICK_MOVE": [
+      "Seapunk.Spinning Kick"
+    ],
+    "SewerClam:JET_MOVE": [
+      "Sewer Clam.Jet"
+    ],
+    "SewerClam:PRESSURIZE_MOVE": [
+      "Sewer Clam.Pressurize"
+    ],
+    "ShrinkerBeetle:CHOMP_MOVE": [
+      "Shrinker Beetle.Chomp"
+    ],
+    "ShrinkerBeetle:SHRINKER_MOVE": [
+      "Shrinker Beetle.Shrinker"
+    ],
+    "ShrinkerBeetle:STOMP_MOVE": [
+      "Shrinker Beetle.Stomp"
+    ],
+    "SkulkingColony:INERTIA_MOVE": [
+      "Skulking Colony.Inertia"
+    ],
+    "SkulkingColony:PIERCING_STABS_MOVE": [
+      "Skulking Colony.Piercing Stabs"
+    ],
+    "SkulkingColony:ZOOM_MOVE": [
+      "Skulking Colony.Zoom"
+    ],
+    "SlimedBerserker:FURIOUS_PUMMELING_MOVE": [
+      "Slimed Berserker.Furious Pummeling"
+    ],
+    "SlimedBerserker:LEECHING_HUG_MOVE": [
+      "Slimed Berserker.Leeching Hug"
+    ],
+    "SlimedBerserker:SMOTHER_MOVE": [
+      "Slimed Berserker.Smother"
+    ],
+    "SlimedBerserker:VOMIT_ICHOR_MOVE": [
+      "Slimed Berserker.Vomit Ichor"
+    ],
+    "SlitheringStrangler:CONSTRICT": [
+      "Slithering Strangler.Constrict"
+    ],
+    "SlitheringStrangler:LASH": [
+      "Slithering Strangler.Lash"
+    ],
+    "SlitheringStrangler:THWACK": [
+      "Slithering Strangler.Thwack"
+    ],
+    "SludgeSpinner:OIL_SPRAY_MOVE": [
+      "Sludge Spinner.Oil Spray"
+    ],
+    "SludgeSpinner:RAGE_MOVE": [
+      "Sludge Spinner.Rage"
+    ],
+    "SludgeSpinner:SLAM_MOVE": [
+      "Sludge Spinner.Slam"
+    ],
+    "SlumberingBeetle:ROLL_OUT_MOVE": [
+      "Slumbering Beetle.Roll Out"
+    ],
+    "SlumberingBeetle:SNORE_MOVE": [
+      "Slumbering Beetle.Snore"
+    ],
+    "SnappingJaxfruit:ENERGY_ORB_MOVE": [
+      "Snapping Jaxfruit.Energy Orb"
+    ],
+    "SneakyGremlin:SPAWNED_MOVE": [
+      "Sneaky Gremlin.Spawned"
+    ],
+    "SneakyGremlin:TACKLE_MOVE": [
+      "Sneaky Gremlin.Tackle"
+    ],
+    "SoulFysh:BECKON_MOVE": [
+      "Soul Fysh.Beckon"
+    ],
+    "SoulFysh:DE_GAS_MOVE": [
+      "Soul Fysh.De-Gas"
+    ],
+    "SoulFysh:FADE_MOVE": [
+      "Soul Fysh.Fade"
+    ],
+    "SoulFysh:GAZE_MOVE": [
+      "Soul Fysh.Gaze"
+    ],
+    "SoulFysh:SCREAM_MOVE": [
+      "Soul Fysh.Scream"
+    ],
+    "SoulNexus:DRAIN_LIFE_MOVE": [
+      "Soul Nexus.Drain Life"
+    ],
+    "SoulNexus:MAELSTROM_MOVE": [
+      "Soul Nexus.Maelstrom"
+    ],
+    "SoulNexus:SOUL_BURN_MOVE": [
+      "Soul Nexus.Soul Burn"
+    ],
+    "SpectralKnight:HEX": [
+      "Spectral Knight.Hex"
+    ],
+    "SpectralKnight:SOUL_FLAME": [
+      "Spectral Knight.Soul Flame"
+    ],
+    "SpectralKnight:SOUL_SLASH": [
+      "Spectral Knight.Soul Slash"
+    ],
+    "SpinyToad:PROTRUDING_SPIKES_MOVE": [
+      "Spiny Toad.Protruding Spikes"
+    ],
+    "SpinyToad:SPIKE_EXPLOSION_MOVE": [
+      "Spiny Toad.Spike Explosion"
+    ],
+    "SpinyToad:TONGUE_LASH_MOVE": [
+      "Spiny Toad.Tongue Lash"
+    ],
+    "Stabbot:STAB_MOVE": [
+      "Stabbot.Stab"
+    ],
+    "TerrorEel:CRASH_MOVE": [
+      "Terror Eel.Crash"
+    ],
+    "TerrorEel:STUN_MOVE": [
+      "Terror Eel.Stun"
+    ],
+    "TerrorEel:TERROR_MOVE": [
+      "Terror Eel.Terror"
+    ],
+    "TerrorEel:THRASH_MOVE": [
+      "Terror Eel.Thrash"
+    ],
+    "TestSubject:BIG_POUNCE": [
+      "Test Subject (Phase 3).Big Pounce"
+    ],
+    "TestSubject:BITE_MOVE": [
+      "Test Subject.Bite"
+    ],
+    "TestSubject:BURNING_GROWL_MOVE": [
+      "Test Subject (Phase 3).Burning Growl"
+    ],
+    "TestSubject:MULTI_CLAW_MOVE": [
+      "Test Subject (Phase 2).Multi-Claw"
+    ],
+    "TestSubject:SKULL_BASH_MOVE": [
+      "Test Subject.Skull Bash"
+    ],
+    "TheForgotten:DREAD": [
+      "The Forgotten.Dread"
+    ],
+    "TheForgotten:MIASMA": [
+      "The Forgotten.Miasma"
+    ],
+    "TheInsatiable:LIQUIFY_GROUND_MOVE": [
+      "The Insatiable.Liquify Ground"
+    ],
+    "TheInsatiable:LUNGING_BITE_MOVE": [
+      "The Insatiable.Lunging Bite"
+    ],
+    "TheInsatiable:SALIVATE_MOVE": [
+      "The Insatiable.Salivate"
+    ],
+    "TheInsatiable:THRASH_MOVE": [
+      "The Insatiable.Thrash"
+    ],
+    "TheLost:DEBILITATING_SMOG": [
+      "The Lost.Debilitating Smog"
+    ],
+    "TheLost:EYE_LASERS": [
+      "The Lost.Eye Lasers"
+    ],
+    "TheObscura:HARDENING_STRIKE_MOVE": [
+      "The Obscura.Hardening Strike"
+    ],
+    "TheObscura:ILLUSION_MOVE": [
+      "The Obscura.Illusion"
+    ],
+    "TheObscura:PIERCING_GAZE_MOVE": [
+      "The Obscura.Piercing Gaze"
+    ],
+    "ThievingHopper:ESCAPE_MOVE": [
+      "Thieving Hopper.Escape"
+    ],
+    "ThievingHopper:FLUTTER_MOVE": [
+      "Thieving Hopper.Flutter"
+    ],
+    "ThievingHopper:HAT_TRICK_MOVE": [
+      "Thieving Hopper.Hat Trick"
+    ],
+    "ThievingHopper:NAB_MOVE": [
+      "Thieving Hopper.Nab"
+    ],
+    "ThievingHopper:THIEVERY_MOVE": [
+      "Thieving Hopper.Thievery"
+    ],
+    "Toadpole:SPIKEN_MOVE": [
+      "Toadpole.Spiken"
+    ],
+    "Toadpole:SPIKE_SPIT_MOVE": [
+      "Toadpole.Spike Spit"
+    ],
+    "Toadpole:WHIRL_MOVE": [
+      "Toadpole.Whirl"
+    ],
+    "TorchHeadAmalgam:BEAM_MOVE": [
+      "Torch Head Amalgam.Beam"
+    ],
+    "TorchHeadAmalgam:STRONG_TACKLE_MOVE": [
+      "Torch Head Amalgam.Strong Tackle"
+    ],
+    "TorchHeadAmalgam:TACKLE_2_MOVE": [
+      "Torch Head Amalgam.Tackle"
+    ],
+    "TorchHeadAmalgam:TACKLE_3_MOVE": [
+      "Torch Head Amalgam.Tackle"
+    ],
+    "TorchHeadAmalgam:TACKLE_4_MOVE": [
+      "Torch Head Amalgam.Tackle"
+    ],
+    "ToughEgg:HATCH_MOVE": [
+      "Tough Egg.Hatch"
+    ],
+    "ToughEgg:NIBBLE_MOVE": [
+      "Tough Egg.Nibble"
+    ],
+    "TrackerRubyRaider:TRACK_MOVE": [
+      "Tracker Raider.Track"
+    ],
+    "Tunneler:BITE_MOVE": [
+      "Tunneler.Bite"
+    ],
+    "Tunneler:BURROW_MOVE": [
+      "Tunneler.Burrow"
+    ],
+    "TurretOperator:UNLOAD_MOVE": [
+      "Turret Operator.Unload!"
+    ],
+    "TwigSlimeM:STICKY_SHOT_MOVE": [
+      "Twig Slime (M).Sticky Shot"
+    ],
+    "TwigSlimeS:TACKLE_MOVE": [
+      "Twig Slime (S).Tackle"
+    ],
+    "TwoTailedRat:CALL_FOR_BACKUP_MOVE": [
+      "Two-Tailed Rat.Call for Backup"
+    ],
+    "TwoTailedRat:DISEASE_BITE_MOVE": [
+      "Two-Tailed Rat.Disease Bite"
+    ],
+    "TwoTailedRat:SCRATCH_MOVE": [
+      "Two-Tailed Rat.Scratch"
+    ],
+    "TwoTailedRat:SCREECH_MOVE": [
+      "Two-Tailed Rat.Screech"
+    ],
+    "Vantom:DISMEMBER_MOVE": [
+      "Vantom.Dismember"
+    ],
+    "Vantom:INKY_LANCE_MOVE": [
+      "Vantom.Inky Lance"
+    ],
+    "Vantom:INK_BLOT_MOVE": [
+      "Vantom.Ink Blot"
+    ],
+    "Vantom:PREPARE_MOVE": [
+      "Vantom.Prepare"
+    ],
+    "VineShambler:CHOMP_MOVE": [
+      "Vine Shambler.Chomp"
+    ],
+    "VineShambler:GRASPING_VINES_MOVE": [
+      "Vine Shambler.Grasping Vines"
+    ],
+    "VineShambler:SWIPE_MOVE": [
+      "Vine Shambler.Swipe"
+    ],
+    "WaterfallGiant:ABOUT_TO_BLOW_MOVE": [
+      "Waterfall Giant.About To Blow"
+    ],
+    "WaterfallGiant:EXPLODE_MOVE": [
+      "Waterfall Giant.Explode"
+    ],
+    "WaterfallGiant:PRESSURE_GUN_MOVE": [
+      "Waterfall Giant.Pressure Gun"
+    ],
+    "WaterfallGiant:PRESSURE_UP_MOVE": [
+      "Waterfall Giant.Pressure Up"
+    ],
+    "WaterfallGiant:PRESSURIZE_MOVE": [
+      "Waterfall Giant.Pressurize"
+    ],
+    "WaterfallGiant:RAM_MOVE": [
+      "Waterfall Giant.Ram"
+    ],
+    "WaterfallGiant:SIPHON_MOVE": [
+      "Waterfall Giant.Siphon"
+    ],
+    "WaterfallGiant:STOMP_MOVE": [
+      "Waterfall Giant.Stomp"
+    ],
+    "Wriggler:NASTY_BITE_MOVE": [
+      "Wriggler.Nasty Bite"
+    ],
+    "Wriggler:WRIGGLE_MOVE": [
+      "Wriggler.Wriggle"
+    ],
+    "Zapbot:ZAP": [
+      "Zapbot.Zap"
+    ]
+  },
+  "dynamic_attacks": {
+    "GasBomb:EXPLODE_MOVE": {
+      "damage_property": "ExplodeDamage",
+      "hits_property": null,
+      "hits": 1,
+      "rule": null
+    },
+    "TestSubject:MULTI_CLAW_MOVE": {
+      "damage_property": null,
+      "hits_property": "BaseMultiClawCount",
+      "hits": null,
+      "rule": "Reference hit count is the first use; each completed Multi Claw adds one hit to later uses"
+    },
+    "WaterfallGiant:PRESSURE_GUN_MOVE": {
+      "damage_property": "BasePressureGunDamage",
+      "hits_property": null,
+      "hits": 1,
+      "rule": "Reference damage is the first Pressure Gun; each completed Pressure Gun adds five damage to later uses"
+    },
+    "TheForgotten:DREAD": {
+      "damage_property": null,
+      "hits_property": null,
+      "hits": 1,
+      "rule": "Dread is 13 (15 at Deadly Enemies ascension) plus the owner's Dexterity; without a creature its quantity is absent"
+    }
+  },
+  "group_summon_caps": {
+    "TwoTailedRat:CALL_FOR_BACKUP_MOVE": {
+      "guard": "CanSummon",
+      "counter": "CallForBackupCount",
+      "comparison": "Blt",
+      "shared_by": "CallForBackup"
+    }
+  },
+  "weight_rules": {
+    "TwoTailedRat:RAND:SCRATCH_MOVE": "Can summon: 1/12; cannot summon: 1",
+    "TwoTailedRat:RAND:DISEASE_BITE_MOVE": "Can summon: 1/12; cannot summon: 1",
+    "TwoTailedRat:RAND:SCREECH_MOVE": "Can summon: 1/12; cannot summon: 1",
+    "TwoTailedRat:RAND:CALL_FOR_BACKUP_MOVE": "Can summon: 0.75; cannot summon: 0"
+  }
+}

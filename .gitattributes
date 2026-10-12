@@ -1,0 +1,2 @@
+# Preserve receipted source bytes, including the wiki's trailing spaces
+src/EncounterIntel/catalogue/wiki-page-sources/*.wiki whitespace=-blank-at-eol,-blank-at-eof

@@ -1,0 +1,124 @@
+{{Enemy Infobox
+|Name   = Fossil Stalker
+|Image  = StS2_Fossil Stalker.png
+|HP     = 51-53
+|AscHP  = 54-56
+|Powers = {{BD2|Suck}} 3
+|Debut  = Underdocks
+|Type   = Normal
+}}
+{{Power Infobox
+|Name         = Suck
+|Image        = StS2 Icon Suck.png
+|Description  = Whenever it deals unblocked attack damage, it gains X {{BD2|Strength}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Strength
+}}
+{{Power Infobox|Strength|2}}
+'''Fossil Stalker''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Fossil Stalker}}
+{{Intents Table/row
+|Name   = Latch
+|Intent = Attack3
+|Effect = Deals (12;{{Asc2|9|14}}) damage.
+}}
+{{Intents Table/row
+|Name   = Tackle
+|Intent = Attack2, Debuff
+|Effect = Deals (9;{{Asc2|9|11}}) damage. Applies 1 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Lash
+|Intent = Attack2
+|Effect = Deals (3;{{Asc2|9|4}}) damage ×2.
+}}
+{{Intents Table/end}} 
+Always starts with {{Int2|Fossil Stalker|Latch}}.
+
+After any move, the next move is chosen randomly with equal probability:
+* 33% chance of {{Int2|Fossil Stalker|Latch}}
+* 33% chance of {{Int2|Fossil Stalker|Tackle}}
+* 33% chance of {{Int2|Fossil Stalker|Lash}}
+
+No restriction on repeating the same move consecutively.
+
+== Notes ==
+* Fossil Stalker begins combat with 3 stacks of {{BD2|Suck}}, which grants it 3 {{BD2|Strength}} each time it deals unblocked damage with an attack. This means letting attacks through without {{KW2|Block}} will cause it to snowball quickly.
+** {{BD2|Suck}} will also trigger when Fossil Stalker deals unblocked damage to {{KW2|Osty}}, making it dangerous to rely on him to soak up damage.
+* {{Int2|Fossil Stalker|Tackle}} applies {{BD2|Frail}} to reduce {{KW2|Block}} gained from cards by 25%, making it harder to defend against subsequent attacks.
+* {{Int2|Fossil Stalker|Lash}} is especially dangerous if Fossil Stalker has gained {{BD2|Strength}}, as each hit deals more damage.
+
+== Animations ==
+<tabber>
+|-|Fossil Stalker=
+{{Bestiary|Fossil Stalker}}
+|-|Fossil Stalker (Phobia Mode)=
+{{Bestiary|Phobia Fossil Stalker}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Fossil-Pirscher
+| DEUmeaning = 
+| ESPname    = Acechafósil
+| ESPmeaning = 
+| FRAname    = Traqueur fossilisé
+| FRAmeaning = 
+| ITAname    = Cacciatore di fossili
+| ITAmeaning = 
+| JPNname    = 化石のストーカー
+| JPNromanised = Kaseki no stalker
+| JPNmeaning = 
+| INDname    = Penguntit Fosil
+| INDmeaning = 
+| KORname    = 화석 매복자
+| KORromanised = hwaseog maebogja
+| KORmeaning = 
+| POLname    = Skamieliniak
+| POLmeaning = 
+| PTBname    = Fóssil Espreitador
+| PTBmeaning = 
+| RUSname    = Хвостолов-отшельник
+| RUSromanised = Hvostolov-otshel'nik
+| RUSmeaning = 
+| SPAname    = Fósil acosador
+| SPAmeaning = 
+| TURname    = Pusan Fosil
+| TURmeaning = 
+| ZHSname    = 化石追踪者
+| ZHSromanised = huashizhuizongzhe
+| ZHSmeaning = 
+| CODEname    = FOSSIL_STALKER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.0|* Fixed Fossil Stalker VFX continuously playing in the Bestiary}}
+{{Update History Table/row|V0.106.0|* Added alternate phobia mode art for Fossil Stalker}}
+{{Update History Table/row|V0.105.0|* Changed Fossil Stalker: in multiplayer, now gains a set amount of Strength if it hits any player, instead of gaining Strength for each player hit}}
+{{Update History Table/row|V0.92.0|* Buffed Fossil Stalker: HP increased from 51(53)-53(55) -> 51(54)-53(56)}}
+{{Update History Table/row|V0.89.0|* Added SFX for Fossil Stalker}}
+{{Update History Table/row|V0.76.0|* Fossil Stalker and Infested Prism monsters' Suck power no longer double-dips on Strength gain when a hit kills Osty and "tramples" over to also hit the player}}
+{{Update History Table/row|V0.75.0|* Buffed Fossil Stalker: HP increased from 46(47)-48(49) -> 51(53)-53(55)}}
+{{Update History Table/row|V0.74.0|* Buffed Fossil Stalker: Lash move damage increased from 2(3) -> 3(4)
+* Added Fossil Stalker animations}}
+{{Update History Table/row|V0.62.0|* Buffed Fossil Stalker: damage and HP increased}}
+{{Update History Table/row|V0.59.0|* Buffed Fossil Stalker:
+** Latch damage increased from 9(10) -> 11(13)
+** Tackle damage increased from 7(8) -> 8(9)
+* Fossil Stalker's Suck power no longer applies Strength in the middle of multi-attacks, so the number listed in their damage intent will now be accurate}}
+{{Update History Table/row|V0.57.0|* Added new normal Underdocks combat encounters: Fossil Stalker}}
+{{Update History Table/row|V0.55.0|* Fossil Stalker now properly gains Strength when dealing unblocked attack damage to Osty}}
+{{Update History Table/row|?|* Added Fossil Stalker to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

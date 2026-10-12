@@ -1,0 +1,235 @@
+{{Enemy Infobox
+|Name   = Thieving Hopper
+|Image  = StS2_Thieving Hopper.png
+|HP     = 79
+|AscHP  = 84
+|Powers = {{BD2|Escape Artist}} 5
+|Debut  = Hive
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Swipe
+|Image        = StS2 Icon Swipe.png
+|Description  = Upon killing this enemy, the stolen card is returned.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+{{Power Infobox
+|Name         = Flutter
+|Image        = StS2 Icon Flutter.png
+|Description  = Receives 50% less damage from Attacks. Deal attack damage X times to {{KW2|Stunned|Stun}} it.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Stunned
+}}
+{{Power Infobox
+|Name         = Escape Artist
+|Image        = StS2 Icon EscapeArtist.png
+|Description  = Tries to escape the combat after X turns.
+|Type         = Buff
+|Stacks       = Duration
+|BetweenTurns = Decremented
+|Cap          = 
+}}
+'''Thieving Hopper''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Thieving Hopper}}
+{{Intents Table/row
+|Name   = Thievery
+|Intent = Attack3, CardDebuff
+|Effect = Deals (17;{{Asc2|9|19}}) damage. {{BD2|Swipe}} a card from your deck.
+|GivesToEnemy = Swipe
+}}
+{{Intents Table/row
+|Name   = Flutter
+|Intent = Buff
+|Effect = Gains {{BD2|Flutter}} (takes 50% less Attack damage, must be hit 5 times to {{KW2|Stunned|Stun}} it).
+|GivesToEnemy = Flutter
+|PowerGives = Stunned
+}}
+{{Intents Table/row
+|Name   = Hat Trick
+|Intent = Attack4
+|Effect = Deals (21;{{Asc2|9|23}}) damage.
+}}
+{{Intents Table/row
+|Name   = Nab
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/row
+|Name   = Escape
+|Intent = Escape
+|Effect = Flees the combat, taking any stolen cards with it.
+}}
+{{Intents Table/end}}
+The Thieving Hopper follows a fixed sequence:
+* {{Int2|Thieving Hopper|Thievery}} (stealing a card and dealing damage)
+* {{Int2|Thieving Hopper|Flutter}} (gaining damage reduction)
+* {{Int2|Thieving Hopper|Hat Trick}}
+* {{Int2|Thieving Hopper|Nab}}
+* {{Int2|Thieving Hopper|Escape}} (fleeing the fight permanently)
+
+If it escapes, any cards it stole are lost for the rest of the run. Killing it before it escapes returns the stolen cards.
+
+== Notes ==
+* If the enemy escapes, the player does not receive any gold, but still gets a card reward and a possible potion drop.
+
+* The card stolen by Swipe follows a set order of priority:
+
+1. Non-{{KW2|Imbued}} {{QueryLink2|Cards|rarity:Uncommon|Uncommon}} cards
+
+2. Non-{{KW2|Imbued}} {{QueryLink2|Cards|rarity:Rare|Rare}}, {{QueryLink2|Cards|rarity:Common|Common}}, and {{QueryLink2|Cards|rarity:Event|Event}} cards
+
+3. Non-{{KW2|Imbued}} {{QueryLink2|Cards|rarity:Basic|Basic}} and {{QueryLink2|Cards|rarity:Quest|Quest}} cards
+
+4. {{QueryLink2|Cards|rarity:Ancient|Ancient}} cards or cards that are {{KW2|Imbued}}
+
+5. {{QueryLink2|Cards|rarity:Curse|Curse}} cards
+
+* Only cards currently in the player's draw or discard pile when the move is used will be selected. This means under the right circumstances the move can be utilized to remove {{KW2|Eternal}} cards from the player's deck.
+* The returned card can be skipped, which means it is possible to defeat the Thieving Hopper, receive all the usual combat rewards and still have a card removed if it is so desired.
+* When choosing to take back the stolen card, all the usual interactions on adding a card to the deck apply (e.g. {{R2|Bing Bong}}, or {{R2|Lucky Fysh}}).
+* {{QueryLink2|Cards|rarity:Token|Token}} cards and {{QueryLink2|Cards|rarity:Status|Status}} cards can never be stolen as this would result in being able to add a temporary card into your deck permanently. This also applies to other temporary cards, such as those created by potions.
+
+== Animations ==
+{{Bestiary|Thieving Hopper}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Diebischer Hüpfer
+| DEUmeaning = 
+| ESPname    = Asaltamontes
+| ESPmeaning = 
+| FRAname    = Mante chapardeuse
+| FRAmeaning = 
+| ITAname    = Mantide ladra
+| ITAmeaning = 
+| JPNname    = 泥棒バッタ
+| JPNromanised = Dorobou batta
+| JPNmeaning = 
+| INDname    = Belalang Perampok
+| INDmeaning = 
+| KORname    = 폴짝이 도적
+| KORromanised = poljjag-i dojeog
+| KORmeaning = 
+| POLname    = Złodziejski Skoczek
+| POLmeaning = 
+| PTBname    = Gafanhoto Larápio
+| PTBmeaning = 
+| RUSname    = Загребущая цикрада
+| RUSromanised = Zagrebuschaja tsikrada
+| RUSmeaning = 
+| SPAname    = Asaltamontes
+| SPAmeaning = 
+| TURname    = Hırsız Çekirge
+| TURmeaning = 
+| ZHSname    = 偷窃草蜢
+| ZHSromanised = touqiecaomeng
+| ZHSmeaning = 
+| CODEname    = THIEVING_HOPPER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.106.0|
+* Fixed Thieving Hopper softlock if you have no cards for him to steal}}
+{{Update History Table/row|V0.102.0|
+* Removed broken text from Thieving Hopper enemy's Escape Artist power hovertip when playing in Polish
+* Fixed softlock in Thieving Hopper fight if one person is dead when it tries to steal cards}}
+{{Update History Table/row|V0.96.0|
+* Changed Thieving Hopper: is now pickier about the cards he steals:
+** He will only steal cards that are in your deck (meaning no cards generated in combat)
+** He will try NOT to steal any cards with the Imbued enchantment unless he has no other choices
+** His card rarity priority is as follows:
+*** Priority 1: Uncommon cards
+*** Priority 2: Common, Rare, or Event cards
+*** Priority 3: Basic or Quest cards
+*** Priority 4: Ancient cards or cards with the Imbued enchantment
+*** Priority 5: Anything else (in practice, this should only ever be Curses)}}
+{{Update History Table/row|V0.92.0|
+* Changed Thieving Hopper: HP changed from 77(82)-80(85) -> 79(84)}}
+{{Update History Table/row|V0.89.0|
+* Buffed Thieving Hopper: HP increased by 4}}
+{{Update History Table/row|V0.87.0|
+* Nerfed Thieving Hopper: no longer gains Block}}
+{{Update History Table/row|V0.79.0|
+* Fixed an issue where Ambush card's cost reduction effect stopped working if it was stolen by Thieving Hopper and then returned}}
+{{Update History Table/row|V0.77.0|
+* Nerfed Thieving Hopper: first turn damage decreased from 19(21) -> 17(19)}}
+{{Update History Table/row|V0.76.0|
+* Thieving Hopper monster no longer shows the Merchant card removal animation when it steals your card}}
+{{Update History Table/row|V0.75.0|
+* Changed Thieving Hopper: if you kill it after it steals a card, it now offers the card back as a reward, giving you the opportunity to skip it if it stole a card you didn't want}}
+{{Update History Table/row|V0.71.0|
+* Thieving Hopper's Escape Artist power now pulses when it is about to run away}}
+{{Update History Table/row|V0.70.0|
+* Nerfed Thieving Hopper: Hat Trick move damage decreased from 22(26) -> 21(23)}}
+{{Update History Table/row|V0.63.0|
+* Fixed Thieving Hopper's card stealing animation}}
+{{Update History Table/row|V0.62.0|
+* Thieving Hopper's Flutter power now properly specifies that it only triggers on damage from Attacks}}
+{{Update History Table/row|V0.59.0|
+* Buffed Thieving Hopper: Flutter power no longer decrements from non-attack damage}}
+{{Update History Table/row|V0.57.0|
+* Thieving Hopper's Flutter power no longer halves HP loss as if it were attack damage (though it still counts down from it)}}
+{{Update History Table/row|V0.56.0|
+* Nerfed Thieving Hopper: Theft damage decreased from 19(22) -> 19(21)}}
+{{Update History Table/row|V0.55.0|
+* Buffed Thieving Hopper: Flutter power now applied to and is affected by all damage
+* Buffed Thieving Hopper & Gremlins: no longer give gold (or give less gold) if they escape}}
+{{Update History Table/row|V0.53.0|
+* Health bars no longer show orange when the HP bar size changes (ex. at the start of a multiplayer session, when Osty changes size, when the Thieving Hopper starts flying)}}
+{{Update History Table/row|V0.46.0|
+* Changed Thieving Hopper: now steals one card from each player}}
+{{Update History Table/row|V0.45.0|
+* Thieving Hopper encounter Run History wording changed from Thieves -> Thief}}
+{{Update History Table/row|V0.43.0|
+* Cleaned up Thieving Hopper animations}}
+{{Update History Table/row|V0.41.0|
+* Fixed an issue where Thieving Hopper's health bar momentarily displayed glitchy colors after fluttering up}}
+{{Update History Table/row|V0.29.0|
+* Buffed Thieving Hopper: now also attacks for 19 damage on its Theft turn
+* Thieving Hopper now shows the stolen card as a hovertip
+* Generated cards like Shivs are now excluded from Thieving Hopper's theft pool}}
+{{Update History Table/row|V0.19.0|
+* Changed Thieving Hopper fight:
+** Now only features a single Hopper
+** HP increased from 51-57 -> 73-78
+* Thieving Hoppers' animation should now always reflect Flutter power}}
+{{Update History Table/row|V0.16.0|
+* Changed Thieving Hopper encounters: Double Thieving Hopper encounter is now a weak encounter and Lone Thieving Hopper encounter has been removed}}
+{{Update History Table/row|V0.15.0|
+* Changed Thieving Hopper:
+** HP decreased from 70-80 -> 51-57
+** Moveset is no longer random
+** No longer gains Block when it flutters
+** Now falls to the ground and gets stunned if they take enough hits
+* Thieving Hopper's health bar now disappears when he escapes
+* Swipe power on Thieving Hoppers now correctly says that the stolen "card" is returned to your hand
+* Thieving Hopper now correctly leaves at the end of combat}}
+{{Update History Table/row|V0.11.0|
+* Fixed softlock on Thieving Hopper escaping after getting stunned by Binding Chains card}}
+{{Update History Table/row|V0.8.0|
+* Thieves encounter now actually has 2 Thieving Hoppers}}
+{{Update History Table/row|2023-08-25|
+* Thieving Hopper no longer causes softlock after it leaves
+* Thieving Hopper now correctly steals power cards}}
+{{Update History Table/row|2023-05-19|
+* Added animations for Thieving Hopper
+* Fixed the stolen card blocking hitbox for Thieving Hopper
+* Fixed Thieving Hopper not removing stolen card from deck}}
+{{Update History Table/row|2023-04-21|
+* Import Thieving Hopper Spine assets
+* Added Thieving Hopper animations & idle animation}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

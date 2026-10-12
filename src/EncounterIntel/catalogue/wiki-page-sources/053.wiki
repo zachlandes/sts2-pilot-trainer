@@ -1,0 +1,120 @@
+{{Beta content}} {{Enemy Infobox
+|Name   = Louse Progenitor
+|Image  = StS2_Louse Progenitor.png
+|HP     = 134-136
+|AscHP  = 138-141
+|Powers = {{BD2|Curl Up}} 14 ({{Asc2|8|18}})
+|Debut  = Hive
+|Type   = Normal
+}}
+{{Power Infobox
+|Name         = Curl Up
+|Image        = StS2 Icon CurlUp.png
+|Description  = Gains X {{KW2|Block}} upon first being hit.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Conserved
+|Cap          = 
+|GivesToEnemy = Block
+}}
+'''Louse Progenitor''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Louse Progenitor}}
+{{Intents Table/row
+|Name   = Web Cannon
+|Intent = Attack2, Debuff
+|Effect = Deals (9;{{Asc2|9|10}}) damage. Applies 2 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Curl and Grow
+|Intent = Defend, Buff
+|Effect = Gains (14;{{Asc2|8|18}}) {{KW2|Block}}. Gains (5;{{Asc2|9|7}}) {{BD2|Strength}}.
+|GivesToEnemy = Block, Strength
+}}
+{{Intents Table/row
+|Name   = Pounce
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/end}}
+The Louse Progenitor repeats a fixed three-move cycle: {{Int2|Louse Progenitor|Web Cannon}}, then {{Int2|Louse Progenitor|Curl and Grow}}, then {{Int2|Louse Progenitor|Pounce}}, and back to the start.
+
+== Trivia ==
+The Louse Progenitor appears to be an ancestor to the {{M|Red Louse}} and {{M|Green Louse}} in the original game.
+
+== Animations ==
+{{Bestiary|Louse Progenitor}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Laus-Stammvater
+| DEUmeaning = 
+| ESPname    = Piojo progenitor
+| ESPmeaning = 
+| FRAname    = Progéniteur de poux
+| FRAmeaning = 
+| ITAname    = Antenato delle pulci
+| ITAmeaning = 
+| JPNname    = 始祖虫
+| JPNromanised = Shiso mushi
+| JPNmeaning = 
+| INDname    = Leluhur Kutu
+| INDmeaning = 
+| KORname    = 태초의 공벌레
+| KORromanised = taecho-ui gongbeolle
+| KORmeaning = 
+| POLname    = Protowesz
+| POLmeaning = 
+| PTBname    = Piolho Progenitor
+| PTBmeaning = 
+| RUSname    = Королевская вошь
+| RUSromanised = Korolevskaja vosh'
+| RUSmeaning = 
+| SPAname    = Piojo progenitor
+| SPAmeaning = 
+| TURname    = Bitlerin Atası
+| TURmeaning = 
+| ZHSname    = 虱虫之祖
+| ZHSromanised = shichongzhizu
+| ZHSmeaning = 
+| CODEname    = LOUSE_PROGENITOR
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Louse Progenitor: Strength gain at A9 increased from 5(5) → 5(7)}}
+{{Update History Table/row|V0.92.0|* Changed Louse Progenitor:
+** HP changed from 134(136)-139(141) -> 134(138)-136(141)
+** Curl Up move's Block gain now scales with Ascension from 14 -> 18}}
+{{Update History Table/row|V0.90.0|* Changed Louse Progenitor: Web move changed from applying Weak -> Frail}}
+{{Update History Table/row|V0.89.0|* Raised intent slightly for Louse Progenitor as when it's curled up it's taller}}
+{{Update History Table/row|V0.87.0|* Tweaked Louse Progenitor: slight rework of moveset and values}}
+{{Update History Table/row|V0.37.0|* Changed Giant Louse:
+** Web Cannon damage decreased from 17(20) -> 9(11)
+** Added new Acid Dusting move; deals 19(21) damage}}
+{{Update History Table/row|V0.27.0|* Nerfed Giant Louse:
+** Now a normal non-elite combat
+** No longer applies Vulnerable}}
+{{Update History Table/row|V0.17.0|* Fixed Giant Louse’s multiattack being unaffected by Strength}}
+{{Update History Table/row|V0.16.0|* Antlion and Giant Louse now correctly factor strength and strength loss into their attack strength
+* Giant Louse no longer inflicts wrong amount of multi-hit damage}}
+{{Update History Table/row|V0.15.0|* Reworked Giant Louse:
+** HP reduced from 205 -> 111-117
+** Web Cannon now does 14 damage and applies 2 Weak
+** Curl now grants 6 Strength, renamed to Curl and Grow
+** Acid Dust power removed, now is an attack that deals 5x2 damage and applies 2 Vulnerable and 2 Frail
+** Moveset is now always Web Cannon -> Curl and Grow -> Acid Dust -> Web Cannon}}
+{{Update History Table/row|V0.14.0|* Renamed enemies: Flying Mushroom, Furry Worm Crawler, Mite, Orb Plant, Egg Layer, Giant Louse, Burrowing Bug, and Workbug}}
+{{Update History Table/row|2023-06-09|* New Giant Louse animations}}
+{{Update History Table/row|2023-05-12|* Giant Louse will no longer repeatedly use Acid Dust over and over.}}
+{{Update History Table/row|2023-04-21|* implemented giant louse idle animation
+* Rig and animate giant louse idles}}
+{{Update History Table/row|?|* Added Louse Progenitor to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

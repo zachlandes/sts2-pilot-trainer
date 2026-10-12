@@ -1,0 +1,96 @@
+{{Enemy Infobox
+|Name   = Haunted Ship
+|Image  = StS2_Haunted Ship.png
+|HP     = 63
+|AscHP  = 67
+|Debut  = Underdocks
+|Type   = Normal
+}} {{Power Infobox|Weak|2}}{{Small Card Infobox|Dazed|2}}
+'''Haunted Ship''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Haunted Ship}}
+{{Intents Table/row
+|Name   = Haunt
+|Intent = StatusCard
+|Effect = Shuffles 5 {{C2|Dazed}} into your discard pile. Applies 3 {{BD2|Weak}}.
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Swipe
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|14}}) damage.
+}}
+{{Intents Table/row
+|Name   = Stomp
+|Intent = Attack3
+|Effect = Deals (4;{{Asc2|9|5}}) damage ×3.
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Haunted Ship|Haunt}} first.
+
+From the second turn onward, alternates between {{Int2|Haunted Ship|Swipe}} and {{Int2|Haunted Ship|Stomp}}, always starting with {{Int2|Haunted Ship|Swipe}}.
+
+{{Clear}}
+== Animations ==
+<tabber>
+|-|Haunted Ship=
+{{Bestiary|Haunted Ship}}
+|-|Haunted Ship (Phobia Mode)=
+{{Bestiary|Phobia Haunted Ship}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Spukschiff
+| DEUmeaning = 
+| ESPname    = Barco embrujado
+| ESPmeaning = 
+| FRAname    = Navire hanté
+| FRAmeaning = 
+| ITAname    = Nave infestata
+| ITAmeaning = 
+| JPNname    = 幽霊船
+| JPNromanised = Yuureisen
+| JPNmeaning = 
+| INDname    = Kapal Berhantu
+| INDmeaning = 
+| KORname    = 유령선
+| KORromanised = yulyeongseon
+| KORmeaning = 
+| POLname    = Nawiedzony Statek
+| POLmeaning = 
+| PTBname    = Embarcação Assombrada
+| PTBmeaning = 
+| RUSname    = Проклятое судно
+| RUSromanised = Prokljatoe sudno
+| RUSmeaning = 
+| SPAname    = Barco embrujado
+| SPAmeaning = 
+| TURname    = Lanetli Gemi
+| TURmeaning = 
+| ZHSname    = 幽灵船
+| ZHSromanised = youlingchuan
+| ZHSmeaning = 
+| CODEname    = HAUNTED_SHIP
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|v0.106.0|* Changed Haunted Ship: Ramming Speed move removed, now alternates between Swipe and Stomp instead (always starting with Swipe after Haunt)}}
+{{Update History Table/row|v0.105.0|* Changed Haunted Ship: now applies 3 Weak on Turn 1 instead of applying Weak when it attacks}}
+{{Update History Table/row|v0.101.0|* Changed Haunted Ship: now applies Dazed status cards to the player}}
+{{Update History Table/row|V0.94.0|* Changed Haunted Ship: now does its Haunt move on turn 2 instead of 3}}
+{{Update History Table/row|V0.92.0|* Changed Haunted Ship: HP changed from 61(63)-64(66) -> 63(67)}}
+{{Update History Table/row|V0.80.0|* Buffed Haunted Ship:
+** Status given changed from Daze -> Wound
+** Stomp damage increased from 3(4)x3 -> 4(5)x3}}
+{{Update History Table/row|V0.75.0|* Buffed Haunted Ship: now applies 2 stacks of debuffs instead of 1}}
+{{Update History Table/row|V0.70.0|* Buffed Haunted Ship card: Stomp move now scales with Ascension, from 3x3 -> 3(4)x3}}
+{{Update History Table/row|V0.57.0|* Added new normal Underdocks combat encounter Haunted Ship to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

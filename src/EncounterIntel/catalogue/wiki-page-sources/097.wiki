@@ -1,0 +1,132 @@
+{{Enemy Infobox
+|Name   = Tunneler
+|Image  = StS2_Tunneler.png
+|HP     = 87
+|AscHP  = 92
+|Debut  = Hive
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Burrowed
+|Image        = StS2 Icon Burrowed.png
+|Description  = {{KW2|Block}} is not removed at the start of its turn. {{KW2|Stunned}} if all {{KW2|Block}} is removed.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Conserved
+|Cap          = 
+}}
+'''Tunneler''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Tunneler}}
+{{Intents Table/row
+|Name   = Bite
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/row
+|Name   = Burrow
+|Intent = Buff, Defend
+|Effect = Gains {{BD2|Burrowed}} and (32;{{Asc2|8|37}}) {{KW2|Block}}.
+|GivesToEnemy = Burrowed, Block
+}}
+{{Intents Table/row
+|Name   = Attack from Below
+|Intent = Attack4
+|Effect = Deals (23;{{Asc2|9|26}}) damage.
+}}
+{{Intents Table/row
+|Name   = Emerging Strike
+|Intent = Stun
+|Effect = {{KW2|Stunned}}. Does nothing this turn.
+|GivesToEnemy = Stunned
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Tunneler|Bite}}, then uses {{Int2|Tunneler|Burrow}}. While burrowed, uses {{Int2|Tunneler|Attack from Below}} every turn.
+
+If its {{KW2|Block}} is fully broken while burrowed, it uses {{Int2|Tunneler|Emerging Strike}}, then starts the cycle over with {{Int2|Tunneler|Bite}}.
+
+== Animations ==
+{{Bestiary|Tunneler}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Tunnler
+| DEUmeaning = 
+| ESPname    = Excavante
+| ESPmeaning = 
+| FRAname    = Tunnelier
+| FRAmeaning = 
+| ITAname    = Scavatore
+| ITAmeaning = 
+| JPNname    = トンネラー
+| JPNromanised = Tonneraa
+| JPNmeaning = 
+| INDname    = Penggali
+| INDmeaning = 
+| KORname    = 땅굴충
+| KORromanised = ttanggulchung
+| KORmeaning = 
+| POLname    = Tunelowiec
+| POLmeaning = 
+| PTBname    = Escavador
+| PTBmeaning = 
+| RUSname    = Разрыхлитель
+| RUSromanised = Razryhlitel'
+| RUSmeaning = 
+| SPAname    = Tunelador
+| SPAmeaning = 
+| TURname    = Tünelci
+| TURmeaning = 
+| ZHSname    = 地道虫
+| ZHSromanised = didaochong
+| ZHSmeaning = 
+| CODEname    = TUNNELER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Added missing Tunneler animations to the Bestiary
+* Tunneler animations can now be played regardless of Burrowed state in the Bestiary}}
+{{Update History Table/row|V0.104.0|* Updated art for Tunneler}}
+{{Update History Table/row|V0.103.0|* Deprecated Tunneleing Twosome fight from the Hive}}
+{{Update History Table/row|V0.100.0|* Changed the Tunneler normal encounter: the Bowlbug is now replaced by a Chomper that gives Dazed status cards on turn 1}}
+{{Update History Table/row|V0.92.0|* Changed Tunneler:
+** HP changed from 85(88)-91(95) -> 87(92)
+** Below move damage increased from 21(24) -> 23(26)}}
+{{Update History Table/row|V0.90.0|* Buffed Tunneler: Block gain now scales at A7, increased from 32 -> 37}}
+{{Update History Table/row|V0.76.0|* Fixed softlock when Tunneler dies to Doom when it burrows itself}}
+{{Update History Table/row|V0.66.0|* Burrower no longer is stunned for 2 turns if its block is broken during its turn}}
+{{Update History Table/row|V0.62.0|* Fixed Tunneler playing its burrowed attack animation twice}}
+{{Update History Table/row|V0.53.0|* Removed the confusing Burrowing wording on the Phantasmal Gardener's Skittish power}}
+{{Update History Table/row|V0.49.0|* Fix visual issue with Burrowing Bug when it's Doomed while burrowing}}
+{{Update History Table/row|V0.44.0|* Made Burrowing Bug’s chomp animation snappier}}
+{{Update History Table/row|V0.40.0|* Poison no longer interrupts Burrowing Bug’s dig animation}}
+{{Update History Table/row|V0.38.0|* Nerfed Burrowing Bug: Bite move damage decreased from 13(22) -> 13(15)}}
+{{Update History Table/row|V0.37.0|* Changed Rock Workbug:
+** Now excluded from Burrowing Buddies encounter
+** Now always the first bug in Slumber Party encounter}}
+{{Update History Table/row|V0.31.0|* Burrowing Bug now stays Dizzy if Burrow is cleared by Thorns}}
+{{Update History Table/row|V0.29.0|* Changed Burrowing Buddies encounter: can now also feature the Rock Workbug}}
+{{Update History Table/row|V0.27.0|* Changed Burrowing Buddies encounter: now has a Workbug paired with a Burrowing Bug instead of a Myte (which makes one less status-giving fight in Act 2)}}
+{{Update History Table/row|V0.19.0|* Changed Burrowing Bug:
+** No longer adds wounds to your deck
+** Increased bite move damage from 11 -> 13}}
+{{Update History Table/row|V0.17.0|* Expose now interacts correctly with Burrowed (in Tunneler encounter)}}
+{{Update History Table/row|V0.14.0|* Renamed enemies: Flying Mushroom, Furry Worm Crawler, Mite, Orb Plant, Egg Layer, Giant Louse, Burrowing Bug, and Workbug}}
+{{Update History Table/row|V0.9.0|* Burrowing Bug completely reworked
+** HP from 91-94 -> 85-91
+** Burrowed reworked, now gains 30 Block on burrowing, block is not removed at the start of the turn while burrowed
+** If all block is removed, the Burrowing Bug will emerge from below
+** Moveset changes to be fixed and non random.}}
+{{Update History Table/row|2023-06-02|* Burrowing bug burrowing animation being interrupted by another animation}}
+{{Update History Table/row|2023-05-12|* Burrowing Bug nerfs. Burrowed for one less turn. Deals less damage while burrowed. Slightly less HP.}}
+{{Update History Table/row|2023-05-05|* New Burrowing Bug animations}}
+{{Update History Table/row|2023-04-21|* Implemented burrowing bug idle animation
+* Import BurrowingBug rig & idle anim}}
+{{Update History Table/row|?|* Added Tunneler to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

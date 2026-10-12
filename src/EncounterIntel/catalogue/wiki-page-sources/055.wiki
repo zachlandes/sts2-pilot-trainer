@@ -1,0 +1,90 @@
+{{Enemy Infobox
+|Name   = Mawler
+|Image  = StS2_Mawler.png
+|HP     = 72
+|AscHP  = 76
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Mawler''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Mawler}}
+{{Intents Table/row
+|Name   = Rip and Tear
+|Intent = Attack3
+|Effect = Deals (14;{{Asc2|9|16}}) damage.
+}}
+{{Intents Table/row
+|Name   = Roar
+|Intent = Debuff
+|Effect = Applies 3 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/row
+|Name   = Claw
+|Intent = Attack2
+|Effect = Deals (4;{{Asc2|9|5}}) damage ×2.
+}}
+{{Intents Table/end}}
+Always opens with {{Int2|Mawler|Claw}}.
+
+After that, each turn it randomly picks one of three moves with equal chance: {{Int2|Mawler|Rip and Tear}}, {{Int2|Mawler|Roar}}, or {{Int2|Mawler|Claw}}. It cannot use the same move twice in a row, and {{Int2|Mawler|Roar}} can only be used once per fight.
+
+== Trivia ==
+
+* The Mawler's name and appearance reference [[The Maw]], an enemy from the original Slay the Spire.
+
+== Animations ==
+{{Bestiary|Mawler}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Schlunderer
+| DEUmeaning = 
+| ESPname    = Desollador
+| ESPmeaning = 
+| FRAname    = Écharneur
+| FRAmeaning = 
+| ITAname    = Laceracarne
+| ITAmeaning = 
+| JPNname    = モーラー
+| JPNromanised = Mooraa
+| JPNmeaning = 
+| INDname    = Penerkam
+| INDmeaning = 
+| KORname    = 장수아귀
+| KORromanised = jangsu-agwi
+| KORmeaning = 
+| POLname    = Paszczur
+| POLmeaning = 
+| PTBname    = Dilacerador
+| PTBmeaning = 
+| RUSname    = Клыкозавр
+| RUSromanised = Klykozavr
+| RUSmeaning = 
+| SPAname    = Devastadonte
+| SPAmeaning = 
+| TURname    = Yırtançene
+| TURmeaning = 
+| ZHSname    = 蛮兽
+| ZHSromanised = manshou
+| ZHSmeaning = 
+| CODEname    = MAWLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.104.0|* Updated art for Mawler}}
+{{Update History Table/row|V0.92.0|* Buffed Mawler: HP increased from 70(74) -> 72(76)}}
+{{Update History Table/row|V0.89.0|* Added Mawler roar animation}}
+{{Update History Table/row|V0.43.0|* Fixed wording on Predatory Mawler run history entry}}
+{{Update History Table/row|2023-09-15|* Mawler HP increased from 50 -> 70, new move patterns}}
+{{Update History Table/row|2023-08-25|* Removed speech bubble from Mawler enemy}}
+{{Update History Table/row|2023-05-05|* The namening has begun... BEHOLD... NEW NAMES!!
+** scary carnivore -> mawler}}
+{{Update History Table/row|?|* Added Scary Carnivore to the game}}{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

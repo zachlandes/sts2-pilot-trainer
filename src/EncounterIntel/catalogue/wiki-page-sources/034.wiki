@@ -1,0 +1,108 @@
+{{Enemy Infobox
+|Name   = Frog Knight
+|Image  = StS2_Frog Knight.png
+|HP     = 191
+|AscHP  = 199
+|Powers = {{BD2|Plating}} 15 ({{Asc2|8|19}})
+|Debut  = Glory
+|Type   = Normal
+}}
+{{Power Infobox|Plating|2}}
+'''Frog Knight''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Frog Knight}}
+{{Intents Table/row
+|Name   = Tongue Lash
+|Intent = Attack2, Debuff
+|Effect = Deals (13;{{Asc2|9|14}}) damage. Applies 2 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Strike Down Evil
+|Intent = Attack3
+|Effect = Deals (21;{{Asc2|9|23}}) damage.
+}}
+{{Intents Table/row
+|Name   = For the Queen
+|Intent = Buff
+|Effect = Gains 5 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Beetle Charge
+|Intent = Attack4
+|Effect = Deals (35;{{Asc2|9|40}}) damage.
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Frog Knight|Tongue Lash}}, then follows a repeating cycle: {{Int2|Frog Knight|Strike Down Evil}}, {{Int2|Frog Knight|For the Queen}}, then a conditional check.
+
+If the Frog Knight's HP is below half and it has not yet used {{Int2|Frog Knight|Beetle Charge}}, it uses {{Int2|Frog Knight|Beetle Charge}} once, then continues with {{Int2|Frog Knight|Tongue Lash}}. Otherwise, it uses {{Int2|Frog Knight|Tongue Lash}} and continues the cycle.
+
+== Trivia ==
+* The '''Frog Knight''' rides on a smaller version of the {{M2|Slumbering Beetle}}.
+
+== Animations ==
+{{Bestiary|Frog Knight}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Froschritter
+| DEUmeaning = 
+| ESPname    = Rana caballerosa
+| ESPmeaning = 
+| FRAname    = Chevalier rainette
+| FRAmeaning = 
+| ITAname    = Rana cavaliere
+| ITAmeaning = 
+| JPNname    = カエルの騎士
+| JPNromanised = Kaeru no kishi
+| JPNmeaning = 
+| INDname    = Kesatria Kodok
+| INDmeaning = 
+| KORname    = 개구리 기사
+| KORromanised = gaeguli gisa
+| KORmeaning = 
+| POLname    = Żabi Rycerz
+| POLmeaning = 
+| PTBname    = Sapo Cavaleiro
+| PTBmeaning = 
+| RUSname    = Сэр Лягушка
+| RUSromanised = Ser Ljagushka
+| RUSmeaning = 
+| SPAname    = Croaballero
+| SPAmeaning = 
+| TURname    = Kurbağa Şövalye
+| TURmeaning = 
+| ZHSname    = 青蛙骑士
+| ZHSromanised = qingwaqishi
+| ZHSmeaning = 
+| CODEname    = FROG_KNIGHT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.92.0|* Buffed Frog Knight: Plating now scales with Tough Enemies Ascension from 15 -> 19}}
+{{Update History Table/row|V0.87.0|* Nerfed Frog Knight: HP decreased from 200(210) -> 191(199)}}
+{{Update History Table/row|V0.82.0|* Changed Frog Knight:
+** Strike Down Evil move damage changed from 10(12)x2 -> 21(23)
+** Tongue Lash move no longer gives Dazed statuses, now -> applies 2 Frail}}
+{{Update History Table/row|V0.49.0|* Added SFX for Frog Knight enemy}}
+{{Update History Table/row|V0.44.0|* Enemies with Plating like Frog Knight now start with Block equal to their plating, similar to Slumbering Beetle}}
+{{Update History Table/row|?|* Nerfed Frog Knight:
+** Strike Down Evil move damage decreased from 25(28) -> 10(12)x2
+** Charge move damage decreased from 20(22)x2 -> 35(40)}}
+{{Update History Table/row|V0.18.0|* Fixed softlock in Frog Knight encounter if it has exactly half health}}
+{{Update History Table/row|V0.14.0|* Changed Frog Knight:
+** Gains more Strength
+** Only charges once and when below half HP
+** Starts combat with Tongue Lash
+** Move AI reworked
+* Added Frog Knight Animations}}
+{{Update History Table/row|?|* Added Frog Knight to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

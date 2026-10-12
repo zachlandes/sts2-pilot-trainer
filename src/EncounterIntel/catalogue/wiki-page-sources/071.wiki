@@ -1,0 +1,89 @@
+{{Enemy Infobox
+|Name   = Sewer Clam
+|Image  = StS2_Sewer Clam.png
+|HP     = 56
+|AscHP  = 58
+|Powers = {{BD2|Plating}} 8 ({{Asc2|8|9}})
+|Debut  = Underdocks
+|Type   = Normal
+}}
+'''Sewer Clam''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Sewer Clam}}
+{{Intents Table/row
+|Name   = Jet
+|Intent = Attack3
+|Effect = Deals (10;{{Asc2|9|11}}) damage.
+}}
+{{Intents Table/row
+|Name   = Pressurize
+|Intent = Buff
+|Effect = Gains 4 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Always uses {{Int2|Sewer Clam|Jet}} first. Then alternates between {{Int2|Sewer Clam|Pressurize}} and {{Int2|Sewer Clam|Jet}} every turn.
+
+== Trivia ==
+* Each time '''Sewer Clam''' uses {{Int2|Sewer Clam|Pressurize}}, the coral on it grows larger.
+
+== Animations ==
+{{Bestiary|Sewer Clam}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Kloakenmuschel
+| DEUmeaning = 
+| ESPname    = Cloacalmeja
+| ESPmeaning = 
+| FRAname    = Palourde d'égout
+| FRAmeaning = 
+| ITAname    = Vongola di fogna
+| ITAmeaning = 
+| JPNname    = 下水貝
+| JPNromanised = Gesui kai
+| JPNmeaning = 
+| INDname    = Kerang Selokan
+| INDmeaning = 
+| KORname    = 시궁창 조개
+| KORromanised = sigungchang jogae
+| KORmeaning = 
+| POLname    = Małża Ściekowa
+| POLmeaning = 
+| PTBname    = Bivalve de Esgoto
+| PTBmeaning = 
+| RUSname    = Сточный моллюск
+| RUSromanised = Stochnyj molljusk
+| RUSmeaning = 
+| SPAname    = Almejarilla
+| SPAmeaning = 
+| TURname    = Kanalizasyon İstiridyesi
+| TURmeaning = 
+| ZHSname    = 下水道蚌
+| ZHSromanised = xiashuidaobang
+| ZHSmeaning = 
+| CODEname    = SEWER_CLAM
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.96.0|* Added Sewer Clam SFX}}
+{{Update History Table/row|V0.92.0|* Changed Sewer Clam:
+** HP decreased from 60(63) -> 56(58)
+** Plating now scales with Ascension from 8 -> 9}}
+{{Update History Table/row|V0.59.0|* Buffed Sewer Clam: Strength gain increased from 3 -> 4}}
+{{Update History Table/row|V0.57.0|* Changed Sewer Clam:
+** Removed Clam Up power
+** Now has Plating instead
+** First move changed from Pressurize -> Jet
+** Jet move damage increased from 5(6) -> 10(11)
+** Normal encounter changed, now only contains a lone Sewer Clam}}
+{{Update History Table/row|V0.54.0|* Changed Clam: No longer has a permutation where it is accompanied by two rats}}
+{{Update History Table/row|?|* Added Sewer Clam to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

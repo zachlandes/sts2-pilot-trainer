@@ -1,0 +1,102 @@
+{{Enemy Infobox
+|Name   = Toadpole
+|Image  = StS2_Toadpole.png
+|HP     = 21-25
+|AscHP  = 22-26
+|Debut  = Underdocks
+|Type   = Normal
+}} {{Power Infobox|Thorns|2}}
+'''Toadpole''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Toadpole}}
+{{Intents Table/row
+|Name   = Spike Spit
+|Intent = Attack2
+|Effect = Deals (3;{{Asc2|9|4}}) damage ×3. Removes 2 {{BD2|Thorns}} from self.
+|GivesToEnemy = Thorns
+}}
+{{Intents Table/row
+|Name   = Whirl
+|Intent = Attack2
+|Effect = Deals (7;{{Asc2|9|8}}) damage.
+}}
+{{Intents Table/row
+|Name   = Spiken
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Thorns}}.
+|GivesToEnemy = Thorns
+}}
+{{Intents Table/end}}
+Cycles through its moves in a fixed order: {{Int2|Toadpole|Whirl}}, then {{Int2|Toadpole|Spiken}}, then {{Int2|Toadpole|Spike Spit}}, repeating. In the Toadpoles (Weak) encounter, the front Toadpole starts with {{Int2|Toadpole|Spiken}} instead.
+
+== Trivia ==
+* The Toadpole appears to be the larval form of a {{M2|Spiny Toad}}, as they share very similar mechanics and near identical color palettes.
+
+== Animations ==
+{{Bestiary|Toadpole}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Krötling
+| DEUmeaning = 
+| ESPname    = Ranacuajo
+| ESPmeaning = 
+| FRAname    = Crapautard
+| FRAmeaning = 
+| ITAname    = Girino
+| ITAmeaning = 
+| JPNname    = ヒキジャクシ
+| JPNromanised = Hiki jakushi
+| JPNmeaning = 
+| INDname    = Kecebong
+| INDmeaning = 
+| KORname    = 올챙이
+| KORromanised = olchaeng-i
+| KORmeaning = 
+| POLname    = Kijanka
+| POLmeaning = 
+| PTBname    = Girino
+| PTBmeaning = 
+| RUSname    = Головастик
+| RUSromanised = Golovastik
+| RUSmeaning = 
+| SPAname    = Ranicuajo
+| SPAmeaning = 
+| TURname    = İribaş
+| TURmeaning = 
+| ZHSname    = 蟾蜍蝌蚪
+| ZHSromanised = chanchukedou
+| ZHSmeaning = 
+| CODEname    = TOADPOLE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.100.0|* Changed Calcified Cultist + Toadpole encounter: now Calcified Cultist + Seapunk}}
+{{Update History Table/row|V0.94.0|* Changed Toadpoles normal encounter: swapped the position of the Cultist and the Toadpole}}
+{{Update History Table/row|V0.91.0|* Changed normal Toadpoles encounter: replaced Seapunk -> Calcified Cultist}}
+{{Update History Table/row|V0.77.0|* Nerfed Normal Toadpoles fight: now has one less Toadpole}}
+{{Update History Table/row|V0.76.0|* Buffed Toadpole: spike spit move damage increased from 2(3) -> 3(4)}}
+{{Update History Table/row|V0.67.0|* Added SFX for Toadpole}}
+{{Update History Table/row|V0.62.0|* Fixed issue with Toadpole death animation transitioning back to idle}}
+{{Update History Table/row|V0.59.0|* Buffed Toadpole:
+** Whirl move damage increased from 6(7) -> 7(8)
+** Max HP increased from 24(25) -> 25(26)}}
+{{Update History Table/row|V0.58.0|* Updated Toadpole enemy animations}}
+{{Update History Table/row|V0.57.0|* Changed Toadpole:
+** Encounter no longer includes a weaker and a stronger Toadpole
+** HP changed to a range of 21(22)-24(25)
+** No longer gains Block
+** Whirl damage increased from 4(6) - 6(7)
+** Spike Spit damage decreased from 3(4)x3 -> 2(3)x3
+** Thorns decreased from 3(4) -> 2}}
+{{Update History Table/row|V0.52.0|* Added Toadpole animations}}
+{{Update History Table/row|V0.48.1|* Toadpoles HP buffed. From 13(14)/19(20) -> 16(18)/23(25)}}
+{{Update History Table/row|?|* Added Toadpole to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

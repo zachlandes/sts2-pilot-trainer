@@ -58,6 +58,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/encounter-intel -p 'test_*.py'
           python3 tools/encounter-intel/import_wiki.py src/EncounterIntel/catalogue/wiki-sources src/EncounterIntel/catalogue/wiki-enemies.json --check
+          python3 tools/encounter-intel/import_wiki_pages.py src/EncounterIntel/catalogue/wiki-page-sources src/EncounterIntel/catalogue/wiki-pattern-pages.json --check
 
       - name: Format
         run: dotnet format sts2-pilot-trainer.domain.slnf --verify-no-changes --verbosity minimal

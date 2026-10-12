@@ -1,0 +1,844 @@
+{
+  "schema": 1,
+  "acquisition": "One authorized paced stealth Kernel session: 96 pinned source revisions (including redirect targets), 17 named source gaps; owned browser deletion verified; no cached source re-fetched",
+  "pages": [
+    {
+      "name": "Axebot",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Axebot?oldid=64602&action=edit",
+      "revision": 64602,
+      "file": "003.wiki",
+      "sha256": "220a91e03aa87fadcd7a0c970fe83a514431b688db8ac65b405d1332c3266c68",
+      "fetched_at": "2026-10-12T02:31:26.122641+00:00"
+    },
+    {
+      "name": "Battle Friend V1.0",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Battle_Friend_V1.0?oldid=28135&action=edit",
+      "revision": 28135,
+      "file": "004.wiki",
+      "sha256": "8af11bb9c2d75859a9c892a0313f1ae86344aee5d385331e559a532b7ded856b",
+      "fetched_at": "2026-10-12T02:31:48.651114+00:00"
+    },
+    {
+      "name": "Battle Friend V2.0",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Battle_Friend_V2.0?oldid=28136&action=edit",
+      "revision": 28136,
+      "file": "005.wiki",
+      "sha256": "826f6d2daefe1177b48ea75908769159d8bb77f7ebecda4a5336671a5f53e332",
+      "fetched_at": "2026-10-12T02:32:11.095721+00:00"
+    },
+    {
+      "name": "Battle Friend V3.0",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Battle_Friend_V3.0?oldid=28137&action=edit",
+      "revision": 28137,
+      "file": "006.wiki",
+      "sha256": "9f9c3bc3ee4a1e761ee5c1a8ac0d6c873553d4544aa3691e4e1742887d8568c4",
+      "fetched_at": "2026-10-12T02:32:33.465556+00:00"
+    },
+    {
+      "name": "Bowlbug (Rock)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Bowlbug_%28Rock%29?oldid=52576&action=edit",
+      "revision": 52576,
+      "file": "009.wiki",
+      "sha256": "d95196c0051a1b16545105a5c86c18c94f291811b759c435f96ab10a8c39cd64",
+      "fetched_at": "2026-10-12T02:33:37.212016+00:00"
+    },
+    {
+      "name": "Bowlbug (Silk)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Bowlbug_%28Silk%29?oldid=52594&action=edit",
+      "revision": 52594,
+      "file": "010.wiki",
+      "sha256": "49da95d0fbcdf61c2e61a74cd45dddc24830a477b18b36a21531a3f06f79a33b",
+      "fetched_at": "2026-10-12T02:33:59.691645+00:00"
+    },
+    {
+      "name": "Bygone Effigy",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Bygone_Effigy?oldid=64778&action=edit",
+      "revision": 64778,
+      "file": "012.wiki",
+      "sha256": "49b992c656dc2b57baa8fb6038d2e60552952c66653a3560a6a31350fc17d822",
+      "fetched_at": "2026-10-12T02:35:26.243661+00:00"
+    },
+    {
+      "name": "Byrdonis",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Byrdonis?oldid=64779&action=edit",
+      "revision": 64779,
+      "file": "013.wiki",
+      "sha256": "3a67e3092c125d3823f1c5a6844619f21c98a5fb1884d5fa886c9704011f7035",
+      "fetched_at": "2026-10-12T02:35:49.976594+00:00"
+    },
+    {
+      "name": "Calcified Cultist",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Calcified_Cultist?oldid=52587&action=edit",
+      "revision": 52587,
+      "file": "014.wiki",
+      "sha256": "cacd90d9654df4f8b2effd562c8dbe086418cbe7a064ba1ec0e5522fa7acc04d",
+      "fetched_at": "2026-10-12T02:36:12.122362+00:00"
+    },
+    {
+      "name": "Ceremonial Beast",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Ceremonial_Beast?oldid=63187&action=edit",
+      "revision": 63187,
+      "file": "015.wiki",
+      "sha256": "b1323984d2ed3a330924ef71a618fab88bfc816f000b336ec3c67ee362ff8cd2",
+      "fetched_at": "2026-10-12T02:36:39.299141+00:00"
+    },
+    {
+      "name": "Chomper",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Chomper?oldid=64606&action=edit",
+      "revision": 64606,
+      "file": "016.wiki",
+      "sha256": "14855ae5e1ca2d779a74e174e48b52c4b8dea6bd1052600a587e8db51480fd25",
+      "fetched_at": "2026-10-12T02:37:03.154721+00:00"
+    },
+    {
+      "name": "Corpse Slug",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Corpse_Slug?oldid=64607&action=edit",
+      "revision": 64607,
+      "file": "017.wiki",
+      "sha256": "60e5528ede6af6d977c2e40f160e8d870e184624710ca9a3e4702096c1223420",
+      "fetched_at": "2026-10-12T02:37:27.042061+00:00"
+    },
+    {
+      "name": "Cubex Construct",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Cubex_Construct?oldid=64608&action=edit",
+      "revision": 64608,
+      "file": "020.wiki",
+      "sha256": "44ad1136da90afdb8513287a9dbfeb598d527bf926e2dee7641bbd16dc426e46",
+      "fetched_at": "2026-10-12T02:38:32.260724+00:00"
+    },
+    {
+      "name": "Damp Cultist",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Damp_Cultist?oldid=52588&action=edit",
+      "revision": 52588,
+      "file": "021.wiki",
+      "sha256": "a60070d3a0c300f8069394d96d57b808e5c227248155b991ba95389d811929c8",
+      "fetched_at": "2026-10-12T02:38:54.467897+00:00"
+    },
+    {
+      "name": "Decimillipede",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Decimillipede?oldid=60525&action=edit",
+      "revision": 60525,
+      "file": "022.wiki",
+      "sha256": "b82ea289370dac42a505636e69f0270d14fb0860bd72481eddbaf33c0b3b22e6",
+      "fetched_at": "2026-10-12T02:39:19.126072+00:00"
+    },
+    {
+      "name": "Devoted Sculptor",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Devoted_Sculptor?oldid=64609&action=edit",
+      "revision": 64609,
+      "file": "023.wiki",
+      "sha256": "debc3a8311913e209ac622874f2c9dd13897ee313fed6b2ee8e74a2a96c3eb61",
+      "fetched_at": "2026-10-12T02:39:42.555931+00:00"
+    },
+    {
+      "name": "Doormaker",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Doormaker?oldid=63036&action=edit",
+      "revision": 63036,
+      "file": "024.wiki",
+      "sha256": "c0c7042c02c25527733d58c1db8e8ef4203964e6746cc3afaab74e59943e3c1a",
+      "fetched_at": "2026-10-12T02:40:08.168612+00:00"
+    },
+    {
+      "name": "Entomancer",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Entomancer?oldid=64780&action=edit",
+      "revision": 64780,
+      "file": "025.wiki",
+      "sha256": "d67773d081b75877b9843bdc8dc4eebb3f0f638a1fbc31ff199d761b3d6f49f7",
+      "fetched_at": "2026-10-12T02:40:32.261721+00:00"
+    },
+    {
+      "name": "Exoskeleton",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Exoskeleton?oldid=64610&action=edit",
+      "revision": 64610,
+      "file": "026.wiki",
+      "sha256": "36fa10b7582c75db6a5805431864b16a890bfec2ca84747c32223f3b78332f1f",
+      "fetched_at": "2026-10-12T02:40:57.283861+00:00"
+    },
+    {
+      "name": "Eye With Teeth",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Eye_With_Teeth?oldid=22545&action=edit",
+      "revision": 22545,
+      "file": "027.wiki",
+      "sha256": "b50581a24e0aee64c9284d47ebdd1c60e3debbd2281e64472c47f070da7413c9",
+      "fetched_at": "2026-10-12T02:41:19.546635+00:00"
+    },
+    {
+      "name": "Fabricator",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Fabricator?oldid=64612&action=edit",
+      "revision": 64612,
+      "file": "028.wiki",
+      "sha256": "95db91265e282fd8c8286d0c760c553bb2819ee7ff2612359d1be4ed98c27bb3",
+      "fetched_at": "2026-10-12T02:41:45.843540+00:00"
+    },
+    {
+      "name": "Fat Gremlin",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Fat_Gremlin?oldid=29270&action=edit",
+      "revision": 29270,
+      "file": "029.wiki",
+      "sha256": "2f7abe953f313ce988a4645a0dd945296e206681c1cadafa6df53cc70b133a17",
+      "fetched_at": "2026-10-12T02:42:08.215284+00:00"
+    },
+    {
+      "name": "Flyconid",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Flyconid?oldid=64614&action=edit",
+      "revision": 64614,
+      "file": "031.wiki",
+      "sha256": "4a175af72b756aa9a0bbce045a18d7c64513c87149bc298d31b50ed099bd3424",
+      "fetched_at": "2026-10-12T02:42:52.255832+00:00"
+    },
+    {
+      "name": "Fogmog",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Fogmog?oldid=64665&action=edit",
+      "revision": 64665,
+      "file": "032.wiki",
+      "sha256": "6c0e2ac2b7b1d0f10d605d4b4c06933d51f5e6c59f432e8b9662358ce6e7d07f",
+      "fetched_at": "2026-10-12T02:43:16.388627+00:00"
+    },
+    {
+      "name": "Fossil Stalker",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Fossil_Stalker?oldid=64700&action=edit",
+      "revision": 64700,
+      "file": "033.wiki",
+      "sha256": "89ebff3ff6206dcde259ce74870f728dd2138a5b2a0d5074ac0b45e9f70abe8c",
+      "fetched_at": "2026-10-12T02:43:40.491258+00:00"
+    },
+    {
+      "name": "Frog Knight",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Frog_Knight?oldid=64616&action=edit",
+      "revision": 64616,
+      "file": "034.wiki",
+      "sha256": "39f89c72a99b7db9b385441a228138d34150bfd7118ceb19a9c3f693ba07db50",
+      "fetched_at": "2026-10-12T02:44:04.088712+00:00"
+    },
+    {
+      "name": "Fuzzy Wurm Crawler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Fuzzy_Wurm_Crawler?oldid=64617&action=edit",
+      "revision": 64617,
+      "file": "035.wiki",
+      "sha256": "10c76cce569ce94dffb22283052b95af381f626ec635f9fb65d05812da318c42",
+      "fetched_at": "2026-10-12T02:44:28.136148+00:00"
+    },
+    {
+      "name": "Gas Bomb",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Gas_Bomb?oldid=52589&action=edit",
+      "revision": 52589,
+      "file": "036.wiki",
+      "sha256": "876771af5808b5a27430e7034822ee94854e6bd8b36e4f1802d1948cf4c13860",
+      "fetched_at": "2026-10-12T02:44:50.413248+00:00"
+    },
+    {
+      "name": "Globe Head",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Globe_Head?oldid=64666&action=edit",
+      "revision": 64666,
+      "file": "037.wiki",
+      "sha256": "879cdc271e88ceee102cbbce1266b68beb5e34f15ad5c29ea868daf87b925aa8",
+      "fetched_at": "2026-10-12T02:45:14.437985+00:00"
+    },
+    {
+      "name": "Gremlin Merc",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Gremlin_Merc?oldid=64613&action=edit",
+      "revision": 64613,
+      "file": "038.wiki",
+      "sha256": "d4c9bcdaa3b74b7ca5faa500d7a4c7e74051abecbd903e4e77bd7e236bd92d8c",
+      "fetched_at": "2026-10-12T02:45:40.904190+00:00"
+    },
+    {
+      "name": "Haunted Ship",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Haunted_Ship?oldid=64696&action=edit",
+      "revision": 64696,
+      "file": "040.wiki",
+      "sha256": "da5e51f1e48799932f334d3a83a8006a5e0c518255e68bd3af3453f05fc7416e",
+      "fetched_at": "2026-10-12T02:46:24.937320+00:00"
+    },
+    {
+      "name": "Hunter Killer",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Hunter_Killer?oldid=64626&action=edit",
+      "revision": 64626,
+      "file": "041.wiki",
+      "sha256": "2f7c8034ca86ddb904e42d52da55baf2fe6c2e929a272f809082087873112e64",
+      "fetched_at": "2026-10-12T02:46:49.081539+00:00"
+    },
+    {
+      "name": "Infested Prism",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Infested_Prism?oldid=64782&action=edit",
+      "revision": 64782,
+      "file": "042.wiki",
+      "sha256": "f78662af6432af6b1fc5743237b2eca444a3091e86470c0141531f060687ca31",
+      "fetched_at": "2026-10-12T02:47:13.989546+00:00"
+    },
+    {
+      "name": "Inklet",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Inklet?oldid=64627&action=edit",
+      "revision": 64627,
+      "file": "043.wiki",
+      "sha256": "dfca78768e9d488c62e0240a5a26575cc91d07463e6bd4bf338895260d8f4f1b",
+      "fetched_at": "2026-10-12T02:47:37.470818+00:00"
+    },
+    {
+      "name": "Knight Gang",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Knight_Gang?oldid=64781&action=edit",
+      "revision": 64781,
+      "file": "046.wiki",
+      "sha256": "f68901c2bc4a5ed958a9178dbdf74d64710f1f6e3f459b132ac97446a367d3a5",
+      "fetched_at": "2026-10-12T02:48:57.289105+00:00"
+    },
+    {
+      "name": "Knowledge Demon",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Knowledge_Demon?oldid=64964&action=edit",
+      "revision": 64964,
+      "file": "047.wiki",
+      "sha256": "9635186d7da606e3c007dab41b57418752fb036303cca8c53dfef8fa325ea90a",
+      "fetched_at": "2026-10-12T02:49:23.620976+00:00"
+    },
+    {
+      "name": "Lagavulin Matriarch",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Lagavulin_Matriarch?oldid=64963&action=edit",
+      "revision": 64963,
+      "file": "048.wiki",
+      "sha256": "14b5326cb0af8fcd4cbd640b39f410f42b0cab99089c2e5da255962edf10ae8d",
+      "fetched_at": "2026-10-12T02:49:47.454967+00:00"
+    },
+    {
+      "name": "Leaf Slime (M)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Leaf_Slime_%28M%29?oldid=52583&action=edit",
+      "revision": 52583,
+      "file": "049.wiki",
+      "sha256": "a513a25e3543390c3516de9bc6be52f4099f74c6495661b3676920682f9d992e",
+      "fetched_at": "2026-10-12T02:50:09.831188+00:00"
+    },
+    {
+      "name": "Leaf Slime (S)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Leaf_Slime_%28S%29?oldid=20667&action=edit",
+      "revision": 20667,
+      "file": "050.wiki",
+      "sha256": "055e58b160b8c73e614f8dfd1ab03f3ecf76fc68e248ab20a4673d57153fa9c5",
+      "fetched_at": "2026-10-12T02:50:32.455531+00:00"
+    },
+    {
+      "name": "Living Fog",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Living_Fog?oldid=64619&action=edit",
+      "revision": 64619,
+      "file": "051.wiki",
+      "sha256": "e541e60c2bd755b8d08a36a858579a1eb5db615cc14471fa709c28afc93da6ea",
+      "fetched_at": "2026-10-12T02:50:56.645313+00:00"
+    },
+    {
+      "name": "Living Shield",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Living_Shield?oldid=23789&action=edit",
+      "revision": 23789,
+      "file": "052.wiki",
+      "sha256": "c158fc831bccb02484f92552732aa7d47a51547f6824e8253f3acadbadb1d34b",
+      "fetched_at": "2026-10-12T02:51:18.912501+00:00"
+    },
+    {
+      "name": "Louse Progenitor",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Louse_Progenitor?oldid=64630&action=edit",
+      "revision": 64630,
+      "file": "053.wiki",
+      "sha256": "63dec9352d0d0ab5f3d785956b487c6886493bedeb328f560ee754832aaf45e2",
+      "fetched_at": "2026-10-12T02:51:42.843934+00:00"
+    },
+    {
+      "name": "Mawler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Mawler?oldid=64636&action=edit",
+      "revision": 64636,
+      "file": "055.wiki",
+      "sha256": "054b66b08e39cc12f7690b43efcdd4cd7e6c31760def039e5e0555800a9dc14b",
+      "fetched_at": "2026-10-12T02:52:26.824222+00:00"
+    },
+    {
+      "name": "Mecha Knight",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Mecha_Knight?oldid=64783&action=edit",
+      "revision": 64783,
+      "file": "056.wiki",
+      "sha256": "e184695f527b1dd91e992b0d729822959025ec0e5c93b05712075df2bf903fbe",
+      "fetched_at": "2026-10-12T02:52:49.908323+00:00"
+    },
+    {
+      "name": "Mysterious Knight",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Mysterious_Knight?oldid=52580&action=edit",
+      "revision": 52580,
+      "file": "057.wiki",
+      "sha256": "6113a89520504c17ca96d7344ff9470f2db3ea00e02626101ca7cf0fb48400b2",
+      "fetched_at": "2026-10-12T02:53:12.065180+00:00"
+    },
+    {
+      "name": "Myte",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Myte?oldid=64637&action=edit",
+      "revision": 64637,
+      "file": "058.wiki",
+      "sha256": "ff6764b0c7353e97169efaafb42d57f1bcda0013a73c3930b87a4bdf90daae33",
+      "fetched_at": "2026-10-12T02:53:35.991312+00:00"
+    },
+    {
+      "name": "Nibbit",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Nibbit?oldid=64638&action=edit",
+      "revision": 64638,
+      "file": "059.wiki",
+      "sha256": "2f3d49f9c614d023998852ea9eea23d61be3970b236a0ddda64891768816b650",
+      "fetched_at": "2026-10-12T02:53:59.853854+00:00"
+    },
+    {
+      "name": "Ovicopter",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Ovicopter?oldid=64625&action=edit",
+      "revision": 64625,
+      "file": "061.wiki",
+      "sha256": "979ef6db15b27cf31b9221a4b05f26141c0d96524eca67a4961ee314b937504d",
+      "fetched_at": "2026-10-12T02:54:46.000865+00:00"
+    },
+    {
+      "name": "Owl Magistrate",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Owl_Magistrate?oldid=64639&action=edit",
+      "revision": 64639,
+      "file": "062.wiki",
+      "sha256": "b0dda080abe29da480c1791408cc9a0c658a23cc10021a468047fda645f6e2f4",
+      "fetched_at": "2026-10-12T02:55:10.094926+00:00"
+    },
+    {
+      "name": "Parafright",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Parafright?oldid=45458&action=edit",
+      "revision": 45458,
+      "file": "063.wiki",
+      "sha256": "d39e6536db65787710574cf803d561def09cb727bc39c5fd6459a282814e2394",
+      "fetched_at": "2026-10-12T02:55:32.518216+00:00"
+    },
+    {
+      "name": "Phantasmal Gardener",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Phantasmal_Gardener?oldid=62952&action=edit",
+      "revision": 62952,
+      "file": "064.wiki",
+      "sha256": "51f9b44358cafadf88c17c0fd9deaf3a1601374e5c3e07630e20062eb40eb5b3",
+      "fetched_at": "2026-10-12T02:55:57.190443+00:00"
+    },
+    {
+      "name": "Phrog Parasite",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Phrog_Parasite?oldid=64662&action=edit",
+      "revision": 64662,
+      "file": "065.wiki",
+      "sha256": "5c6ef77050c8dfa54f47ba611e623338627796447da8957f982dbb1d22e69b01",
+      "fetched_at": "2026-10-12T02:56:23.653285+00:00"
+    },
+    {
+      "name": "Punch Construct",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Punch_Construct?oldid=64642&action=edit",
+      "revision": 64642,
+      "file": "066.wiki",
+      "sha256": "41892187176ded7044d777da2630eb157c0685c80169996376469faf679a0a4e",
+      "fetched_at": "2026-10-12T02:56:48.204003+00:00"
+    },
+    {
+      "name": "Queen",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Queen?oldid=64897&action=edit",
+      "revision": 64897,
+      "file": "067.wiki",
+      "sha256": "3b4a34fda064f684ea79be37747c240b77a316614bd96857265cba03bbf79bd5",
+      "fetched_at": "2026-10-12T02:57:15.325190+00:00"
+    },
+    {
+      "name": "Scroll of Biting",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Scroll_of_Biting?oldid=64643&action=edit",
+      "revision": 64643,
+      "file": "069.wiki",
+      "sha256": "e13d96a13678657bebe05b5740eda934e032dbe016582dfc35b37ef683725d1e",
+      "fetched_at": "2026-10-12T02:58:00.340367+00:00"
+    },
+    {
+      "name": "Seapunk",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Seapunk?oldid=64644&action=edit",
+      "revision": 64644,
+      "file": "070.wiki",
+      "sha256": "bc5e955c748ea95c95465209da6d3abf6efdf61adbb582e8ec95d0b8b104a175",
+      "fetched_at": "2026-10-12T02:58:24.478242+00:00"
+    },
+    {
+      "name": "Sewer Clam",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Sewer_Clam?oldid=64645&action=edit",
+      "revision": 64645,
+      "file": "071.wiki",
+      "sha256": "5a70d6bc4d62c7d9c53de2e348f8c63a6cd6edf1eebf77451abb640cd8f111b0",
+      "fetched_at": "2026-10-12T02:58:47.931732+00:00"
+    },
+    {
+      "name": "Shrinker Beetle",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Shrinker_Beetle?oldid=64646&action=edit",
+      "revision": 64646,
+      "file": "072.wiki",
+      "sha256": "01136e2476e265dad6d11c0626895ba5dba87c56cb526f49d5c4567749e4dcb2",
+      "fetched_at": "2026-10-12T02:59:12.032880+00:00"
+    },
+    {
+      "name": "Skulking Colony",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Skulking_Colony?oldid=64784&action=edit",
+      "revision": 64784,
+      "file": "073.wiki",
+      "sha256": "66be0cecae4010e53ab761f7511f1afe30de14197da49ddaadf5783f4a55ab13",
+      "fetched_at": "2026-10-12T02:59:36.221193+00:00"
+    },
+    {
+      "name": "Slimed Berserker",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Slimed_Berserker?oldid=64647&action=edit",
+      "revision": 64647,
+      "file": "074.wiki",
+      "sha256": "1693e5e9f5a9464cb5ba633d8e55c6b2f49a1cbe023ff746579d5e2ef32353b6",
+      "fetched_at": "2026-10-12T02:59:59.831335+00:00"
+    },
+    {
+      "name": "Slithering Strangler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Slithering_Strangler?oldid=64649&action=edit",
+      "revision": 64649,
+      "file": "075.wiki",
+      "sha256": "74657a861c459bec6cb87626e02a98c04fca2bb37dc33746ce204e8c71ce4197",
+      "fetched_at": "2026-10-12T03:00:23.909662+00:00"
+    },
+    {
+      "name": "Sludge Spinner",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Sludge_Spinner?oldid=64650&action=edit",
+      "revision": 64650,
+      "file": "076.wiki",
+      "sha256": "4c3b529d554ca6d240b972b3f97d6e891ed0b771c4a209773571749ed43c3c3d",
+      "fetched_at": "2026-10-12T03:00:52.497363+00:00"
+    },
+    {
+      "name": "Slumbering Beetle",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Slumbering_Beetle?oldid=64651&action=edit",
+      "revision": 64651,
+      "file": "077.wiki",
+      "sha256": "1bbde4a935d18c4f838a243f08538f4b6f6e9a0224675d8a88c5681183af993d",
+      "fetched_at": "2026-10-12T03:01:18.799029+00:00"
+    },
+    {
+      "name": "Snapping Jaxfruit",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Snapping_Jaxfruit?oldid=64668&action=edit",
+      "revision": 64668,
+      "file": "078.wiki",
+      "sha256": "a89998560c298e6888ccd6afc1708a434960941a2a8d99fa5e32f54d06137348",
+      "fetched_at": "2026-10-12T03:01:42.914512+00:00"
+    },
+    {
+      "name": "Sneaky Gremlin",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Sneaky_Gremlin?oldid=29269&action=edit",
+      "revision": 29269,
+      "file": "079.wiki",
+      "sha256": "2c61c407f6dbabd4348604237a3edd39775ad00a9fbb7d36d00c25d09ea7cc32",
+      "fetched_at": "2026-10-12T03:02:05.406202+00:00"
+    },
+    {
+      "name": "Soul Fysh",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Soul_Fysh?oldid=64962&action=edit",
+      "revision": 64962,
+      "file": "080.wiki",
+      "sha256": "d33e2e3f12bea6a6bdca27a91f1e1e2fe7932fa69d66704251fff8dba7d008c2",
+      "fetched_at": "2026-10-12T03:02:29.490573+00:00"
+    },
+    {
+      "name": "Soul Nexus",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Soul_Nexus?oldid=61184&action=edit",
+      "revision": 61184,
+      "file": "081.wiki",
+      "sha256": "ed3030f7fd3b5825f795a91670f054ce7b4a3a2fc65189effdeea3cf5903ae16",
+      "fetched_at": "2026-10-12T03:02:53.559796+00:00"
+    },
+    {
+      "name": "Spectral Knight",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Spectral_Knight?oldid=29705&action=edit",
+      "revision": 29705,
+      "file": "082.wiki",
+      "sha256": "a2073bbae03134b45f17e1adabaab3fedcd9d89eb2f7e089ca80e3037ecfaf25",
+      "fetched_at": "2026-10-12T03:03:15.752911+00:00"
+    },
+    {
+      "name": "Spiny Toad",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Spiny_Toad?oldid=64653&action=edit",
+      "revision": 64653,
+      "file": "083.wiki",
+      "sha256": "c07bac3108dded50451e1e7949a19aa30ca2c7d59a00c8f17f9fb1e03734ad82",
+      "fetched_at": "2026-10-12T03:03:39.839504+00:00"
+    },
+    {
+      "name": "Terror Eel",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Terror_Eel?oldid=64785&action=edit",
+      "revision": 64785,
+      "file": "085.wiki",
+      "sha256": "136717198db9c53cbc20bb4ca376a04ec40ab4b3377b46a6a4a4b76013ff85f1",
+      "fetched_at": "2026-10-12T03:04:24.399555+00:00"
+    },
+    {
+      "name": "Test Subject",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Test_Subject?oldid=64961&action=edit",
+      "revision": 64961,
+      "file": "086.wiki",
+      "sha256": "9697aa7d4c74e3ca85323dea9382040572f94e23541b7251323dbb317a180962",
+      "fetched_at": "2026-10-12T03:04:51.379304+00:00"
+    },
+    {
+      "name": "The Forgotten",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Forgotten?oldid=52597&action=edit",
+      "revision": 52597,
+      "file": "087.wiki",
+      "sha256": "b5a6175c3dc51a0d53e8de67770fb25f550a5f931fa8dc000b72ade57edd42f9",
+      "fetched_at": "2026-10-12T03:05:13.675118+00:00"
+    },
+    {
+      "name": "The Insatiable",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Insatiable?oldid=64933&action=edit",
+      "revision": 64933,
+      "file": "088.wiki",
+      "sha256": "d438b60c014944493e62fae78b3aedd746070ef93a39900a6954712a24d80a79",
+      "fetched_at": "2026-10-12T03:05:38.223746+00:00"
+    },
+    {
+      "name": "The Lost",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Lost?oldid=52596&action=edit",
+      "revision": 52596,
+      "file": "089.wiki",
+      "sha256": "062d16dd0713176549782794a9e9303be9dca864a9f830e898a5800adc79c720",
+      "fetched_at": "2026-10-12T03:06:00.278941+00:00"
+    },
+    {
+      "name": "The Merchant???",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Merchant%3F%3F%3F?oldid=64809&action=edit",
+      "revision": 64809,
+      "file": "090.wiki",
+      "sha256": "c9e6a9b5bc34f22c859c370b4b5ce56ccd38ecd51e910e6d7dd06341d5b88536",
+      "fetched_at": "2026-10-12T03:06:25.172768+00:00"
+    },
+    {
+      "name": "The Obscura",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Obscura?oldid=64695&action=edit",
+      "revision": 64695,
+      "file": "091.wiki",
+      "sha256": "d703e7c387c9f56fcdc0efaaa8223559a082dd85e9a44badd3f3e5567b2c2b77",
+      "fetched_at": "2026-10-12T03:06:49.133070+00:00"
+    },
+    {
+      "name": "Thieving Hopper",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Thieving_Hopper?oldid=64657&action=edit",
+      "revision": 64657,
+      "file": "092.wiki",
+      "sha256": "4019474812b047e1a5ee008502c08b6f629f9409079437871bd610186cc27709",
+      "fetched_at": "2026-10-12T03:07:15.394080+00:00"
+    },
+    {
+      "name": "Toadpole",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Toadpole?oldid=64658&action=edit",
+      "revision": 64658,
+      "file": "093.wiki",
+      "sha256": "11a6a6ba5acae95495e79ae45d4abe8a631510b89dbcfbf6661927c71309dae1",
+      "fetched_at": "2026-10-12T03:07:38.494413+00:00"
+    },
+    {
+      "name": "Torch Head Amalgam",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Torch_Head_Amalgam?oldid=62951&action=edit",
+      "revision": 62951,
+      "file": "094.wiki",
+      "sha256": "49c23bb0ab587df115474e08d9e10c3a0ab591e9283c354a7658c4836ff6c04a",
+      "fetched_at": "2026-10-12T03:08:00.607532+00:00"
+    },
+    {
+      "name": "Tough Egg",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Tough_Egg?oldid=45460&action=edit",
+      "revision": 45460,
+      "file": "095.wiki",
+      "sha256": "ccbdd12d5c2ee6ef385e71630f52815c1da90e7b87a88e6993d4a221d64f7db5",
+      "fetched_at": "2026-10-12T03:08:22.769744+00:00"
+    },
+    {
+      "name": "Tunneler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Tunneler?oldid=64659&action=edit",
+      "revision": 64659,
+      "file": "097.wiki",
+      "sha256": "430a304f3b5b7fc356c9d9cd7d36e24577f13d909561f42cdd8ca8162fc70a91",
+      "fetched_at": "2026-10-12T03:09:07.908777+00:00"
+    },
+    {
+      "name": "Turret Operator",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Turret_Operator?oldid=64629&action=edit",
+      "revision": 64629,
+      "file": "098.wiki",
+      "sha256": "8c9d802d9797b9fc46fd9ae390054dd3d0484d62b228c0aa54ca3b7aa96e8b5a",
+      "fetched_at": "2026-10-12T03:09:32.568782+00:00"
+    },
+    {
+      "name": "Twig Slime (M)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Twig_Slime_%28M%29?oldid=52584&action=edit",
+      "revision": 52584,
+      "file": "099.wiki",
+      "sha256": "01dc43a4249e91d34a3ddcaa8dd266c197c57b149c5d66a395068b3fa4070b91",
+      "fetched_at": "2026-10-12T03:09:54.784423+00:00"
+    },
+    {
+      "name": "Twig Slime (S)",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Twig_Slime_%28S%29?oldid=52582&action=edit",
+      "revision": 52582,
+      "file": "100.wiki",
+      "sha256": "beffba73ee102d9cc00f76e491c10eb864d150f7a38fbe07d328dd19443bd584",
+      "fetched_at": "2026-10-12T03:10:16.938813+00:00"
+    },
+    {
+      "name": "Two-Tailed Rat",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Two-Tailed_Rat?oldid=64660&action=edit",
+      "revision": 64660,
+      "file": "101.wiki",
+      "sha256": "121551bb0b277f47f0c4b245b02fafd891b6f50a7863239582a8d1c8bf48cb7e",
+      "fetched_at": "2026-10-12T03:10:40.289085+00:00"
+    },
+    {
+      "name": "Vantom",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Vantom?oldid=64839&action=edit",
+      "revision": 64839,
+      "file": "102.wiki",
+      "sha256": "a57e0298c8b21fe4e9d41e82031782435d9f38868786c2cb17d9c955031ffbfe",
+      "fetched_at": "2026-10-12T03:11:04.156496+00:00"
+    },
+    {
+      "name": "Vine Shambler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Vine_Shambler?oldid=64661&action=edit",
+      "revision": 64661,
+      "file": "103.wiki",
+      "sha256": "83079c5144f898ef7f6e7bd09a0f27b45cf3a5a3be9b8dc4d76696950118c9a8",
+      "fetched_at": "2026-10-12T03:11:27.263590+00:00"
+    },
+    {
+      "name": "Waterfall Giant",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Waterfall_Giant?oldid=64967&action=edit",
+      "revision": 64967,
+      "file": "104.wiki",
+      "sha256": "6e9c2fefbfbb414b8b94d5ad2f9923c94f70ce431fba93070ac8cb45d4089984",
+      "fetched_at": "2026-10-12T03:11:52.718515+00:00"
+    },
+    {
+      "name": "Wriggler",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Wriggler?oldid=52586&action=edit",
+      "revision": 52586,
+      "file": "105.wiki",
+      "sha256": "99d66b7b6dde88670638c713d611d52890218d45375ac0e73915661ddfdc40a9",
+      "fetched_at": "2026-10-12T03:12:14.989390+00:00"
+    },
+    {
+      "name": "Zapbot",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Zapbot?oldid=45185&action=edit",
+      "revision": 45185,
+      "file": "106.wiki",
+      "sha256": "d2ce988496360c96fa4aec80370bb705bee5f47ae3ae9a15a7e76bae0d8658e2",
+      "fetched_at": "2026-10-12T03:12:37.185986+00:00"
+    },
+    {
+      "name": "Battle Friend",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Battle_Friend?oldid=64786&action=edit",
+      "revision": 64786,
+      "file": "107.wiki",
+      "sha256": "d9f59d9e14a14eaccea57fd5d91df0bb29ac1b4f41da47158990a8b737013dec",
+      "fetched_at": "2026-10-12T03:12:59.518198+00:00"
+    },
+    {
+      "name": "Bowlbugs",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Bowlbugs?oldid=64604&action=edit",
+      "revision": 64604,
+      "file": "108.wiki",
+      "sha256": "517b3d9e609a9db06452d5c8faf36b38662b2121fdd7b4cc130ec4d2d3db29ea",
+      "fetched_at": "2026-10-12T03:13:26.476725+00:00"
+    },
+    {
+      "name": "Cultists",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Cultists?oldid=64605&action=edit",
+      "revision": 64605,
+      "file": "109.wiki",
+      "sha256": "e5240f697472bb82cb8f2179642538f4630f80853908e65c15cd53d881ce606b",
+      "fetched_at": "2026-10-12T03:13:51.104931+00:00"
+    },
+    {
+      "name": "Slimes",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Slimes?oldid=64628&action=edit",
+      "revision": 64628,
+      "file": "110.wiki",
+      "sha256": "21c6b76791e1fa2541a6ad20c1cdeccceba1ce77ad03593bc06fc5e9c6b98d53",
+      "fetched_at": "2026-10-12T03:14:17.500533+00:00"
+    },
+    {
+      "name": "The Lantern Key",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Lantern_Key?oldid=64808&action=edit",
+      "revision": 64808,
+      "file": "111.wiki",
+      "sha256": "5e2624c337f6cff8c5665e229d87462fea85f83418c2dcec52313ce823db253d",
+      "fetched_at": "2026-10-12T03:14:42.493192+00:00"
+    },
+    {
+      "name": "The Lost and Forgotten",
+      "source_url": "https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:The_Lost_and_Forgotten?oldid=64655&action=edit",
+      "revision": 64655,
+      "file": "112.wiki",
+      "sha256": "e2f2de162572939bef438812bd3d2bbbb48b5c1e061344b65a90c7b88016eb83",
+      "fetched_at": "2026-10-12T03:15:06.258710+00:00"
+    }
+  ],
+  "unavailable_pages": [
+    {
+      "name": "Aeonglass",
+      "reason": "No successful source receipt before leaving the page: initial edit-page revision reader used wgRevisionId, which can be zero; not requested again"
+    },
+    {
+      "name": "Assassin Raider",
+      "reason": "No successful source receipt before leaving the page: initial edit-page revision reader used wgRevisionId, which can be zero; not requested again"
+    },
+    {
+      "name": "Axe Raider",
+      "reason": "No successful source receipt before leaving the page: initial edit-page revision reader used wgRevisionId, which can be zero; not requested again"
+    },
+    {
+      "name": "Bowlbug (Egg)",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Bowlbug (Nectar)",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Brute Raider",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Crossbow Raider",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Crusher",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Flail Knight",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Guardbot",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Kin Follower",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Kin Priest",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Magi Knight",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Noisebot",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Rocket",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Stabbot",
+      "reason": "No public source textarea or revision"
+    },
+    {
+      "name": "Tracker Raider",
+      "reason": "No public source textarea or revision"
+    }
+  ]
+}

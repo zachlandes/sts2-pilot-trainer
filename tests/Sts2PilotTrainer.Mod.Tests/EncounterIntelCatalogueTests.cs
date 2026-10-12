@@ -55,12 +55,27 @@ public sealed partial class EncounterIntelTests
             Assert.All(reading.Monsters, monster =>
             {
                 Assert.True(monster.Moves.Count > 0 || monster.Gaps.Count > 0);
+                Assert.NotNull(monster.Pattern);
+                Assert.NotEmpty(monster.PatternComparison.Reason);
+                if (monster.PatternComparison.Standing == "unavailable") Assert.Null(monster.PatternComparison.SourceText);
+                else
+                {
+                    Assert.NotEmpty(monster.PatternComparison.SourceText!);
+                    Assert.NotNull(monster.PatternComparison.Source);
+                }
                 Assert.Contains(reading.Coverage, row => row.Id == monster.Id && row.Standing == monster.Standing);
             });
             Assert.All(reading.Coverage.Where(row => row.Standing != CatalogueStanding.Catalogued), row => Assert.NotEmpty(row.Reasons));
             Assert.Contains(reading.Encounters, encounter => encounter.Id == "ENCOUNTER.DENSE_VEGETATION_EVENT_ENCOUNTER");
             Assert.Contains(reading.Encounters, encounter => encounter.Id == "ENCOUNTER.PUNCH_OFF_EVENT_ENCOUNTER");
             Assert.Contains(reading.Encounters, encounter => encounter.Id == "ENCOUNTER.MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER");
+            Assert.All(reading.Encounters, encounter => Assert.NotEmpty(encounter.DamageSchedules));
+            var nibbits = reading.Encounters.Single(encounter => encounter.Id == "ENCOUNTER.NIBBITS_NORMAL").DamageSchedules[0];
+            var nibbit = Assert.Single(nibbits.PossibleMembers);
+            Assert.Equal(new[] { "SLICE_MOVE", "HISS_MOVE" }, nibbit.OpeningAlternatives.Select(variant => variant.OpeningMove));
+            var axebot = Assert.Single(reading.Encounters.Single(encounter => encounter.Id == "ENCOUNTER.AXEBOTS_NORMAL").DamageSchedules[0].PossibleMembers);
+            Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebot.OpeningAlternatives.Select(variant => variant.OpeningMove));
+            Assert.Contains(reading.PatternGaps, gap => gap.Contains("source receipt:", StringComparison.Ordinal));
             Assert.Equal(3, reading.Monsters.Count(monster => monster.Wiki.Any(enemy => enemy.Name == "Decimillipede")));
             var subject = reading.Monsters.Single(monster => monster.Id == "MONSTER.TEST_SUBJECT");
             Assert.Equal(3, subject.Wiki.Count);
@@ -99,6 +114,7 @@ public sealed partial class EncounterIntelTests
             Assert.Equal(CatalogueStanding.Flagged, monster.Standing);
             Assert.Contains(monster.Quantities, quantity => quantity.Wiki == 999 && quantity.Game == 250 && quantity.Mismatch);
             Assert.Contains(monster.Moves.SelectMany(move => move.Quantities), quantity => quantity.Wiki == 999 && quantity.Game == 16 && quantity.Mismatch);
+            Assert.Contains(monster.Moves.SelectMany(move => move.Quantities), quantity => quantity.Wiki == 999 && quantity.Authority == QuantityAuthority.ConstructedGraph && quantity.Mismatch);
             Evidence("catalogue-edited-number", monster);
         });
     }

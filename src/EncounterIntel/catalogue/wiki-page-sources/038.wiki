@@ -1,0 +1,305 @@
+'''Gremlin Merc''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}. It starts with {{BD2|Surprise}} and {{BD2|Thievery}}, stealing gold with each attack. When the Gremlin Merc is killed, it summons a {{M2|Fat Gremlin}} and a {{M2|Sneaky Gremlin}}.
+
+== Gremlin Merc ==
+{{Enemy Infobox
+|Name   = Gremlin Merc
+|Image  = StS2_Gremlin Merc.png
+|HP     = 47-49
+|AscHP  = 51-53
+|Powers = {{BD2|Surprise}}<br>{{BD2|Thievery}} 20
+|Debut  = Underdocks
+|Type   = Normal
+}}
+{{Power Infobox
+|Name         = Surprise
+|Image        = StS2 Icon Surprise.png
+|Description  = Something is off about this creature...
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Permanent
+}}
+{{Power Infobox
+|Name         = Thievery
+|Image        = StS2 Icon Thievery.png
+|Description  = Steals X Gold when Attacking.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+=== Pattern ===
+{{Intents Table/start|Gremlin Merc}}
+{{Intents Table/row
+|Name   = Gimme
+|Intent = Attack3
+|Effect = Deals (7x2;{{Asc2|8|8x2}}) damage.
+}}
+{{Intents Table/row
+|Name   = Double Smash
+|Intent = Attack3, Debuff
+|Effect = Deals (6x2;{{Asc2|8|7x2}}) damage. Applies 2 {{BD2|Weak}}.
+|GivesToPlayer = Weak
+}}
+{{Intents Table/row
+|Name   = Hehe
+|Intent = Attack2, Buff
+|Effect = Deals (8;{{Asc2|8|9}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Cycles through its moves in a fixed order:
+# {{Int2|Gremlin Merc|Gimme}}
+# {{Int2|Gremlin Merc|Double Smash}}
+# {{Int2|Gremlin Merc|Hehe}}
+# Back to {{Int2|Gremlin Merc|Gimme}}
+
+When the Gremlin Merc dies, its {{BD2|Surprise}} power triggers, summoning a {{M2|Fat Gremlin}} and a {{M2|Sneaky Gremlin}}. The Fat Gremlin inherits the stolen gold via {{BD2|Heist}}.
+
+=== Dialogue ===
+When first using {{Int2|Gremlin Merc|Gimme}}.
+<blockquote><i>
+{{TS|gold|shake|Money!}}
+
+{{TS|orange|up|Money!}}
+</i></blockquote>
+
+{{Clear}}
+
+== Sneaky Gremlin ==
+{{Enemy Infobox
+|Name   = Sneaky Gremlin
+|Link   = Slay The Spire 2:Gremlin Merc#Sneaky Gremlin
+|Image  = StS2_Sneaky Gremlin.png
+|HP     = 10-14
+|AscHP  = 11-15
+|Debut  = Underdocks
+|Type   = Minion
+}}
+The Sneaky Gremlin is a minion summoned when the Gremlin Merc dies.
+
+=== Pattern ===
+{{Intents Table/start|Sneaky Gremlin}}
+{{Intents Table/row
+|Name   = Spawned
+|Intent = Stun
+|Effect = Wakes up. Does nothing.
+}}
+{{Intents Table/row
+|Name   = Tackle
+|Intent = Attack2
+|Effect = Deals (9;{{Asc2|9|10}}) damage.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Sneaky Gremlin|Spawned}} on its first turn (does nothing), then uses {{Int2|Sneaky Gremlin|Tackle}} every turn after.
+
+{{Clear}}
+
+== Fat Gremlin ==
+{{Enemy Infobox
+|Name   = Fat Gremlin
+|Link   = Slay The Spire 2:Gremlin Merc#Fat Gremlin
+|Image  = StS2_Fat Gremlin.png
+|HP     = 13-17
+|AscHP  = 14-18
+|Debut  = Underdocks
+|Type   = Minion
+|Powers = {{BD2|Heist}}
+}}
+{{Power Infobox
+|Name         = Heist
+|Image        = StS2 Icon Heist.png
+|Description  = When killed, returns all the stolen Gold.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+}}
+The Fat Gremlin is a minion summoned when the Gremlin Merc dies. It carries any gold the Gremlin Merc stole.
+
+=== Pattern ===
+{{Intents Table/start|Fat Gremlin}}
+{{Intents Table/row
+|Name   = Spawned
+|Intent = Stun
+|Effect = Wakes up. Does nothing.
+}}
+{{Intents Table/row
+|Name   = Flee
+|Intent = Escape
+|Effect = Flees from combat with any stolen gold.
+}}
+{{Intents Table/end}}
+Uses {{Int2|Fat Gremlin|Spawned}} on its first turn (does nothing), then uses {{Int2|Fat Gremlin|Flee}} every turn after, escaping with the stolen gold.
+
+=== Dialogue ===
+When using {{Int2|Fat Gremlin|Flee}}.
+<blockquote><i>
+{{TS|orange|shake|I'm outta here!}}
+</i></blockquote>
+
+
+{{Clear}}
+
+== Useful Cards ==
+* Frontloaded damage from cards like {{C2|Assassinate}} can help finish off the '''Gremlin Merc''' before it steals too much of your money.
+* Recovering {{KW2|Gold}} lost via {{BD2|Thievery}} will trigger {{R2|Dragon Fruit}}.
+** The recovered Gold can be bolstered via {{R2|Bowler Hat}}.
+
+== Trivia ==
+* The '''Gremlin Merc''' is actually two Gremlins disguised as the {{M|Gremlin Leader}}.
+* One of the accessories worn by the '''Gremlin Merc''' appears to be a {{R2|Kunai}}.
+
+* '''Gremlin Merc''' is the only Enemy in the game whose attack damage increases at {{Asc2|8|Ascension}} instead of {{Asc2|9|Ascension}}.
+* '''Fat Gremlin''' and '''Sneaky Gremlin''' are the only enemies in Slay the Spire 2 to share a name with enemies from Slay the Spire 1.
+* '''Fat Gremlin''' is one of only 4 enemies in the game to be incapable of causing damage, the other three being the {{M2|Noisebot}}, {{M2|Guardbot}}, and {{M2|Eye With Teeth}}.
+
+== Animations ==
+<tabber>
+|-|Gremlin Merc=
+{{Bestiary|Gremlin Merc}}
+|-|Sneaky Gremlin=
+{{Bestiary|Sneaky Gremlin}}
+|-|Fat Gremlin=
+{{Bestiary|Fat Gremlin}}
+|-|No Bag Fat Gremlin=
+{{Bestiary|No Bag Fat Gremlin}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Gremlin Merc
+| DEUname    = Gremlin-Söldner
+| DEUmeaning = 
+| ESPname    = Gremlin mercenario
+| ESPmeaning = 
+| FRAname    = Diablotin mercenaire
+| FRAmeaning = 
+| ITAname    = Gremlin mercenario
+| ITAmeaning = 
+| JPNname    = 傭兵グレムリン
+| JPNromanised = Youhei guremurin
+| JPNmeaning = 
+| INDname    = Tuyul Petarung
+| INDmeaning = 
+| KORname    = 그렘린 용병
+| KORromanised = geulemlin yongbyeong
+| KORmeaning = 
+| POLname    = Gremlin Rabuś
+| POLmeaning = 
+| PTBname    = Gremlin Mercenário
+| PTBmeaning = 
+| RUSname    = Гремлин-наемник
+| RUSromanised = Gremlin-naemnik
+| RUSmeaning = 
+| SPAname    = Gremlin mercenario
+| SPAmeaning = 
+| TURname    = Gremlin Paralı Asker
+| TURmeaning = 
+| ZHSname    = 地精佣兵
+| ZHSromanised = dijingyongbing
+| ZHSmeaning = 
+| CODEname    = GREMLIN_MERC
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Sneaky Gremlin
+| DEUname    = Schleichender Gremlin
+| DEUmeaning = 
+| ESPname    = Gremlin aturdido
+| ESPmeaning = 
+| FRAname    = Diablotin sournois
+| FRAmeaning = 
+| ITAname    = Gremlin furtivo
+| ITAmeaning = 
+| JPNname    = スニーキーグレムリン
+| JPNromanised = Suniikiiguremurin
+| JPNmeaning = 
+| INDname    = Tuyul Cerdik
+| INDmeaning = 
+| KORname    = 교활한 그렘린
+| KORromanised = gyohwalhan geulemlin
+| KORmeaning = 
+| POLname    = Podstępny Gremlin
+| POLmeaning = 
+| PTBname    = Gremlin Trapaceiro
+| PTBmeaning = 
+| RUSname    = Коварный гремлин
+| RUSromanised = Kovarnyj gremlin
+| RUSmeaning = 
+| SPAname    = Gremlin sigiloso
+| SPAmeaning = 
+| TURname    = Sinsi Gremlin
+| TURmeaning = 
+| ZHSname    = 卑鄙地精
+| ZHSromanised = beibidijing
+| ZHSmeaning = 
+| CODEname    = SNEAKY_GREMLIN
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Fat Gremlin
+| DEUname    = Fetter Gremlin
+| DEUmeaning = 
+| ESPname    = Gremlin ávaro
+| ESPmeaning = 
+| FRAname    = Gros diablotin
+| FRAmeaning = 
+| ITAname    = Gremlin grasso
+| ITAmeaning = 
+| JPNname    = 太っちょグレムリン
+| JPNromanised = Futotcho guremurin
+| JPNmeaning = 
+| INDname    = Tuyul Gemuk
+| INDmeaning = 
+| KORname    = 뚱뚱한 그렘린
+| KORromanised = ttungttunghan geulemlin
+| KORmeaning = 
+| POLname    = Duży gremlin
+| POLmeaning = 
+| PTBname    = Gremlin Avarento
+| PTBmeaning = 
+| RUSname    = Толстый гремлин
+| RUSromanised = Tolstyj gremlin
+| RUSmeaning = 
+| SPAname    = Gremlin regordete
+| SPAmeaning = 
+| TURname    = Şişko Gremlin
+| TURmeaning = 
+| ZHSname    = 胖地精
+| ZHSromanised = pangdijing
+| ZHSmeaning = 
+| CODEname    = FAT_GREMLIN
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.109.0|* Fixed Fat Gremlin sometimes spawning without a bag of money when it should}}
+{{Update History Table/row|V0.108.0|* Updated Gremlin Merc animations
+* If you kill Gremlin Merc before it steals any of your gold, Fat Gremlin now spawns without holding a bag of gold}}
+{{Update History Table/row|v0.107.0|* If '''Gremlin Merc''' didn't steal any gold but '''Fat Gremlin''' escaped, the player now receives 50% of the normal gold reward instead of 0%
+* If you kill Gremlin Merc before he steals any gold from you, the rewards screen no longer says "Mugged..." even if Fat Gremlin escapes}}
+{{Update History Table/row|V0.105.0|* Adjusted Gremlin Mercenary combat enemy hitboxes, speech bubble, and intent positions}}
+{{Update History Table/row|V0.102.0|* Adjusted timings and pauses for dialogue for Gremlin Merc}}
+{{Update History Table/row|V0.95.0|* Buffed Gremlin Merc: now scales offensively with Ascension and applies additional Weak
+* Resized Gremlin Merc enemies}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for the following enemies:
+** Fat Gremlin
+** Gremlin Merc
+** Sneaky Gremlin}}
+{{Update History Table/row|V0.89.0|* Gremlin Merc now correctly steals gold on its third move}}
+{{Update History Table/row|V0.83.0|* Added Sneaky Gremlin animations}}
+{{Update History Table/row|V0.82.0|* Fixed Fat Gremlin run animation when game is in Fast Mode}}
+{{Update History Table/row|V0.81.0|* Added Gremlin Merc and Fat Gremlin animations
+* Stolen gold in Gremlin Merc combat is no longer included in Run History if you stole the gold back}}
+{{Update History Table/row|V0.71.0|* Buffed Gremlin Merc: Double Smash move damage increased from 4x2 -> 6x2}}
+{{Update History Table/row|V0.70.0|* Changed Gremlin Merc: Hehe buff move replaced with a new move that deals 8(9) damage and gains 1 Strength
+* Updated dialogue for Gremlin Merc encounter}}
+{{Update History Table/row|V0.62.0|* Fixed an issue where Gremlin Horn and Hungering Belly relics wouldn't trigger when a creature's death was prevented by an effect like Hard to Kill power}}
+{{Update History Table/row|V0.55.0|* Buffed Thieving Hopper & Gremlins: no longer give gold (or give less gold) if they escape}}
+{{Update History Table/row|?|* Added Gremlin Merc to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Minions]] [[Category:Slay the Spire 2 Content]]

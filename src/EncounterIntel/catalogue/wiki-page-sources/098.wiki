@@ -1,0 +1,196 @@
+'''Turret Operator''' is a weak {{2|Monsters|Enemy}} encounter found in {{2|Glory}}, featuring a Living Shield and a Turret Operator.
+
+== Turret Operator ==
+{{Enemy Infobox
+|Name   = Turret Operator
+|Image  = StS2_Turret Operator.png
+|HP     = 41
+|AscHP  = 51
+|Debut  = Glory
+|Type   = Normal
+}}
+=== Pattern ===
+{{Intents Table/start|Turret Operator}}
+{{Intents Table/row
+|Name   = Unload!
+|Intent = Attack3
+|Effect = Deals (3;{{Asc2|9|4}}) damage x5.
+}}
+{{Intents Table/row
+|Name   = Loading
+|Intent = Buff
+|Effect = Gains 1 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Follows a fixed 3-move cycle:
+# {{Int2|Turret Operator|Unload!}}
+# {{Int2|Turret Operator|Unload!}}
+# {{Int2|Turret Operator|Loading}}
+
+{{Clear}}
+
+== Living Shield ==
+{{Enemy Infobox
+|Name   = Living Shield
+|Image  = StS2_Living Shield.png
+|HP     = 55
+|AscHP  = 65
+|Powers = {{BD2|Rampart}} 25
+|Debut  = Glory
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Rampart
+|Image        = StS2 Icon Rampart.png
+|Description  = At the start of the player's turn, Turret Operator gains X {{KW2|Block}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Block
+}}
+=== Pattern ===
+{{Intents Table/start|Living Shield}}
+{{Intents Table/row
+|Name   = Shield Slam
+|Intent = Attack1
+|Effect = Deals 6 damage.
+}}
+{{Intents Table/row
+|Name   = Smash
+|Intent = Attack3, Buff
+|Effect = Deals (16;{{Asc2|9|18}}) damage. Gains 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+* Uses {{Int2|Living Shield|Shield Slam}} every turn while the '''Turret Operator''' is alive.
+** Once the '''Turret Operator''' is killed, switches to {{Int2|Living Shield|Smash}} every turn.
+
+{{Clear}}
+
+== Useful Cards ==
+* The '''Turret Operator''''s damage is split into multiple hits with low damage on each, so {{BD2|Strength}} reduction from cards like {{C2|Piercing Wail}}, {{C2|Shared Fate}} or {{C2|Mangle}} will decrease his damage significantly and will often set it to 0.
+* The '''Turret Operator''' will take five times as much damage as most enemies from {{BD2|Thorns}}.
+
+== Trivia ==
+* '''Turret Operator and Living Shield''' appear to be designed in reference to Slay the Spire 1's {{M|Centurion}} and {{M|Mystic}}. The two fights' combatants share similar proportions, and both '''Living Shield''' and Centurion employ an additional attack if their smaller companion is killed.
+
+== Animations ==
+<tabber>
+|-|Turret Operator=
+{{Bestiary|Turret Operator}}
+|-|Living Shield=
+{{Bestiary|Living Shield}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Turret Operator
+| DEUname    = Geschütz-Operateur
+| DEUmeaning = 
+| ESPname    = Operatorreta
+| ESPmeaning = 
+| FRAname    = Opérateur de tourelle
+| FRAmeaning = 
+| ITAname    = Operatorretta
+| ITAmeaning = 
+| JPNname    = タレットオペレーター
+| JPNromanised = Turret operator
+| JPNmeaning = 
+| INDname    = Pengguna Turret
+| INDmeaning = 
+| KORname    = 포탑 사수
+| KORromanised = potab sasu
+| KORmeaning = 
+| POLname    = Szczur z CKM-em
+| POLmeaning = 
+| PTBname    = Operador de Artilharia
+| PTBmeaning = 
+| RUSname    = Наводчик
+| RUSromanised = Navodchik
+| RUSmeaning = 
+| SPAname    = Ametrallador
+| SPAmeaning = 
+| TURname    = Taret Operatörü
+| TURmeaning = 
+| ZHSname    = 高塔炮手
+| ZHSromanised = gaotapaoshou
+| ZHSmeaning = 
+| CODEname    = TURRET_OPERATOR
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Living Shield
+| DEUname    = Lebender Schild
+| DEUmeaning = 
+| ESPname    = Escudo vivaz
+| ESPmeaning = 
+| FRAname    = Bouclier vivant
+| FRAmeaning = 
+| ITAname    = Scudo vivente
+| ITAmeaning = 
+| JPNname    = リビングシールド
+| JPNromanised = Living shield
+| JPNmeaning = 
+| INDname    = Tameng Berjiwa
+| INDmeaning = 
+| KORname    = 살아있는 방패
+| KORromanised = sal-a-issneun bangpae
+| KORmeaning = 
+| POLname    = Żywa Tarcza
+| POLmeaning = 
+| PTBname    = Escudeiro
+| PTBmeaning = 
+| RUSname    = Живой щит
+| RUSromanised = Zhivoj schit
+| RUSmeaning = 
+| SPAname    = Escudero animado
+| SPAmeaning = 
+| TURname    = Yaşayan Kalkan
+| TURmeaning = 
+| ZHSname    = 活体盾
+| ZHSromanised = huotidun
+| ZHSmeaning = 
+| CODEname    = LIVING_SHIELD
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.96.0|* Added Living Shield attack animation}}
+{{Update History Table/row|V0.92.0|* Changed Turret Operator: HP changed from 41(44)-49(49) -> 41(51)}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Turret Operator}}
+{{Update History Table/row|V0.89.0|* Adjusted hitbox and position for Turret Operator}}
+{{Update History Table/row|V0.87.0|* Nerfed Living Shield: no longer puts block on himself}}
+{{Update History Table/row|V0.73.0|* Buffed Living Shield: Smash move damage increased from 13(15) -> 16(18)}}
+{{Update History Table/row|V0.70.0|* Changed Turret Operator combat: is now an easy pool encounter}}
+{{Update History Table/row|V0.50.0|* Buffed Living Shield: Enrage strength gain increased from 2 -> 3}}
+{{Update History Table/row|V0.45.0|* Added SFX for Turret Operator}}
+{{Update History Table/row|V0.39.0|* Changed Living Shield: now gets a new move and goes Bezerk when the Turret Operator dies}}
+{{Update History Table/row|V0.38.0|* Changed Turret Operator encounter:
+** Turret Operator now fires twice, then gains 1 Strength
+** Living Shield HP decreased from 70(90) -> 55(65)
+** Living Shield damage decreased from 15(17) -> 6
+** Living Shield now gains 6 Block every turn}}
+{{Update History Table/row|V0.37.0|* Changed Turret Operator: moved to normal pool (from weak)}}
+{{Update History Table/row|V0.36.0|* Changed Turret Operator: now has a single move + damage dealt increased from 6(7)x5 -> 3(4)x5}}
+{{Update History Table/row|V0.14.0|* Reworked Turret Operator encounter:
+** Turret Operator HP increased from 32-46 to 41-49
+** Turret Operator now repeats two moves:
+** First move is "Loading": gains 5 Block
+** Next move is "Unload!": deals 6x5 damage
+** Heavy Barricade renamed to Living Shield
+** Living Shield health reduced from 100 -> 70
+** Living Shield now deals 15 damage every turn
+** Rampart now grants 25 shield to Turret Operator every turn instead of redirecting damage
+** Living Shield no longer has Unflinching}}
+{{Update History Table/row|V0.12.0|* New Animations for Turret Operator}}
+{{Update History Table/row|2023-09-15|* Temporarily deprecated the Turret Operator fight}}
+{{Update History Table/row|2023-08-25|* Lightning VFX now correctly hits turret when barricade is is still alive}}
+{{Update History Table/row|2023-06-02|* Added Turret Operator enemy encounter}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,131 @@
+{{Beta content}} {{Enemy Infobox
+|Name   = Soul Fysh
+|Image  = StS2_Soul Fysh.png
+|Icon   = StS2 Icon SoulFyshBoss.png
+|HP     = 211
+|AscHP  = 221
+|Debut  = Underdocks
+|Type   = Boss
+}}
+{{Small Card Infobox|Beckon|2}} 
+{{Power Infobox|Vulnerable|2}} 
+{{Power Infobox|Intangible|2}}
+'''Soul Fysh''' is a {{2|Bosses|Boss}} found in the {{2|Underdocks}}.
+
+== Pattern ==
+{{Intents Table/start|Soul Fysh}}
+{{Intents Table/row
+|Name   = Beckon
+|Intent = StatusCard
+|Effect = Shuffles 2 {{C2|Beckon}} into your deck (1 into draw pile, 1 into discard pile).
+}}
+{{Intents Table/row
+|Name   = De-Gas
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|18}}) damage.
+}}
+{{Intents Table/row
+|Name   = Gaze
+|Intent = Attack2, StatusCard
+|Effect = Deals (7;{{Asc2|9|8}}) damage. Shuffles 1 {{C2|Beckon}} into your discard pile.
+}}
+{{Intents Table/row
+|Name   = Fade
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Intangible}}.
+|GivesToEnemy = Intangible
+}}
+{{Intents Table/row
+|Name   = Scream
+|Intent = Attack3, Debuff
+|Effect = Deals (13;{{Asc2|9|15}}) damage. Applies 3 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/end}}
+The Soul Fysh repeats the same five moves in order:
+# {{Int2|Soul Fysh|Beckon}}
+# {{Int2|Soul Fysh|De-Gas}}
+# {{Int2|Soul Fysh|Gaze}}
+# {{Int2|Soul Fysh|Fade}}
+# {{Int2|Soul Fysh|Scream}}
+
+== Notes ==
+* The first iteration of {{Int2|Soul Fysh|Fade}}'s {{BD2|Intangible}} fades instantly during the transition from {{2|Soul Fysh}}'s turn to the player's. It effectively gains just 1 {{BD2|Intangible}}.
+
+== Useful Cards ==
+* Anything which can get rid of {{C2|Beckon}} without playing it can be useful. Transforming or exhausting it through cards like {{C2|Fiend Fire}} or {{C2|BEGONE!}} is best because it will be permanently removed rather than simply being put into the discard pile, but discarding it with cards like {{C2|Prepared}} or {{C2|Hidden Daggers}} can still save {{KW2|Energy}} compared to playing it normally.
+* Cards like {{C2|No Escape}}  which apply {{BD2|Doom}} rather than dealing damage can ignore {{BD2|Intangible}}.
+
+== Animations ==
+{{Bestiary|Soul Fysh}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Seelenfysch
+| DEUmeaning = 
+| ESPname    = Phezánima
+| ESPmeaning = 
+| FRAname    = Poissâme
+| FRAmeaning = 
+| ITAname    = Pesce anima
+| ITAmeaning = 
+| JPNname    = ソウルフィッシュ
+| JPNromanised = Souru fish
+| JPNmeaning = 
+| INDname    = Ykan Jiwa
+| INDmeaning = 
+| KORname    = 영혼 물교기
+| KORromanised = yeonghon mulgyogi
+| KORmeaning = 
+| POLname    = Dusza Rypki
+| POLmeaning = 
+| PTBname    = Peyxe Espectral
+| PTBmeaning = 
+| RUSname    = Призрачный рыб
+| RUSromanised = Prizrachnyj ryb
+| RUSmeaning = 
+| SPAname    = Peth alma
+| SPAmeaning = 
+| THAname    = ปฬาวิญญาณ
+| THAromanised = palawinyan
+| THAmeaning = 
+| TURname    = Ruh Baluğu
+| TURmeaning = 
+| ZHSname    = 灵魂异鱼
+| ZHSromanised = linghunyiyu
+| ZHSmeaning = 
+| CODEname    = SOUL_FYSH
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|v0.111.0|* Buffed Soul Fysh: De-Gas move damage at A9 increased from 16(17) → 16(18)}}
+{{Update History Table/row|v0.105.0|* Buffed Soul Fysh: Scream move damage increased from 11(12) -> 13(15)
+* Added Soul Fysh background music}}
+{{Update History Table/row|V0.90.0|* Added or updated SFX for Soul Fysh}}
+{{Update History Table/row|V0.85.0|* Fixed Soul Fysh death animation while it's Intangible}}
+{{Update History Table/row|V0.73.0|* Fixed Soul Fysh staying invisible if it is hurt by Powdered Demise potion mid animation}}
+{{Update History Table/row|V0.72.0|* Removed invisible images that caused a VFX glitch on Soul Fysh death}}
+{{Update History Table/row|V0.62.0|* Added animations for Soul Fysh}}
+{{Update History Table/row|V0.61.0|* Changed Soul Fysh:
+** Beckon move now splits the Beckon cards between the Discard and Draw pile
+** Damage decreased
+** Moveset reworked}}
+{{Update History Table/row|V0.60.0|* Changed Soul Fysh:
+** Beckon now causes player to lose 6 HP instead of applying Doom
+** HP buffed from 181(191) -> 211(221)
+** No longer starts combat with Intangible}}
+{{Update History Table/row|V0.57.0|* Changed Soul Fysh:
+** Beckon Status card amount decreased from 3 -> 2 and now shuffles into Draw pile instead of Draw and Discard piles
+** Decreased damage}}
+{{Update History Table/row|V0.54.0|* Buffed Soul Fysh: Scream damage from 10(11) -> 13(14)}}
+{{Update History Table/row|V0.52.0|* Buffed Soul Fysh: HP increased from 144(155) -> 181(191)}}
+{{Update History Table/row|V0.51.0|* Soul Fysh is now an Underdocks Boss}}
+{{Update History Table/row|V0.48.1|* Soul Fysh damage increased on all moves. Now also deals damage when Beckoning}}
+{{Update History Table/row|?|* Added Soul Fysh to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Bosses]] [[Category:Slay the Spire 2 Content]]

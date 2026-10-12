@@ -1,0 +1,104 @@
+{{Enemy Infobox
+|Name   = Chomper
+|Image  = StS2_Chomper.png
+|HP     = 60-64
+|AscHP  = 63-67
+|Powers = {{BD2|Artifact}} 2
+|Debut  = Hive
+|Type   = Normal
+}} {{Power Infobox|Artifact|2}}
+'''Chomper''' is a normal {{2|Monsters|Enemy}} found in {{2|Hive}}.
+
+== Pattern ==
+{{Intents Table/start|Chomper}}
+{{Intents Table/row
+|Name   = Clamp
+|Intent = Attack3
+|Effect = Deals (8;{{Asc2|9|9}}) damage ×2.
+}}
+{{Intents Table/row
+|Name   = Screech
+|Intent = StatusCard
+|Effect = Shuffles 3 {{C2|Dazed}} into your discard pile.
+}}
+{{Intents Table/end}}
+Chompers always appear in pairs. One opens with {{Int2|Chomper|Clamp}} and the other opens with {{Int2|Chomper|Screech}}. After that, each one alternates between {{Int2|Chomper|Clamp}} and {{Int2|Chomper|Screech}} every turn.
+
+== Trivia ==
+* '''Chompers''' are similar to the {{M|Sentry}} [[Elites|Elite]] from ''Slay the Spire'':
+** They both alternate between attacking and creating {{C|Dazed}} in the discard pile each turn.
+** They both have {{BD2|Artifact}}.
+** Both fights feature multiple of that enemy.
+* '''Chompers''' will actually say "Screech" with a speech bubble whenever they use {{Int2|Chomper|Screech}}.
+** However, the speech bubble is immediately obscured by the three {{C2|Dazed}} appearing (especially when Fast Mode is enabled).
+
+== Animations ==
+{{Bestiary|Chomper}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Mampfer
+| DEUmeaning = 
+| ESPname    = Mordebot
+| ESPmeaning = 
+| FRAname    = Croquebot
+| FRAmeaning = 
+| ITAname    = Mordicchio
+| ITAmeaning = 
+| JPNname    = チョンパー
+| JPNromanised = Chon par
+| JPNmeaning = 
+| INDname    = Penggigit
+| INDmeaning = 
+| KORname    = 먹깨비
+| KORromanised = meogkkaebi
+| KORmeaning = 
+| POLname    = Gryzak
+| POLmeaning = 
+| PTBname    = Mordiscador
+| PTBmeaning = 
+| RUSname    = Зубастик
+| RUSromanised = Zubastik
+| RUSmeaning = 
+| SPAname    = Bocaditos
+| SPAmeaning = 
+| TURname    = Çiğneyici
+| TURmeaning = 
+| ZHSname    = 啃咬机
+| ZHSromanised = kenyaoji
+| ZHSmeaning = 
+| CODEname    = CHOMPER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.103.0|* Deprecated Tunneleing Twosome fight from the Hive}}
+{{Update History Table/row|V0.100.0|* Changed the Tunneler normal encounter: the Bowlbug is now replaced by a Chomper that gives Dazed status cards on turn 1}}
+{{Update History Table/row|V0.92.0|* Changed Chomper: HP changed from 61(63)-64(66) -> 60(63)-64(67)}}
+{{Update History Table/row|V0.87.0|* Buffed Chompers: clamp damage increased from 7(8)x2 -> 8(9)x2}}
+{{Update History Table/row|V0.80.0|* Changed Chompers:
+** Decreased HP, damage, and Status amount
+** Artifact increased from 1 -> 2}}
+{{Update History Table/row|V0.43.0|* Made orbs on Chomper and Mecha Knight brighter/shinier}}
+{{Update History Table/row|V0.36.0|* Removed weak single Chomper encounter from Hive}}
+{{Update History Table/row|V0.21.0|* Nerfed Chomper:
+** HP decreased from 83-88 -> 64-68
+** Damage decreased from 10x2 -> 8x2}}
+{{Update History Table/row|V0.19.0|* Reworked Chomper fight}}
+{{Update History Table/row|V0.14.0|* Chomper now properly indicates that it will add 3 Dazes to your discard pile instead of 6}}
+{{Update History Table/row|V0.13.0|* Nerfed Chomper: Screech no longer adds Dazed cards to the draw pile}}
+{{Update History Table/row|V0.12.0|* Chomper HP lowered from 102-108 -> 83-92.
+* Back Chomper in the automaton pair fight now screeches before attacking.}}
+{{Update History Table/row|V0.9.0|* Chomper now only takes 5 hits instead of 9 to be unclamped and stunned}}
+{{Update History Table/row|2023-09-01|* Implemented Chomper animations}}
+{{Update History Table/row|2023-04-21|* implemented chomper idle
+* Import Chomper rig and idle anim
+* Make small update to chomper idle
+* Bug Fix: chomper loops screech attack}}
+{{Update History Table/row|?|* Added Chomper to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

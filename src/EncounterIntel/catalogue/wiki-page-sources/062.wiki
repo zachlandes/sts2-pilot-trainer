@@ -1,0 +1,118 @@
+{{Enemy Infobox
+|Name   = Owl Magistrate
+|Image  = StS2_Owl Magistrate.png
+|HP     = 234
+|AscHP  = 243
+|Debut  = Glory
+|Type   = Normal
+}} {{Power Infobox
+|Name         = Soar
+|Image        = StS2 Icon Soar.png
+|Description  = Receives 50% less attack damage until it lands.
+|Type         = Buff
+|Stacks       = Does not stack
+|BetweenTurns = Removed
+|Cap          = 
+}}
+'''Owl Magistrate''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Owl Magistrate}}
+{{Intents Table/row
+|Name   = Magistrate Scrutiny
+|Intent = Attack3
+|Effect = Deals (16;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/row
+|Name   = Peck Assault
+|Intent = Attack3
+|Effect = Deals 4 damage x6.
+}}
+{{Intents Table/row
+|Name   = Judicial Flight
+|Intent = Buff
+|Effect = Gains {{BD2|Soar}}.
+|GivesToEnemy = Soar
+}}
+{{Intents Table/row
+|Name   = Verdict
+|Intent = Attack4, Debuff
+|Effect = Deals (33;{{Asc2|9|36}}) damage. Applies 4 {{BD2|Vulnerable}}. Removes {{BD2|Soar}}.
+|GivesToEnemy = Soar
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/end}}
+Follows a fixed 4-move cycle: {{Int2|Owl Magistrate|Magistrate Scrutiny}}, {{Int2|Owl Magistrate|Peck Assault}}, {{Int2|Owl Magistrate|Judicial Flight}}, {{Int2|Owl Magistrate|Verdict}}, then repeats.
+
+== Trivia ==
+* During {{Int2|Owl Magistrate|Magistrate Scrutiny}}, the eyes from {{C|Seeing Red}} appear to flash over the player character.
+
+== Animations ==
+{{Bestiary|Owl Magistrate}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Eulenmagistratin
+| DEUmeaning = 
+| ESPname    = Juez búho
+| ESPmeaning = 
+| FRAname    = Magistrix
+| FRAmeaning = 
+| ITAname    = Giudice gufo
+| ITAmeaning = 
+| JPNname    = フクロウ判事
+| JPNromanised = Fukurou hanji
+| JPNmeaning = 
+| INDname    = Hakim Burung Hantu
+| INDmeaning = 
+| KORname    = 올빼미 판관
+| KORromanised = ol-ppaemi pangwan
+| KORmeaning = 
+| POLname    = Sędzia
+| POLmeaning = 
+| PTBname    = Coruja Magistrada
+| PTBmeaning = 
+| RUSname    = Сова-юстициарий
+| RUSromanised = Sova-justitsiarij
+| RUSmeaning = 
+| SPAname    = Magistrado nocturno
+| SPAmeaning = 
+| TURname    = Yargıç Baykuş
+| TURmeaning = 
+| ZHSname    = 猫头鹰法官
+| ZHSromanised = maotouyingfaguan
+| ZHSmeaning = 
+| CODEname    = OWL_MAGISTRATE
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.104.0|* Changed Owl Magistrate: now has slightly less HP at low Ascension, but slightly higher HP at high Ascension, changed from 234(243) -> 231(247)}}
+{{Update History Table/row|V0.93.0|* Added Owl Magistrate SFX}}
+{{Update History Table/row|V0.87.0|* Nerfed Owl Magistrate: HP decreased from 295(299) -> 234(243), moveset tweaks
+* Added Owl Magistrate peck animation to Bestiary}}
+{{Update History Table/row|V0.80.0|* Reworked Owl Magistrate (is now a normal encounter)}}
+{{Update History Table/row|V0.77.0|* Owl Magistrate's Soar no longer wears off until it lands}}
+{{Update History Table/row|V0.75.0|* Changed Owl Magistrate:
+** Cards afflicted with Scrutiny are no longer given Exhaust
+** Cards afflicted with Scrutiny now deal 3 damage to their owner when played instead of 2}}
+{{Update History Table/row|V0.71.0|* Fixed Magistrate Owl's hitbox when it starts its flying animation while Shrunk}}
+{{Update History Table/row|V0.70.0|* Owl Magistrate's Scrutinized affliction now properly applies to Statuses and Curses
+* Owl Magistrate now uses the card debuff intent for its Scrutiny move}}
+{{Update History Table/row|V0.55.0|* Owl Magistrate's Scrutiny power now properly deals 2 damage instead of 1}}
+{{Update History Table/row|V0.44.0|* Added Scrutiny affliction for Owl Magistrate}}
+{{Update History Table/row|V0.42.0|* Changed Owl Magistrate: moveset tweaked}}
+{{Update History Table/row|V0.35.0|* Did a pass on the Owl Magistrate enemy’s animation blends}}
+{{Update History Table/row|V0.24.0|* Buffed Owl Magistrate: HP increased from 233 -> 333}}
+{{Update History Table/row|V0.17.0|* Buffed Owl Magistrate:
+** HP increased from 230 -> 233
+** Owl’s Wisdom power removed
+** Moveset reworked
+** Is now an Elite combat}}
+{{Update History Table/row|?|* Added Owl Magistrate to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,158 @@
+{{Enemy Infobox
+|Name   = Cubex Construct
+|Image  = StS2_Cubex Construct.png
+|HP     = 65
+|AscHP  = 70
+|Powers = {{BD2|Artifact}} 1
+|Debut  = Overgrowth
+|Type   = Normal
+}} 
+{{Power Infobox|Artifact|2}}
+'''Cubex Construct''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}} and {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Cubex Construct}}
+{{Intents Table/row
+|Name   = Charge Up
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Repeater Blast
+|Intent = Attack2, Buff
+|Effect = Deals (7;{{Asc2|9|8}}) damage. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Expel Blast
+|Intent = Attack3
+|Effect = Deals (5;{{Asc2|9|6}}) damage ×2.
+}}
+{{Intents Table/end}}
+
+After it {{Int|Cubex Construct|Charge Up|Charges Up|2}} it repeats this pattern for the remainder of fight:
+* {{Int2|Cubex Construct|Repeater Blast}}
+* {{Int2|Cubex Construct|Repeater Blast}}
+* {{Int2|Cubex Construct|Expel Blast}}
+
+== Damage Schedule ==
+{| class="wikitable"
+|- 
+! Turn !! default !! {{Asc2|9}} + !! total strength
+|-
+! scope="row" | 1 
+| 
+| 
+| 0 → 2
+|-
+! scope="row" | 2
+| 9
+| 10
+| 2 → 4
+|-
+! scope="row" | 3
+| 11
+| 12
+| 4 → 6
+|-
+! scope="row" | 4
+| 22 (11x2)
+| 24 (12x2)
+| 6
+|-
+! scope="row" | 5
+| 13
+| 14 
+| 6 → 8
+|-
+! scope="row" | 6
+| 15
+| 16
+| 8 → 10
+|-
+! scope="row" | 7
+| 30 (15x2)
+| 32 (16x2)
+| 10
+|}
+
+== Notes ==
+* 1 {{BD2|Artifact}}, which negates the first debuff applied to it.
+* {{Int2|Cubex Construct|Charge Up}} and each {{Int2|Cubex Construct|Repeater Blast}} each grant 2 {{BD2|Strength}}, so its damage ramps up significantly over time. After the opening {{Int2|Cubex Construct|Charge Up}} and two {{Int2|Cubex Construct|Repeater Blast}} uses, it will have gained 6 {{BD2|Strength}}.
+* {{Int2|Cubex Construct|Expel Blast}} hits twice, making it benefit doubly from accumulated {{BD2|Strength}}.
+
+== Animations ==
+<tabber>
+|-|Circle Eye=
+{{Bestiary|Cubex Construct Circle}}
+|-|Diamond Eye=
+{{Bestiary|Cubex Construct Diamond}}
+|-|Square Eye=
+{{Bestiary|Cubex Construct Square}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Kubex-Konstrukt
+| DEUmeaning = 
+| ESPname    = Constructo cúbico
+| ESPmeaning = 
+| FRAname    = Assemblage Cubex
+| FRAmeaning = 
+| ITAname    = Assemblaggio cubico
+| ITAmeaning = 
+| JPNname    = キューベックス
+| JPNromanised = Cue Bekkusu
+| JPNmeaning = 
+| INDname    = Mesin Cubex
+| INDmeaning = 
+| KORname    = 큐브형 구조체
+| KORromanised = kyubeuhyeong gujoche
+| KORmeaning = 
+| POLname    = Promieniotron
+| POLmeaning = 
+| PTBname    = Cubiconstructo
+| PTBmeaning = 
+| RUSname    = Кубический агрегат
+| RUSromanised = Kubicheskij agregat
+| RUSmeaning = 
+| SPAname    = Constructo Cúbex
+| SPAmeaning = 
+| TURname    = Kübiks Yapı
+| TURmeaning = 
+| ZHSname    = 方柱构装体
+| ZHSromanised = fangzhugouzhuangti
+| ZHSmeaning = 
+| CODEname    = CUBEX_CONSTRUCT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Fixed Cubex Construct's intents overlapping with its body if it takes damage while transitioning to its charging animation}}
+{{Update History Table/row|V0.71.0|* Buffed Cubex Construct: now has 1 Artifact}}
+{{Update History Table/row|V0.48.0|* Updated Cubex Construct sfx}}
+{{Update History Table/row|V0.44.0|* Cubex Construct charging SFX no longer loops forever if it is killed by Guillotine}}
+{{Update History Table/row|V0.43.0|* Added Cubex Construct VFX and updated animations
+* Fixed Cubex Construct’s health bar changing size when it emerges}}
+{{Update History Table/row|V0.40.0|* Nerfed Cubex Construct: damage boost from deadly enemies decreased from +2 -> +1
+* Cubex Construct no longer does an extra hit during its multi-attack}}
+{{Update History Table/row|V0.39.0|* Reworked Cubex Construct}}
+{{Update History Table/row|V0.15.0|* Buffed Cubex Construct
+** HP increased from 55 -> 65
+** Blast attack changed from 5x3 -> 25
+** Strength gain increased from 1 -> 3}}
+{{Update History Table/row|2023-09-15|* Cubex Construct no longer applies Unflinching}}
+{{Update History Table/row|2023-09-08|* Moved Cubex Construct beam to be more centered to the orb}}
+{{Update History Table/row|2023-09-01|* Bug Fix: Cubex construct laser animation plays correctly now}}
+{{Update History Table/row|2023-08-25|* Changed Cubex Constructs multi-hit attack from 5 hits -> 4 hits
+* Changed Cubex Construct’s laser attack from 4x5 -> 3x5}}
+{{Update History Table/row|2023-07-21|* Cubex Construct now loses tough when it starts charging up}}
+{{Update History Table/row|2023-05-19|* Added VFX for LASERS (Cubex Construct)}}
+{{Update History Table/row|2023-05-12|* Cubex Construct nerfs. Damage lowered by 1 and now starts in a more vulnerable and slower state.}}
+{{Update History Table/row|?|* Added Cubex Construct to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,99 @@
+{{Enemy Infobox
+|Name   = Flyconid
+|Image  = StS2_Flyconid.png
+|HP     = 47-49
+|AscHP  = 51-53
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Flyconid''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Flyconid}}
+{{Intents Table/row
+|Name   = Weakening Spores
+|Intent = Debuff
+|Effect = Applies 2 {{BD2|Vulnerable}}.
+|GivesToPlayer = Vulnerable
+}}
+{{Intents Table/row
+|Name   = Frail Spores
+|Intent = Attack2, Debuff
+|Effect = Deals (8;{{Asc2|9|9}}) damage. Applies 2 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Smash
+|Intent = Attack3
+|Effect = Deals (11;{{Asc2|9|12}}) damage.
+}}
+{{Intents Table/end}}
+On its first turn, it randomly picks {{Int2|Flyconid|Frail Spores}} (2/3 chance) or {{Int2|Flyconid|Smash}} (1/3 chance).
+
+After that, each turn it randomly picks one of three moves: {{Int2|Flyconid|Weakening Spores}} (3/6 chance), {{Int2|Flyconid|Frail Spores}} (2/6 chance), or {{Int2|Flyconid|Smash}} (1/6 chance). It cannot use the same move twice in a row.
+
+== Notes ==
+* {{Int2|Flyconid|Weakening Spores}} applies {{BD2|Vulnerable}}, causing you to take 50% more damage from attacks. This is especially dangerous when paired with other enemies.
+* {{Int2|Flyconid|Frail Spores}} applies {{BD2|Frail}}, reducing your {{KW2|Block}} gained by 25%.
+* Flyconid cannot open with {{Int2|Flyconid|Weakening Spores}} on the first turn.
+
+== Animations ==
+{{Bestiary|Flyconid}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Fliegonide
+| DEUmeaning = 
+| ESPname    = Micóptero
+| ESPmeaning = 
+| FRAname    = Mycoptère
+| FRAmeaning = 
+| ITAname    = Fungalato
+| ITAmeaning = 
+| JPNname    = フライコニド
+| JPNromanised = Furaikonido
+| JPNmeaning = 
+| INDname    = Jamur Lalat
+| INDmeaning = 
+| KORname    = 날개버섯
+| KORromanised = nalgaebeoseos
+| KORmeaning = 
+| POLname    = Musznica
+| POLmeaning = 
+| PTBname    = Micodíptero
+| PTBmeaning = 
+| RUSname    = Мухамор
+| RUSromanised = Muhamor
+| RUSmeaning = 
+| SPAname    = Micónido volador
+| SPAmeaning = 
+| TURname    = Sinekonyum
+| TURmeaning = 
+| ZHSname    = 飞蝇菌子
+| ZHSromanised = feiyingjunzi
+| ZHSmeaning = 
+| CODEname    = FLYCONID
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.107.0|* Fixed Flyconid spore effect lingering when its attack is interrupted}}
+{{Update History Table/row|V0.92.0|* Changed Flyconid: HP changed from 47(49)-52(53) -> 47(51)-49(53)}}
+{{Update History Table/row|V0.76.0|* Changed Act 1 - Overgrowth: no longer has a weak version of the Flyconid fight}}
+{{Update History Table/row|V0.54.0|* Made Flyconid bigger}}
+{{Update History Table/row|V0.45.0|* Added SFX for Flyconid}}
+{{Update History Table/row|V0.42.0|* Flyconid now has different color VFX depending on whether or not he is applying Vulnerable or Frail}}
+{{Update History Table/row|V0.41.0|* Flyconid no longer missing SFX when it damages the player}}
+{{Update History Table/row|V0.39.0|* Reworked Flyconid}}
+{{Update History Table/row|V0.34.0|* VFX for Fuzzy Wurm Crawler and Flyconid no longer can get stuck}}
+{{Update History Table/row|V0.29.0|* Buffed Flyconid: HP increased from 44-49 -> 49-53}}
+{{Update History Table/row|V0.16.0|* Changed Flyconid: now always attacks on turn 1}}
+{{Update History Table/row|V0.15.0|* Changed Flyconid:
+** HP increased from 38-46 -> 44-49
+** Now applies Vulnerable instead of Weak}}
+{{Update History Table/row|?|* Added Flyconid to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

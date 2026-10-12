@@ -1,0 +1,234 @@
+{{Event Infobox
+|Name=The Merchant???
+|Image=StS2 The Merchant???.png
+}}
+{{E2|The Merchant???}} is an {{2|Event}} found in the {{2|Hive}} and the {{2|Glory}}. At first glance, it appears to be a normal {{2|Merchant}} encounter, but the shop sells a set of knock-off {{2|Relics}}.
+
+== Conditions ==
+* Cannot appear in {{2|Multiplayer}}.
+* Only appears in {{2|Acts}} 2 and 3.
+* Only appears if the player has at least 100 {{KW2|Gold}} or if one of the currently held potions is {{P2|Foul Potion}}.
+
+== Relics ==
+The fake Merchant's shop only contains a set of 6 Relics, each costing a random amount between 43-57 {{2|Gold}}. The 6 Relics are randomly chosen out of the list below:
+
+* {{R2|Anchor???}}
+* {{R2|Blood Vial???}}
+* {{R2|Happy Flower???}}
+* {{R2|Lee's Waffle???}}
+* {{R2|Mango???}}
+* {{R2|Orichalcum???}}
+* {{R2|Snecko Eye???}}
+* {{R2|Strike Dummy???}}
+* {{R2|Venerable Tea Set???}}
+
+== Combat ==
+{{Enemy Infobox
+|Name   = The Merchant???
+|Image  = StS2_The Merchant???.png
+|HP     = 165
+|AscHP  = 175
+|Debut  = Hive
+|Type   = Normal
+}}
+If a {{P2|Foul Potion}} is owned, it can be thrown at the fake Merchant to trigger combat. Winning the combat will give 300 Gold, the ability to take the Relics that were for sale, and {{R2|The Merchant's Rug???}}, which does nothing. The relics can be skipped if they are not wanted.
+
+== Pattern ==
+{{Intents Table/start|The Merchant???}}
+{{Intents Table/row
+|Name   = Swipe
+|Intent = Attack3
+|Effect = Deals (13;{{Asc2|9|15}}) damage.
+}}
+{{Intents Table/row
+|Name   = Spew Coins
+|Intent = Attack3
+|Effect = Deals 2 damage ×8.
+}}
+{{Intents Table/row
+|Name   = Throw Relic
+|Intent = Attack3, Debuff
+|Effect = Deals (9;{{Asc2|9|10}}) damage. Applies 1 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/row
+|Name   = Enrage
+|Intent = Buff
+|Effect = Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+* Always uses {{Int2|The Merchant???|Swipe}} first. 
+* {{Int2|The Merchant???|Swipe}}, {{Int2|The Merchant???|Spew Coins}}, and {{Int2|The Merchant???|Enrage}} randomly lead into 1 of the 3 other possible moves 
+** Cannot use the same move twice in a row.
+* {{Int2|The Merchant???|Enrage}} can only be chosen once every 3 turns. 
+* {{Int2|The Merchant???|Throw Relic}} is randomly followed up by {{Int2|The Merchant???|Swipe}} or {{Int2|The Merchant???|Spew Coins}}.
+
+== Animations ==
+{{Bestiary|Fake Merchant}}
+
+== Dialogue ==
+Event:
+{| class = wikitable
+!Action
+!Dialogue
+
+|-
+| rowspan=4 | Welcome
+| Welcome, fellow relic connoisseur!
+|-
+| Relics, get ya relics here!
+|-
+| 50% off, rugwide!
+|-
+| Spire sale, everything must go!
+|-
+| rowspan=6 | Purchase Success
+| You've got quite the eye, eheh... How much for it?
+|-
+| You get whatcha pay for. Mostly.
+|-
+| Ooh, I hate to let that one go, but for you? Eheh...
+|-
+| Pleasure doin' business with ya.
+|-
+| Sold!
+|-
+| Got yourself a deal, kid.
+|-
+| rowspan=3 | Purchase Failure (Gold)
+| This ain't a charity.
+|-
+| Hey, I'm tryin' to run a legit business here.
+|-
+| No deal, pal.
+|-
+| rowspan=3 | Purchase Failure (Dead in Multiplayer)
+| You're not lookin' too good, pal.
+|-
+| No HP, no service.
+|-
+| I'm a merchant, not a doctor!
+|-
+| rowspan=8 | Opening Inventory
+| I was the number 1 rated merchant back in 2697, ya know!
+|-
+| Look, I'm kind of in a rush here, kid.
+|-
+| You haven't seen any sentries around here have you? No reason, eheh...
+|-
+| Not everyone's cut out for this line of work.
+|-
+| It's dangerous to go alone! ...Just sayin'.
+|-
+| Hey! No blood on the merchandise.
+|-
+| ...My hands? What about 'em?
+|-
+| No offense, but you look due for a haircut, pal.
+|-
+| rowspan=4 | Throwing {{P2|Foul Potion}}
+| What the--?!
+|-
+| Oh, so it's like that, huh?!
+|-
+| You messed with the wrong merchant, kid.
+|-
+| Why I oughta...
+|-
+|}
+Enemy:
+{| class = wikitable
+!Move
+!Dialogue
+
+|-
+| rowspan=2 | {{Int2|The Merchant???|Enrage}}
+| Oh, you'll pay alright...
+|-
+| You'll be sleeping with the fyshes!
+
+|-
+| {{Int2|The Merchant???|Spew Coins}}
+| KA-CHING!
+
+|-
+| {{Int2|The Merchant???|Swipe}}
+| Put 'em up!
+
+|-
+| {{Int2|The Merchant???|Throw Relic}}
+| You want it? Take it!
+|}
+
+== Notes ==
+* Relics that have effects relating to the {{2|Merchant}} all have no effect when interacting with the Merchant???. These are:
+** {{R2|Membership Card}}
+** {{R2|Meal Ticket}}
+** {{R2|The Courier}}
+** {{R2|Lord's Parasol}}
+* {{R2|Maw Bank}} is the exception here and will stop working once something is bought from the Fake Merchant.
+
+== Trivia ==
+* The line "It's dangerous to go alone! ...Just sayin'." is most likely a reference to [https://en.wikipedia.org/wiki/The_Legend_of_Zelda_(video_game) The Legend of Zelda].
+* The line "I was the number 1 rated merchant back in 2697, ya know!" is most likely a reference to [https://en.wikipedia.org/wiki/Deltarune Deltarune].
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Der Händler???
+| DEUmeaning = 
+| ESPname    = ¿¿El comerciante??
+| ESPmeaning = 
+| FRAname    = Le Marchand ???
+| FRAmeaning = 
+| ITAname    = Il mercante???
+| ITAmeaning = 
+| JPNname    = 商人（？ ）
+| JPNromanised = Shounin (? )
+| JPNmeaning = 
+| INDname    = Si Pedagang???
+| INDmeaning = 
+| KORname    = 상?인
+| KORromanised = sang?in
+| KORmeaning = 
+| POLname    = Handlarz???
+| POLmeaning = 
+| PTBname    = O Mercador???
+| PTBmeaning = 
+| RUSname    = Торговец?!
+| RUSromanised = Torgovets?!
+| RUSmeaning = 
+| SPAname    = ¿¿¿El Comerciante???
+| SPAmeaning = 
+| THAname    = พ่อค้า???
+| THAromanised = phokha???
+| THAmeaning = 
+| TURname    = Tüccar???
+| TURmeaning = 
+| ZHSname    = 商人？？？
+| ZHSromanised = shangren？？？
+| ZHSmeaning = 
+| CODEname    = FAKE_MERCHANT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.108.0|* Relics skipped in the Merchant??? event are now recorded in the Run History}}
+{{Update History Table/row|V0.104.0|* Improved controller navigation in the Fake Merchant shop
+* Fixed being unable to give the Foul Potion to the Fake Merchant}}
+{{Update History Table/row|V0.95.0|* Updated Fake Merchant background
+* Finishing The Merchant??? combat now immediately opens up the map instead of returning to the event first
+* Updated death quote if you die at Fake Merchant}}
+{{Update History Table/row|V0.90.0|* Added Fake Merchant SFX}}
+{{Update History Table/row|V0.87.0|* Changed Fake Merchant: now drops any unpurchased relics he was selling when defeated}}
+{{Update History Table/row|V0.86.0|* The Merchant??? now talks to you when you visit... it}}
+{{Update History Table/row|V0.85.0|* Changed Fake Merchant event:
+** No longer always shows all of his relics
+** No longer spawns unless the player has either 100 Gold or a Foul potion}}
+{{Update History Table/row|V0.81.0|* Added The Merchant??? event to the game}}
+{{Update History Table/end}}
+
+{{Event2Nav}}
+
+[[Category:Events]] [[Category:Slay the Spire 2 Content]] [[Category:ToUpdate]]

@@ -1,0 +1,213 @@
+{{Enemy Infobox
+|Name   = Nibbit
+|Image  = StS2_Nibbit.png
+|HP     = 42-46
+|AscHP  = 44-48
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Nibbit''' is a normal {{2|Monsters|Enemy}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Nibbit}}
+{{Intents Table/row
+|Name   = Butt
+|Intent = Attack3
+|Effect = Deals (12;{{Asc2|9|13}}) damage.
+}}
+{{Intents Table/row
+|Name   = Hesitant Slice
+|Intent = Attack2, Defend
+|Effect = Deals (6;{{Asc2|9|7}}) damage. Gains (5;{{Asc2|8|6}}) {{KW2|Block}}.
+|GivesToEnemy = Block
+}}
+{{Intents Table/row
+|Name   = Hiss
+|Intent = Buff
+|Effect = Gains (2;{{Asc2|9|3}}) {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+
+Intent cycles in order. After {{Int2|Nibbit|Hiss}} their intent wraps back around to {{Int2|Nibbit|Butt}}, followed by {{Int2|Nibbit|Hesitant Slice}} and then {{Int2|Nibbit|Hiss}} again. Starting intent is encounter dependent.
+
+==== Solo Encounter ====
+
+When alone (Nibbits Weak encounter), the Nibbit opens with {{Int2|Nibbit|Butt}}. It's good strategy to aim to win on one of the {{Int2|Nibbit|Butt}} repeats, so either turn 4 or 7. Nibbit buffs the turn prior, giving you 2 full turns to spend energy on nothing but attacks and finish the combat before the big attack lands.
+
+{| class="wikitable"
+|+ Damage Schedule 
+|- 
+! Turn !! default !! {{Asc2|9}} + !! 
+|-
+! scope="row" | 1 
+| 12 
+| 13 
+|
+|-
+! scope="row" | 2
+| 6 
+| 7
+| also gains 5 ({{Asc2|9|6}}) {{KW2|block}}
+|-
+! scope="row" | 3
+| 
+| 
+| gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}
+|-
+! scope="row" | 4
+| 14
+| 16
+|
+|-
+! scope="row" | 5
+| 8 
+| 10 
+| also gains 5 ({{Asc2|9|6}}) {{KW2|block}}
+|-
+! scope="row" | 6
+| 
+| 
+| gains 2 ({{Asc2|9|3}}) {{BD2|Strength}}
+|-
+! scope="row" | 7
+| 16 
+| 19
+|
+|}
+
+==== Paired Encounter ====
+
+When paired (Nibbits Normal encounter), the front Nibbit opens with {{Int2|Nibbit|Hesitant Slice}} and the back Nibbit opens with {{Int2|Nibbit|Hiss}}.
+
+{| class="wikitable"
+|+ Damage Schedule 
+|- 
+! Turn !! Front !! Back !! !! Front {{Asc2|9}} !! Back {{Asc2|9}}
+|-
+! scope="row" | 1 
+| 6 + {{KW2|Block|5}} 
+| 
+|
+| 7 + {{KW2|Block|6}}
+|
+|-
+! scope="row" | 2
+| 
+| 14
+|
+|
+| 16
+|-
+! scope="row" | 3
+| 14
+| 8 + {{KW2|Block|5}}
+|
+| 16
+| 10 + {{KW2|Block|6}}
+|-
+! scope="row" | 4
+| 8 + {{KW2|Block|5}}
+| 
+|
+| 10 + {{KW2|Block|6}}
+|
+|-
+! scope="row" | 5
+| 
+| 16
+|
+| 
+| 19
+|-
+! scope="row" | 6
+| 16
+| 10 + {{KW2|Block|5}}
+|
+| 19
+| 13 + {{KW2|Block|6}}
+|-
+! scope="row" | 7
+| 10 + {{KW2|Block|5}} 
+| 
+|
+| 13 + {{KW2|Block|6}}
+|
+|}
+
+== Animations ==
+{{Bestiary|Nibbit}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Mümmel
+| DEUmeaning = 
+| ESPname    = Lagartisco
+| ESPmeaning = 
+| FRAname    = Grignotin
+| FRAmeaning = 
+| ITAname    = Sgranocchiatore
+| ITAmeaning = 
+| JPNname    = ニビット
+| JPNromanised = Ni bit
+| JPNmeaning = 
+| INDname    = Kadal Kelinci
+| INDmeaning = 
+| KORname    = 깨작이
+| KORromanised = kkaejag-i
+| KORmeaning = 
+| POLname    = Kumkacz
+| POLmeaning = 
+| PTBname    = Lagartisco
+| PTBmeaning = 
+| RUSname    = Кусака
+| RUSromanised = Kusaka
+| RUSmeaning = 
+| SPAname    = Vibrosaurio
+| SPAmeaning = 
+| TURname    = Kemirbağa
+| TURmeaning = 
+| ZHSname    = 小啃兽
+| ZHSromanised = xiaokenshou
+| ZHSmeaning = 
+| CODEname    = NIBBIT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|v0.100.0|* Hiss move now scales from 2 -> 3 Strength on A9
+* Slice move damage now scales from 6 -> 7 on A9
+* Slice move Block now scales from 5 -> 6 on A8}}
+{{Update History Table/row|V0.96.0|* Added new Nibbit Hiss animation}}
+{{Update History Table/row|V0.86.0|* Nerfed Nibbit: slice move Block decreased from 6 -> 5}}
+{{Update History Table/row|V0.39.0|* Changed Lone Nibbit encounter: now always starts by attacking
+* Changed Nibbit:
+** Butt move damage increased from 14(16) -> 12(13)
+** HP increased from 41(43)-43(45) -> 42(44)-46(48)
+** Slice move damage/Block decreased from 8(9) -> 6(6)}}
+{{Update History Table/row|V0.35.0|* Nibbit enemy is no longer always the first encounter}}
+{{Update History Table/row|V0.34.0|* The first combat you ever encounter in your first run is always Nibbit}}
+{{Update History Table/row|V0.29.0|* Buffed Nibbit: Slice move damage and Block gain increased from 7 -> 8}}
+{{Update History Table/row|V0.26.0|* Changed Nibbit:
+** Butt damage increased from 13 -> 14
+** Slice damage and Block increased from 6 -> 7}}
+{{Update History Table/row|V0.23.0|* Changed Nibbits: moveset AI changed, now after buffing it does its larger attack}}
+{{Update History Table/row|V0.17.0|* Changed Nibbit: moveset slightly tweaked}}
+{{Update History Table/row|V0.11.0|* Changed Nibbit:
+** Fixed to correctly show Defend intention icon on Slice attack that gains Block
+** HP randomized between 41-43 instead of always 43
+** Strength gain increased from 1 -> 2
+** AI changed to no longer Headbutt multiple turns in a row and does not allow both Nibbits to headbutt at the same time}}
+{{Update History Table/row|2023-09-15|* Reworked Nibbit move rates
+* Nibbit now gains Strength}}
+{{Update History Table/row|2023-05-05|* The namening has begun... BEHOLD... NEW NAMES!!
+** lil toad -> nibbit}}
+{{Update History Table/row|2023-04-21|* lil toad idle animations}}
+{{Update History Table/row|?|* Added Nibbit to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]]
+[[Category:Slay the Spire 2 Content]]

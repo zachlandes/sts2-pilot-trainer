@@ -1,0 +1,123 @@
+{{Enemy Infobox
+|Name   = Corpse Slug
+|Image  = StS2_Corpse Slug.png
+|HP     = 25-27
+|AscHP  = 27-29
+|Powers = {{BD2|Ravenous}} 4 ({{Asc2|9|5}})
+|Debut  = Underdocks
+|Type   = Normal
+}} 
+{{Power Infobox
+|Name         = Ravenous
+|Image        = StS2 Icon Ravenous.png
+|Description  = When an enemy dies, Corpse Slug immediately eats it, becoming {{KW2|Stunned}} and gaining X {{BD2|Strength}}.
+|Type         = Buff
+|Stacks       = Intensity
+|BetweenTurns = Permanent
+|Cap          = 
+|GivesToEnemy = Stunned, Strength
+}}
+'''Corpse Slug''' is a normal {{2|Monsters|Enemy}} found in the {{2|Underdocks}}. It appears in groups of 2 or 3, and starts with {{BD2|Ravenous}}.
+
+== Pattern ==
+{{Intents Table/start|Corpse Slug}}
+{{Intents Table/row
+|Name   = Whip Slap
+|Intent = Attack2
+|Effect = Deals 3 damage ×2.
+}}
+{{Intents Table/row
+|Name   = Glomp
+|Intent = Attack2
+|Effect = Deals (8;{{Asc2|9|9}}) damage.
+}}
+{{Intents Table/row
+|Name   = Goop
+|Intent = Debuff
+|Effect = Applies 2 {{BD2|Frail}}.
+|GivesToPlayer = Frail
+}}
+{{Intents Table/end}}
+Cycles through its moves in a fixed order:
+# {{Int2|Corpse Slug|Whip Slap}}
+# {{Int2|Corpse Slug|Glomp}}
+# {{Int2|Corpse Slug|Goop}}
+# Back to {{Int2|Corpse Slug|Whip Slap}}
+
+Each Corpse Slug in the encounter starts on a different move in the cycle, so they are staggered.
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Corpse Slug}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Leichenschnecke
+| DEUmeaning = 
+| ESPname    = Putribabosa
+| ESPmeaning = 
+| FRAname    = Putrilimace
+| FRAmeaning = 
+| ITAname    = Lumaca cadaverica
+| ITAmeaning = 
+| JPNname    = 屍ナメクジ
+| JPNromanised = Kabane namekuji
+| JPNmeaning = 
+| INDname    = Siput Mayat
+| INDmeaning = 
+| KORname    = 시체 민달팽이
+| KORromanised = siche mindalpaeng-i
+| KORmeaning = 
+| POLname    = Ślimak Trupojad
+| POLmeaning = 
+| PTBname    = Lesma Necrófaga
+| PTBmeaning = 
+| RUSname    = Слизень-падальщик
+| RUSromanised = Slizen'-padal'schik
+| RUSmeaning = 
+| SPAname    = Babosa cadavérica
+| SPAmeaning = 
+| THAname    = ทากศพ
+| THAromanised = thakasop
+| THAmeaning = 
+| TURname    = Ceset Yiyen Sümüklü Böcek
+| TURmeaning = 
+| ZHSname    = 噬尸蛞蝓
+| ZHSromanised = shishikuoyu
+| ZHSmeaning = 
+| CODEname    = CORPSE_SLUG
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.105.0|* Added multi-hit animation for Corpse Slug}}
+{{Update History Table/row|V0.91.0|* Buffed Corpse Slugs: HP increased from 21(23)-23(25) -> 25(27)-27(29)}}
+{{Update History Table/row|V0.77.0|* Reworked Corpse Slugs}}
+{{Update History Table/row|V0.76.0|* Changed Corpse Slugs:
+** Moveset reworked
+** HP decreased
+* Added death VFX for Corpse Slugs
+* Added SFX for Corpse Slug}}
+{{Update History Table/row|V0.62.0|* Changed Corpse Slug:
+** Reworked moveset
+** Block and damage move is now the weakest attack
+** Block decreased from 6 -> 4}}
+{{Update History Table/row|V0.61.0|* Adjusted intent position, hitbox size, and center for Seapunk, Axe Bot, and Corpse Slug}}
+{{Update History Table/row|V0.60.0|* Added special death animation for Corpse Slugs when they die after Ravenous has been triggered
+* Corpse Slugs now get stunned first before they get the extra strength when Ravenous is triggered}}
+{{Update History Table/row|V0.59.0|* The Two Slug and Three Slug combat encounters can no longer be encountered back to back}}
+{{Update History Table/row|V0.57.0|* Deprecated Slugs & Cultist normal Underdocks combat encounters
+* Added animations for Corpse Slug enemy}}
+{{Update History Table/row|V0.52.0|* Nerfed Corpse Slugs: no longer have multihit attacks}}
+{{Update History Table/row|V0.50.0|* Changed Corpse Slugs:
+** Damage for their large attack decreased from 10(11) -> 8(9)
+** HP increased from 26(27) - 29(30) -> 23(25)-28(29)}}
+{{Update History Table/row|V0.49.0|* Corpse slugs try to have different moves from each other}}
+{{Update History Table/row|V0.48.1|* Corpse Slug's Ravenous no longer procs when Osty dies}}
+{{Update History Table/row|?|* Added Corpse Slug to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

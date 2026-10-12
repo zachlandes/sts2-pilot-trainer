@@ -1,0 +1,171 @@
+{{Event Infobox
+|Name=The Lantern Key
+|Image=StS2_Mysterious Knight.png
+}} {{Small Card Infobox|Lantern Key|2}}
+{{E2|The Lantern Key}} is an {{2|Event}} found exclusively in the {{2|Hive}}. It is a combat event. The {{C2|Lantern Key}} can be used in the {{E2|War Historian, Repy}} event in Act 3.
+
+== Options ==
+{{Frame|Return the Key}} {{TS|positive||Gain 100 Gold.}}
+<br>
+{{Frame|Keep the Key}} Enter combat against a {{2|Mysterious Knight}} for the {{C2|Lantern Key}} card.
+
+== Dialogue ==
+<blockquote>
+<div style="font-style:italic">
+You come upon a faintly glowing key and go to pick it up.
+
+"Been looking all over for that key! Now if you don't mind..."
+
+This person looks like bad news but maybe it's not good to be judgy.
+</div>
+
+{{Frame|Return the Key}}
+<blockquote><div style="font-style:italic">
+The stranger thanks you for your help, and rewards you handsomely.
+</div></blockquote>
+
+{{Frame|Keep the Key}}
+<blockquote><div style="font-style:italic">
+The stranger looks at you menacingly. It seems like only one of you is making it out of here with the key.
+</div></blockquote>
+</blockquote>
+
+== Notes ==
+* If you choose to {{Frame|Keep the Key}}, the {{2|Mysterious Knight}} combat counts as a normal combat encounter for purposes such as {{R2|Prayer Wheel}} and will drop normal combat rewards along with the {{C2|Lantern Key}}.
+
+== Mysterious Knight ==
+{{Enemy Infobox
+|Name   = Mysterious Knight
+|Image  = StS2_Mysterious Knight.png
+|HP     = 101
+|AscHP  = 108
+|Powers = {{BD2|Strength}} 6<br>{{BD2|Plating}} 6
+|Debut  = Hive
+|Type   = Normal
+}}
+'''Mysterious Knight''' is a normal {{2|Monsters|Enemy}} encountered in the {{E2|The Lantern Key}} event. It is a stronger version of the {{M2|Flail Knight}} with innate {{BD2|Strength}} and {{BD2|Plating}}.
+
+=== Pattern ===
+{{Intents Table/start|Mysterious Knight}}
+{{Intents Table/row
+|Name   = Breaker
+|Intent = Buff
+|Effect = Gains 3 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/row
+|Name   = Flail
+|Intent = Attack3
+|Effect = Deals (9;{{Asc2|9|10}}) damage x2.
+}}
+{{Intents Table/row
+|Name   = Ram
+|Intent = Attack3
+|Effect = Deals (15;{{Asc2|9|17}}) damage.
+}}
+{{Intents Table/end}}
+Opens with {{Int2|Mysterious Knight|Ram}}, then randomly picks {{Int2|Mysterious Knight|Breaker}} (equal chance), {{Int2|Mysterious Knight|Flail}} (double chance), or {{Int2|Mysterious Knight|Ram}} (double chance). Cannot use the same move twice in a row.
+
+{{Clear}}
+== Animations ==
+{{Bestiary|Mysterious Knight}}
+
+== Names in Other Languages ==
+{{Localization
+| Title = The Lantern Key
+| DEUname    = Der Laternenschlüssel
+| DEUmeaning = 
+| ESPname    = La llave ígnea
+| ESPmeaning = 
+| FRAname    = La clé de la lanterne
+| FRAmeaning = 
+| ITAname    = La Chiave Ardente
+| ITAmeaning = 
+| JPNname    = ランタンの鍵
+| JPNromanised = Lantern no kagi
+| JPNmeaning = 
+| INDname    = Kunci Lentera
+| INDmeaning = 
+| KORname    = 랜턴 열쇠
+| KORromanised = laenteon yeolsoe
+| KORmeaning = 
+| POLname    = Klucz
+| POLmeaning = 
+| PTBname    = A Chave Lamparina
+| PTBmeaning = 
+| RUSname    = Ключ-фонарь
+| RUSromanised = Kljuch-fonar'
+| RUSmeaning = 
+| SPAname    = La llave ígnea
+| SPAmeaning = 
+| THAname    = กุญแจตะเกียง
+| THAromanised = kunchaetakiang
+| THAmeaning = 
+| TURname    = Fener Anahtar
+| TURmeaning = 
+| ZHSname    = 灯火钥匙
+| ZHSromanised = denghuoyaoshi
+| ZHSmeaning = 
+| CODEname    = THE_LANTERN_KEY
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Mysterious Knight
+| DEUname    = Geheimnisvoller Ritter
+| DEUmeaning = 
+| ESPname    = Caballero enigma
+| ESPmeaning = 
+| FRAname    = Chevalier mystérieux
+| FRAmeaning = 
+| ITAname    = Cavaliere misterioso
+| ITAmeaning = 
+| JPNname    = 謎の騎士
+| JPNromanised = Nazo no kishi
+| JPNmeaning = 
+| INDname    = Kesatria Misterius
+| INDmeaning = 
+| KORname    = 수수께끼의 기사
+| KORromanised = susu-kke-kki-ui gisa
+| KORmeaning = 
+| POLname    = Tajemniczy Rycerz
+| POLmeaning = 
+| PTBname    = Cavaleiro Misterioso
+| PTBmeaning = 
+| RUSname    = Таинственный рыцарь
+| RUSromanised = Tainstvennyj rytsar'
+| RUSmeaning = 
+| SPAname    = Caballero misterioso
+| SPAmeaning = 
+| THAname    = อัศวินปริศนา
+| THAromanised = atwinpritna
+| THAmeaning = 
+| TURname    = Gizemli Şövalye
+| TURmeaning = 
+| ZHSname    = 神秘骑士
+| ZHSromanised = shenmiqishi
+| ZHSmeaning = 
+| CODEname    = MYSTERIOUS_KNIGHT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}} 
+{{Update History Table/row|V0.111.0|* Reduced hitch on Punch Off and The Lantern Key events}}
+{{Update History Table/row|V0.110.0|* Fixed typo in Lantern Key event}}
+{{Update History Table/row|V0.105.0|* Something special now happens if you have multiple Lantern Key cards (doesn't apply to multiplayer)
+* Disallow War Historian Repy duplicate Lantern Key card bonus if you are in multiplayer}}
+{{Update History Table/row|V0.95.0|* The Lantern Key event's special card reward's text now fits properly into its button when playing in Korean}}
+{{Update History Table/row|V0.94.0|* The Lantern Key is now a combat-room-style event}}
+{{Update History Table/row|V0.86.0|* Changed The Lantern Key event: "Return the Key" option gold reward changed to 100 Gold}}
+{{Update History Table/row|V0.77.0|* Changed Lantern Key event: guarantees first Act 3 unknown room is War Historian, Repy event}}
+{{Update History Table/row|V0.69.0|* Players can no longer mash "Fight" choice in Lantern Key event}}
+{{Update History Table/row|V0.63.0|* Added temporary background art for The Lantern Key event}}
+{{Update History Table/row|V0.59.0|* Changed The Lantern Key event's History Course relic: no longer plays cards from two turns ago if you did not play cards the previous turn}}
+{{Update History Table/row|V0.56.0|* Added portrait art for Lantern Key card}}
+{{Update History Table/row|V0.47.0|* Added beta art for Lantern Key relic}}
+{{Update History Table/row|?|* Added Lantern Key event to the game}}
+{{Update History Table/end}}
+
+{{Event2Nav}}
+{{Enemy2Nav}}
+[[Category:Monsters]] [[Category:Events]] [[Category:Slay the Spire 2 Content]]

@@ -1,0 +1,132 @@
+{{Beta content}} 
+{{Enemy Infobox
+| Name   = Axebot
+| Image  = StS2_Axebot.png
+| HP     = 70-78
+| AscHP  = 78-86
+| Powers = {{BD2|Stock}} 2
+| Debut  = Glory
+| Type   = Normal
+}} 
+{{Power Infobox
+| Name         = Stock
+| Image        = StS2 Icon Stock.png
+| Description  = When killed, a new Axebot is summoned in its place.
+| Type         = Buff
+| Stacks       = Intensity
+| BetweenTurns = Conserved
+|Cap          = 
+}}
+'''Axebot''' is a normal {{2|Monsters|Enemy}} found in {{2|Glory}}.
+
+== Pattern ==
+{{Intents Table/start|Axebot}}
+{{Intents Table/row
+| Name   = Boot Up
+| Intent = Defend, Buff
+| Effect = Gains (10;{{Asc2|8|15}}) {{KW2|Block}} and (3/6;{{Asc2|9|4/8}}) {{BD2|Strength}}.
+| GivesToEnemy = Strength, Block
+}}
+{{Intents Table/row
+| Name   = The One-Two
+| Intent = Attack2
+| Effect = Deals (10;{{Asc2|9|11}}) damage 2 times.
+}}
+{{Intents Table/row
+| Name   = Hammer Uppercut
+| Intent = Attack2, Debuff
+| Effect = Deals (14;{{Asc2|9|18}}) damage. Applies 2 {{BD2|Weak}} and 2 {{BD2|Frail}}.
+| GivesToPlayer = Weak, Frail
+}}
+{{Intents Table/end}}
+The Axebot always cycles {{Int2|Axebot|Hammer Uppercut}} then{{Int2|Axebot|The One-Two}} then repeat.
+
+The Axebots spawned mid-fight via {{BD2|Stock}} opens with {{Int2|Axebot|Boot Up}} before entering the cycle. The second spawned Axebot uses the improved version of {{Int2|Axebot|Boot Up}}. Every time a new Axebot is spawned it gains +10 Max HP more than the last one (So the first respawn has 10 HP more, the second 20 HP more etc.).
+
+== Interactions ==
+=== Synergies ===
+* {{BD2|Stock}} provides successive opportunities to activate {{KW2|Fatal}} triggers with {{C2|Hand of Greed}}.
+** {{C2|Feed}} and {{C2|The Hunt}} both {{KW2|Exhaust}} when played, but they can be played multiple times per combat when {{KW2|Enchant|Enchanted}} with {{KW2|Soul's Power}} from the {{E2|Grave of the Forgotten}} event.
+
+== Notes ==
+* If a multi-hit Attack that doesn't target a single enemy (such as {{C2|Sword Boomerang}} or {{C2|Dagger Spray}}) kills an Axebot with {{BD2|Stock}} partway through the attack, the new Axebot will be summoned in the middle of the attack, and it can be hit by that same Attack.
+** This does ''not'' occur for multi-hit Attacks that only hit a single enemy, like {{C2|Twin Strike}}.
+* If an Attack that hits all enemies and applies a debuff (such as {{C2|Thunderclap}} or {{C2|High Five}}) kills an Axebot with {{BD2|Stock}}, the new Axebot will be summoned in the middle of the attack, before the debuff is applied. The new Axebot will then be inflicted with the debuff.
+* When an Axebot with {{BD2|Stock}} dies during the enemy turn, such as by {{BD2|Poison}} or {{BD2|Thorns}}, the summoned Axebot will not do anything that turn, and it will use {{Int2|Axebot|Boot Up}} on the following turn.
+
+== Animations ==
+{{Bestiary|Axebot}}
+
+== Names in Other Languages ==
+{{Localization
+| DEUname    = Axtbot
+| DEUmeaning = 
+| ESPname    = Hachabot
+| ESPmeaning = 
+| FRAname    = Hachebots
+| FRAmeaning = 
+| ITAname    = Affettabot
+| ITAmeaning = 
+| JPNname    = アックスボット
+| JPNromanised = Ax bot
+| JPNmeaning = 
+| INDname    = Robot Kapak
+| INDmeaning = 
+| KORname    = 잘라봇
+| KORromanised = jallabos
+| KORmeaning = 
+| POLname    = Siekierobot
+| POLmeaning = 
+| PTBname    = Robô de Fundição
+| PTBmeaning = 
+| RUSname    = Рубот
+| RUSromanised = Rubot
+| RUSmeaning = 
+| SPAname    = Hachatrón
+| SPAmeaning = 
+| TURname    = Baltabot
+| TURmeaning = 
+| ZHSname    = 巨斧机器人
+| ZHSromanised = jufujiqiren
+| ZHSmeaning = 
+| CODEname    = AXEBOT
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.111.0|* Buffed Axebot: 
+** Hammer Uppercut move damage increased from 12(14) → 14(18)
+** Now gains +10 Max HP each time it respawns
+** The One-Two damage from 9(10)x2 → 10(11)x2}}
+{{Update History Table/row|V0.108.0|* Fixed a visual issue where, if the player uses Thorns to kill a monster that spawns more monsters on death (i.e. Axebot, Phrog Parasite), the dead monster's attack wouldn't visually occur until after the new monsters had spawned}}
+{{Update History Table/row|V0.105.0|* Reworded Axebot death message to reflect that there is only 1 of them now
+* Recentered Axebot in fight so it looks like there is supposed to be only one of them}}
+{{Update History Table/row|v0.104.0|* Reworked Axebots combat to have just a single, more challenging Axebot.}}
+{{Update History Table/row|V0.102.0|* Buffed Nonupeipe's Fur Coat relic: now affects restocked Axebots and other enemies that enter combat during a fight}}
+{{Update History Table/row|?|* Changed Axebot:
+** Bootup move Block decreased from 20 -> 10 but also gains 1 Strength
+* Axebots combat is now a normal pool encounter}}
+{{Update History Table/row|V0.68.0|* Seven Stars card will now hit new Axebots if the old Axebots have were killed mid multi-attack}}
+{{Update History Table/row|V0.67.0|* Fixed an occasional softlock after winning the Axebots fight}}
+{{Update History Table/row|V0.47.0|* Changed Axebots:
+** HP increased from 38(40)-42(44) -> 40(42)-44(46)
+** One Two Punch move damage decreased from 8(9) -> 4(5)}}
+{{Update History Table/row|V0.45.0|* Added SFX for Axebot}}
+{{Update History Table/row|V0.44.0|* Nerfed Axebots: Strength gain decreased from 5 -> 4}}
+{{Update History Table/row|V0.42.0|* Fixed softlock when killing last Axebot with End of Days card}}
+{{Update History Table/row|V0.40.0|* Fixed softlock when Doom kills a solo Axebot that still has Stock}}
+{{Update History Table/row|V0.38.0|* Changed Axebot:
+** Hammer uppercut damage decreased from 13(16) -> 12(14)
+** One-Two damage increased from 6(7)x2 -> 8(9)x2
+** Only stocked Axebots do Boot Up as their first move now}}
+{{Update History Table/row|V0.35.0|* Changed Axebot: now in the weak combat encounter pool}}
+{{Update History Table/row|V0.22.0|* Axebot turn order is now from left to right no matter what order they respawn in}}
+{{Update History Table/row|V0.16.0|* Strength now works correctly with Axebot}}
+{{Update History Table/row|V0.15.0|* Fixed softlock when you kill an Axebot with poison}}
+{{Update History Table/row|?|* Added Axebot to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+
+[[Category:Monsters]] [[Category:Slay the Spire 2 Content]]

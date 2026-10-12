@@ -1,0 +1,217 @@
+{{Enemy Infobox
+|Name   = Phrog Parasite
+|Image  = StS2_Phrog Parasite.png
+|HP     = 61-64
+|AscHP  = 66-68
+|Powers = {{BD2|Infested}}
+|Debut  = Overgrowth
+|Type   = Elite
+}}
+'''Phrog Parasite''' is an {{2|Elites|Elite}} found in the {{2|Overgrowth}}.
+
+== Pattern ==
+{{Intents Table/start|Phrog Parasite}}
+{{Intents Table/row
+|Name   = Infect
+|Intent = StatusCard
+|Effect = Shuffles 3 {{C2|Infection}} into your discard pile.
+}}
+{{Intents Table/row
+|Name   = Lash
+|Intent = Attack3
+|Effect = Deals (4;{{Asc2|9|5}}) damage ×4.
+}}
+{{Intents Table/end}}
+Phrog Parasite alternates between its two moves:
+# {{Int2|Phrog Parasite|Infect}}
+# {{Int2|Phrog Parasite|Lash}}
+# Back to {{Int2|Phrog Parasite|Infect}}, and so on.
+
+When Phrog Parasite dies, {{BD2|Infested}} triggers and 4 {{M|Wriggler|Wrigglers|2}} are summoned. They will be {{KW2|Stunned}} and do nothing on their first turn. The fight continues until all Wrigglers are defeated.
+
+== Notes ==
+* Whether the Wrigglers are {{KW2|Stunned}} on the player's next turn depends on if the Phrog Parasite dies during the player turn or the enemy turn:
+** If the Phrog Parasite is killed with an Attack card or damage from an Orb, the Wrigglers will be {{KW2|Stunned}} during this turn, ''not'' the player's next turn.
+** If the Phrog Parasite dies to {{BD2|Poison}} or {{BD2|Doom}}, then the Wrigglers will have no {{2|Intent}} when spawned. They will be {{KW2|Stunned}} during the player's next turn.
+*** This also applies if the Phrog Parasite dies as a result of its own attack, such as by {{BD2|Thorns}} or {{C2|Necro Mastery}}.
+<!--
+Confirm this is all correct, I've tested but may have missed something or made a mistake
+-->
+* '''Infections''' deal damage during the player turn, so the damage will activate cards like {{C2|Inferno}} or {{C2|Rupture}}.
+* {{C2|Omnislice}} damages the target, then damages all other enemies afterwards. If the first hit kills the '''Phrog Parasite''', then it will spawn '''Wrigglers''' before the card resolves and the Wrigglers will also take damage.
+
+== Useful Cards ==
+* Frontloaded damage cards like {{C2|Perfected Strike}}, {{C2|Backstab}}, and {{C2|Defile}} can be useful for taking down the Phrog Parasite before it can create too many Infections. They can also finish off individual Wrigglers quickly.
+* {{C2|Deathbringer}}, {{C2|Deadly Poison}}, and other cards which apply {{BD2|Poison}} or {{BD2|Doom}} can gain an extra turn before the Wrigglers attack, if the Phrog Parasite dies to their damage.
+* Attacks which target all enemies like {{C2|Dagger Spray}}, {{C2|Bone Shards}}, and {{C2|Whirlwind}} can damage all of the Wrigglers at once.
+* {{C2|Inferno}} deals consistent damage to all enemies every turn. It also triggers whenever '''Infections''' deal unblocked damage.
+* Cards which can discard, {{KW2|Exhaust}}, or {{KW2|Transform}} '''Infections''', such as {{C2|Burning Pact}} or {{C2|Hidden Daggers}}, can prevent them from dealing damage.
+** {{C2|Compact}} and {{C2|Flak Cannon}} are especially noteworthy, since they remove all '''Infections''' in Hand or in all zones, respectively.
+
+== Wriggler ==
+{{Enemy Infobox
+|Name   = Wriggler
+|Link   = Slay the Spire 2:Phrog Parasite#Wriggler
+|Image  = StS2_Wriggler.png
+|HP     = 17-21
+|AscHP  = 18-22
+|Debut  = Overgrowth
+|Type   = Normal
+}}
+'''Wriggler''' is a normal {{2|Enemy}} found in the {{2|Overgrowth}}. It appears in the {{E2|Dense Vegetation}} event and is also summoned by {{M2|Phrog Parasite}} upon its death.
+
+== Pattern ==
+{{Intents Table/start|Wriggler}}
+{{Intents Table/row
+|Name   = Nasty Bite
+|Intent = Attack2
+|Effect = Deals (6;{{Asc2|9|7}}) damage.
+}}
+{{Intents Table/row
+|Name   = Wriggle
+|Intent = Buff, StatusCard
+|Effect = Shuffles 1 {{C2|Infection}} into your discard pile. Gains 2 {{BD2|Strength}}.
+|GivesToEnemy = Strength
+}}
+{{Intents Table/end}}
+Wrigglers alternate between {{Int2|Wriggler|Nasty Bite}} and {{Int2|Wriggler|Wriggle}}. When multiple Wrigglers are present, they start offset from each other: odd-numbered Wrigglers begin with {{Int2|Wriggler|Nasty Bite}} and even-numbered Wrigglers begin with {{Int2|Wriggler|Wriggle}}.
+
+When summoned by {{M2|Phrog Parasite}} (via {{BD2|Infested}}), each Wriggler spends its first turn {{KW2|Stunned}} before beginning its pattern. In the {{E2|Dense Vegetation}} event, 4 Wrigglers appear at once, starting their patterns immediately (not {{KW2|Stunned}}).
+
+{{Clear}}
+== Trivia ==
+* The {{R2|Paper Phrog}} is likely based on the same type of creature being {{BD2|Infested}} by the Phrog Parasite.
+
+== Animations ==
+<tabber>
+|-|Phrog Parasite=
+{{Bestiary|Phrog Parasite}}
+|-|Wriggler=
+{{Bestiary|Wriggler}}
+</tabber>
+
+== Names in Other Languages ==
+{{Localization
+| Title = Phrog Parasite
+| DEUname    = Phroschparasit
+| DEUmeaning = 
+| ESPname    = Parásito engusanado
+| ESPmeaning = 
+| FRAname    = Parasite Krapo
+| FRAmeaning = 
+| ITAname    = Parassita drana
+| ITAmeaning = 
+| JPNname    = 寄生キャエル
+| JPNromanised = Kisei kyaeru
+| JPNmeaning = 
+| INDname    = Parasit Khodok
+| INDmeaning = 
+| KORname    = 게구리 기생체
+| KORromanised = geguli gisaengche
+| KORmeaning = 
+| POLname    = Zainfekowana Żapka
+| POLmeaning = 
+| PTBname    = Sapo Parasitado
+| PTBmeaning = 
+| RUSname    = Лягуш-паразит
+| RUSromanised = Ljagush-parazit
+| RUSmeaning = 
+| SPAname    = Sapo agusanado
+| SPAmeaning = 
+| TURname    = Parazitli Gurbağa
+| TURmeaning = 
+| ZHSname    = 异蛙寄生虫
+| ZHSromanised = yiwajishengchong
+| ZHSmeaning = 
+| CODEname    = PHROG_PARASITE
+| CODEmeaning = 
+}}
+{{Localization
+| Title = Wriggler
+| DEUname    = Schlängler
+| DEUmeaning = 
+| ESPname    = Sanguilarva
+| ESPmeaning = 
+| FRAname    = Larve
+| FRAmeaning = 
+| ITAname    = Larva
+| ITAmeaning = 
+| JPNname    = リグラー
+| JPNromanised = Rig Raa
+| JPNmeaning = 
+| INDname    = Penggeliat
+| INDmeaning = 
+| KORname    = 꿈틀벌레
+| KORromanised = kkumteulbeolle
+| KORmeaning = 
+| POLname    = Pasożyt
+| POLmeaning = 
+| PTBname    = Parasitário
+| PTBmeaning = 
+| RUSname    = Ерзун
+| RUSromanised = Erzun
+| RUSmeaning = 
+| SPAname    = Alimaña retorcida
+| SPAmeaning = 
+| TURname    = Kımıldak
+| TURmeaning = 
+| ZHSname    = 扭动虫
+| ZHSromanised = niudongchong
+| ZHSmeaning = 
+| CODEname    = WRIGGLER
+| CODEmeaning = 
+}}
+
+== Update History ==
+{{Update History Table/start}}
+{{Update History Table/row|V0.108.0|* Fixed a visual issue where, if the player uses Thorns to kill a monster that spawns more monsters on death (i.e. Axebot, Phrog Parasite), the dead monster's attack wouldn't visually occur until after the new monsters had spawned
+* Fixed Wrigglers spawning offscreen in 4:3 aspect ratios}}
+{{Update History Table/row|V0.100.0|* Added alternate Phobia Mode visuals for Phrog Parasite and Wrigglers}}
+{{Update History Table/row|V0.92.0|* Buffed Phrog Parasite: HP increased from 61(64)-64(68) -> 61(66)-64(68)}}
+{{Update History Table/row|V0.71.0|* Buffed Phrog Parasite: Lash move damage increased from 4(5)x3 -> 4(5)x4}}
+{{Update History Table/row|V0.68.0|* Wriggler enemies no longer overlap in the Dense Vegetation event encounter}}
+{{Update History Table/row|V0.60.0|* Wriggler now does animation when it gives you Parasite}}
+{{Update History Table/row|V0.38.0|* Reworked Dense Vegetation event:
+** Deprecated “Make a Bracelet” choice
+** “Nap” choice’s Wrigglers increased from 3 -> 4}}
+{{Update History Table/row|V0.36.0|* Changed Phrog Parasite:
+** Infection card damage increased from 1 -> 3
+** Infection cards given decreased from 4 -> 3
+* Changed Dense Vegetation event:
+** “Nap” option now spawns Wrigglers in a non-stunned state
+** “Trail Blaze” option’s damage increased from 9 -> 11}}
+{{Update History Table/row|V0.35.0|* Fixed Wriggler enemy’s intents}}
+{{Update History Table/row|V0.34.0|* Changed Wriggler: now buffs itself the same turn it applies Infection}}
+{{Update History Table/row|V0.29.0|* Buffed Phrog Parasite: Infection cards given from Infest move increased from 3 -> 4}}
+{{Update History Table/row|V0.23.0|* Changed Phrog Parasite encounter:
+** Wrigglers will alternate moves so that only half are attacking at once
+** Phrog Parasite HP lowered from 81-86 -> 61-64
+** Phrog Parasite no longer has the 20 damage leap move, instead goes back to infecting after it attacks
+** Phrog Parasite's Infection status now deals damage instead of HP loss}}
+{{Update History Table/row|V0.22.0|* Reworked Phrog Parasite fight}}
+{{Update History Table/row|V0.21.0|* Gremlin Horn is now correctly triggered when Phrog Parasite is killed}}
+{{Update History Table/row|V0.15.0|* Reworked Wrigglers}}
+{{Update History Table/row|V0.14.0|* Changed Phrog Parasite: now inflicts Parasite 3 onto cards, but only afflicts 3 cards at a time}}
+{{Update History Table/row|V0.12.0|* Phrog Parasite HP lowered from 92-94 -> 81-86.
+* Fixed softlock when playing an AOE while phrog parasite is dying.}}
+{{Update History Table/row|V0.11.0|* Reworked Phrog Parasite:
+** Parasite Affliction no longer stacks on cards, and deals damage when the card is played
+** Wrigglers’ Parasite-applying move replaced with a Wounding bite move
+** Moveset frequency changes.
+* In the Phrog Parasite encounter, Wrigglers now wait to spawn until the Phrog Parasite's death animation has finished playing}}
+{{Update History Table/row|V0.8.0|* Phrog Parasite's Lash move now attacks the correct number of times
+* The Phrog Parasite elite encounter now properly gives you a relic when you beat it}}
+{{Update History Table/row|2023-08-25|* Added Phrog Parasite animations}}
+{{Update History Table/row|2023-07-21|* Phrog Parasite no longer causes softlocks after dying}}
+{{Update History Table/row|2023-07-07|* Fixed intents when phrog parasite spawn wrigglers due to poison or doom
+* Corpse explosion power no longer kills wrigglers right after phrog parasite dies
+* Wriggler spawn Vfx no longer playing twice}}
+{{Update History Table/row|2023-05-12|* Wriggler spawn stunned in phrog parasite encounter, hp +4, and moves are now random}}
+{{Update History Table/row|2023-04-29|* Bug Fix: phrog parasite death via doom softlocks game}}
+{{Update History Table/row|2023-04-21|* implemented phrog parasite idle anim
+* Phrog Parasite idle anim imported}}
+{{Update History Table/row|?|* Added Phrog Parasite and Wrigglers to the game}}
+{{Update History Table/end}}
+
+{{Enemy2Nav}}
+[[Category:Elites]] [[Category:Monsters]] [[Category:Slay the Spire 2 Content]]
