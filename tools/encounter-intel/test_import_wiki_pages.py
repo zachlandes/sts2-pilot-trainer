@@ -188,14 +188,25 @@ class PageImportTests(unittest.TestCase):
             self.assertIn(claim['source_text'], text)
             self.assertNotIn('{{Intents Table/row', claim['source_text'][1:])
 
-    def test_literal_use_limits_bind_to_their_move_and_caps_stay_unparsed(self):
+    def test_literal_use_limits_and_group_caps_bind_to_their_move(self):
         def limits(line):
             return [(claim['kind'], claim['moves'], claim['repeat'], claim.get('limit')) for claim in self.branch_full(line)]
         self.assertIn(('repeat', ['Test.Roar'], 'UseOnlyOnce', None), limits(
             "Randomly picks {{Int2|Test|Claw}} or {{Int2|Test|Roar}} with equal chance. It cannot use the same move twice in a row, and {{Int2|Test|Roar}} can only be used once per fight."))
         self.assertEqual([('repeat', ['Test.Enrage'], 'Cooldown', 3)], limits("* {{Int2|Test|Enrage}} can only be chosen once every 3 turns."))
-        self.assertEqual([('repeat', ['Test.Call'], 'UseOnlyOnce', None), ('unparsed', [], None, None)], limits(
+        self.assertEqual([('repeat', ['Test.Call'], 'UseOnlyOnce', None), ('repeat', ['Test.Call'], 'GroupSummonCap', 3)], limits(
             "After at least two turns, a rat may use {{Int2|Test|Call}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total."))
+        self.assertEqual([('repeat', ['Test.Call'], 'GroupSummonCap', 4)], limits(
+            "Uses {{Int2|Test|Call}} to summon an ally. The group may summon at most 4 times total."))
+        for ambiguous in (
+            "The group can summon up to three times total.",
+            "Uses {{Int2|Test|Call}} or {{Int2|Test|Backup}}. The group can summon up to three times total.",
+            "Uses {{Int2|Test|Call}}. Each rat can summon up to three times total.",
+            "Uses {{Int2|Test|Call}}. If healthy, the group can summon up to three times total.",
+            "Uses {{Int2|Test|Call}}. The group can summon up to three times total or up to five times total.",
+        ):
+            with self.subTest(ambiguous=ambiguous):
+                self.assertEqual([('unparsed', [], None, None)], limits(ambiguous))
         self.assertEqual([('unparsed', [], None, None)], limits("Each rat can only summon once."))
 
     def branch_full(self, line):
@@ -228,6 +239,10 @@ class PageImportTests(unittest.TestCase):
         self.assertIn((["Mawler.Roar"], "UseOnlyOnce", None), stated("Mawler", "repeat"))
         self.assertIn((["The Merchant???.Enrage"], "Cooldown", None), stated("The Merchant???", "repeat"))
         self.assertIn((["Two-Tailed Rat.Call for Backup"], "UseOnlyOnce", None), stated("Two-Tailed Rat", "repeat"))
+        self.assertIn((["Two-Tailed Rat.Call for Backup"], "GroupSummonCap", None), stated("Two-Tailed Rat", "repeat"))
+        rat_cap = next(claim for claim in pages["Two-Tailed Rat"]["claims"] if claim.get("repeat") == "GroupSummonCap")
+        self.assertEqual(3, rat_cap["limit"])
+        self.assertEqual(37, rat_cap["source_line"])
         self.assertEqual([], stated("Tough Egg", "opening-alternative"))
         for page, moves in (("Globe Head", ["Globe Head.Shocking Slap", "Globe Head.Thunder Strike", "Globe Head.Galvanic Burst"]),
                             ("Entomancer", ["Entomancer.Beeeees!", "Entomancer.Spear!", "Entomancer.Pheromone Spit"]),

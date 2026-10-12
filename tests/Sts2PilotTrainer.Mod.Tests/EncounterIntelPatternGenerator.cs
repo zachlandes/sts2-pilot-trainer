@@ -19,7 +19,11 @@ internal static class EncounterIntelPatternGenerator
     internal sealed record Input(BuildIdentity Build, IReadOnlyDictionary<string, string[]> Conditions,
         IReadOnlyDictionary<string, Context[]> Contexts, IReadOnlyDictionary<string, Dictionary<string, string>> Strength,
         IReadOnlyDictionary<string, PatternPhase[]> Phases, IReadOnlyDictionary<string, string[]> WikiMoves,
-        IReadOnlyDictionary<string, DynamicAttack> DynamicAttacks, IReadOnlyDictionary<string, string> WeightRules);
+        IReadOnlyDictionary<string, DynamicAttack> DynamicAttacks, IReadOnlyDictionary<string, string> WeightRules)
+    {
+        public IReadOnlyDictionary<string, GroupSummonCapBinding> GroupSummonCaps { get; init; } = new Dictionary<string, GroupSummonCapBinding>();
+    }
+    internal sealed record GroupSummonCapBinding(string Guard, string Counter, string Comparison, string SharedBy);
     internal sealed record DynamicAttack(string? DamageProperty, string? HitsProperty, int? Hits, string? Rule);
     internal sealed record Context(string Name, string[] Encounters, string? Slot, string? Opening,
         Dictionary<string, JsonElement> Set);
@@ -124,12 +128,24 @@ internal static class EncounterIntelPatternGenerator
         var intents = new List<string>();
         var mustPerform = false;
         int? strength = 0;
+        PatternSummonCap? groupCap = null;
         var kind = "unsupported";
         if (state.GetType() == typeof(MoveState))
         {
             var move = (MoveState)state;
             kind = "move";
             mustPerform = move.MustPerformOnceBeforeTransitioning;
+            if (input.GroupSummonCaps.TryGetValue(model.GetType().Name + ":" + move.Id, out var cap))
+            {
+                var type = model.GetType();
+                var guard = type.GetMethod(cap.Guard, Members) ?? throw new IntelRefusal("Missing group summon guard.");
+                var counter = type.GetProperty(cap.Counter, Members)?.GetMethod ?? throw new IntelRefusal("Missing group summon counter.");
+                var sharedBy = type.GetMethod(cap.SharedBy, Members) ?? throw new IntelRefusal("Missing inspected counter-sharing member.");
+                var bounds = ChoiceEntryPoints.ConstantsComparedWith(guard, counter);
+                if (bounds.Count != 1 || bounds[0].Constant <= 0 || bounds[0].Comparison != cap.Comparison)
+                    throw new IntelRefusal("Group summon cap guard has an unknown bound or comparison shape.");
+                groupCap = new(bounds[0].Constant, $"{NameOf(guard)} compares {NameOf(counter)} ({cap.Comparison}); counter sharing inspected in {NameOf(sharedBy)}");
+            }
             if ((move.FollowUpState?.Id ?? move.FollowUpStateId) is { } follow) edges.Add(new(follow));
             else gaps.Add("No fixed follow-up; the move may exit or rely on a reactive transition.");
             intents.AddRange(move.Intents.Select(intent => intent.GetType().Name));
@@ -211,6 +227,7 @@ internal static class EncounterIntelPatternGenerator
         {
             WikiMoveNames = input.WikiMoves.GetValueOrDefault(model.GetType().Name + ":" + state.Id) ?? [],
             SourceMember = NameOf(model.GetType().GetMethod("GenerateMoveStateMachine", Members)!),
+            GroupSummonCap = groupCap,
         };
     }
 

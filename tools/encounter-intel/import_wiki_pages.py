@@ -23,10 +23,11 @@ SAME = re.compile(r"\b(?:cannot|can't)\s+(?:use|pick|be used|repeat)\s+the same 
 FREE = re.compile(r"\bno restriction on repeating\b|\bcan repeat\b", re.I)
 WEIGHT_WORDS = re.compile(r"\bchance\b|\bas likely\b|\bweight(?:ed|s)?\b|\(\d+%\)|\bequal(?:ly)? (?:chance|weight|probability|weighted|likely)\b|\bprobability\b", re.I)
 OPENS = re.compile(r"\bopens?\b|\bstarts? with\b|\bon (?:the |its )?first turn\b", re.I)
-NUMBERS = {"two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+NUMBERS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
 LIMIT = re.compile(r"\b(?:can|may) only (?:be \w+|\w+)(?: (?:done|used|chosen))? (?:at most )?once(?: per (?:fight|combat)| every (?P<every>\d+|two|three|four|five|six) turns)?\b", re.I)
 LIMIT_WORDS = re.compile(r"\bonly\b[^.]*\bonce\b|\bonce (?:every|per)\b", re.I)
-CAP = re.compile(r"\bup to (?:\d+|two|three|four|five|six) times\b|\bat most (?:\d+|two|three|four|five|six) times\b", re.I)
+CAP = re.compile(r"\b(?:up to|at most) (?:\d+|one|two|three|four|five|six) times\b", re.I)
+GROUP_CAP = re.compile(r"\bthe group (?:can|may) summon (?:up to|at most) (?P<count>\d+|one|two|three|four|five|six) times total\b", re.I)
 REPEAT_WORDS = re.compile(r"\bin a row\b|\bconsecutive(?:ly)?\b|\brestriction\b|\bcan(?:not)? repeat\b", re.I)
 
 
@@ -216,7 +217,7 @@ def branch_claims(prose, offset, add):
             relative = re.search(r",?\s*with " + LINK.pattern + r" being (twice|three times) as likely", said)
             listed = said if relative is None else said[:relative.start()] + said[relative.end():]
             plain = LINK.sub('@', listed)
-            weighted = repeated = limited = False
+            weighted = repeated = limited = capped = False
             chosen = RANDOM.search(plain)
             if chosen:
                 links = [link for link in LINK.finditer(listed) if len(LINK.sub('@', listed[:link.start()])) >= chosen.start()]
@@ -254,13 +255,22 @@ def branch_claims(prose, offset, add):
                     every = limit['every'] and NUMBERS.get(limit['every'].lower(), limit['every'])
                     add('repeat', unique(bound), start, line[0], **({'repeat': 'Cooldown', 'limit': int(every)} if every else {'repeat': 'UseOnlyOnce'}))
                     limited = True
+            caps = list(GROUP_CAP.finditer(plain))
+            if len(caps) == 1 and len(list(CAP.finditer(plain))) == 1 and not re.search(r"\b(?:if|unless|while|either|or)\b", plain, re.I):
+                cap = caps[0]
+                before = [link for link in LINK.finditer(listed) if len(LINK.sub('@', listed[:link.end()])) <= cap.start()]
+                bound = before if before else previous if not LINK.search(listed) else []
+                count = int(NUMBERS.get(cap['count'].lower(), cap['count']))
+                if len(unique(bound)) == 1 and count > 0:
+                    add('repeat', unique(bound), start, line[0], repeat='GroupSummonCap', limit=count)
+                    capped = True
             general = 'CannotRepeat' if SAME.search(plain) else 'Unrestricted' if FREE.search(plain) else None
             if general and context:
                 for move in context:
                     add('repeat', [move], start, line[0], repeat=general)
                 repeated = True
             spoken = LINK.sub('@', said)
-            if WEIGHT_WORDS.search(spoken) and not weighted or REPEAT_WORDS.search(spoken) and not repeated or LIMIT_WORDS.search(spoken) and not limited or CAP.search(spoken):
+            if WEIGHT_WORDS.search(spoken) and not weighted or REPEAT_WORDS.search(spoken) and not repeated or LIMIT_WORDS.search(spoken) and not limited or CAP.search(spoken) and not capped:
                 add('unparsed', unique(LINK.finditer(said)), start, line[0])
             previous = list(LINK.finditer(said))
 

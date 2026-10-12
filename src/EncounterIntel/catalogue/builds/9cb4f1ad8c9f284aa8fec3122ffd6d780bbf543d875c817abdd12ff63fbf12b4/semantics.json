@@ -1905,6 +1905,14 @@
       "rule": "Dread is 13 (15 at Deadly Enemies ascension) plus the owner's Dexterity; without a creature its quantity is absent"
     }
   },
+  "group_summon_caps": {
+    "TwoTailedRat:CALL_FOR_BACKUP_MOVE": {
+      "guard": "CanSummon",
+      "counter": "CallForBackupCount",
+      "comparison": "Blt",
+      "shared_by": "CallForBackup"
+    }
+  },
   "weight_rules": {
     "TwoTailedRat:RAND:SCRATCH_MOVE": "Can summon: 1/12; cannot summon: 1",
     "TwoTailedRat:RAND:DISEASE_BITE_MOVE": "Can summon: 1/12; cannot summon: 1",

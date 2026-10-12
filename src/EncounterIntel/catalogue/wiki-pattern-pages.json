@@ -6047,11 +6047,15 @@
           "repeat": "UseOnlyOnce"
         },
         {
-          "kind": "unparsed",
-          "moves": [],
+          "kind": "repeat",
+          "moves": [
+            "Two-Tailed Rat.Call for Backup"
+          ],
           "source_line": 37,
           "source_text": "After at least two turns, a rat may use {{Int2|Two-Tailed Rat|Call for Backup}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total.",
-          "amount": null
+          "amount": null,
+          "repeat": "GroupSummonCap",
+          "limit": 3
         }
       ],
       "gaps": [

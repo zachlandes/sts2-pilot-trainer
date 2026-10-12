@@ -102,6 +102,22 @@ public sealed record WikiPatternComparison(string Standing, string Reason, strin
             return new(claim, agrees ? "matched" : "mismatch", offered.Select(row => row.Context).Distinct().ToArray(),
                 $"Stated {claim.Scope} odds ({Shown(wiki)}) against the constructed branch's declared per-roll weights ({Shown(game[0])}); repeat exclusions and long-run frequencies are not computed.");
         }
+        if (claim.Kind == "repeat" && claim.Repeat == "GroupSummonCap")
+        {
+            if (claim.Moves.Count != 1 || claim.Limit is not > 0) return Unresolved("Unrecognized group summon cap claim shape.");
+            var offered = pattern.Variants.SelectMany(variant => variant.Nodes.Where(node => Names(node, claim.Moves[0]))
+                .Select(node => (variant.Context, node.GroupSummonCap))).ToArray();
+            if (offered.Length == 0 || offered.Any(row => row.GroupSummonCap is not { Limit: > 0 } cap || string.IsNullOrWhiteSpace(cap.Authority)))
+                return Unresolved("No inspected shared-counter cap binds every context for this summon move; per-monster repeat rules are not group caps.");
+            var caps = offered.Select(row => row.GroupSummonCap!.Limit).Distinct().ToArray();
+            if (caps.Length != 1) return Unresolved("Context variants declare different group summon caps; no context was guessed.");
+            return new(claim, claim.Limit == caps[0] ? "matched" : "mismatch", offered.Select(row => row.Context).Distinct().ToArray(),
+                $"Wiki states at most {claim.Limit} summons by the group in total; the inspected shared-counter guard caps this move at {caps[0]}. Eligibility predicates were not evaluated.")
+            {
+                WikiValue = claim.Limit,
+                GameValue = caps[0],
+            };
+        }
         if (claim.Kind == "repeat")
         {
             if (claim.Moves.Count != 1 || claim.Repeat is not ("CannotRepeat" or "Unrestricted" or "UseOnlyOnce" or "Cooldown") ||

@@ -11,12 +11,15 @@ public sealed record PatternAttack(decimal? Damage, int? Hits, string? Gap)
 {
     public string? ReferenceRule { get; init; }
 }
+public sealed record PatternSummonCap(int Limit, string Authority);
 public sealed record PatternNode(string Id, string Kind, IReadOnlyList<PatternEdge> Edges,
     IReadOnlyList<string> Intents, IReadOnlyList<PatternAttack> Attacks, bool MustPerformOnce,
     bool ReachableFromOpening, int? SelfStrengthGain, IReadOnlyList<string> Gaps)
 {
     public IReadOnlyList<string> WikiMoveNames { get; init; } = [];
     public string? SourceMember { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PatternSummonCap? GroupSummonCap { get; init; }
 }
 public sealed record PatternVariant(string Context, IReadOnlyList<string> EncounterIds, string? Slot,
     string InitialState, string? OpeningMove, IReadOnlyList<PatternNode> Nodes,
@@ -67,6 +70,9 @@ public sealed record PatternAtlas(int Schema, BuildIdentity Build, string Adapte
                 var ids = variant.Nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
                 if (variant.Nodes.Any(node => node.Kind is not ("move" or "conditional" or "random" or "unsupported") || node.Kind == "unsupported" && node.Gaps.Count == 0))
                     throw new IntelRefusal("The move-graph atlas has an unknown or unflagged state shape.");
+                if (variant.Nodes.Any(node => node.GroupSummonCap is { } cap &&
+                    (node.Kind != "move" || cap.Limit <= 0 || string.IsNullOrWhiteSpace(cap.Authority))))
+                    throw new IntelRefusal("The move-graph atlas has an invalid or unattributed group summon cap.");
                 if (ids.Count != variant.Nodes.Count || !ids.Contains(variant.InitialState) ||
                     variant.OpeningMove is { } opening && !ids.Contains(opening) ||
                     variant.Nodes.SelectMany(node => node.Edges).Any(edge => !ids.Contains(edge.To)))

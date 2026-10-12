@@ -79,6 +79,14 @@ public sealed partial class EncounterIntelTests
             foreach (var method in WatchedGameplayMembers()) harmony.Patch(method, prefix: prefix);
             Assert.Throws<IntelRefusal>(() => MegaCrit.Sts2.Core.Random.Rng.Chaotic.NextInt(1));
             atlas = EncounterIntelPatternGenerator.Generate(input);
+            var cap = Assert.Single(input.GroupSummonCaps);
+            Assert.Throws<IntelRefusal>(() => EncounterIntelPatternGenerator.Generate(input with
+            {
+                GroupSummonCaps = new Dictionary<string, EncounterIntelPatternGenerator.GroupSummonCapBinding>
+                {
+                    [cap.Key] = cap.Value with { Comparison = "UnknownComparison" },
+                },
+            }));
         }
         finally { harmony.UnpatchAll(harmony.Id); }
         Assert.False(RunManager.Instance.IsInProgress);
@@ -101,6 +109,16 @@ public sealed partial class EncounterIntelTests
         {
             Assert.Equal(1f, edge.Weight);
             Assert.Equal("CannotRepeat", edge.Repeat);
+        });
+        var ratCaps = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.TWO_TAILED_RAT").Variants
+            .SelectMany(variant => variant.Nodes).Where(node => node.Id == "CALL_FOR_BACKUP_MOVE").Select(node => node.GroupSummonCap);
+        Assert.NotEmpty(ratCaps);
+        Assert.All(ratCaps, cap =>
+        {
+            Assert.NotNull(cap);
+            Assert.Equal(3, cap.Limit);
+            Assert.Contains("CanSummon", cap.Authority);
+            Assert.Contains("CallForBackup", cap.Authority);
         });
         var phrog = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.PHROG_PARASITE").Variants[0];
         Assert.Contains(phrog.Nodes, node => node.Kind == "random" && !node.ReachableFromOpening);
@@ -213,11 +231,17 @@ public sealed partial class EncounterIntelTests
         Assert.Equal("partial-agreement", WikiPatternComparison.Compare(page with { Claims = [cycle] }, alternating, 0).Standing);
         var conditional = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] }, rand with { Kind = "conditional" }] }] };
         Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, conditional, 0).Checks).Standing);
-        var repeatable = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
-            rand with { Edges = [new("A", Weight: 1, Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }] };
+        var repeatable = alternating with
+        {
+            Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
+            rand with { Edges = [new("A", Weight: 1, Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }]
+        };
         Assert.Equal("mismatch", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, repeatable, 0).Checks).Standing);
-        var symbolic = alternating with { Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
-            rand with { Edges = [new("A", WeightRule: "Context", Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }] };
+        var symbolic = alternating with
+        {
+            Variants = [alternating.Variants[0] with { Nodes = [a with { Edges = [new("RAND")] }, b with { Edges = [new("RAND")] },
+            rand with { Edges = [new("A", WeightRule: "Context", Repeat: "CanRepeatXTimes", MaxRepeats: 2), new("B", Weight: 1, Repeat: "CannotRepeat")] }] }]
+        };
         Assert.Equal("unresolved", Assert.Single(WikiPatternComparison.Compare(page with { Claims = [cycle] }, symbolic, 0).Checks).Standing);
         Assert.All(agreement.Checks, check => Assert.Equal("matched", check.Standing));
         Assert.Equal(source, agreement.Source);
@@ -281,6 +305,36 @@ public sealed partial class EncounterIntelTests
     }
 
     [Fact]
+    public void GroupSummonCapsKeepSharedAndIndividualLimitsSeparate()
+    {
+        var call = new PatternNode("CALL", "move", [new("RAND")], [], [], false, true, 0, [])
+        {
+            WikiMoveNames = ["Test.Call"],
+            GroupSummonCap = new(3, "Synthetic inspected shared counter"),
+        };
+        var branch = new PatternNode("RAND", "random", [new("CALL", Weight: 1, Repeat: "UseOnlyOnce")], [], [], false, true, 0, []);
+        var variant = new PatternVariant("Definition", [], null, "RAND", null, [call, branch], [], []);
+        var enemy = new EnemyPattern("MONSTER.TEST", true, [variant], [], []);
+        var source = new WikiSource("synthetic", "https://example.invalid", 1, "test", new string('a', 64));
+        var claim = new WikiPatternClaim("repeat", ["Test.Call"], 1, "Synthetic literal group limit", null) { Repeat = "GroupSummonCap", Limit = 3 };
+        var page = new WikiPatternPage("Test", source, "Synthetic source, not wiki evidence");
+        PatternClaimCheck Check(WikiPatternClaim stated, EnemyPattern graph) => Assert.Single(WikiPatternComparison.Compare(page with { Claims = [stated] }, graph, 0).Checks);
+        Assert.Equal("matched", Check(claim, enemy).Standing);
+        var changed = Check(claim with { Limit = 4 }, enemy);
+        Assert.Equal("mismatch", changed.Standing);
+        Assert.Equal(4, changed.WikiValue);
+        Assert.Equal(3, changed.GameValue);
+        Assert.Equal("matched", Check(claim with { Repeat = "UseOnlyOnce", Limit = null }, enemy).Standing);
+        var missing = enemy with { Variants = [variant with { Nodes = [call with { GroupSummonCap = null }, branch] }] };
+        Assert.Equal("unresolved", Check(claim, missing).Standing);
+        var uncertain = enemy with { Variants = [variant, variant with { Context = "Other", Nodes = [call with { GroupSummonCap = new(4, "Other inspected counter") }, branch] }] };
+        Assert.Equal("unresolved", Check(claim, uncertain).Standing);
+        Assert.Equal("unresolved", Check(claim with { Moves = ["Test.Unknown"] }, enemy).Standing);
+        Assert.Equal("unresolved", Check(claim with { Limit = 0 }, enemy).Standing);
+        Assert.Equal("unresolved", Check(claim with { Moves = ["Test.Call", "Test.Other"] }, enemy).Standing);
+    }
+
+    [Fact]
     public void CachedPagesFlagStatedOddsAndRepeatRulesTheBetaGraphContradicts()
     {
         var root = WorktreeLocator.Find() ?? throw new InvalidOperationException("The committed atlas requires its source worktree.");
@@ -304,7 +358,15 @@ public sealed partial class EncounterIntelTests
         Assert.Equal("matched", Checks("The Merchant???", "MONSTER.FAKE_MERCHANT_MONSTER").Single(check => check.Claim.Repeat == "Cooldown").Standing);
         var rats = Checks("Two-Tailed Rat", "MONSTER.TWO_TAILED_RAT");
         Assert.Equal("matched", rats.Single(check => check.Claim.Repeat == "UseOnlyOnce").Standing);
-        Assert.Contains(rats, check => check.Claim.Kind == "unparsed" && check.Claim.SourceText.Contains("up to three times", StringComparison.Ordinal) && check.Standing == "unresolved");
+        var ratCap = Assert.Single(rats, check => check.Claim.Repeat == "GroupSummonCap");
+        Assert.Equal("matched", ratCap.Standing);
+        Assert.Equal(3, ratCap.WikiValue);
+        Assert.Equal(3, ratCap.GameValue);
+        Assert.Equal(37, ratCap.Claim.SourceLine);
+        var ratPage = pages.Pages.Single(page => page.Name == "Two-Tailed Rat");
+        var editedCap = ratPage with { Claims = [ratCap.Claim with { Limit = 4 }] };
+        Assert.True(WikiPatternComparison.Compare(editedCap, atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.TWO_TAILED_RAT"), 0).Mismatch);
+        Assert.DoesNotContain(rats, check => check.Claim.Kind == "unparsed" && check.Claim.SourceText.Contains("up to three times", StringComparison.Ordinal));
         Assert.DoesNotContain(pages.Pages.Single(page => page.Name == "Tough Egg").Claims, claim => claim.Kind == "opening-alternative");
         var axebots = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.AXEBOT").Variants.Where(variant => variant.EncounterIds.Contains("ENCOUNTER.AXEBOTS_NORMAL"));
         Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebots.Select(variant => variant.OpeningMove));

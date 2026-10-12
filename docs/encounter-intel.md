@@ -211,8 +211,8 @@ The session saved 96 pinned source revisions, including six redirect targets, an
 The 17 requested pages without a source receipt remain named gaps rather than a successful empty cache.
 The first three were left without a receipt while correcting an edit-page revision reader; the others did not supply a public source textarea and revision together under their requested titles.
 
-The check is deliberately narrow, as the captain approved: it covers fixed move sequences, opening alternatives, damage and hit numbers, odds or weights, and repeat limits, including once per fight and once every N turns.
-Everything else on a page - other prose, predicates, reactive triggers and group caps such as summon totals - stays unchecked fallback text and never counts as agreement.
+The check is deliberately narrow, as the captain approved: it covers fixed move sequences, opening alternatives, damage and hit numbers, odds or weights, and repeat limits, including once per fight, once every N turns and literal group summon caps.
+Everything else on a page - other prose, predicates and reactive triggers - stays unchecked fallback text and never counts as agreement.
 
 `import_wiki_pages.py` preserves source text and extracts bounded literal assertions from explicit pattern sections: fixed cycles or paths, opening alternatives, self-loops, unambiguous reference damage or hit counts, stated branch odds and stated repetition rules.
 It reads every pattern section the enemy owns, each kept as a region with its source line: every phase of a tabbed boss, and an anchored enemy's same-level sibling `Pattern` section as well as its own.
@@ -224,7 +224,8 @@ An intent-table row runs from its opener to the brace that closes it, whether th
 Odds are read only where a sentence writes them literally: a fraction, a percentage or a weight beside every move of a random pick, an equal-chance qualifier, "twice as likely", or a bulleted list of percentages.
 Repetition is read only from "cannot be used twice in a row" or "no restriction on repeating", bound to the moves it names or to the random pick it follows.
 A use limit is read only from "can only be used once per fight" or "once every N turns", bound to the one move before it in that sentence or, where the sentence names none, the one move the sentence before it names.
-A cap shared by a group, such as summons "up to three times total", is not a per-move rule the graph declares and stays `unparsed`.
+A literal "the group can summon up to N times total" or "the group may summon at most N times total" binds to the one move named before it or in the preceding sentence.
+Missing or ambiguous move bindings, conditional cap wording and competing numeric bounds stay `unparsed`.
 An opening alternative needs its opening verb and its one move in the same sentence, so a starting power beside a summoning move is not read as an opening.
 Odds or repetition wording that binds to no moves, or annotates only some of them, is kept as an `unparsed` claim and is always unresolved rather than matched.
 Complex formulas and conditional sequence wording are not partially interpreted.
@@ -233,6 +234,10 @@ Stated odds are compared with the declared per-roll weights of the one random br
 Repeat exclusions and long-run frequencies are not computed, so odds a page derived from a repeat rule disagree with the declared weights and are shown as such.
 A fixed sequence that passes through a random branch whose weights and repeat rules are all known is held to that branch: it agrees only where the repeat rules leave exactly the stated next move, and a branch that can also offer another move is a mismatch; a predicate or context-dependent weight stays unresolved, and no roll is made.
 A stated repetition rule is compared with the repeat rule on every branch edge into that move: once per fight with `UseOnlyOnce`, once every N turns with a cooldown of N.
+A group summon cap is compared separately with that move's build-scoped shared-counter bound, not its per-monster repeat policy.
+For the Rat, the existing IL reader reads the constant compared with `CallForBackupCount` in `CanSummon`; `CallForBackup`'s counter sharing is an inspected source binding, and neither member executes.
+A changed or unreadable comparison shape refuses generation; absent or conflicting cap bindings leave the comparison unresolved.
+The cached Rat claim agrees on three total summons across every inspected opening context, while an edited cap produces a mismatch.
 Its dispositions are partial agreement, mismatch and unchecked; each claim separately names matched, mismatch or unresolved.
 A missing graph still gets the cached editorial fallback, never an invented game pattern.
 
@@ -242,7 +247,7 @@ Remaining effect prose, conditional predicates and reactive triggers are not mad
 The current-run catalogue compares its ascension, and `CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun` checks every supported ascension, including wiki thresholds between compressed graph columns.
 `PatternComparison.SourceText` is the source fallback and `PatternGaps` retains the acquisition receipt.
 At A0, the beta's 126 registered graph rows have 79 partial agreements, six mismatches, five unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
-The compared A0 claims are 287 matches, nine mismatches and 53 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
+The compared A0 claims are 288 matches, nine mismatches and 52 unresolved assertions, seven of them unparsed odds, repetition or limit prose.
 Vantom's cached Dismember row says 27 damage below A9, while this beta's constructor supplies 26, and both say 30 at A9.
 The page's own V0.104.0 update history records the reduction to 26, but its intent row was not updated.
 Flyconid's page gives its opening 2/3 Frail Spores and 1/3 Smash, and Hunter Killer's makes Puncture twice as likely as Bite, where both branches declare equal weights.
