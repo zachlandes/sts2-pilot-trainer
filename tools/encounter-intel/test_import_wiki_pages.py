@@ -147,6 +147,30 @@ class PageImportTests(unittest.TestCase):
             "It randomly picks either {{Int2|Test|A}} (cannot repeat) or {{Int2|Test|B}} (weight 2).")])
         self.assertEqual([], self.branch("Deals damage equal to its Strength, making you take 50% more damage."))
 
+    def test_literal_use_limits_bind_to_their_move_and_caps_stay_unparsed(self):
+        def limits(line):
+            return [(claim['kind'], claim['moves'], claim['repeat'], claim.get('limit')) for claim in self.branch_full(line)]
+        self.assertIn(('repeat', ['Test.Roar'], 'UseOnlyOnce', None), limits(
+            "Randomly picks {{Int2|Test|Claw}} or {{Int2|Test|Roar}} with equal chance. It cannot use the same move twice in a row, and {{Int2|Test|Roar}} can only be used once per fight."))
+        self.assertEqual([('repeat', ['Test.Enrage'], 'Cooldown', 3)], limits("* {{Int2|Test|Enrage}} can only be chosen once every 3 turns."))
+        self.assertEqual([('repeat', ['Test.Call'], 'UseOnlyOnce', None), ('unparsed', [], None, None)], limits(
+            "After at least two turns, a rat may use {{Int2|Test|Call}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total."))
+        self.assertEqual([('unparsed', [], None, None)], limits("Each rat can only summon once."))
+
+    def branch_full(self, line):
+        from import_wiki_pages import claims_of, regions
+        text = "== Pattern ==\n" + line + "\n"
+        return [dict(claim, repeat=claim.get('repeat')) for claim in claims_of(text, 'Test', regions(text, 'Test')) if claim['kind'] in ('repeat', 'unparsed')]
+
+    def test_an_opening_claim_needs_its_verb_and_move_in_one_sentence(self):
+        from import_wiki_pages import claims_of, regions
+        def openings(line):
+            text = "== Pattern ==\n" + line + "\n"
+            return [claim['moves'] for claim in claims_of(text, 'Egg', regions(text, 'Egg')) if claim['kind'] == 'opening-alternative']
+        self.assertEqual([], openings("The Egg is summoned via {{Int2|Mother|Lay Eggs}}. It starts with the {{BD2|Hatch}} power."))
+        self.assertEqual([['Egg.Crack']], openings("The Egg is summoned by its mother. It always opens with {{Int2|Egg|Crack}}."))
+        self.assertEqual([['Egg.Crack']], openings("Uses {{Int2|Egg|Crack}} on its first turn, then waits."))
+
     def test_cached_pages_state_the_odds_and_repeat_rules_the_cross_check_needs(self):
         root = pathlib.Path(__file__).resolve().parents[2] / "src" / "EncounterIntel" / "catalogue" / "wiki-page-sources"
         pages = {page["name"]: page for page in import_pages(root)["pages"]}
@@ -160,6 +184,10 @@ class PageImportTests(unittest.TestCase):
         self.assertIn((["Wriggler.Nasty Bite", "Wriggler.Wriggle"], None, None), stated("Wriggler", "fixed-cycle"))
         self.assertEqual([35, 84, 120], [region["source_line"] for region in pages["Test Subject"]["pattern_regions"]])
         self.assertIn((["Test Subject (Phase 2).Multi-Claw"], None, None), stated("Test Subject", "damage"))
+        self.assertIn((["Mawler.Roar"], "UseOnlyOnce", None), stated("Mawler", "repeat"))
+        self.assertIn((["The Merchant???.Enrage"], "Cooldown", None), stated("The Merchant???", "repeat"))
+        self.assertIn((["Two-Tailed Rat.Call for Backup"], "UseOnlyOnce", None), stated("Two-Tailed Rat", "repeat"))
+        self.assertEqual([], stated("Tough Egg", "opening-alternative"))
         for page in pages.values():
             lines = page["source_text"].splitlines()
             for region in page["pattern_regions"]:

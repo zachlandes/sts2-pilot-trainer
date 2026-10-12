@@ -68,6 +68,15 @@
           "source_line": 42,
           "source_text": "The Axebot always cycles {{Int2|Axebot|Hammer Uppercut}} then{{Int2|Axebot|The One-Two}} then repeat.",
           "amount": null
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Axebot.Boot Up"
+          ],
+          "source_line": 44,
+          "source_text": "The Axebots spawned mid-fight via {{BD2|Stock}} opens with {{Int2|Axebot|Boot Up}} before entering the cycle. The second spawned Axebot uses the improved version of {{Int2|Axebot|Boot Up}}. Every time a new Axebot is spawned it gains +10 Max HP more than the last one (So the first respawn has 10 HP more, the second 20 HP more etc.).",
+          "amount": null
         }
       ],
       "gaps": [
@@ -1811,6 +1820,15 @@
           }
         },
         {
+          "kind": "opening-alternative",
+          "moves": [
+            "Hunter Killer.Tenderizing Goop"
+          ],
+          "source_line": 40,
+          "source_text": "Always opens with {{Int2|Hunter Killer|Tenderizing Goop}}. After that, randomly uses {{Int2|Hunter Killer|Bite}} or {{Int2|Hunter Killer|Puncture}}, with {{Int2|Hunter Killer|Puncture}} being twice as likely. {{Int2|Hunter Killer|Bite}} cannot be used twice in a row.",
+          "amount": null
+        },
+        {
           "kind": "weights",
           "moves": [
             "Hunter Killer.Bite",
@@ -1970,6 +1988,24 @@
             "threshold": 9,
             "higher": 11
           }
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Inklet.Jab"
+          ],
+          "source_line": 31,
+          "source_text": "The two outer Inklets open with {{Int2|Inklet|Jab}}. The middle Inklet always opens with {{Int2|Inklet|Whirlwind}}.",
+          "amount": null
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Inklet.Whirlwind"
+          ],
+          "source_line": 31,
+          "source_text": "The two outer Inklets open with {{Int2|Inklet|Jab}}. The middle Inklet always opens with {{Int2|Inklet|Whirlwind}}.",
+          "amount": null
         },
         {
           "kind": "weights",
@@ -2535,6 +2571,16 @@
         {
           "kind": "repeat",
           "moves": [
+            "Mawler.Roar"
+          ],
+          "source_line": 32,
+          "source_text": "After that, each turn it randomly picks one of three moves with equal chance: {{Int2|Mawler|Rip and Tear}}, {{Int2|Mawler|Roar}}, or {{Int2|Mawler|Claw}}. It cannot use the same move twice in a row, and {{Int2|Mawler|Roar}} can only be used once per fight.",
+          "amount": null,
+          "repeat": "UseOnlyOnce"
+        },
+        {
+          "kind": "repeat",
+          "moves": [
             "Mawler.Rip and Tear"
           ],
           "source_line": 32,
@@ -2839,6 +2885,15 @@
             "threshold": 9,
             "higher": 7
           }
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Nibbit.Butt"
+          ],
+          "source_line": 36,
+          "source_text": "When alone (Nibbits Weak encounter), the Nibbit opens with {{Int2|Nibbit|Butt}}. It's good strategy to aim to win on one of the {{Int2|Nibbit|Butt}} repeats, so either turn 4 or 7. Nibbit buffs the turn prior, giving you 2 full turns to spend energy on nothing but attacks and finish the combat before the big attack lands.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -3626,6 +3681,15 @@
           }
         },
         {
+          "kind": "opening-alternative",
+          "moves": [
+            "Slithering Strangler.Constrict"
+          ],
+          "source_line": 40,
+          "source_text": "Always opens with {{Int2|Slithering Strangler|Constrict}}. After that, it randomly picks {{Int2|Slithering Strangler|Thwack}} or {{Int2|Slithering Strangler|Lash}} (equal chance, can repeat). After either attack, it always uses {{Int2|Slithering Strangler|Constrict}} again, then returns to the random pick.",
+          "amount": null
+        },
+        {
           "kind": "weights",
           "moves": [
             "Slithering Strangler.Thwack",
@@ -4124,6 +4188,15 @@
           "source_line": 74,
           "source_text": "Opens with {{Int2|Spectral Knight|Hex}}. After that, alternates between {{Int2|Spectral Knight|Soul Slash}} and {{Int2|Spectral Knight|Soul Flame}}.",
           "amount": null
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Spectral Knight.Hex"
+          ],
+          "source_line": 74,
+          "source_text": "Opens with {{Int2|Spectral Knight|Hex}}. After that, alternates between {{Int2|Spectral Knight|Soul Slash}} and {{Int2|Spectral Knight|Soul Flame}}.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -4582,6 +4655,17 @@
           "source_line": 63,
           "source_text": "** Cannot use the same move twice in a row.",
           "amount": null
+        },
+        {
+          "kind": "repeat",
+          "moves": [
+            "The Merchant???.Enrage"
+          ],
+          "source_line": 64,
+          "source_text": "* {{Int2|The Merchant???|Enrage}} can only be chosen once every 3 turns. ",
+          "amount": null,
+          "repeat": "Cooldown",
+          "limit": 3
         }
       ],
       "gaps": [
@@ -4631,6 +4715,15 @@
             "threshold": 9,
             "higher": 7
           }
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "The Obscura.Illusion"
+          ],
+          "source_line": 37,
+          "source_text": "The Obscura always opens with {{Int2|The Obscura|Illusion}} to summon a {{M2|Parafright}}. After that, it randomly picks one of three moves — {{Int2|The Obscura|Piercing Gaze}}, {{Int2|The Obscura|Wail}}, or {{Int2|The Obscura|Hardening Strike}} — and cannot use the same move twice in a row.",
+          "amount": null
         },
         {
           "kind": "repeat",
@@ -4783,6 +4876,15 @@
           "source_line": 31,
           "source_text": "Cycles through its moves in a fixed order: {{Int2|Toadpole|Whirl}}, then {{Int2|Toadpole|Spiken}}, then {{Int2|Toadpole|Spike Spit}}, repeating. In the Toadpoles (Weak) encounter, the front Toadpole starts with {{Int2|Toadpole|Spiken}} instead.",
           "amount": null
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Toadpole.Spiken"
+          ],
+          "source_line": 31,
+          "source_text": "Cycles through its moves in a fixed order: {{Int2|Toadpole|Whirl}}, then {{Int2|Toadpole|Spiken}}, then {{Int2|Toadpole|Spike Spit}}, repeating. In the Toadpoles (Weak) encounter, the front Toadpole starts with {{Int2|Toadpole|Spiken}} instead.",
+          "amount": null
         }
       ],
       "gaps": [
@@ -4911,17 +5013,7 @@
           "sha256": "ccbdd12d5c2ee6ef385e71630f52815c1da90e7b87a88e6993d4a221d64f7db5"
         }
       ],
-      "claims": [
-        {
-          "kind": "opening-alternative",
-          "moves": [
-            "Ovicopter.Lay Eggs"
-          ],
-          "source_line": 65,
-          "source_text": "The Tough Egg is a minion summoned by Ovicopter via {{Int2|Ovicopter|Lay Eggs}}. It starts with the {{BD2|Hatch}} power, which counts down over turns.",
-          "amount": null
-        }
-      ],
+      "claims": [],
       "gaps": [
         "Only listed literal claims are checked; unparsed odds or repetition prose, predicate qualifiers, reactive triggers and remaining effect prose are not verified."
       ]
@@ -5060,6 +5152,15 @@
             "threshold": 9,
             "higher": 12
           }
+        },
+        {
+          "kind": "opening-alternative",
+          "moves": [
+            "Twig Slime (M).Sticky Shot"
+          ],
+          "source_line": 114,
+          "source_text": "Always starts with {{Int2|Twig Slime (M)|Sticky Shot}}. After that, each turn it randomly picks {{Int2|Twig Slime (M)|Chomp}} (67%) or {{Int2|Twig Slime (M)|Sticky Shot}} (33%). Cannot use {{Int2|Twig Slime (M)|Sticky Shot}} twice in a row.",
+          "amount": null
         },
         {
           "kind": "weights",
@@ -5217,6 +5318,23 @@
           "source_text": "Each rat starts with a different move: one uses {{Int2|Two-Tailed Rat|Scratch}}, one uses {{Int2|Two-Tailed Rat|Disease Bite}}, and one uses {{Int2|Two-Tailed Rat|Screech}}. After the first turn, each rat randomly picks from {{Int2|Two-Tailed Rat|Scratch}}, {{Int2|Two-Tailed Rat|Disease Bite}}, or {{Int2|Two-Tailed Rat|Screech}} each turn. Cannot use the same move twice in a row.",
           "amount": null,
           "repeat": "CannotRepeat"
+        },
+        {
+          "kind": "repeat",
+          "moves": [
+            "Two-Tailed Rat.Call for Backup"
+          ],
+          "source_line": 37,
+          "source_text": "After at least two turns, a rat may use {{Int2|Two-Tailed Rat|Call for Backup}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total.",
+          "amount": null,
+          "repeat": "UseOnlyOnce"
+        },
+        {
+          "kind": "unparsed",
+          "moves": [],
+          "source_line": 37,
+          "source_text": "After at least two turns, a rat may use {{Int2|Two-Tailed Rat|Call for Backup}} to summon a new rat. Each rat can only summon once, and the group can summon up to three times total.",
+          "amount": null
         }
       ],
       "gaps": [

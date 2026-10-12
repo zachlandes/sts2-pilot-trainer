@@ -670,6 +670,15 @@
     ],
     "Axebot": [
       {
+        "name": "Encounter front slot, Stock 2 without override",
+        "encounters": [
+          "ENCOUNTER.AXEBOTS_NORMAL"
+        ],
+        "slot": "front",
+        "opening": null,
+        "set": {}
+      },
+      {
         "name": "Respawn with Stock 1",
         "encounters": [
           "ENCOUNTER.AXEBOTS_NORMAL"

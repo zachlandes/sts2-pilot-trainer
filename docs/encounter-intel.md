@@ -217,12 +217,15 @@ A section under another enemy's heading and infobox belongs to that enemy's page
 Each assertion carries its exact source passage and line number.
 Odds are read only where a sentence writes them literally: a fraction, a percentage or a weight beside every move of a random pick, an equal-chance qualifier, "twice as likely", or a bulleted list of percentages.
 Repetition is read only from "cannot be used twice in a row" or "no restriction on repeating", bound to the moves it names or to the random pick it follows.
+A use limit is read only from "can only be used once per fight" or "once every N turns", bound to the one move before it in that sentence or, where the sentence names none, the one move the sentence before it names.
+A cap shared by a group, such as summons "up to three times total", is not a per-move rule the graph declares and stays `unparsed`.
+An opening alternative needs its opening verb and its one move in the same sentence, so a starting power beside a summoning move is not read as an opening.
 Odds or repetition wording that binds to no moves, or annotates only some of them, is kept as an `unparsed` claim and is always unresolved rather than matched.
 Complex formulas and conditional sequence wording are not partially interpreted.
 `WikiPatternComparison.Compare` holds those assertions to explicit move aliases in the constructed graph without running game code.
 Stated odds are compared with the declared per-roll weights of the one random branch that offers exactly those aliased moves - the initial state for an opening, a branch a move leads to otherwise - within half a percentage point for rounding.
 Repeat exclusions and long-run frequencies are not computed, so odds a page derived from a repeat rule disagree with the declared weights and are shown as such.
-A stated repetition rule is compared with the repeat rule on every branch edge into that move.
+A stated repetition rule is compared with the repeat rule on every branch edge into that move: once per fight with `UseOnlyOnce`, once every N turns with a cooldown of N.
 Its dispositions are partial agreement, mismatch and unchecked; each claim separately names matched, mismatch or unresolved.
 A missing graph still gets the cached editorial fallback, never an invented game pattern.
 
@@ -232,7 +235,7 @@ Remaining effect prose, conditional predicates and reactive triggers are not mad
 The current-run catalogue compares its ascension, and `CachedEnemyPagesAreCrossCheckedAtEveryAscensionWithoutStartingARun` checks every supported ascension, including wiki thresholds between compressed graph columns.
 `PatternComparison.SourceText` is the source fallback and `PatternGaps` retains the acquisition receipt.
 At A0, the beta's 126 registered graph rows have 80 partial agreements, five mismatches, five unchecked readings and 36 without an inspected source binding; these include mocks and non-combat models and are not counts of wiki pages.
-The compared A0 claims are 222 matches, eight mismatches and 46 unresolved assertions, seven of them unparsed odds or repetition prose.
+The compared A0 claims are 234 matches, eight mismatches and 47 unresolved assertions, eight of them unparsed odds, repetition or limit prose.
 Vantom's cached Dismember row says 27 damage below A9, while this beta's constructor supplies 26, and both say 30 at A9.
 The page's own V0.104.0 update history records the reduction to 26, but its intent row was not updated.
 Flyconid's page gives its opening 2/3 Frail Spores and 1/3 Smash, and Hunter Killer's makes Puncture twice as likely as Bite, where both branches declare equal weights.

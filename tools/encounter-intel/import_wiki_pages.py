@@ -22,6 +22,11 @@ SPECIFIC = re.compile(LINKED % ('', '') + r"\s+cannot be used (?:twice|two turns
 SAME = re.compile(r"\b(?:cannot|can't)\s+(?:use|pick|be used|repeat)\s+the same (?:move|one)\s+(?:twice|two turns) in a row|\bno move can be used (?:twice|two turns) in a row", re.I)
 FREE = re.compile(r"\bno restriction on repeating\b|\bcan repeat\b", re.I)
 WEIGHT_WORDS = re.compile(r"\bchance\b|\bas likely\b|\bweight(?:ed|s)?\b|\(\d+%\)|\bequal(?:ly)? (?:chance|weight|probability|weighted|likely)\b|\bprobability\b", re.I)
+OPENS = re.compile(r"\bopens?\b|\bstarts? with\b|\bon (?:the |its )?first turn\b", re.I)
+NUMBERS = {"two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+LIMIT = re.compile(r"\b(?:can|may) only (?:be \w+|\w+)(?: (?:done|used|chosen))? (?:at most )?once(?: per (?:fight|combat)| every (?P<every>\d+|two|three|four|five|six) turns)?\b", re.I)
+LIMIT_WORDS = re.compile(r"\bonly\b[^.]*\bonce\b|\bonce (?:every|per)\b", re.I)
+CAP = re.compile(r"\bup to (?:\d+|two|three|four|five|six) times\b|\bat most (?:\d+|two|three|four|five|six) times\b", re.I)
 REPEAT_WORDS = re.compile(r"\bin a row\b|\bconsecutive(?:ly)?\b|\brestriction\b|\bcan(?:not)? repeat\b", re.I)
 
 
@@ -111,11 +116,13 @@ def claims_of(text, name, found):
                 if links[0] == links[-1] and re.search(r"\b(?:back to|again)\b", rows.splitlines()[-1], re.I):
                     links.pop()
                 add('fixed-cycle' if cycle else 'fixed-path', links, pattern_offset + match.start(), match[0].strip())
-        for match in re.finditer(r"(?m)^[^\n]*(?:\bopens?\b|\bstarts? with\b|\bon (?:the |its )?first turn\b)[^\n]*", prose, re.I):
-            links = list(LINK.finditer(match[0]))
-            if len(links) == 1:
-                # An opening alternative is not a claim that its qualifier applies to every encounter
-                add('opening-alternative', [key(links[0])], pattern_offset + match.start(), match[0])
+        for match in re.finditer(r"(?m)^[^\n]*", prose):
+            for said in sentences(match[0]):
+                links = list(LINK.finditer(said))
+                # The opening verb and its one move share a sentence, so a starting power never names a move
+                if OPENS.search(LINK.sub('@', said)) and len(links) == 1:
+                    # An opening alternative is not a claim that its qualifier applies to every encounter
+                    add('opening-alternative', [key(links[0])], pattern_offset + match.start(), match[0])
         for match in re.finditer(r"(?m)^[^\n]*\{\{Int2\|[^\n]*\bevery turn\b[^\n]*", prose, re.I):
             links = list(LINK.finditer(match[0]))
             if len(links) == 1 and not re.search(r"\b(?:while|when|until|if|unless|dies|itself)\b", LINK.sub('@', match[0]), re.I):
@@ -171,14 +178,12 @@ def branch_claims(prose, offset, add):
                 context, scope = [move for _, _, move in rows], scope_of(LINK.sub('@', line[0])[:chosen.start()])
                 add('weights', context, start, prose[line.start():rows[-1][0].end()], weights=[weight for _, weight, _ in rows], scope=scope)
                 continue
-        # Sentence breaks inside a move link are part of its name
-        guarded = LINK.sub(lambda link: link[0].replace('.', '\0').replace('!', '\1').replace('?', '\2'), line[0])
-        for sentence in re.split(r"(?<=[.!?])\s+", guarded):
-            said = sentence.replace('\0', '.').replace('\1', '!').replace('\2', '?')
+        previous = []
+        for said in sentences(line[0]):
             relative = re.search(r",?\s*with " + LINK.pattern + r" being (twice|three times) as likely", said)
             listed = said if relative is None else said[:relative.start()] + said[relative.end():]
             plain = LINK.sub('@', listed)
-            weighted = repeated = False
+            weighted = repeated = limited = False
             chosen = RANDOM.search(plain)
             if chosen:
                 links = [link for link in LINK.finditer(listed) if len(LINK.sub('@', listed[:link.start()])) >= chosen.start()]
@@ -209,14 +214,28 @@ def branch_claims(prose, offset, add):
                 owner, move = link['owner'] or link['owner2'], link['move'] or link['move2']
                 add('repeat', [owner.replace('_', ' ') + '.' + move.replace('_', ' ')], start, line[0], repeat='CannotRepeat')
                 repeated = True
+            for limit in LIMIT.finditer(plain):
+                before = [link for link in LINK.finditer(listed) if len(LINK.sub('@', listed[:link.end()])) <= limit.start()]
+                bound = before if before else previous if not LINK.search(listed) else []
+                if len(unique(bound)) == 1:
+                    every = limit['every'] and NUMBERS.get(limit['every'].lower(), limit['every'])
+                    add('repeat', unique(bound), start, line[0], **({'repeat': 'Cooldown', 'limit': int(every)} if every else {'repeat': 'UseOnlyOnce'}))
+                    limited = True
             general = 'CannotRepeat' if SAME.search(plain) else 'Unrestricted' if FREE.search(plain) else None
             if general and context:
                 for move in context:
                     add('repeat', [move], start, line[0], repeat=general)
                 repeated = True
             spoken = LINK.sub('@', said)
-            if WEIGHT_WORDS.search(spoken) and not weighted or REPEAT_WORDS.search(spoken) and not repeated:
+            if WEIGHT_WORDS.search(spoken) and not weighted or REPEAT_WORDS.search(spoken) and not repeated or LIMIT_WORDS.search(spoken) and not limited or CAP.search(spoken):
                 add('unparsed', unique(LINK.finditer(said)), start, line[0])
+            previous = list(LINK.finditer(said))
+
+
+def sentences(line):
+    # Sentence breaks inside a move link are part of its name
+    guarded = LINK.sub(lambda link: link[0].replace('.', '\0').replace('!', '\1').replace('?', '\2'), line)
+    return [sentence.replace('\0', '.').replace('\1', '!').replace('\2', '?') for sentence in re.split(r"(?<=[.!?])\s+", guarded)]
 
 
 def stated_weight(note):

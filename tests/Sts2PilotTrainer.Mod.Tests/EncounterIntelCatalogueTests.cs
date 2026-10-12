@@ -73,6 +73,8 @@ public sealed partial class EncounterIntelTests
             var nibbits = reading.Encounters.Single(encounter => encounter.Id == "ENCOUNTER.NIBBITS_NORMAL").DamageSchedules[0];
             var nibbit = Assert.Single(nibbits.PossibleMembers);
             Assert.Equal(new[] { "SLICE_MOVE", "HISS_MOVE" }, nibbit.OpeningAlternatives.Select(variant => variant.OpeningMove));
+            var axebot = Assert.Single(reading.Encounters.Single(encounter => encounter.Id == "ENCOUNTER.AXEBOTS_NORMAL").DamageSchedules[0].PossibleMembers);
+            Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebot.OpeningAlternatives.Select(variant => variant.OpeningMove));
             Assert.Contains(reading.PatternGaps, gap => gap.Contains("source receipt:", StringComparison.Ordinal));
             Assert.Equal(3, reading.Monsters.Count(monster => monster.Wiki.Any(enemy => enemy.Name == "Decimillipede")));
             var subject = reading.Monsters.Single(monster => monster.Id == "MONSTER.TEST_SUBJECT");

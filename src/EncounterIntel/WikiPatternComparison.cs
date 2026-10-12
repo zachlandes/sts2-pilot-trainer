@@ -104,7 +104,8 @@ public sealed record WikiPatternComparison(string Standing, string Reason, strin
         }
         if (claim.Kind == "repeat")
         {
-            if (claim.Moves.Count != 1 || claim.Repeat is not ("CannotRepeat" or "Unrestricted")) return Unresolved("Unrecognized repetition claim shape.");
+            if (claim.Moves.Count != 1 || claim.Repeat is not ("CannotRepeat" or "Unrestricted" or "UseOnlyOnce" or "Cooldown") ||
+                (claim.Repeat == "Cooldown") != claim.Limit is > 0) return Unresolved("Unrecognized repetition claim shape.");
             var into = pattern.Variants.SelectMany(variant => variant.Nodes.Where(node => node.Kind == "random").SelectMany(node => node.Edges)
                 .Where(edge => Names(variant.Nodes.Single(node => node.Id == edge.To), claim.Moves[0])).Select(edge => (variant.Context, Edge: edge))).ToArray();
             if (into.Length == 0) return Unresolved("No random branch offers this aliased move.");
@@ -114,9 +115,22 @@ public sealed record WikiPatternComparison(string Standing, string Reason, strin
             if (rules.Length != 1) return Unresolved("Branches declare different repetition rules for this move; no context was guessed.");
             var edge = into[0].Edge;
             if (edge.Repeat is not ("CannotRepeat" or "UseOnlyOnce" or "CanRepeatForever" or "CanRepeatXTimes")) return Unresolved("Unknown repetition rule shape; not approximated.");
-            var agrees = claim.Repeat == "CannotRepeat" ? edge.Repeat is "CannotRepeat" or "UseOnlyOnce" : edge.Repeat == "CanRepeatForever" && edge.Cooldown == 0;
+            var agrees = claim.Repeat switch
+            {
+                "CannotRepeat" => edge.Repeat is "CannotRepeat" or "UseOnlyOnce",
+                "UseOnlyOnce" => edge.Repeat == "UseOnlyOnce",
+                "Cooldown" => edge.Cooldown == claim.Limit,
+                _ => edge.Repeat == "CanRepeatForever" && edge.Cooldown == 0,
+            };
+            var stated = claim.Repeat switch
+            {
+                "CannotRepeat" => "no consecutive use",
+                "UseOnlyOnce" => "one use per fight",
+                "Cooldown" => $"at most one use every {claim.Limit} turns",
+                _ => "unrestricted repetition",
+            };
             return new(claim, agrees ? "matched" : "mismatch", into.Select(row => row.Context).Distinct().ToArray(),
-                $"Wiki states {(claim.Repeat == "CannotRepeat" ? "no consecutive use" : "unrestricted repetition")}; the constructed branch declares {rules[0]}.");
+                $"Wiki states {stated}; the constructed branch declares {rules[0]}.");
         }
         if (claim.Kind is not ("fixed-cycle" or "fixed-path" or "self-loop")) return Unresolved("Uninterpreted source claim kind; not approximated.");
         if (claim.Moves.Select(Identity).Distinct().Count() != claim.Moves.Count)

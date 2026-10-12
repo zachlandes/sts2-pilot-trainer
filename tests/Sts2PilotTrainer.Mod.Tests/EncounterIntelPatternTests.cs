@@ -265,6 +265,12 @@ public sealed partial class EncounterIntelTests
         Assert.Equal("matched", Standing(Repeat("Test.Attack", "CannotRepeat"), lasting));
         Assert.Equal("matched", Standing(Repeat("Test.Buff", "Unrestricted"), lasting));
         Assert.Equal("unresolved", Standing(Repeat("Test.Attack", "CannotRepeat")));
+        Assert.Equal("matched", Standing(Repeat("Test.Attack", "UseOnlyOnce"), lasting));
+        Assert.Equal("mismatch", Standing(Repeat("Test.Buff", "UseOnlyOnce"), lasting));
+        var waiting = enemy with { Variants = [enemy.Variants[0] with { Nodes = [a, b, rand with { Edges = [rand.Edges[0] with { Cooldown = 3 }, rand.Edges[1]] }] }] };
+        Assert.Equal("matched", Standing(Repeat("Test.Attack", "Cooldown") with { Limit = 3 }, waiting));
+        Assert.Equal("mismatch", Standing(Repeat("Test.Attack", "Cooldown") with { Limit = 2 }, waiting));
+        Assert.Equal("unresolved", Standing(Repeat("Test.Attack", "Cooldown"), waiting));
         Assert.Equal("unresolved", Standing(new WikiPatternClaim("unparsed", ["Test.Attack"], 1, "Synthetic unparsed odds", null)));
     }
 
@@ -288,6 +294,14 @@ public sealed partial class EncounterIntelTests
         Assert.Equal(3, stalker.Count(check => check.Claim.Kind == "repeat"));
         Assert.All(Checks("Mysterious Knight", "MONSTER.MYSTERIOUS_KNIGHT").Where(check => check.Claim.Kind == "unparsed"),
             check => Assert.Equal("unresolved", check.Standing));
+        Assert.Equal("matched", Checks("Mawler", "MONSTER.MAWLER").Single(check => check.Claim.Repeat == "UseOnlyOnce").Standing);
+        Assert.Equal("matched", Checks("The Merchant???", "MONSTER.FAKE_MERCHANT_MONSTER").Single(check => check.Claim.Repeat == "Cooldown").Standing);
+        var rats = Checks("Two-Tailed Rat", "MONSTER.TWO_TAILED_RAT");
+        Assert.Equal("matched", rats.Single(check => check.Claim.Repeat == "UseOnlyOnce").Standing);
+        Assert.Contains(rats, check => check.Claim.Kind == "unparsed" && check.Claim.SourceText.Contains("up to three times", StringComparison.Ordinal) && check.Standing == "unresolved");
+        Assert.DoesNotContain(pages.Pages.Single(page => page.Name == "Tough Egg").Claims, claim => claim.Kind == "opening-alternative");
+        var axebots = atlas.Columns[0].Enemies.Single(enemy => enemy.Id == "MONSTER.AXEBOT").Variants.Where(variant => variant.EncounterIds.Contains("ENCOUNTER.AXEBOTS_NORMAL"));
+        Assert.Equal(new[] { "HAMMER_UPPERCUT_MOVE", "BOOT_UP_MOVE", "BOOT_UP_MOVE" }, axebots.Select(variant => variant.OpeningMove));
         var wriggler = Checks("Wriggler", "MONSTER.WRIGGLER");
         Assert.Equal("matched", wriggler.Single(check => check.Claim.Kind == "fixed-cycle").Standing);
         var subject = pages.Pages.Single(page => page.Name == "Test Subject");

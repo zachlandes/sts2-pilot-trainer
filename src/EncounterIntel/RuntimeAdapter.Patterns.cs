@@ -7,6 +7,7 @@ public sealed record WikiPatternClaim(string Kind, IReadOnlyList<string> Moves, 
     public IReadOnlyList<decimal>? Weights { get; init; }
     public string? Scope { get; init; }
     public string? Repeat { get; init; }
+    public int? Limit { get; init; }
 }
 public sealed record WikiPageGap(string Name, string Reason);
 public sealed record WikiPatternRegion(int SourceLine, string Text);
